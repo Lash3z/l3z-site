@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>About — LASH3Z</title>
+<style>
+  :root{
+    --bg:#0b0f10; --ink:#eaf7ff; --muted:#9cc; --teal:#00ffff; --gold:#ffb42d; --panel:#0f1416; --line:rgba(0,255,255,.14);
+  }
+  html,body{margin:0;background:#000 url("../../../../assets/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+
+  /* Top bar */
+  .topbar{height:64px;background:rgba(0,0,0,.7);backdrop-filter:saturate(140%) blur(6px);
+    border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;
+    padding:0 16px;position:sticky;top:0;z-index:50}
+  .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+  .brand img{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);object-fit:cover;background:#000}
+  .brand span{font-weight:900;letter-spacing:.4px}
+  .miniLink{color:#cfe;text-decoration:none;font-size:13px;border:1px solid rgba(0,255,255,.25);background:#0f1c1f;
+    border-radius:10px;padding:6px 10px}
+
+  /* Page */
+  .wrap{max-width:1100px;margin:22px auto;padding:0 16px}
+  .hero{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;align-items:center}
+  .hCard{background:linear-gradient(180deg,#0d1417 0%, #0a0f11 100%);border:1px solid var(--line);border-radius:16px;padding:18px}
+  h1{margin:0 0 6px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
+  .tag{display:inline-block;margin:6px 0 0;padding:4px 10px;border-radius:999px;border:1px solid rgba(0,255,255,.25);
+    background:#102024;color:#cff;font-size:12px}
+  .lead{color:#e8fbff;margin:10px 0 0;opacity:.9}
+
+  .media{display:grid;gap:12px}
+  .media .card{background:#0e1416;border:1px solid var(--line);border-radius:16px;padding:12px}
+  .logoBox{display:flex;align-items:center;justify-content:center;background:#0a0f10;border-radius:12px;border:1px dashed var(--line);padding:18px}
+  .logoBox img{max-width:220px;height:auto;filter:drop-shadow(0 4px 24px #00ffff33)}
+  video{width:100%;height:auto;border-radius:12px;border:1px solid var(--line);background:#000}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+  .card{background:#0e1416;border:1px solid var(--line);border-radius:16px;padding:16px}
+  h2{margin:0 0 10px;color:var(--gold);text-shadow:0 0 12px #ffb42d33;font-size:20px}
+  p{margin:8px 0 0;color:#dff6ff;line-height:1.45}
+  ul{margin:8px 0 0 18px;color:#dff6ff}
+  li{margin:6px 0}
+
+  .timeline{display:grid;gap:12px;margin-top:10px}
+  .tItem{border-left:3px solid var(--teal);padding-left:10px}
+  .muted{color:var(--muted);font-size:12px}
+
+  .ctaRow{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+  .btn{padding:10px 14px;border:none;border-radius:10px;font-weight:800;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn.primary{background:var(--gold);color:#222}
+  .btn.alt{background:#103036;border:1px solid var(--line);color:#cfe}
+
+  .footnote{margin:20px 0 40px;font-size:12px;color:var(--muted);text-align:center}
+
+  @media (max-width: 960px){
+    .hero{grid-template-columns:1fr}
+    .grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="brand" href="#" onclick="loadPage('index.html')">
+    <!-- Your logo shown here as well -->
+    <img src="../../../../assets/l3z_logo.png" alt="LASH3Z Logo" onerror="this.src='../../../../assets/lash3zbux_pp.png'">
+    <span>LASH3Z</span>
+  </a>
+  <a class="miniLink" href="#" onclick="loadPage('index.html')">← Back to Dashboard</a>
+</div>
+
+<div class="wrap">
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hCard">
+      <h1>ABOUT LASH3Z</h1>
+      <span class="tag">STREAMER • SLOTS • COMMUNITY EVENTS</span>
+      <p class="lead">
+        Hey! I’m <strong>Lash3z</strong> — I run Bonus Hunts, Battlegrounds, and PVP tournaments with our community,
+        powered by virtual <strong>Lash3zBux (LBX)</strong>. It’s all about hype, fair play, and fun — with a leaderboard
+        that tracks your grind and bragging rights for the champs.
+      </p>
+      <div class="ctaRow">
+        <a class="btn primary" href="#" onclick="loadPage('pages/dashboard/home/lash3z_bets.html')">Jump to L3Z Bets</a>
+        <a class="btn alt" href="https://kick.com/lash3z" target="_blank" rel="noopener">Watch Live</a>
+      </div>
+    </div>
+
+    <div class="media">
+      <div class="card logoBox">
+        <!-- MAIN LOGO -->
+        <img src="../../../../assets/l3z_logo.png" alt="LASH3Z Logo" onerror="this.src='../../../../assets/lash3zbux_pp.png'">
+      </div>
+      <div class="card">
+        <!-- LITTLE LASH MP4 -->
+        <video controls playsinline preload="metadata" poster="../../../../assets/video_poster.png">
+          <source src="../../../../assets/littlelash.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+        </video>
+        <div class="muted" style="margin-top:6px">Clip: littlelash.mp4</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STORY + WHAT WE DO -->
+  <section class="grid">
+    <div class="card">
+      <h2>HOW IT STARTED</h2>
+      <div class="timeline">
+        <div class="tItem">
+          <strong>Day 1:</strong> Started streaming for the love of slots and community vibes.
+          <div class="muted">Kick + socials, small crew, big energy.</div>
+        </div>
+        <div class="tItem">
+          <strong>LBX Created:</strong> Introduced Lash3zBux for friendly wagers and tournaments.
+          <div class="muted">Virtual points only — no real money gambling.</div>
+        </div>
+        <div class="tItem">
+          <strong>Events Grew:</strong> Bonus Hunts, Battlegrounds, and PVP took off.
+          <div class="muted">Live brackets, leaderboards, and bragging rights.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>WHAT WE DO</h2>
+      <ul>
+        <li><strong>Bonus Hunts:</strong> Track payouts and X — go for break-even and profit.</li>
+        <li><strong>Battleground:</strong> Head-to-head game matchups with live results.</li>
+        <li><strong>PVP Brackets:</strong> East vs West, knockout rounds to a Grand Final.</li>
+        <li><strong>LBX Bets:</strong> Place fun, virtual bets on preset markets.</li>
+      </ul>
+      <p class="muted">Everything is transparent, updated live, and saved locally for speed.</p>
+    </div>
+  </section>
+
+  <!-- COMMUNITY + LINKS -->
+  <section class="grid">
+    <div class="card">
+      <h2>THE COMMUNITY</h2>
+      <p>
+        None of this works without the legends who show up, cheer, banter, and compete.
+        Whether you’re calling a 500x, picking the final balance to the dollar, or carrying your side in a PVP — 
+        you’re part of the show.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>LINKS</h2>
+      <ul>
+        <li><a href="https://kick.com/lash3z" target="_blank" rel="noopener" style="color:#cfe">Kick</a></li>
+        <li><a href="https://x.com/Lash3_z" target="_blank" rel="noopener" style="color:#cfe">X / Twitter</a></li>
+        <li><a href="https://www.instagram.com/lash3z50/" target="_blank" rel="noopener" style="color:#cfe">Instagram</a></li>
+        <li><a href="https://www.facebook.com/lashesslots" target="_blank" rel="noopener" style="color:#cfe">Facebook</a></li>
+        <li><a href="https://www.youtube.com/@Lash3z-50" target="_blank" rel="noopener" style="color:#cfe">YouTube</a></li>
+        <li><a href="https://discord.gg/fSVqK6cMmB" target="_blank" rel="noopener" style="color:#cfe">Discord</a></li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="footnote">
+    LASH3Z • Community events use LBX (virtual points). No real-money gambling.
+  </div>
+</div>
+
+</body>
+</html>
+
+

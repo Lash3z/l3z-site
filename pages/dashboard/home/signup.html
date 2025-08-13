@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Sign Up — L3Z</title>
+<style>
+  :root{ --bg:#0b0f10; --ink:#eaf7ff; --muted:#9bc; --accent:#ffb42d; --panel:#0f1416; --ring:rgba(0,255,255,.25); --ok:#baffea; --bad:#ffb5be; }
+  *,*::before,*::after{ box-sizing:border-box; }
+  html,body{ margin:0; background:var(--bg) url("/assets/BG_page.png") center/cover fixed no-repeat; color:var(--ink); font-family:Segoe UI,system-ui,Arial,sans-serif; }
+  .wrap{ max-width:520px; margin:40px auto; padding:0 16px; }
+  h1{ margin:0 0 12px; color:var(--accent); text-shadow:0 0 14px rgba(255,180,45,.35); }
+  .card{ background:var(--panel); border:1px solid var(--ring); border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.35); padding:14px; }
+  .field{ display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+  .label{ font-size:12px; color:var(--muted); }
+  input{ width:100%; height:42px; padding:8px 12px; border-radius:10px; border:1px solid rgba(0,255,255,.18); background:#0a1719; color:var(--ink); outline:none; }
+  input:focus{ border-color:#18e4ff; box-shadow:0 0 0 2px rgba(0,255,255,.15); }
+  .btn{ width:100%; height:46px; border:none; border-radius:12px; background:var(--accent); color:#1a1405; font-weight:800; cursor:pointer; margin-top:4px; }
+  .mini{ font-size:12px; color:var(--muted); margin-top:8px; }
+  a{ color:#cfe; text-decoration:none; } a:hover{ text-decoration:underline; }
+  .note{ font-size:12px; color:var(--muted); margin-top:6px; }
+  .msg{ margin-top:8px; font-size:13px; }
+  .ok{ color:var(--ok); }
+  .err{ color:var(--bad); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Create your account</h1>
+
+    <div class="card">
+      <div class="field">
+        <div class="label">Username</div>
+        <input id="u" type="text" autocomplete="username" placeholder="Pick a username (letters/numbers)">
+      </div>
+      <div class="field">
+        <div class="label">Password</div>
+        <input id="p" type="password" autocomplete="new-password" placeholder="At least 6 characters">
+      </div>
+      <div class="field">
+        <div class="label">Confirm Password</div>
+        <input id="pc" type="password" autocomplete="new-password" placeholder="Repeat password">
+      </div>
+
+      <button class="btn" id="signupBtn">Create Account</button>
+
+      <div class="note">Already have an account? <a href="/pages/dashboard/home/login.html">Log in</a></div>
+      <div id="msg" class="msg"></div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ----- constants & keys -----
+  const OWNER_USER = 'LASH3Z';
+  const OWNER_PW   = 'Lash3z777';
+
+  const USERS_KEY   = 'l3z:users';              // { USERNAME: { pw, displayName, createdAt } }
+  const LEGACY_USERS_KEY = 'users';             // legacy mirror
+  const SESSION_KEY = 'l3z:session';            // { user, issuedAt, expiresAt }
+  const USER_NAME_KEY = 'user:username';        // compat keys
+  const PROFILE_KEY   = 'l3z:user';
+  const LAST_USER_KEY = 'lash3z_last_user';
+  const WALLET_KEY = u => `lbx:wallet:${(u||'').toUpperCase()}`;
+  const LEDGER_KEY = u => `lbx:ledger:${(u||'').toUpperCase()}`;
+  const SESSION_HOURS = 6;
+
+  // ----- dom -----
+  const $ = s => document.querySelector(s);
+  const uEl = $('#u'), pEl = $('#p'), pcEl = $('#pc'), msgEl = $('#msg'), btn = $('#signupBtn');
+
+  // ----- utils -----
+  const up = s => (s||'').toString().trim().toUpperCase();
+  const now = ()=>Date.now();
+  function sget(k,def=null){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(_){ return def; } }
+  function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } }
+
+  function setMsg(t, ok){ if(!msgEl) return; msgEl.className = "msg " + (ok?"ok":"err"); msgEl.textContent = t; }
+
+  // Owner exists/seeded
+  (function ensureOwner(){
+    const users = sget(USERS_KEY,{});
+    const legacy= sget(LEGACY_USERS_KEY,{});
+    if(!users[OWNER_USER]){ users[OWNER_USER] = { pw: OWNER_PW, displayName: OWNER_USER, createdAt: now() }; sset(USERS_KEY, users); }
+    if(!legacy[OWNER_USER]){ legacy[OWNER_USER] = { pw: OWNER_PW, displayName: OWNER_USER, createdAt: now() }; sset(LEGACY_USERS_KEY, legacy); }
+    if(!sget(WALLET_KEY(OWNER_USER))){
+      sset(WALLET_KEY(OWNER_USER), { balance:50, created:now(), lastDaily:0 });
+      sset(LEDGER_KEY(OWNER_USER), [{ ts:now(), delta:+50, reason:'WELCOME_BONUS', balance:50 }]);
+    }
+  })();
+
+  function getUsers(){
+    const modern = sget(USERS_KEY,{});
+    const legacy = sget(LEGACY_USERS_KEY,{});
+    return { ...legacy, ...modern };
+  }
+  function saveUsers(obj){ sset(USERS_KEY,obj); sset(LEGACY_USERS_KEY,obj); }
+
+  function validUsername(raw){
+    if(!raw) return false;
+    const u = up(raw);
+    if(u.length < 3) return false;
+    return /^[A-Z0-9_]+$/.test(u);
+  }
+  function validPassword(p){ return (p||'').length >= 6; }
+
+  function ensureWallet(u){
+    const wk = WALLET_KEY(u);
+    let w = sget(wk);
+    if(!w){
+      w = { balance:50, created:now(), lastDaily:0 };
+      sset(wk, w);
+      sset(LEDGER_KEY(u), [{ ts:now(), delta:+50, reason:'WELCOME_BONUS', balance:50 }]);
+    }
+    return w;
+  }
+
+  function startSession(u){
+    const t = now();
+    const sess = { user: u, issuedAt: t, expiresAt: t + SESSION_HOURS*60*60*1000 };
+    sset(SESSION_KEY, sess);
+    localStorage.setItem(USER_NAME_KEY, u);
+    sset(PROFILE_KEY, { username: u });
+    localStorage.setItem(LAST_USER_KEY, u);
+    return sess;
+  }
+
+  function resolveRedirect(){
+    const q = new URLSearchParams(location.search);
+    const p = q.get('redirect');
+    if (p && typeof p === 'string') return p;
+    return '/index.html';
+  }
+  function go(dest){ try{ location.replace(dest); }catch{ location.href = dest; } }
+
+  function signup(){
+    const rawU = uEl.value.trim();
+    const pw   = pEl.value;
+    const pw2  = pcEl.value;
+
+    if(!validUsername(rawU)){ setMsg("Username must be 3+ characters, letters/numbers/underscore only.", false); return; }
+    if(!validPassword(pw)){ setMsg("Password must be at least 6 characters.", false); return; }
+    if(pw !== pw2){ setMsg("Passwords do not match.", false); return; }
+
+    const U = up(rawU);
+    const users = getUsers();
+
+    if(users[U]){
+      setMsg("That username is already taken. Try logging in.", false);
+      return;
+    }
+
+    users[U] = { pw, displayName: U, createdAt: now() };
+    saveUsers(users);
+
+    ensureWallet(U);
+    startSession(U);
+
+    setMsg("Account created! Redirecting…", true);
+    setTimeout(()=> go(resolveRedirect()), 350);
+  }
+
+  // Prefill last/owner for convenience
+  const last = localStorage.getItem(LAST_USER_KEY) || OWNER_USER;
+  if(last && !uEl.value) uEl.value = last;
+
+  btn.addEventListener('click', signup);
+  pcEl.addEventListener('keydown', e=>{ if(e.key==='Enter') signup(); });
+})();
+</script>
+</body>
+</html>

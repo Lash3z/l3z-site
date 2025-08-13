@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Battleground — Slim Widget</title>
+<meta http-equiv="Cache-Control" content="no-store"/>
+
+<style>
+  :root{
+    --ink:#eaf7ff; --muted:#9fd0d6; --teal:#00ffff; --line:rgba(0,255,255,.18);
+    --gold:#ffb42d;
+  }
+
+  /* Put your background BEHIND everything */
+  html,body{
+    margin:0;height:100%;
+    background:#000 url("/assets/media/BG_page.png") center/cover fixed no-repeat; /* <- change path if needed */
+    color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif;
+  }
+
+  /* A compact, translucent box ONLY around the matchup */
+  .wrap{
+    width:max-content; margin:14px auto; padding:10px 12px;
+    background:linear-gradient(180deg,rgba(5,10,12,.72),rgba(5,10,12,.78)); /* translucent so BG shows through */
+    border:1px solid var(--line); border-radius:14px; box-shadow:0 10px 34px rgba(0,0,0,.45);
+  }
+
+  .stage{position:relative; min-width:740px; min-height:126px; overflow:hidden}
+  .card{position:absolute; inset:0; display:grid; place-items:center; opacity:0; transform:translateY(14px); transition:opacity .35s ease, transform .35s ease}
+  .card.show{opacity:1; transform:translateY(0)}
+
+  /* Layout: left side  |  center scores w/ VS  |  right side */
+  .row{
+    display:grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap:18px; align-items:center;
+  }
+
+  .side{
+    display:grid; grid-template-columns:76px 1fr; gap:12px; align-items:center;
+  }
+  .thumb{width:76px;height:102px;border-radius:10px;border:1px solid var(--line);overflow:hidden;background:#000}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .name{font-weight:900; font-size:22px}
+  .prov{font-size:12px; color:var(--muted); margin-top:2px}
+  .winner{color:var(--gold); filter:drop-shadow(0 0 5px #ffb42d77); margin-right:6px}
+
+  .mid{
+    display:grid; grid-template-columns:minmax(48px,auto) 52px minmax(48px,auto);
+    align-items:center; gap:6px;
+  }
+  .vs{font-weight:900; text-align:center; color:#bff; text-shadow:0 0 10px rgba(0,255,255,.35)}
+  .score{
+    min-width:48px; text-align:center; font-weight:900; font-size:20px;
+    padding:6px 10px; border:1px solid var(--line); border-radius:10px; background:#0a1418;
+  }
+
+  /* Tiny footer/meta (kept slim) */
+  .meta{margin-top:6px; text-align:center; font-size:12px; color:var(--muted)}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="stage">
+      <div id="card" class="card"><!-- runtime renders --></div>
+    </div>
+    <div id="meta" class="meta">0 / 0</div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+  const BKEY='bg:builder:battleground', GKEY='bg:games', MKEY='bg:matches', IDXK='bg:widget:mx_idx';
+  const $=s=>document.querySelector(s);
+  const cardEl=$('#card'), metaEl=$('#meta');
+
+  let data=readBuilder(), idx=readIdx(), lastHash='';
+
+  function readIdx(){ const n=Number(localStorage.getItem(IDXK)); return Number.isFinite(n)&&n>=0?n:0; }
+  function saveIdx(i){ localStorage.setItem(IDXK,String(i)); }
+  function readBuilder(){
+    try{ const raw=localStorage.getItem(BKEY); if(raw) return JSON.parse(raw); }catch{}
+    try{
+      const games=JSON.parse(localStorage.getItem(GKEY)||'[]');
+      const matches=JSON.parse(localStorage.getItem(MKEY)||'[]');
+      return {games,matches,lastUpdated:Date.now()};
+    }catch{ return {games:[],matches:[],lastUpdated:0}; }
+  }
+  function hash(o){ try{return JSON.stringify(o);}catch{return '';} }
+  function clamp(){ if(!data.matches?.length){ idx=0; return; } if(idx>=data.matches.length) idx=data.matches.length-1; if(idx<0) idx=0; }
+  function firstUnfinished(){ if(!data.matches) return 0; const i=data.matches.findIndex(m=>!m.winnerId); return i===-1?data.matches.length-1:i; }
+  function nextUnfinished(i){
+    if(!data.matches?.length) return 0;
+    for(let k=i+1;k<data.matches.length;k++) if(!data.matches[k].winnerId) return k;
+    return data.matches.length-1;
+  }
+
+  function render(){
+    clamp();
+    metaEl.textContent = data.matches?.length ? `${idx+1} / ${data.matches.length}` : '0 / 0';
+    const mx=data.matches?.[idx];
+    if(!mx){ cardEl.innerHTML='<div class="meta">No matchups published.</div>'; return; }
+
+    const map=new Map((data.games||[]).map(g=>[g.id,g]));
+    const L=map.get(mx.leftId)||{}, R=map.get(mx.rightId)||{};
+    const leftWin=mx.winnerId && mx.winnerId===mx.leftId;
+    const rightWin=mx.winnerId && mx.winnerId===mx.rightId;
+
+    const lTitle=mx.leftTitle||L.title||'LEFT', rTitle=mx.rightTitle||R.title||'RIGHT';
+    const lProv=L.provider||'', rProv=R.provider||'';
+    const lImg=mx.leftImg||L.imageUrl||L.image||'', rImg=mx.rightImg||R.imageUrl||R.image||'';
+    const sL=Number(mx.leftScore||0), sR=Number(mx.rightScore||0);
+
+    cardEl.classList.remove('show');
+    cardEl.innerHTML = `
+      <div class="row">
+        <div class="side" style="justify-self:end">
+          <div class="thumb">${lImg?`<img src="${lImg}" alt="">`:''}</div>
+          <div>
+            <div class="name">${leftWin?'<span class="winner">🏆</span>':''}${escape(lTitle)}</div>
+            <div class="prov">${escape(lProv)}</div>
+          </div>
+        </div>
+
+        <div class="mid">
+          <div class="score">${sL}</div>
+          <div class="vs">VS</div>
+          <div class="score">${sR}</div>
+        </div>
+
+        <div class="side">
+          <div class="thumb">${rImg?`<img src="${rImg}" alt="">`:''}</div>
+          <div>
+            <div class="name">${rightWin?'<span class="winner">🏆</span>':''}${escape(rTitle)}</div>
+            <div class="prov">${escape(rProv)}</div>
+          </div>
+        </div>
+      </div>
+    `;
+    requestAnimationFrame(()=>cardEl.classList.add('show'));
+
+    if(mx.winnerId){
+      const next = nextUnfinished(idx);
+      if(next!==idx) setTimeout(()=>go(next,true), 1500);
+    }
+  }
+
+  function go(i,animate){
+    clamp();
+    if(i===idx) return;
+    idx=i; saveIdx(idx);
+    if(animate){ cardEl.classList.remove('show'); setTimeout(render,160); }
+    else render();
+  }
+
+  function escape(s){ s=String(s??''); return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&gt;','>':'&gt;','"':'&quot;'}[m])); }
+
+  function tick(){
+    const now=readBuilder(); const h=hash(now);
+    if(h!==lastHash){
+      data=now;
+      if(idx >= (data.matches?.length||0)) idx=firstUnfinished();
+      saveIdx(idx);
+      lastHash=h;
+      render();
+    }
+  }
+
+  window.addEventListener('storage', e=>{ if([BKEY,GKEY,MKEY].includes(e.key)) tick(); });
+  setInterval(tick, 800);
+
+  // init
+  data=readBuilder();
+  if(!localStorage.getItem(IDXK)) idx=firstUnfinished();
+  saveIdx(idx);
+  lastHash=hash(data);
+  render();
+})();
+</script>
+</body>
+</html>

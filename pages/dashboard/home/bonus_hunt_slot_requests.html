@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Bonus Hunt — Slot Request</title>
+<style>
+  :root{
+    --bg:#0b0f10; --ink:#eaf7ff; --muted:#9cc; --teal:#00ffff; --accent:#ffb42d; --panel:#0f1416; --line:rgba(0,255,255,.14);
+  }
+  html,body{margin:0;background:#000 url("../../../../assets/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  .wrap{max-width:860px;margin:28px auto;padding:0 16px}
+  h1{margin:0 0 6px;color:var(--accent);text-shadow:0 0 14px rgba(255,180,45,.35);font-size:28px}
+  .sub{opacity:.8;font-size:12px;margin-bottom:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  input,textarea{background:#0f1416;border:1px solid var(--line);color:var(--ink);padding:10px 12px;border-radius:10px;box-sizing:border-box}
+  input::placeholder,textarea::placeholder{color:#a6cbd0}
+  .btn{padding:12px 16px;border:none;border-radius:12px;font-weight:800;cursor:pointer}
+  .btn.primary{background:var(--accent);color:#222}
+  .btn.alt{background:#103036;border:1px solid var(--line);color:#cfe}
+  .mini{font-size:12px;color:var(--muted)}
+  .ok{color:#aef7ff}
+  .err{color:#ff9a9a}
+  .widget{
+    display:flex;align-items:center;gap:12px;background:#0e1619;border:1px solid rgba(0,255,255,.18);
+    border-radius:12px;padding:10px 12px;box-shadow:0 6px 18px rgba(0,0,0,.35)
+  }
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--teal);box-shadow:0 0 10px #0ff}
+  .title{font-weight:900;letter-spacing:.4px}
+  .req{font-size:14px}
+  .row{display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .pill{padding:2px 8px;border-radius:999px;background:#22323a;border:1px solid rgba(0,255,255,.2);font-size:12px}
+  .list{display:flex;flex-direction:column;gap:8px}
+  .item{display:flex;justify-content:space-between;gap:10px;align-items:center;background:#0c1214;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:10px}
+  .truncate{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}
+  a.link{color:#cfe;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Bonus Hunt — Slot Request</h1>
+  <div class="sub">
+    Ask for a game and we’ll try to queue it during the next hunt. Stored locally in <code>bh:slot_requests</code>.
+    Your username is read from <code>user:username</code> (same as the Bets page). If it’s empty, we’ll ask once and remember it.
+  </div>
+
+  <!-- Request form -->
+  <div class="card">
+    <div class="bar">
+      <input id="game" placeholder="Game name (e.g., GATES OF OLYMPUS)" style="flex:1 1 360px;min-width:260px">
+      <input id="note" placeholder="Optional note (provider, bet size, etc.)" style="flex:1 1 260px;min-width:220px">
+      <button id="send" class="btn primary">Send Request</button>
+    </div>
+    <div id="msg" class="mini" style="margin-top:8px"></div>
+  </div>
+
+  <!-- Live widget -->
+  <div class="card">
+    <div class="widget" id="widget">
+      <div class="dot"></div>
+      <div>
+        <div class="title">Player Slot Request</div>
+        <div class="req" id="widgetText">No requests yet.</div>
+      </div>
+    </div>
+    <div class="mini" style="margin-top:8px">This mini-widget updates with the most recent request. You can also embed it in an overlay via iframe if needed.</div>
+  </div>
+
+  <!-- Recent list -->
+  <div class="card">
+    <div class="row" style="margin-bottom:6px">
+      <div class="title">Recent Requests</div>
+      <div class="pill">Total: <span id="count">0</span></div>
+    </div>
+    <div id="list" class="list"></div>
+  </div>
+
+  <div class="mini">
+    Tip: Open the Bets page in another tab to use the same username:
+    <a class="link" href="#" onclick="loadPage('pages/dashboard/home/lash3z_bets.html')">Open L3Z Bets</a>
+  </div>
+</div>
+
+<script>
+/* === Keys & helpers === */
+const REQ_KEY   = 'bh:slot_requests';
+const USER_KEY  = 'user:username';
+const BH_KEY    = 'bh:live';        // admin removes this on hunt reset
+const RESET_KEY = 'bh:reset_at';    // optional: if admin writes a timestamp here on reset
+
+const $ = (s,root=document)=>root.querySelector(s);
+const nowId = () => crypto.randomUUID?.() || ('r_'+Math.random().toString(36).slice(2));
+const read = (k,fallback)=>{ try{ return JSON.parse(localStorage.getItem(k) || fallback); }catch{ return JSON.parse(fallback); } };
+const write = (k,v)=>localStorage.setItem(k, JSON.stringify(v));
+const esc = s => (s==null?'':String(s)).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+
+/* === Username bootstrap === */
+function getUser(){
+  let u = localStorage.getItem(USER_KEY) || '';
+  if(!u){
+    u = (prompt('Enter a username to attach to your slot requests:') || '').trim();
+    if(!u){ u = 'GUEST'; }
+    localStorage.setItem(USER_KEY, u);
+  }
+  return u;
+}
+
+/* === Load & render === */
+function loadRequests(){ return read(REQ_KEY,'[]'); }
+function saveRequests(arr){ write(REQ_KEY, arr); }
+
+function render(){
+  const listEl = $('#list');
+  const cntEl = $('#count');
+  const wText = $('#widgetText');
+
+  const rows = loadRequests().sort((a,b)=>b.ts-a.ts);
+  cntEl.textContent = rows.length;
+
+  if(rows.length){
+    const r = rows[0];
+    wText.innerHTML = `<strong>${esc(r.user)}</strong> → ${esc(r.game)}${r.note?` — <span class="mini">${esc(r.note)}</span>`:''}`;
+  }else{
+    wText.textContent = 'No requests yet.';
+  }
+
+  listEl.innerHTML = rows.slice(0,50).map(r=>`
+    <div class="item">
+      <div class="truncate"><strong>${esc(r.user)}</strong> asked for <strong>${esc(r.game)}</strong>${r.note?` — <span class="mini">${esc(r.note)}</span>`:''}</div>
+      <div class="mini">${new Date(r.ts).toLocaleTimeString()}</div>
+    </div>
+  `).join('');
+}
+
+/* === Submit === */
+let lastAt = 0;
+$('#send').addEventListener('click', ()=>{
+  const user = getUser();
+  const game = ($('#game').value || '').trim();
+  const note = ($('#note').value || '').trim();
+
+  const msg = $('#msg');
+  msg.textContent = '';
+
+  if(!game){ msg.innerHTML = '<span class="err">Please enter a game name.</span>'; return; }
+
+  // simple anti-spam (2s)
+  const t = Date.now();
+  if(t - lastAt < 2000){ msg.innerHTML = '<span class="err">Easy tiger — wait a sec before sending again.</span>'; return; }
+  lastAt = t;
+
+  const rec = { id: nowId(), ts: t, user, game, note };
+  const arr = loadRequests();
+  arr.unshift(rec);
+  if(arr.length > 500) arr.length = 500; // cap
+  saveRequests(arr);
+
+  $('#game').value = ''; $('#note').value = '';
+  msg.innerHTML = '<span class="ok">Request sent. Thanks!</span>';
+
+  render();
+});
+
+/* === Auto-reset when Bonus Hunt resets === */
+function clearRequests(reason=''){
+  localStorage.removeItem(REQ_KEY);
+  render();
+  const msg = $('#msg');
+  if (msg) msg.innerHTML = `<span class="ok">Requests cleared${reason?` (${reason})`:''}.</span>`;
+}
+
+// React to cross-tab/local changes
+window.addEventListener('storage', (e)=>{
+  if (e.key === BH_KEY && e.newValue === null){
+    clearRequests('hunt reset');
+  }
+  if (e.key === RESET_KEY && e.newValue){
+    clearRequests('hunt reset');
+  }
+});
+
+// Fallback poll (covers cases where storage event doesn’t fire in this tab)
+let lastBH = localStorage.getItem(BH_KEY);
+setInterval(()=>{
+  const cur = localStorage.getItem(BH_KEY);
+  if (lastBH && !cur){ clearRequests('hunt reset'); }
+  lastBH = cur;
+}, 3000);
+
+/* === Init === */
+render();
+</script>
+</body>
+</html>
+
+

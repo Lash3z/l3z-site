@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Unified Live — BG / PVP / Bonus Hunt</title>
+<style>
+:root{
+  --bg:#060b0d;--panel:#0b1417;--ink:#eaf7ff;--muted:#9fd0d6;
+  --line:rgba(0,255,255,.18);--teal:#00ffff;--gold:#ffb42d
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
+.wrap{max-width:1300px;margin:0 auto;padding:0 16px 48px}
+.card{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cfffff}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tab{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:#0f1720;color:#cfffff;cursor:pointer}
+.tab.active{border-color:#00ffff88;box-shadow:0 0 14px #00ffff33}
+
+.list{display:grid;gap:14px}
+
+/* New row layout: [Left Name] [Left Img] [LScore] [:] [RScore] [Right Img] [Right Name] */
+.rowLive{
+  display:grid;align-items:center;gap:12px;
+  grid-template-columns: 1fr 92px 56px 18px 56px 92px 1fr;
+  border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px
+}
+.nameL,.nameR{display:flex;flex-direction:column;gap:4px}
+.nameL{align-items:flex-end;text-align:right}
+.nameR{align-items:flex-start;text-align:left}
+.title{font-weight:900;line-height:1.1}
+.prov{font-size:12px;color:#9fd0d6}
+
+.thumb{width:92px;height:120px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#000}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+
+.score{min-width:56px;padding:10px;border:1px solid var(--line);border-radius:10px;text-align:center;font-weight:900;background:#0d1820}
+.colon{font-weight:900;color:#9fe;text-align:center}
+
+.statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.stat{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px}
+.stat h4{margin:0 0 6px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Unified Live</h1>
+  <div class="card row" style="justify-content:space-between">
+    <div class="tabs">
+      <div class="tab" data-mode="battleground">Battleground</div>
+      <div class="tab" data-mode="pvp">PVP</div>
+      <div class="tab" data-mode="bonus">Bonus Hunt</div>
+    </div>
+    <div class="row">
+      <span id="eventTag" class="pill">—</span>
+      <span id="stamp" class="pill">—</span>
+    </div>
+  </div>
+
+  <div id="content"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var mode = localStorage.getItem('sb:mode') || 'battleground';
+  var els={tabs:document.querySelectorAll('.tab'), tag:gid('eventTag'), stamp:gid('stamp'), content:gid('content')};
+  var builder=null, markets=null, last=0;
+
+  function gid(x){return document.getElementById(x)}
+  function sget(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}}
+  function esc(s){s=String(s==null?'':s);return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+
+  function bkey(){return mode==='battleground'?'bg:builder:battleground':mode==='pvp'?'pv:builder:pvp':'bh:builder:bonus'}
+  function mkey(){return 'sb:markets:'+mode}
+
+  function setMode(m){ mode=m; localStorage.setItem('sb:mode',m); for(var i=0;i<els.tabs.length;i++){ els.tabs[i].classList.toggle('active', els.tabs[i].getAttribute('data-mode')===m); } load(); }
+  function load(){ builder=sget(bkey())||{games:[],matches:[],lastUpdated:0}; markets=sget(mkey())||{title:mode.toUpperCase(),eventId:mode+':'+new Date().toISOString().slice(0,10)}; last=builder.lastUpdated||0; paint(); }
+
+  function gById(id){ if(!builder||!builder.games) return {}; for(var i=0;i<builder.games.length;i++){ if(builder.games[i].id===id) return builder.games[i]; } return {}; }
+  function resolveTitle(id){ if(!id) return '—'; var g=gById(id); return g.title||'—'; }
+
+  function paint(){
+    els.tag.textContent=(markets.title||mode.toUpperCase())+' — '+(markets.eventId||'EVT');
+    els.stamp.textContent = builder.lastUpdated ? ('Live @ '+new Date(builder.lastUpdated).toLocaleTimeString()) : 'Live';
+    els.content.innerHTML='';
+    if(mode==='bonus'){ paintBonus(); return; }
+
+    var list=document.createElement('div'); list.className='card list';
+    if(!builder.matches || !builder.matches.length){ list.innerHTML='<div class="pill">No matchups yet.</div>'; }
+    else{
+      for(var i=0;i<builder.matches.length;i++){
+        var mx=builder.matches[i], L=gById(mx.leftId)||{}, R=gById(mx.rightId)||{};
+        var row=document.createElement('div'); row.className='rowLive';
+        var imgL = mx.leftImg||L.imageUrl||L.image||'', imgR=mx.rightImg||R.imageUrl||R.image||'';
+        row.innerHTML =
+          '<div class="nameL"><div class="title">'+esc(mx.leftTitle||L.title||'LEFT')+'</div><div class="prov">'+esc(L.provider||"")+'</div></div>'+
+          '<div class="thumb">'+(imgL?('<img src="'+esc(imgL)+'" alt="">'):'')+'</div>'+
+          '<div class="score">'+esc(+mx.leftScore||0)+'</div>'+
+          '<div class="colon">:</div>'+
+          '<div class="score">'+esc(+mx.rightScore||0)+'</div>'+
+          '<div class="thumb">'+(imgR?('<img src="'+esc(imgR)+'" alt="">'):'')+'</div>'+
+          '<div class="nameR"><div class="title">'+esc(mx.rightTitle||R.title||'RIGHT')+'</div><div class="prov">'+esc(R.provider||"")+'</div></div>';
+        list.appendChild(row);
+      }
+    }
+    els.content.appendChild(list);
+  }
+
+  function paintBonus(){
+    var card=document.createElement('div'); card.className='card';
+    var ag = (builder && builder.aggregates) ? builder.aggregates : computeAgg(builder);
+    var grid=document.createElement('div'); grid.className='statgrid';
+    grid.innerHTML =
+      statBox('Final Balance', ag.finalBalance!=null? ag.finalBalance : '—')+
+      statBox('100x Hits', ag.hundredXCount!=null? ag.hundredXCount : '—')+
+      statBox('Highest X', ag.highestX? (ag.highestX.x.toFixed?ag.highestX.x.toFixed(2):ag.highestX.x)+' ×' : '—')+
+      statBox('Highest X Game', resolveTitle(ag.highestX&&ag.highestX.gameId))+
+      statBox('Lowest X', ag.lowestX? (ag.lowestX.x.toFixed?ag.lowestX.x.toFixed(2):ag.lowestX.x)+' ×' : '—')+
+      statBox('Lowest X Game', resolveTitle(ag.lowestX&&ag.lowestX.gameId));
+    card.appendChild(grid);
+    els.content.appendChild(card);
+  }
+
+  function statBox(title, val){ return '<div class="stat"><h4>'+esc(title)+'</h4><div class="pill">'+esc(String(val))+'</div></div>'; }
+  function computeAgg(bh){
+    var res=(bh&&bh.results)||[], out={finalBalance:(bh&&bh.finalBalance!=null?bh.finalBalance:null),hundredXCount:0,highestX:null,lowestX:null};
+    var hi={gameId:null,x:-Infinity}, lo={gameId:null,x:+Infinity}, c=0;
+    for(var i=0;i<res.length;i++){ var r=res[i], x=+r.x||0; if(x>=100)c++; if(x>hi.x)hi={gameId:r.gameId,x:x}; if(x<lo.x)lo={gameId:r.gameId,x:x}; }
+    out.hundredXCount=c; out.highestX=hi.gameId?hi:null; out.lowestX=lo.gameId?lo:null; return out;
+  }
+
+  for(var i=0;i<els.tabs.length;i++){ (function(t){ t.addEventListener('click', function(){ setMode(t.getAttribute('data-mode')); }); })(els.tabs[i]); }
+  window.addEventListener('storage', function(e){ if(e && (e.key===bkey())) { load(); } });
+  setInterval(function(){ var b=sget(bkey()); if(b && b.lastUpdated && b.lastUpdated!==last){ load(); } }, 1500);
+
+  setMode(mode);
+})();
+</script>
+</body>
+</html>

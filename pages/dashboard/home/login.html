@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Log In — L3Z</title>
+<style>
+  :root{ --bg:#0b0f10; --ink:#eaf7ff; --muted:#9bc; --accent:#ffb42d; --panel:#0f1416; --ring:rgba(0,255,255,.25); }
+  *,*::before,*::after{ box-sizing:border-box; }
+  html,body{ margin:0; background:var(--bg) url("/assets/BG_page.png") center/cover fixed no-repeat; color:var(--ink); font-family:Segoe UI,system-ui,Arial,sans-serif; }
+  .wrap{ max-width:520px; margin:40px auto; padding:0 16px; }
+  h1{ margin:0 0 12px; color:var(--accent); text-shadow:0 0 14px rgba(255,180,45,.35); }
+  .card{ background:var(--panel); border:1px solid var(--ring); border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.35); padding:14px; }
+  .field{ display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+  .label{ font-size:12px; color:var(--muted); }
+  input{ width:100%; height:42px; padding:8px 12px; border-radius:10px; border:1px solid rgba(0,255,255,.18); background:#0a1719; color:var(--ink); outline:none; }
+  input:focus{ border-color:#18e4ff; box-shadow:0 0 0 2px rgba(0,255,255,.15); }
+  .btn{ width:100%; height:46px; border:none; border-radius:12px; background:var(--accent); color:#1a1405; font-weight:800; cursor:pointer; margin-top:4px; }
+  .mini{ font-size:12px; color:var(--muted); margin-top:8px; }
+  a{ color:#cfe; text-decoration:none; } a:hover{ text-decoration:underline; }
+  .session{ margin-top:14px; padding:10px; border:1px solid rgba(0,255,255,.18); border-radius:10px; background:#0a1518; }
+  .tag{ padding:4px 8px; border-radius:999px; border:1px solid rgba(0,255,255,.25); font-size:12px; margin-left:8px; }
+  .ok{ color:#baffea; } .err{ color:#ffb5be; }
+  .actions{ display:flex; gap:10px; align-items:center; margin-top:8px; }
+  .logout{ background:#20323a; color:#cfe; border:1px solid rgba(0,255,255,.22); border-radius:10px; padding:8px 10px; cursor:pointer; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Log in</h1>
+
+    <div class="card">
+      <div class="field">
+        <div class="label">Username</div>
+        <input id="u" type="text" autocomplete="username" placeholder="Your username">
+      </div>
+      <div class="field">
+        <div class="label">Password</div>
+        <input id="p" type="password" autocomplete="current-password" placeholder="Your password">
+      </div>
+      <button class="btn" id="loginBtn">Log In</button>
+
+      <div class="mini">New here? <a href="/pages/dashboard/home/signup.html">Create an account</a></div>
+      <div class="mini">Problems logging in? Ping the admin.</div>
+
+      <div id="sess" class="session" style="display:none"></div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- constants ----------
+  const OWNER_USER = 'LASH3Z';
+  const OWNER_PW   = 'Lash3z777';
+
+  const SESSION_KEY = 'l3z:session';      // { user, issuedAt, expiresAt }
+  const USERS_KEY   = 'l3z:users';        // { USERNAME: { pw, displayName, createdAt } }
+  const LEGACY_USERS_KEY = 'users';       // legacy mirror for older pages
+
+  const USER_NAME_KEY = 'user:username';  // compatibility keys other pages read
+  const PROFILE_KEY   = 'l3z:user';
+  const LAST_USER_KEY = 'lash3z_last_user';
+
+  const WALLET_KEY = u => `lbx:wallet:${(u||'').toUpperCase()}`;
+  const LEDGER_KEY = u => `lbx:ledger:${(u||'').toUpperCase()}`;
+
+  const SESSION_HOURS = 6;
+
+  // ---------- helpers ----------
+  const $ = s => document.querySelector(s);
+  const uEl = $('#u'), pEl = $('#p'), sessEl = $('#sess'), loginBtn = $('#loginBtn');
+
+  const up  = s => (s||'').toString().trim().toUpperCase();
+  const now = ()=>Date.now();
+
+  function sget(k,def=null){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(_){ return def; } }
+  function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } }
+
+  // Robust redirect resolver:
+  // 1) ?redirect=/some/page.html if provided
+  // 2) Default to ROOT home: /index.html  (your structure)
+  function resolveRedirect(){
+    const q = new URLSearchParams(location.search);
+    const p = q.get('redirect');
+    if (p && typeof p === 'string') return p;
+    return '/index.html';
+  }
+  function go(dest){ try{ location.replace(dest); }catch{ location.href = dest; } }
+
+  // ---------- owner + wallet seed ----------
+  (function ensureOwner(){
+    const users = sget(USERS_KEY,{});
+    const legacy= sget(LEGACY_USERS_KEY,{});
+    if(!users[OWNER_USER]){ users[OWNER_USER] = { pw: OWNER_PW, displayName: OWNER_USER, createdAt: now() }; sset(USERS_KEY, users); }
+    if(!legacy[OWNER_USER]){ legacy[OWNER_USER] = { pw: OWNER_PW, displayName: OWNER_USER, createdAt: now() }; sset(LEGACY_USERS_KEY, legacy); }
+    if(!sget(WALLET_KEY(OWNER_USER))){
+      sset(WALLET_KEY(OWNER_USER), { balance:50, created:now(), lastDaily:0 });
+      sset(LEDGER_KEY(OWNER_USER), [{ ts:now(), delta:+50, reason:'WELCOME_BONUS', balance:50 }]);
+    }
+  })();
+
+  function makeSession(user){
+    const t = now(); return { user: up(user), issuedAt:t, expiresAt: t + SESSION_HOURS*60*60*1000 };
+  }
+  function isValid(sess){ return !!(sess && sess.user && Number(sess.expiresAt) > now()); }
+
+  function showSession(sess){
+    if(!sessEl) return;
+    if(!sess){ sessEl.style.display='none'; return; }
+    sessEl.style.display='block';
+    function ttl(ms){ const h=(ms/3600000)|0, m=((ms%3600000)/60000)|0, s=((ms%60000)/1000)|0; return `${h}h ${m}m ${s}s`; }
+    function paint(){
+      const remain = Number(sess.expiresAt)-now();
+      const status = remain>0?`<span class="ok">active</span> (expires in ${ttl(remain)})`:`<span class="err">expired</span>`;
+      sessEl.innerHTML = `<div><strong>Signed in as:</strong> ${sess.user} <span class="tag">session: ${status}</span></div>
+      <div class="actions"><button class="logout" id="logoutBtn">Log Out</button></div>`;
+      const b = document.getElementById('logoutBtn');
+      if(b) b.onclick = ()=>{ localStorage.removeItem(SESSION_KEY); localStorage.removeItem(USER_NAME_KEY); localStorage.removeItem(PROFILE_KEY); sessEl.style.display='none'; };
+    }
+    paint(); const iv=setInterval(()=>{ if(!isValid(sess)) { clearInterval(iv); } paint(); },1000);
+  }
+
+  function getUsers(){
+    const modern = sget(USERS_KEY,{});
+    const legacy = sget(LEGACY_USERS_KEY,{});
+    return { ...legacy, ...modern };
+  }
+
+  function ensureWallet(u){
+    const wk = WALLET_KEY(u);
+    let w = sget(wk);
+    if(!w){ w={ balance:50, created:now(), lastDaily:0 }; sset(wk,w); sset(LEDGER_KEY(u),[{ts:now(),delta:+50,reason:'WELCOME_BONUS',balance:50}]); }
+    return w;
+  }
+
+  function doLogin(){
+    const uname = up(uEl.value);
+    const pass  = pEl.value;
+    if(!uname || !pass){ alert('Enter username and password.'); return; }
+    const users = getUsers();
+    const rec = users[uname];
+    if(!rec || rec.pw !== pass){ alert('Invalid credentials.'); return; }
+
+    const sess = makeSession(uname);
+    sset(SESSION_KEY, sess);
+    localStorage.setItem(USER_NAME_KEY, uname);
+    sset(PROFILE_KEY, { username: uname });
+    localStorage.setItem(LAST_USER_KEY, uname);
+
+    ensureWallet(uname);
+
+    go(resolveRedirect());
+  }
+
+  // ---- boot ----
+  const current = sget(SESSION_KEY);
+  if(isValid(current)) showSession(current);
+
+  // Pre-fill last or owner
+  const last = localStorage.getItem(LAST_USER_KEY) || localStorage.getItem(USER_NAME_KEY) || (current && current.user) || OWNER_USER;
+  if(last && !uEl.value) uEl.value = last;
+
+  loginBtn.addEventListener('click', doLogin);
+  pEl.addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+})();
+</script>
+</body>
+</html>

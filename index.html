@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LASH3Z Dashboard</title>
+  <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
+  <style>
+    :root{
+      --cyan:#00ffff; --ink:#eaf7ff; --glass:rgba(0,0,0,.85); --panel:#0f1416;
+      --line:rgba(0,255,255,.18); --shadow:0 8px 24px rgba(0,0,0,.35);
+      --sidew:260px; --toph:72px; --gold:#ffb42d; --dark:#0b1113;
+
+      /* === Icon bar knobs (adjust freely) === */
+      --icon-size: 54px;         /* icon width/height */
+      --icon-gap: 36px;          /* space between icons */
+      --icon-radius: 10px;       /* rounding if your images have a bg */
+      --icon-hover-scale: 1.10;  /* how much to grow on hover */
+    }
+    *{box-sizing:border-box}
+    body{ margin:0; font-family:'Segoe UI',system-ui,Arial,sans-serif;
+      background:url("/assets/BG_page.png") no-repeat center/cover fixed; color:var(--ink); }
+    .topbar{ position:fixed; top:0; left:0; right:0; height:var(--toph);
+      display:flex; align-items:center; justify-content:center; background:var(--glass);
+      box-shadow:0 0 12px var(--cyan); z-index:1000; padding:0 12px; gap:26px; }
+    .top-inner{position:relative; display:flex; align-items:center; width:100%; max-width:1400px; gap:16px}
+    .menu-btn{display:none; border:1px solid var(--line); background:#061214; color:var(--ink); padding:8px 10px; border-radius:10px; cursor:pointer}
+    .username-display{color:var(--cyan); font-weight:700; white-space:nowrap}
+    /* Icon bar base */
+    .icon-bar{display:flex; align-items:center; gap:var(--icon-gap)}
+    .icon-link{width:var(--icon-size); height:var(--icon-size); display:block}
+    .icon-img{width:100%; height:100%; display:block; object-fit:contain; border-radius:var(--icon-radius); transition:transform .15s}
+    .icon-img:hover{transform:scale(var(--icon-hover-scale))}
+    /* Alignment modes for the whole bar */
+    .icon-bar.right{ margin-left:auto; }                             /* Right edge (default) */
+    .icon-bar.left{ margin-right:auto; }                             /* Left, next to username */
+    .icon-bar.center{ position:absolute; left:50%; transform:translateX(-50%);} /* Perfect center */
+    .sidebar{ position:fixed; top:var(--toph); left:0; bottom:0; width:var(--sidew);
+      background:var(--glass); box-shadow:0 0 16px var(--cyan); overflow:auto; padding:12px; z-index:900; }
+    .main{ margin-left:var(--sidew); padding:calc(var(--toph) + 16px) 20px 24px; min-height:100vh; }
+    .sidebar h3{color:var(--cyan); margin:10px 0 6px; font-size:14px; letter-spacing:.3px}
+    .navlink{ display:flex; align-items:center; gap:10px; width:100%; text-decoration:none; color:#fff;
+      background:#111; border:1px solid #1b1b1b; padding:10px 10px; border-radius:8px; margin-bottom:8px;
+      transition:background .15s, color .15s, transform .05s; }
+    .navlink:hover{background:var(--cyan); color:#001113}
+    .navlink:active{transform:translateY(1px)}
+    .navlink img{width:20px; height:20px; object-fit:contain}
+    .banner{text-align:center}
+    .banner img{max-width:100%; height:auto; border-radius:12px; box-shadow:var(--shadow)}
+    .tiles{ display:flex; flex-wrap:wrap; justify-content:center; gap:16px; margin-top:24px; }
+    .tile{ width:170px; height:170px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      text-decoration:none; color:#fff; background:rgba(0,0,0,.80);
+      border-radius:18px; box-shadow:0 0 16px var(--cyan); transition:transform .2s; }
+    .tile:hover{transform:scale(1.04)}
+    .tile img{width:64px; height:64px; margin-bottom:8px; object-fit:contain}
+    .tile span{font-size:15px; text-align:center}
+
+    /* JACKPOT */
+    .jackpot-wrap{ max-width:1000px; margin:22px auto 8px; padding:0 8px; }
+    .jackpot{ position:relative; background:linear-gradient(180deg,#0e1519,#0a0f12);
+      border:1px solid var(--line); border-radius:18px;
+      box-shadow:0 0 22px rgba(0,255,255,.2), inset 0 0 0 1px rgba(255,255,255,.03);
+      padding:18px 14px 22px; overflow:hidden; }
+    .jp-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:12px; flex-wrap:wrap; }
+    .jp-title{ font-weight:900; letter-spacing:1.2px; color:var(--gold); text-shadow:0 0 18px rgba(255,180,45,.35); font-size:22px; }
+    .jp-ctl{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+    .jp-reset{border:none; background:#132026; color:#cfe; border:1px solid var(--line); padding:6px 10px; border-radius:10px; cursor:pointer}
+    .jp-reset:hover{background:#173038}
+
+    /* Reels */
+    .reels{ display:flex; justify-content:center; gap:10px; margin:8px auto 0; padding:10px 8px 0; }
+    .reel{ width:110px; height:120px; border-radius:12px;
+      background:radial-gradient(ellipse at 50% 0%, rgba(0,255,255,.10), rgba(0,0,0,.1) 60%), #0a1316;
+      border:1px solid rgba(0,255,255,.14);
+      box-shadow:inset 0 30px 30px rgba(0,0,0,.35), 0 8px 16px rgba(0,0,0,.35);
+      display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
+    .reel.small{ width:80px; }
+    .reel.symbol{ width:90px; }
+    .digit{ font-weight:900; font-variant-numeric:tabular-nums; font-size:56px; letter-spacing:1px;
+      text-shadow:0 0 16px rgba(0,255,255,.25); transition:none !important; transform:none !important; }
+    .sep{ display:flex; align-items:center; justify-content:center; width:28px; font-size:44px; opacity:.85 }
+    .cap{ text-align:center; margin-top:10px; font-size:12px; color:#cfe; opacity:.85 }
+
+    @media (max-width: 1024px){
+      .menu-btn{display:inline-block}
+      .sidebar{transform:translateX(-100%); transition:transform .2s}
+      .sidebar.open{transform:translateX(0)}
+      .main{margin-left:0; padding-top:calc(var(--toph) + 12px)}
+      .reel{width:86px; height:100px}
+      .reel.small{width:64px}
+      .reel.symbol{width:70px}
+      .digit{font-size:46px}
+      /* keep icons comfortable on mobile */
+      :root{ --icon-size: 38px; --icon-gap: 12px; }
+    }
+    @media (max-width: 640px){
+      .reels{gap:6px}
+      .reel{width:70px; height:86px}
+      .reel.small{width:54px}
+      .reel.symbol{width:58px}
+      .digit{font-size:38px}
+      .sep{width:22px; font-size:36px}
+    }
+  </style>
+
+  <!-- Only keep this shim if you have a real raffle script to replace it -->
+  <script src="/assets/js/l3z_raffle.es5.js" defer></script>
+
+  <!-- Header user + mobile menu + ICON BAR CONFIG -->
+  <script>
+  /* ======================= ICON BAR CONFIG =======================
+     Change these values to control the top icons without editing HTML.
+     align: 'right' | 'center' | 'left'
+     size/gap/radius/hoverScale override the CSS variables if provided here.
+  ================================================================= */
+  window.TOPBAR_ICON_CONFIG = {
+    align: 'center',             // 'right' (default previously), 'center', or 'left'
+    size: 48,                    // px (overrides --icon-size)
+    gap: 18,                     // px (overrides --icon-gap)
+    radius: 10,                  // px (overrides --icon-radius)
+    hoverScale: 1.12,            // (overrides --icon-hover-scale)
+    icons: [
+      { href:'https://kick.com/lash3z',                      src:'/assets/kick.png',      alt:'Kick',      show:true },
+      { href:'https://x.com/Lash3_z',                        src:'/assets/x_twitter.png', alt:'Twitter',   show:true },
+      { href:'https://www.instagram.com/lash3z50/',          src:'/assets/instagram.png', alt:'Instagram', show:true },
+      { href:'https://www.facebook.com/lashesslots',         src:'/assets/facebook.png',  alt:'Facebook',  show:true },
+      { href:'https://www.youtube.com/@Lash3z-50',           src:'/assets/youtube.png',   alt:'YouTube',   show:true },
+      { href:'https://discord.gg/fSVqK6cMmB',                src:'/assets/discord.png',   alt:'Discord',   show:true },
+      // Example toggles:
+      // { href:'https://tiktok.com/@lash3z', src:'/assets/tiktok.png', alt:'TikTok', show:false },
+    ]
+  };
+  </script>
+
+  <script>
+  (function(){
+    "use strict";
+    const $ = (s,r)=> (r||document).querySelector(s);
+
+    /* Username */
+    function sanitizeName(x){
+      if (!x) return "";
+      const m = String(x).toUpperCase().match(/[A-Z0-9_]+/g);
+      return m ? m.join("") : "";
+    }
+    async function setUser(){
+      try{
+        const r = await fetch("/api/wallet/me",{credentials:"include",cache:"no-store"});
+        if (r.ok){
+          const j = await r.json();
+          const fromApi = j?.username || j?.user || j?.name || j?.displayName || "";
+          const clean = sanitizeName(fromApi);
+          if (clean){ $("#usernameDisplay").textContent = "Welcome, " + clean; return; }
+        }
+      }catch{}
+      const fallback =
+        localStorage.getItem("auth:username") ||
+        localStorage.getItem("lash3z_last_user") ||
+        localStorage.getItem("user:name") || "";
+      const clean = sanitizeName(fallback);
+      $("#usernameDisplay").textContent = "Welcome, " + (clean || "PLAYER");
+    }
+
+    /* Mobile menu */
+    function wireMenu(){
+      const btn = $("#menuBtn"), side = $("#sidebar");
+      if (!btn || !side) return;
+      btn.addEventListener("click", ()=> side.classList.toggle("open"));
+      side.querySelectorAll("a.navlink").forEach(a=>a.addEventListener("click", ()=> side.classList.remove("open")));
+    }
+
+    /* Render icon bar from config + apply sizing/alignment */
+    function buildIconBar(){
+      const cfg = window.TOPBAR_ICON_CONFIG || {};
+      const bar = $("#iconBar");
+      if(!bar) return;
+
+      // alignment class
+      bar.classList.remove('left','center','right');
+      bar.classList.add((cfg.align||'right').toLowerCase());
+
+      // apply sizing knobs (override CSS variables at runtime)
+      const root = document.documentElement;
+      if(cfg.size)       root.style.setProperty('--icon-size', cfg.size + 'px');
+      if(cfg.gap)        root.style.setProperty('--icon-gap', cfg.gap + 'px');
+      if(cfg.radius!=null) root.style.setProperty('--icon-radius', cfg.radius + 'px');
+      if(cfg.hoverScale) root.style.setProperty('--icon-hover-scale', cfg.hoverScale);
+
+      // build icons
+      const list = (cfg.icons||[]).filter(i=>i && i.show!==false);
+      bar.innerHTML = list.map(i=>`
+        <a class="icon-link" href="${i.href}" target="_blank" rel="noopener">
+          <img class="icon-img" src="${i.src}" alt="${i.alt||''}" title="${i.alt||''}">
+        </a>
+      `).join('');
+    }
+
+    document.addEventListener("DOMContentLoaded", ()=>{ setUser(); wireMenu(); buildIconBar(); });
+  })();
+  </script>
+</head>
+<body>
+
+<!-- TOP -->
+<div class="topbar">
+  <div class="top-inner">
+    <button id="menuBtn" class="menu-btn">☰ Menu</button>
+    <div class="username-display" id="usernameDisplay">Welcome, PLAYER</div>
+    <!-- Icon bar is rendered & aligned by JS config -->
+    <div id="iconBar" class="icon-bar right"></div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div id="sidebar" class="sidebar">
+  <h3>Dashboard</h3>
+  <a class="navlink" href="/index.html"><img src="/assets/overview_icon.png" alt="Home">Home Page</a>
+
+  <h3>Account</h3>
+  <a class="navlink" href="/pages/dashboard/home/signup.html"><img src="/assets/signup.png" alt="Sign Up">Sign Up</a>
+  <a class="navlink" href="/pages/dashboard/home/login.html"><img src="/assets/login.png" alt="Login">Login</a>
+  <a class="navlink" href="/pages/dashboard/home/profile.html"><img src="/assets/signup.png" alt="Profile">Profile</a>
+
+  <h3>Prediction Forms</h3>
+  <a class="navlink" href="/pages/dashboard/home/battleground_prediction_form.html"><img src="/assets/battleground_icon.png" alt="Battleground">L3Z Battleground</a>
+  <a class="navlink" href="/pages/dashboard/home/bonus_hunt_slot_requests.html"><img src="/assets/bonus_hunt_icon.png" alt="Bonus Hunt">Bonus Hunt Slot Requests</a>
+  <a class="navlink" href="/pages/dashboard/home/pvp_entry_form.html"><img src="/assets/pvp_icon.png" alt="PVP Entry">PVP Entry Form</a>
+
+  <h3>LASH3Z Bets</h3>
+  <a class="navlink" href="/pages/dashboard/home/lash3z_bets.html"><img src="/assets/lash3zbux_pp.png" alt="L3Z Bets">Place Bets</a>
+  <a class="navlink" href="/pages/dashboard/home/my_bets.html"><img src="/assets/lash3zbux_pp.png" alt="My Bets">My Bets</a>
+  <a class="navlink" href="/pages/dashboard/home/lash3zbux_info.html"><img src="/assets/lash3zbux_pp.png" alt="Info">Bux Info</a>
+  <a class="navlink" href="/pages/dashboard/home/lash3zbux_score_system.html"><img src="/assets/lash3zbux_pp.png" alt="Score">Bux Scoring</a>
+
+  <h3>Leaderboard</h3>
+  <a class="navlink" href="/pages/dashboard/home/leaderboard.html"><img src="/assets/overall_icon.png" alt="Leaderboard">Overall</a>
+
+  <h3>Live Results</h3>
+  <a class="navlink" href="/pages/dashboard/home/live_unified.html"><img src="/assets/overall_icon.png" alt="Unified Live">Unified Live</a>
+  <a class="navlink" href="/pages/dashboard/home/battleground_live_results.html"><img src="/assets/lashes%20battleground.png" alt="Battleground">Battleground</a>
+  <a class="navlink" href="/pages/dashboard/home/bonus_hunt_live.html"><img src="/assets/lashes%20hunt.png" alt="Bonus Hunt">Bonus Hunt</a>
+  <a class="navlink" href="/pages/dashboard/home/pvp_live.html"><img src="/assets/pvpicon.png" alt="PVP">PVP Battles</a>
+
+  <h3>Giveaways</h3>
+  <a class="navlink" href="/pages/dashboard/home/raffle_live.html"><img src="/assets/vip_icon.png" alt="Raffles Live">Raffles (Live)</a>
+  <a class="navlink" href="/pages/dashboard/home/slot_wheel_giveaway.html"><img src="/assets/vip_icon.png" alt="Slot Wheel">Slot Wheel Giveaway</a>
+
+  <h3>Information</h3>
+  <a class="navlink" href="/pages/dashboard/home/about.html"><img src="/assets/paw.png" alt="About">About</a>
+  <a class="navlink" href="/pages/dashboard/home/casino.html"><img src="/assets/dimebit_icon.png" alt="Casino">Casino</a>
+  <a class="navlink" href="/pages/dashboard/home/vip.html"><img src="/assets/vip_icon.png" alt="VIP">VIP</a>
+  <a class="navlink" href="/pages/dashboard/home/overlay.html"><img src="/assets/stats_icon.png" alt="Overlay">Stream Overlay</a>
+
+  <h3>Administration</h3>
+  <div class="navlink" style="justify-content:center;opacity:.8">Admin pages are server-locked</div>
+  <a class="navlink" href="/pages/dashboard/admin/bets_admin.html"><img src="/assets/lash3zbux_pp.png" alt="Bets Admin">Bets Admin (Unified)</a>
+  <a class="navlink" href="/pages/dashboard/admin/battleground_admin.html"><img src="/assets/lashes%20battleground.png" alt="BG Admin">Battleground Admin</a>
+  <a class="navlink" href="/pages/dashboard/admin/battleground_widget.html"><img src="/assets/lashes%20battleground.png" alt="BG Widget">Battleground Widget</a>
+  <a class="navlink" href="/pages/dashboard/admin/bonus_hunt_admin.html"><img src="/assets/bonus_hunt_icon.png" alt="BH Admin">Bonus Hunt Admin</a>
+  <a class="navlink" href="/pages/dashboard/admin/bonus_hunt_widget.html"><img src="/assets/bonus_hunt_icon.png" alt="BH Widget">Bonus Hunt Widget</a>
+  <a class="navlink" href="/pages/dashboard/admin/pvp_admin.html"><img src="/assets/pvp_icon.png" alt="PVP Admin">PVP Admin</a>
+  
+ 
+  <a class="navlink" href="/pages/dashboard/admin/lucky7.html"><img src="/assets/L3Z_logoMain.png" alt="Lucky7">Lucky 7</a>
+ 
+  <a class="navlink" href="/pages/dashboard/admin/admin_hub.html"><img src="/assets/L3Z_logoMain.png" alt="LBX Deposits">Admin Hub</a>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="banner">
+    <img src="/assets/lashes%20banner.png" alt="Banner">
+  </div>
+
+  <!-- JACKPOT SECTION -->
+  <div class="jackpot-wrap">
+    <div class="jackpot">
+      <div class="jp-header">
+        <div class="jp-title">MONTHLY JACKPOT</div>
+        <div class="jp-ctl">
+          <button id="resetJackpotBtn" class="jp-reset" title="Reset this month">Reset Jackpot</button>
+        </div>
+      </div>
+
+      <div class="reels">
+        <div class="reel symbol"><div class="digit">$</div></div>
+        <div class="reel"><div class="digit">0</div></div>
+        <div class="reel"><div class="digit">0</div></div>
+        <div class="reel"><div class="digit">0</div></div>
+        <div class="reel"><div class="digit">0</div></div>
+        <div class="sep"><strong>.</strong></div>
+        <div class="reel small"><div class="digit">0</div></div>
+        <div class="reel small"><div class="digit">0</div></div>
+      </div>
+
+      <div class="cap">
+        Jackpots are made up of gifted subscriptions and monthly subscriptions as well as donations from Lash3z.
+        The more gifted, the higher the jackpot.
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick tiles -->
+  <div class="tiles">
+    <a class="tile" href="/pages/dashboard/home/battleground_prediction_form.html">
+      <img src="/assets/lashes%20battleground.png" alt="Battle Ground"><span>Battle Ground</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/bonus_hunt_slot_requests.html">
+      <img src="/assets/bonus_hunt_icon.png" alt="Bonus Hunt"><span>Bonus Hunt</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/leaderboard.html">
+      <img src="/assets/lashes%20leaderboard.png" alt="Leaderboard"><span>Leader Board</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/lash3z_bets.html">
+      <img src="/assets/lash3zbux_pp.png" alt="L3Z Bets"><span>L3Z Bets</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/profile.html">
+      <img src="/assets/login.png" alt="Profile"><span>My Profile</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/vip.html">
+      <img src="/assets/vip_icon.png" alt="VIP"><span>VIP Access</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/pvp_live.html">
+      <img src="/assets/pvp_icon.png" alt="PVP Live"><span>PVP Live</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/casino.html">
+      <img src="/assets/dimebit_icon.png" alt="Casino"><span>Casino</span>
+    </a>
+  </div>
+</div>
+
+<!-- IMPORTANT: load only ONE jackpot script -->
+<script src="/assets/js/jackpot.client.js?v=10" defer></script>
+</body>
+</html>

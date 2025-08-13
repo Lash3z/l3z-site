@@ -1,0 +1,102 @@
+<!doctype html>
+<meta charset="utf-8"/>
+<title>Admin Tools</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<style>
+  :root { color-scheme: dark; }
+  body { font-family: ui-sans-serif, system-ui, Segoe UI, Roboto, Arial; background:#0b0f10; color:#eaf7ff; margin:0; padding:24px; }
+  h1 { margin: 0 0 16px; font-size: 22px; }
+  .grid { display:grid; grid-template-columns: 1fr; gap:16px; max-width:920px; }
+  .card { background:#12171a; border:1px solid #203039; border-radius:12px; padding:16px; }
+  label { display:block; font-size:13px; opacity:0.85; margin-bottom:6px; }
+  input { width:100%; padding:10px 12px; border-radius:10px; border:1px solid #30424b; background:#0f1417; color:#eaf7ff; }
+  button { padding:10px 14px; border-radius:10px; background:#1e90ff; color:white; border:0; cursor:pointer; }
+  .row { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  .muted { opacity:0.85; font-size:13px; }
+  pre { background:#0f1417; padding:12px; border-radius:10px; border:1px solid #203039; overflow:auto; }
+</style>
+<h1>Admin Tools</h1>
+<p class="muted">Requires admin cookie. Use <a href="/pages/tools/admin_gate.html">Admin Gate</a> to login first if blocked.</p>
+
+<div class="grid">
+
+  <div class="card">
+    <h3>Jackpot</h3>
+    <div class="row">
+      <div><label>Add subs (count)</label><input id="subsCount" type="number" placeholder="e.g. 5"/></div>
+      <div style="display:flex; align-items:end; gap:8px;">
+        <button id="btn-add-subs">Add Subs</button>
+        <button id="btn-jackpot">Get Jackpot</button>
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px;">
+      <div><label>Adjust (delta AUD)</label><input id="jpDelta" type="number" step="0.01" placeholder="+/- e.g. 10"/></div>
+      <div style="display:flex; align-items:end; gap:8px;">
+        <button id="btn-jp-adjust">Adjust</button>
+        <button id="btn-jp-reset">Reset Month</button>
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px;">
+      <div><label>Set (target AUD)</label><input id="jpSet" type="number" step="0.01" placeholder="e.g. 250"/></div>
+      <div style="display:flex; align-items:end; gap:8px;">
+        <button id="btn-jp-set">Set Amount</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Wallet (Admin)</h3>
+    <div class="row">
+      <div><label>Username</label><input id="wUser" placeholder="e.g. Lash3z"/></div>
+      <div><label>Amount</label><input id="wAmt" type="number" step="1" placeholder="e.g. 25"/></div>
+    </div>
+    <div style="display:flex; gap:8px; margin-top:8px;">
+      <button id="btn-w-credit">Credit</button>
+      <button id="btn-w-adjust">Adjust (+/-)</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Result</h3>
+    <pre id="out"></pre>
+  </div>
+
+</div>
+
+<script src="/assets/js/api-base.js"></script>
+<script>
+const out = document.getElementById('out');
+const show = (x)=> out.textContent = (typeof x === 'string') ? x : JSON.stringify(x, null, 2);
+
+// Jackpot
+document.getElementById('btn-add-subs').onclick = async ()=>{
+  const count = Number(document.getElementById('subsCount').value||0);
+  show(await api.post("/api/jackpot/add-subs",{count}));
+};
+document.getElementById('btn-jackpot').onclick = async ()=>{
+  show(await api.get("/api/jackpot"));
+};
+document.getElementById('btn-jp-adjust').onclick = async ()=>{
+  const delta = Number(document.getElementById('jpDelta').value||0);
+  show(await api.post("/api/jackpot/adjust",{delta}));
+};
+document.getElementById('btn-jp-reset').onclick = async ()=>{
+  show(await api.post("/api/jackpot/reset",{}));
+};
+document.getElementById('btn-jp-set').onclick = async ()=>{
+  const amount = Number(document.getElementById('jpSet').value||0);
+  show(await api.post("/api/jackpot/set",{amount}));
+};
+
+// Wallet admin
+document.getElementById('btn-w-credit').onclick = async ()=>{
+  const username = String(document.getElementById('wUser').value||"").trim();
+  const amount = Number(document.getElementById('wAmt').value||0);
+  show(await api.post("/api/wallet/credit",{username, amount, reason:"admin_tool"}));
+};
+document.getElementById('btn-w-adjust').onclick = async ()=>{
+  const username = String(document.getElementById('wUser').value||"").trim();
+  const delta = Number(document.getElementById('wAmt').value||0);
+  show(await api.post("/api/wallet/adjust",{username, delta, reason:"admin_tool"}));
+};
+</script>

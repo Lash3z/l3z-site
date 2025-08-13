@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PVP Entry — L3Z</title>
+<style>
+  :root{
+    --ink:#eaf7ff; --muted:#9cc; --cyan:#00ffff; --gold:#ffb42d;
+    --panel:#0f1416; --line:rgba(0,255,255,.16); --ok:#163a2c; --bg:#0b0f10;
+  }
+  html,body{margin:0;background:#000 url("/assets/media/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  .wrap{max-width:760px;margin:32px auto;padding:0 16px}
+  h1{margin:0 0 8px;color:var(--cyan);text-shadow:0 0 12px #00ffff55}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:14px}
+  .card{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:14px;margin:12px 0}
+  label{font-size:12px;color:var(--muted)}
+  input, .fake{background:#0b1316;border:1px solid var(--line);color:var(--ink);padding:12px;border-radius:10px;width:100%;box-sizing:border-box}
+  .fake{opacity:.8}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .btn{padding:12px 14px;border:none;border-radius:12px;font-weight:800;cursor:pointer}
+  .btn.primary{background:var(--gold);color:#222}
+  .btn.alt{background:#102126;border:1px solid var(--line);color:#cfe}
+  .caps{ text-transform:uppercase; }
+  .radio{display:flex;gap:12px;align-items:center}
+  .mini{font-size:12px;color:var(--muted)}
+  .ok{background:var(--ok);border:1px solid rgba(0,255,170,.25);padding:10px;border-radius:10px}
+  .current{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);background:#0c1518;border-radius:12px;padding:12px;margin-top:8px}
+  .tag{padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:#0f1e22;font-size:12px;margin-left:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>PVP Entry</h1>
+  <div class="sub">Enter the PVP tournament. Your username is auto-filled from your login.</div>
+
+  <div class="card">
+    <div class="row">
+      <div style="flex:1 1 260px">
+        <label>Username</label><br/>
+        <input id="username" class="fake caps" type="text" readonly>
+      </div>
+      <div style="flex:1 1 260px">
+        <label>Preferred Side</label><br/>
+        <div class="radio" style="padding:10px 4px">
+          <label><input type="radio" name="side" value="EAST" checked> EAST</label>
+          <label><input type="radio" name="side" value="WEST"> WEST</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div style="flex:1 1 100%">
+        <label>Game Request (slot)</label><br/>
+        <input id="game" class="caps" placeholder="GATES OF OLYMPUS">
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <button id="submitBtn" class="btn primary" type="button">Submit / Update Entry</button>
+      <button id="clearBtn" class="btn alt" type="button">Clear My Entry</button>
+    </div>
+
+    <div id="msg" class="mini" style="margin-top:10px"></div>
+  </div>
+
+  <div id="youBlock" class="card" style="display:none">
+    <div class="mini" style="margin-bottom:6px">Your current request</div>
+    <div class="current">
+      <div>
+        <strong id="youName">—</strong>
+        <span class="tag" id="youSide">—</span>
+        <div class="mini" style="margin-top:4px">Game: <span id="youGame">—</span></div>
+      </div>
+      <div class="mini" id="youTime">—</div>
+    </div>
+  </div>
+
+  <div class="card ok mini">
+    Your entry is stored locally and queued for the admin to approve. You can update it any time until entries are locked.
+  </div>
+</div>
+
+<script>
+/* ===== Keys ===== */
+const ENTRY_Q_KEY = 'pvp:entry_requests';
+
+/* ===== Helpers ===== */
+const $ = (s,root=document)=>root.querySelector(s);
+function read(k,f='[]'){ try{return JSON.parse(localStorage.getItem(k)||f);}catch{return JSON.parse(f);} }
+function write(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+function up(s){ return (s||'').toString().trim().toUpperCase(); }
+function nowStr(ts){ const d=new Date(ts); return d.toLocaleString(); }
+
+/* ===== Username from login ===== */
+function getUser(){
+  const u = localStorage.getItem('user:username') || 'GUEST';
+  return up(u);
+}
+
+/* ===== Load existing entry for this user ===== */
+function getMine(){
+  const me = getUser();
+  const arr = read(ENTRY_Q_KEY,'[]');
+  return arr.find(r=>r.name===me) || null;
+}
+function renderMine(){
+  const mine = getMine();
+  const block = $('#youBlock');
+  if(!mine){ block.style.display='none'; return; }
+  block.style.display='block';
+  $('#youName').textContent = mine.name;
+  $('#youSide').textContent = mine.side;
+  $('#youGame').textContent = mine.game;
+  $('#youTime').textContent = nowStr(mine.ts);
+}
+
+/* ===== Init form ===== */
+function paintForm(){
+  $('#username').value = getUser();
+  const mine = getMine();
+  if(mine){
+    $('#game').value = mine.game;
+    (document.querySelector(`input[name="side"][value="${mine.side}"]`)||document.querySelector('input[name="side"][value="EAST"]')).checked = true;
+  }else{
+    $('#game').value = '';
+    document.querySelector('input[name="side"][value="EAST"]').checked = true;
+  }
+  renderMine();
+}
+
+/* ===== Submit/Update ===== */
+function submitEntry(){
+  const name = getUser();
+  const game = up($('#game').value);
+  const side = (document.querySelector('input[name="side"]:checked')?.value) || 'EAST';
+
+  if(!game){ return setMsg('Please enter a game (slot) name.'); }
+
+  const arr = read(ENTRY_Q_KEY,'[]');
+  const idx = arr.findIndex(r=>r.name===name);
+  const rec = { name, game, side, ts: Date.now() };
+  if(idx>-1){ arr[idx] = rec; } else { arr.push(rec); }
+  write(ENTRY_Q_KEY, arr);
+  setMsg('Entry saved ✅');
+  paintForm();
+}
+
+/* ===== Clear my entry ===== */
+function clearMine(){
+  const name = getUser();
+  const arr = read(ENTRY_Q_KEY,'[]').filter(r=>r.name!==name);
+  write(ENTRY_Q_KEY, arr);
+  setMsg('Your entry has been cleared.');
+  paintForm();
+}
+
+/* ===== UI Helpers ===== */
+function setMsg(t){ const el=$('#msg'); el.textContent=t; }
+
+/* ===== Force UPPERCASE typing for game field ===== */
+$('#game').addEventListener('input', (e)=>{
+  const pos = e.target.selectionStart;
+  e.target.value = up(e.target.value);
+  e.target.setSelectionRange(pos,pos);
+});
+
+/* ===== Wire ===== */
+$('#submitBtn').addEventListener('click', submitEntry);
+$('#clearBtn').addEventListener('click', clearMine);
+
+/* ===== Start ===== */
+paintForm();
+
+/* ===== Cross-tab sync ===== */
+window.addEventListener('storage', (e)=>{
+  if(e.key===ENTRY_Q_KEY || e.key==='user:username'){ paintForm(); }
+});
+</script>
+</body>
+</html>

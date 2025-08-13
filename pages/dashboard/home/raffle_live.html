@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Raffle Live</title>
+<style>
+  :root{ --bg:#0b0f10; --ink:#eaf7ff; --muted:#9bc; --panel:#0f1416; --ring:rgba(0,255,255,.22); --gold:#ffb42d; }
+  *,*:before,*:after{box-sizing:border-box}
+  html,body{margin:0;background:#000 url("/assets/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:12px;background:rgba(0,0,0,.7);border-bottom:1px solid var(--ring)}
+  .title{font-weight:900;letter-spacing:.4px;color:var(--gold);text-shadow:0 0 14px rgba(255,180,45,.35)}
+  .grow{flex:1}
+  .lbx-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:14px;border:1px solid rgba(0,255,255,.18);
+    background:#0b1f21;color:#cfffff;font-weight:800;font-size:12px;box-shadow:0 0 12px rgba(0,255,255,.10)}
+  .lbx-dot{width:8px;height:8px;border-radius:50%;background:#ffb42d;box-shadow:0 0 8px #ffb42d66}
+  .wrap{max-width:1000px;margin:18px auto;padding:0 12px}
+  .card{background:linear-gradient(180deg,#0f1416,#0a1113);border:1px solid var(--ring);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:16px}
+  .muted{color:var(--muted);font-size:13px}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .pill{padding:6px 10px;border-radius:999px;border:1px solid var(--ring);background:#0b1f21;color:#cfffff;font-weight:800}
+  input,button{height:42px;border-radius:10px;border:1px solid var(--ring);background:#0a1719;color:var(--ink);padding:8px 12px;outline:none}
+  button{cursor:pointer;font-weight:800}
+  button.primary{background:linear-gradient(180deg,#0ef,#00dfc6);-webkit-background-clip:text;background-clip:text;color:transparent;border-color:#0ef}
+  button[disabled]{opacity:.55;cursor:not-allowed}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .list{display:flex;flex-wrap:wrap;gap:8px}
+  .entry{padding:6px 10px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:#0a1518;font-size:12px}
+  .big{font-size:24px;font-weight:900;margin:0}
+  .center{display:flex;justify-content:center;align-items:center}
+  .toast{position:fixed;right:16px;bottom:16px;background:#0b1f21;border:1px solid var(--ring);border-radius:10px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:.18s}
+  .toast.on{opacity:1;transform:translateY(0)}
+  html[data-auth="checking"] body { opacity: 0; transition: opacity .12s ease; }
+</style>
+
+<!-- AUTH GATE -->
+<script>
+(function(){
+  "use strict";
+  const LOGIN="/pages/dashboard/home/login.html";
+  const SESSION_KEY="l3z:session", PROFILE_KEY="l3z:user", UNAME_KEY="user:username", LAST_KEY="lash3z_last_user";
+  const WALLET = u=>`lbx:wallet:${(u||'').toUpperCase()}`, LEDGER=u=>`lbx:ledger:${(u||'').toUpperCase()}`;
+  const now=()=>Date.now(); const up=s=>(s||"").toString().trim().toUpperCase();
+  function sget(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch{ return null; } }
+  function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+  function ensureWallet(u){ let w=sget(WALLET(u)); if(!w){ w={balance:50,created:now(),lastDaily:0}; sset(WALLET(u),w);
+    sset(LEDGER(u),[{ts:now(),delta:+50,reason:'WELCOME_BONUS',balance:50}]); } return w; }
+  function badgeUpdate(u){ const w=ensureWallet(u); const t=document.getElementById('lbxAmt'); if(t) t.textContent=(+w.balance||0).toFixed(2); }
+  function redirectToLogin(){ const back=encodeURIComponent(location.pathname+location.search+location.hash);
+    location.replace(`${LOGIN}?redirect=${back}`); }
+
+  document.documentElement.setAttribute("data-auth","checking");
+  const sess=sget(SESSION_KEY);
+  if(!sess || !sess.user || Number(sess.expiresAt)<=now()){ redirectToLogin(); throw new Error("no session"); }
+  const USER=up(sess.user);
+  localStorage.setItem(UNAME_KEY,USER); localStorage.setItem(LAST_KEY,USER); sset(PROFILE_KEY,{username:USER});
+  window.__L3Z_USER__=USER; window.__L3Z_BALANCE__=()=>ensureWallet(USER).balance;
+
+  window.addEventListener("DOMContentLoaded",()=>{
+    const u = USER;
+    const nameEl = document.getElementById("welcomeName"); if(nameEl) nameEl.textContent = u;
+    badgeUpdate(u);
+    const ins = new Set([document.getElementById('user'), ...document.querySelectorAll('[name="user"],[data-fill-user]')].filter(Boolean));
+    ins.forEach(n=>{ if(!n.value) n.value=u; });
+    document.documentElement.removeAttribute("data-auth");
+  });
+})();
+</script>
+</head>
+<body>
+  <div class="topbar">
+    <div class="title">Raffle — Live</div>
+    <div class="grow"></div>
+    <div class="pill">Welcome, <span id="welcomeName">PLAYER</span></div>
+    <div class="lbx-badge" id="lbxBadge"><span class="lbx-dot"></span><span id="lbxAmt">0</span><span class="muted">LBX</span></div>
+  </div>
+
+  <div class="wrap">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div class="muted">Raffle ID: <span id="rid">—</span></div>
+        <div class="muted">Total Entries: <b id="count">0</b></div>
+      </div>
+
+      <div class="cols" style="margin-top:12px">
+        <div>
+          <h3 class="big">Participants</h3>
+          <div id="list" class="list"></div>
+        </div>
+        <div class="center">
+          <div style="text-align:center">
+            <p class="muted">You can join this raffle once.</p>
+            <div class="row" style="justify-content:center">
+              <input id="user" placeholder="USERNAME" readonly style="width:220px"/>
+              <button id="joinBtn" class="primary">Join Raffle</button>
+            </div>
+            <div class="row" style="justify-content:center;margin-top:8px">
+              <span id="status" class="pill">Checking…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="toast" class="toast">Saved.</div>
+
+<script>
+(function(){
+  "use strict";
+  const $=s=>document.querySelector(s);
+  const esc=s=>(s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+  const up=s=>(s||'').toString().trim().toUpperCase();
+
+  // Raffle identity: ?id=... else daily default
+  const qp=new URLSearchParams(location.search);
+  const RID = qp.get("id") || ("raffle:"+new Date().toISOString().slice(0,10));
+
+  const userEl=$("#user"), joinBtn=$("#joinBtn"), statusEl=$("#status"), countEl=$("#count"), listEl=$("#list"), ridEl=$("#rid");
+  const toast=$("#toast");
+  ridEl.textContent = RID;
+
+  function toastMsg(t){ toast.textContent=t; toast.classList.add('on'); setTimeout(()=>toast.classList.remove('on'),1400); }
+
+  async function getEntries(){
+    const r = await fetch(`/api/raffles/${encodeURIComponent(RID)}/entries`, { credentials:"include" });
+    if(!r.ok) throw new Error("Failed to load entries");
+    const j = await r.json(); return Array.isArray(j.entries)? j.entries : [];
+  }
+  async function submitEntry(user){
+    const r = await fetch(`/api/raffles/${encodeURIComponent(RID)}/entries`, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      credentials:"include",
+      body: JSON.stringify({ user })
+    });
+    if(!r.ok) throw new Error("Failed to submit entry");
+    return r.json();
+  }
+
+  async function paint(){
+    try{
+      const arr = await getEntries();
+      countEl.textContent = arr.length;
+      listEl.innerHTML = arr.map(e=>`<span class="entry">${esc(e.user)}</span>`).join('') || `<span class="muted">No entries yet.</span>`;
+      const u = up(userEl.value);
+      const entered = !!arr.find(e=>e.user === u);
+      statusEl.textContent = entered ? "You're in!" : "Not entered";
+      joinBtn.disabled = entered ? true : false;
+    }catch(e){
+      statusEl.textContent = "Error loading entries";
+      console.error(e);
+    }
+  }
+
+  async function init(){
+    await paint();
+    setInterval(paint, 4000); // poll
+  }
+
+  joinBtn.addEventListener('click', async ()=>{
+    const u = up(userEl.value);
+    if(!u){ toastMsg('Not logged in'); return; }
+    joinBtn.disabled = true;
+    try{
+      const j = await submitEntry(u);
+      if(j.ok || j.already){ toastMsg('Entry submitted'); }
+      await paint();
+    }catch(e){
+      toastMsg('Failed to submit'); joinBtn.disabled = false;
+    }
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>

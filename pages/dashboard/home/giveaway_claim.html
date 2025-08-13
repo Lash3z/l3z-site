@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>L3Z — Giveaway Claim</title>
+<meta http-equiv="Cache-Control" content="no-store"/>
+<style>
+  :root{--teal:#00ffff;--bg:#05090a;--panel:#0b1216;--muted:#0e1a20;--bdr:rgba(0,255,255,.18);--good:#12d48a;--bad:#ff4d4d;--warn:#ffb84d}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:#fff;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:700px;margin:28px auto;padding:18px}
+  h1{margin:0 0 12px;color:var(--teal);text-shadow:0 0 16px rgba(0,255,255,.35);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid rgba(0,255,255,.28);background:rgba(0,0,0,.35);color:#cfffff;font-size:.82rem}
+  .right{margin-left:auto}
+  .card{background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.65));border:1px solid var(--bdr);box-shadow:0 0 24px rgba(0,255,255,.12), inset 0 0 24px rgba(0,0,0,.35);border-radius:16px;padding:16px}
+  label{display:block;font-size:.92rem;margin-bottom:6px;color:#bfeff0}
+  input[type="text"],input[type="password"]{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--bdr);background:var(--panel);color:#fff;outline:none}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:780px){.row{grid-template-columns:1fr}}
+  .actions{display:flex;gap:10px;flex-wrap:wrap}
+  button{border:1px solid rgba(0,255,255,.35);background:linear-gradient(180deg,rgba(0,255,255,.12),rgba(0,255,255,.04));color:#eaffff;padding:10px 14px;border-radius:10px;cursor:pointer;box-shadow:0 0 18px rgba(0,255,255,.18);transition:transform .06s, box-shadow .2s, opacity .2s}
+  button:hover{transform:translateY(-1px);box-shadow:0 0 24px rgba(0,255,255,.28)}
+  .ghost{background:transparent}
+  .status{margin-top:10px;padding:10px 12px;border-radius:10px;border:1px solid rgba(0,255,255,.25);display:none}
+  .status.ok{display:block;color:#baffea;background:rgba(18,212,138,.08);border-color:rgba(18,212,138,.35)}
+  .status.err{display:block;color:#ffd7d7;background:rgba(255,77,77,.08);border-color:rgba(255,77,77,.35)}
+  .muted{color:#86c5ca}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>
+      L3Z — Giveaway Claim
+      <span id="titlePill" class="pill">—</span>
+      <span id="prizePill" class="pill">Prize: —</span>
+      <span id="statusPill" class="pill right">Status: —</span>
+    </h1>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <label>Username</label>
+          <input id="username" type="text" placeholder="Your username"/>
+        </div>
+        <div id="codeWrap">
+          <label>Claim Code</label>
+          <input id="code" type="password" placeholder="Enter the code from stream"/>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:12px">
+        <button id="claimBtn">Claim</button>
+        <button id="clearBtn" class="ghost">Clear</button>
+        <span id="cooldownHint" class="muted" style="margin-left:auto">Cooldown: —</span>
+      </div>
+
+      <div id="msg" class="status"></div>
+      <div class="muted" style="margin-top:8px" id="infoLine">Waiting for active giveaway…</div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const OPS_KEY = 'lash3z_ops';
+  const PUB_KEY = 'GIVEAWAYS_PUBLIC';
+  const ADM_KEY = 'GIVEAWAYS';
+  const qp = new URLSearchParams(location.search);
+  const PIN_ID = qp.get('giveaway') || '';
+
+  const els = {
+    username: gid('username'),
+    code: gid('code'),
+    codeWrap: gid('codeWrap'),
+    claimBtn: gid('claimBtn'),
+    clearBtn: gid('clearBtn'),
+    msg: gid('msg'),
+    cooldownHint: gid('cooldownHint'),
+    titlePill: gid('titlePill'),
+    prizePill: gid('prizePill'),
+    statusPill: gid('statusPill'),
+    infoLine: gid('infoLine'),
+  };
+
+  let giveaway = null; // normalized active giveaway
+
+  init();
+
+  async function init(){
+    // Prefill username
+    try{ const last = localStorage.getItem('last_username')||''; if(last) els.username.value = last; }catch(e){}
+    await loadActive();
+    updateUI();
+    // in case admin updates local PUBLIC payload
+    window.addEventListener('storage', ev=>{ if(ev.key===PUB_KEY || ev.key===ADM_KEY) { loadActive().then(updateUI); } });
+  }
+
+  async function loadActive(){
+    // Try public endpoint first
+    let g = await fromPublicAPI();
+    if(!g) g = fromLocalPublic();
+    // If public payload doesn’t include code, peek admin (api OR local) to fetch code/expiry
+    let adminFallback = null;
+    if(!g || g.claimCode===undefined){
+      adminFallback = await fromAdminAPI();
+      if(!adminFallback) adminFallback = fromLocalAdmin();
+    }
+    // Pin by id if requested
+    if(PIN_ID){
+      if(adminFallback){
+        const pinned = adminFallback.find(x=> x.id===PIN_ID);
+        if(pinned) g = mergePubAdmin(g, pinned);
+      }else if(g && g.id!==PIN_ID){
+        g = null;
+      }
+    }
+    // If we have both, merge to ensure code/expiry/cooldown exist
+    if(g && adminFallback){
+      const match = adminFallback.find(x=> x.id===g.id) || adminFallback.find(x=> x.status==='active');
+      if(match) g = mergePubAdmin(g, match);
+    }else if(!g && adminFallback){
+      const active = adminFallback.find(x=> x.status==='active');
+      if(active) g = normalizeAdmin(active);
+    }
+    giveaway = validateWindow(g);
+  }
+
+  function mergePubAdmin(pub, adm){
+    const p = pub ? {...pub} : normalizeAdmin(adm);
+    const a = normalizeAdmin(adm);
+    // Prefer pub title/prize/status, but inject code/expiry/cooldown and maxWinners
+    p.claimCode = a.claimCode;
+    p.codeExpiresAt = a.codeExpiresAt;
+    p.cooldownMinutes = a.cooldownMinutes;
+    p.maxWinners = a.maxWinners;
+    return p;
+  }
+
+  async function fromPublicAPI(){
+    try{
+      const r = await fetch('/api/giveaways_public',{cache:'no-store'});
+      if(!r.ok) return null;
+      const j = await r.json();
+      if(!j) return null;
+      return normalizePublic(j);
+    }catch(e){ return null; }
+  }
+  function fromLocalPublic(){
+    try{
+      const raw = localStorage.getItem(PUB_KEY);
+      if(!raw) return null;
+      const j = JSON.parse(raw);
+      return normalizePublic(j);
+    }catch(e){ return null; }
+  }
+  async function fromAdminAPI(){
+    try{
+      const r = await fetch('/api/giveaways',{cache:'no-store'});
+      if(!r.ok) return null;
+      const arr = await r.json();
+      if(!Array.isArray(arr)) return null;
+      return arr.map(normalizeAdmin);
+    }catch(e){ return null; }
+  }
+  function fromLocalAdmin(){
+    try{
+      const raw = localStorage.getItem(ADM_KEY);
+      if(!raw) return null;
+      const arr = JSON.parse(raw);
+      if(!Array.isArray(arr)) return null;
+      return arr.map(normalizeAdmin);
+    }catch(e){ return null; }
+  }
+
+  function normalizePublic(p){
+    // Admin public payload (from giveaways_admin publish) may NOT include code. That’s fine.
+    // Expect: { id,title,prize,status,winners?,claims? } — we augment later from admin if available.
+    return {
+      id: p?.id || null,
+      title: p?.title || 'Giveaway',
+      prize: p?.prize || '',
+      status: p?.status || 'draft',
+      // optional
+      claimCode: p?.claimCode,        // might be undefined
+      codeExpiresAt: p?.codeExpiresAt, // might be undefined
+      cooldownMinutes: p?.cooldownMinutes, // might be undefined
+      maxWinners: p?.maxWinners
+    };
+  }
+  function normalizeAdmin(x){
+    return {
+      id: String(x.id||''),
+      title: x.title||'Giveaway',
+      prize: x.prize||'',
+      status: x.status||'draft',
+      claimCode: x.claimCode||'',
+      codeExpiresAt: x.codeExpiresAt||'',
+      cooldownMinutes: Number(x.cooldownMinutes||0),
+      maxWinners: Number(x.maxWinners||1),
+      startAt: x.startAt||'',
+      endAt: x.endAt||'',
+    };
+  }
+
+  function validateWindow(g){
+    if(!g) return null;
+    const now = Date.now();
+    // If admin set start/end, respect them
+    const startOk = g.startAt ? now >= +new Date(g.startAt) : true;
+    const endOk   = g.endAt   ? now <= +new Date(g.endAt)   : true;
+    if(!(startOk && endOk)) return {...g, status:'scheduled'}; // not open yet
+    return g;
+  }
+
+  function updateUI(){
+    const g = giveaway;
+    els.titlePill.textContent = g ? g.title : '—';
+    els.prizePill.textContent = 'Prize: ' + (g?.prize || '—');
+    els.statusPill.textContent = 'Status: ' + (g?.status || '—');
+
+    // If no active giveaway
+    if(!g || g.status!=='active'){
+      els.infoLine.textContent = 'No active giveaway right now.';
+      disableClaim(true);
+      return;
+    }
+
+    // Code visibility
+    const needsCode = (g.claimCode || '').trim().length > 0;
+    els.codeWrap.style.display = needsCode ? '' : 'none';
+    els.infoLine.textContent = needsCode
+      ? (g.codeExpiresAt ? 'Code required. Expires: '+fmt(g.codeExpiresAt) : 'Code required.')
+      : 'No code required. Claims are open.';
+
+    // Cooldown hint
+    const cd = Number(g.cooldownMinutes||0);
+    els.cooldownHint.textContent = 'Cooldown: ' + (cd>0 ? (cd+' min/user') : 'none');
+
+    disableClaim(false);
+  }
+
+  function disableClaim(disabled){
+    els.claimBtn.disabled = disabled;
+  }
+
+  els.clearBtn.addEventListener('click', ()=>{
+    els.username.value=''; els.code.value='';
+    toast('Cleared.', true);
+  });
+
+  els.claimBtn.addEventListener('click', onClaim);
+
+  async function onClaim(){
+    const g = giveaway;
+    if(!g || g.status!=='active') return toast('Giveaway not active.', false);
+    const username = (els.username.value||'').trim();
+    if(!username) return toast('Username required.', false);
+
+    // save username for the rest of the suite
+    try{ localStorage.setItem('last_username', username); }catch(e){}
+
+    // cooldown check (per giveaway)
+    const cdMin = Number(g.cooldownMinutes||0);
+    if(cdMin>0 && !passesCooldown(g.id, username, cdMin)){
+      return toast('You are on cooldown. Try again later.', false);
+    }
+
+    // code check
+    const needs = (g.claimCode||'').trim().length>0;
+    if(needs){
+      const exp = g.codeExpiresAt ? +new Date(g.codeExpiresAt) : null;
+      if(exp && Date.now()>exp) return toast('Code expired. Wait for the next one.', false);
+      const input = (els.code.value||'').trim();
+      if(!input) return toast('Claim code required.', false);
+      if(!equalsCI(input, g.claimCode)) return toast('Wrong code.', false);
+    }
+
+    const entry = {
+      giveawayId: g.id,
+      username,
+      source: 'public',
+      value: needs ? 'code' : 'open',
+      points: 1
+    };
+
+    // Try server first (if you wire it)
+    let ok = false;
+    try{
+      const r = await fetch('/api/giveaway_claim',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(entry)});
+      ok = r.ok;
+    }catch(e){}
+
+    // Local ops fallback
+    if(!ok){
+      try{
+        const raw = JSON.parse(localStorage.getItem(OPS_KEY)||'[]');
+        raw.push({ ...entry, id:'op_'+Date.now()+'_'+Math.floor(Math.random()*9999), createdAt:new Date().toISOString(), type:'giveaway_claim' });
+        localStorage.setItem(OPS_KEY, JSON.stringify(raw));
+        ok = true;
+      }catch(e){}
+    }
+
+    if(ok){
+      // mark last claim for cooldown
+      markClaim(g.id, username);
+      toast('Claim recorded. Good luck. 🍀', true);
+      els.code.value = '';
+    }else{
+      toast('Claim failed. Try again.', false);
+    }
+  }
+
+  // Cooldown helpers
+  function storageKey(giveId){ return 'GWY_CD_'+giveId; }
+  function markClaim(giveId, user){
+    const key = storageKey(giveId);
+    let map = {};
+    try{ map = JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){}
+    map[user.toLowerCase()] = Date.now();
+    localStorage.setItem(key, JSON.stringify(map));
+  }
+  function passesCooldown(giveId, user, minutes){
+    const key = storageKey(giveId);
+    let map = {};
+    try{ map = JSON.parse(localStorage.getItem(key)||'{}'); }catch(e){}
+    const last = Number(map[user.toLowerCase()]||0);
+    return (Date.now() - last) >= minutes*60000;
+  }
+
+  // Utils
+  function gid(id){ return document.getElementById(id); }
+  function toast(msg, ok){
+    els.msg.textContent = msg;
+    els.msg.className = 'status ' + (ok?'ok':'err');
+    clearTimeout(els.msg._t);
+    els.msg._t = setTimeout(()=>{ els.msg.className='status'; els.msg.textContent=''; }, 4000);
+  }
+  function fmt(iso){ try{ return new Date(iso).toLocaleString(); }catch(e){ return '—'; } }
+  function equalsCI(a,b){ return String(a||'').toLowerCase() === String(b||'').toLowerCase(); }
+
+})();
+</script>
+</body>
+</html>
+
+

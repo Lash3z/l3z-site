@@ -1,0 +1,15 @@
+{
+  "watch": [
+    "server.js",
+    "backend",
+    "pages",
+    ".env"
+  ],
+  "ext": "js,json,html,css",
+  "ignore": [
+    "node_modules"
+  ],
+  "env": {
+    "NODE_ENV": "development"
+  }
+}

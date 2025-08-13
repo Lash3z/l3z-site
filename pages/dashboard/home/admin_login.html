@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>L3Z Battleground — Admin Login</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <style>
+    :root{--teal:#00ffff;--bg:#05090a;--panel:#0c1214;--ink:#dfefff;--muted:#8fb4b8;--accent:#12f3d6}
+    html,body{margin:0;background:var(--bg) url("../../../../assets/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif;height:100%}
+    .wrap{min-height:100%;display:grid;place-items:center;padding:24px}
+    .card{width:min(420px,92vw);background:linear-gradient(180deg,rgba(8,14,16,.92),rgba(6,10,12,.88));border:1px solid rgba(0,255,255,.18);border-radius:16px;box-shadow:0 8px 28px rgba(0,255,255,.10);padding:22px 20px}
+    h1{margin:0 0 14px;font-size:22px;color:var(--teal);letter-spacing:.04em;text-shadow:0 0 12px rgba(0,255,255,.35);text-align:center}
+    .row{display:flex;flex-direction:column;gap:6px;margin:12px 0}
+    label{font-size:13px;color:var(--muted)}
+    .input{height:44px;border-radius:12px;border:1px solid rgba(0,255,255,.18);background:#0a1719;color:var(--ink);padding:0 12px;outline:none;box-shadow:inset 0 0 0 1px transparent}
+    .input:focus{box-shadow:inset 0 0 0 1px var(--accent)}
+    .pw-wrap{position:relative}
+    .togglePw{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--muted);cursor:pointer;user-select:none}
+    .btn{width:100%;height:46px;border:0;border-radius:12px;background:var(--accent);color:#001416;font-weight:800;cursor:pointer;box-shadow:0 6px 22px rgba(18,243,214,.35);margin-top:10px}
+    .btn[disabled]{opacity:.6;cursor:not-allowed;box-shadow:none}
+    .mini{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+    .status{min-height:20px;font-size:13px;margin-top:10px}
+    .ok{color:#53f5c7}.err{color:#ff6d8a}
+    .foot{margin-top:14px;text-align:center}
+    .miniLink{color:#cfe;text-decoration:none;font-size:13px}
+  </style>
+</head>
+<body>
+  <script>
+    // Already authed? bounce straight to admin
+    (async () => {
+      try {
+        const r = await fetch('/api/admin/me', { credentials: 'include', cache: 'no-store' });
+        if (r.ok) location.replace('/admin/battleground_admin.html');
+      } catch {}
+    })();
+  </script>
+
+  <div class="wrap">
+    <div class="card">
+      <h1>Admin Login</h1>
+
+      <form id="loginForm" autocomplete="on">
+        <div class="row">
+          <label for="username">Username</label>
+          <input id="username" name="user" class="input" type="text" inputmode="text"
+                 autocapitalize="none" autocomplete="username" required />
+        </div>
+
+        <div class="row pw-wrap">
+          <label for="password">Password</label>
+          <input id="password" name="pass" class="input" type="password" autocomplete="current-password" required />
+          <span class="togglePw" id="togglePw" title="Show/Hide">SHOW</span>
+        </div>
+
+        <div class="mini">
+          <small class="miniLink" onclick="location.href='/'">← Back to Dashboard</small>
+          <small style="color:var(--muted)">Secure area</small>
+        </div>
+
+        <button id="submitBtn" class="btn" type="submit">Sign In</button>
+        <div id="status" class="status"></div>
+      </form>
+
+      <div class="foot">
+        <small>Use your admin creds. Cookie is HttpOnly and lasts 12h.</small>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = s => document.querySelector(s);
+    const form = $('#loginForm');
+    const statusEl = $('#status');
+    const submitBtn = $('#submitBtn');
+    const passEl = $('#password');
+
+    $('#togglePw').addEventListener('click', () => {
+      const t = passEl.type === 'password' ? 'text' : 'password';
+      passEl.type = t;
+      $('#togglePw').textContent = t === 'password' ? 'SHOW' : 'HIDE';
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      status('');
+      disable(true);
+
+      const user = form.user.value.trim();
+      const pass = form.pass.value;
+      if (!user || !pass) { status('Please enter both username and password.', true); disable(false); return; }
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ user, pass })
+        });
+
+        if (res.ok) {
+          status('Logged in. Redirecting…', false, true);
+          location.replace('/admin/battleground_admin.html');
+          return;
+        }
+
+        const j = await res.json().catch(() => ({}));
+        status(j.error === 'bad_credentials' ? 'Wrong username or password.' : 'Login failed.', true);
+
+      } catch {
+        status('Network error. Is the server running?', true);
+      } finally {
+        disable(false);
+      }
+    });
+
+    function status(msg, isErr=false, isOk=false){
+      statusEl.textContent = msg || '';
+      statusEl.className = 'status ' + (isErr ? 'err' : (isOk ? 'ok' : ''));
+    }
+    function disable(on){
+      submitBtn.disabled = on;
+      $('#username').disabled = on;
+      $('#password').disabled = on;
+    }
+  </script>
+</body>
+</html>

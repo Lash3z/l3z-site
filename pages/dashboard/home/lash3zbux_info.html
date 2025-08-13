@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Lash3zbux — Info</title>
+<style>
+  :root{
+    --bg:#000;
+    --ink:#eaf7ff;
+    --muted:#9cc;
+    --teal:#00ffff;
+    --accent:#ffb42d;
+    --panel:#0f1416;
+    --line:rgba(0,255,255,.16);
+  }
+  html,body{
+    margin:0;
+    background:#000 url("../../../../assets/media/BG_page.png") center/cover fixed no-repeat;
+    color:var(--ink);
+    font-family:Segoe UI,system-ui,Arial,sans-serif;
+  }
+  .wrap{max-width:980px;margin:28px auto 40px;padding:0 16px}
+  .hero{
+    display:flex;align-items:center;gap:16px;margin-bottom:16px;
+    background:linear-gradient(180deg, rgba(0,255,255,.08), rgba(0,0,0,.0));
+    border:1px solid var(--line);border-radius:16px;padding:14px 16px;
+    box-shadow:0 12px 30px rgba(0,0,0,.35);
+  }
+  .logo{
+    width:56px;height:56px;border-radius:14px;object-fit:cover;
+    border:1px solid var(--line);box-shadow:0 0 14px #00ffff44;background:#000;
+  }
+  h1{margin:0;color:var(--teal);text-shadow:0 0 12px #00ffff55}
+  .sub{color:var(--muted);font-size:13px;margin-top:4px}
+
+  .grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:18px}
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:14px 16px;
+    box-shadow:0 8px 26px rgba(0,0,0,.35);
+  }
+  .card h2{
+    margin:0 0 8px;color:var(--teal);font-size:18px;text-shadow:0 0 10px #00ffff44
+  }
+  p{margin:8px 0 10px;line-height:1.6}
+  ul{margin:8px 0 0 18px}
+  li{margin:6px 0}
+  .callout{
+    border-left:3px solid var(--accent);
+    background:rgba(255,180,45,.07);
+    padding:10px 12px;border-radius:12px;margin-top:10px;color:#ffe9b6
+  }
+  .pillrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{
+    font-size:12px;color:#112; background:linear-gradient(180deg,#ffd36d,#ffb42d);
+    padding:6px 10px;border-radius:999px;font-weight:800;box-shadow:0 4px 12px rgba(255,180,45,.35)
+  }
+
+  /* link style to match VIP */
+  a.link{color:#cfe;text-decoration:none;border-bottom:1px dashed rgba(0,255,255,.35);cursor:pointer}
+  a.link:hover{color:#fff;border-bottom-color:#fff}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="hero">
+    <img class="logo" src="../../../../assets/media/lash3zbux_pp.png" alt="Lash3zbux"/>
+    <div>
+      <h1>Lash3zbux — Info</h1>
+      <div class="sub">Your community currency for predictions, hunts, tournaments, and prizes.</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>What Are Lash3zbux?</h2>
+      <p>Lash3zbux (LBX) are the stream’s virtual currency. You earn them by supporting the channel and competing in events. Your LBX total shows on your profile and the overall leaderboard automatically.</p>
+      <div class="pillrow">
+        <div class="pill">Virtual Currency</div>
+        <div class="pill">Tracks On Profile</div>
+        <div class="pill">Counts For Prizes</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>How To Earn LBX</h2>
+      <ul>
+        <li>🎁 Gifting subs on stream</li>
+        <li>⭐ Being an active monthly subscriber</li>
+        <li>🎯 Submitting accurate predictions in Bonus Hunts and tournaments</li>
+        <li>🆚 Competing in PVP & events (wins, placement, milestones)</li>
+        <li>💎 VIP: supporting via affiliate casinos (depositing & regular play)</li>
+        <li>🃏 Special promos (e.g., Lucky 7 Blackjack awards)</li>
+      </ul>
+      <p class="callout">Tip: Make sure you’re logged in so your earnings link to your username.</p>
+    </div>
+
+    <div class="card">
+      <h2>How To Use LBX</h2>
+      <p>Use your LBX to place fun bets in <a class="link" onclick="loadPage('pages/dashboard/home/lash3z_bets.html')">L3Z Bets</a>, climb the leaderboard, and unlock bragging rights. LBX are also used for entries, bonuses, and special event rewards decided by the admin team.</p>
+    </div>
+
+    <div class="card">
+      <h2>Monthly Prizes — Top 3</h2>
+      <p>At the end of each month, the top three players on the Overall Leaderboard receive real cash rewards paid into their linked affiliate casino account:</p>
+      <ul>
+        <li>🥇 1st Place — Cash reward</li>
+        <li>🥈 2nd Place — Cash reward</li>
+        <li>🥉 3rd Place — Cash reward</li>
+      </ul>
+      <p class="callout">Make sure your affiliate casino account is linked on your profile to receive payouts.</p>
+    </div>
+
+    <div class="card">
+      <h2>Fair Play & Notes</h2>
+      <ul>
+        <li>LBX are virtual and have no direct monetary value.</li>
+        <li>Prizes are discretionary and subject to stream rules.</li>
+        <li>Abuse or exploits may result in LBX removal or disqualification.</li>
+      </ul>
+      <p class="sub">Questions? Ping a mod or check your <a class="link" onclick="loadPage('pages/dashboard/home/profile.html')">profile</a> and <a class="link" onclick="loadPage('pages/dashboard/home/leaderboard.html')">leaderboard</a>.</p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
+
+

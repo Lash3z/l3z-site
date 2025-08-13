@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Bonus Hunt — OBS Widget</title>
+<style>
+  :root{ --ink:#eaf7ff; --muted:#9fd0d6; --teal:#00ffff; --ok:#12f3d6; --warn:#ffb42d; --line:rgba(0,255,255,.16); }
+  html,body{
+    margin:0;height:100%;overflow:hidden;
+    background:#000 url("/assets/media/BG_page.png") center/cover fixed no-repeat;
+    color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif
+  }
+  .wrap{
+    width:600px;height:800px;box-sizing:border-box;margin:auto;padding:12px 14px;
+    display:flex;flex-direction:column;gap:10px;
+    background:linear-gradient(180deg,rgba(5,10,12,.70),rgba(5,10,12,.78));
+    border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.45)
+  }
+  .topbar{display:flex;align-items:center;gap:12px;justify-content:space-between}
+  .title{font-weight:900;letter-spacing:.02em;text-shadow:0 0 12px rgba(0,255,255,.35)}
+  .pill{padding:4px 10px;border-radius:999px;border:1px solid var(--line);font-weight:800;background:#0b1f21;color:#cfffff}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .stat{background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:10px;padding:8px}
+  .stat .k{font-size:11px;color:var(--muted)}
+  .stat .v{font-weight:900;margin-top:1px}
+
+  .rows{position:relative;flex:1 1 auto;min-height:0;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.35);overflow:hidden}
+  .list{position:relative;will-change:transform}
+  .inner{position:relative}
+
+  /* grid: # | img | title+provider | bet | payout | x */
+  .row{
+    display:grid;
+    grid-template-columns:32px 56px 1fr 86px 86px 70px;
+    gap:8px;align-items:center;padding:8px 10px;
+    border-bottom:1px solid rgba(255,255,255,.06)
+  }
+  .row:last-child{border-bottom:none}
+  .idx{color:var(--muted);text-align:center;font-weight:800}
+  .thumb{width:56px;height:74px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#000}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .slotWrap{min-width:0}
+  .slot{font-weight:800;white-space:nowrap;overflow:hidden;display:block;position:relative}
+  .slot.isOverflow > span{position:absolute;left:0;top:0;white-space:nowrap;animation:marq linear infinite;animation-duration: var(--marqDur,12s);will-change:transform}
+  @keyframes marq{from{transform:translateX(0)}to{transform:translateX(calc(-1 * var(--marqW,300px)))}}
+  .sub{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .right{justify-self:end;text-align:right}
+  .money{font-variant-numeric:tabular-nums}
+  .x{font-weight:900}
+
+  .statsBtm{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  @media (max-width:620px){ .wrap{width:100vw;height:100vh;border-radius:0} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div class="title">BONUS HUNT — <span id="wTitle">UNTITLED</span></div>
+    <span id="wTime" class="pill">—</span>
+  </div>
+
+  <!-- TOP stats -->
+  <div class="stats">
+    <div class="stat"><div class="k">Starting Balance</div><div class="v" id="s_start">$ 0.00</div></div>
+    <div class="stat"><div class="k">Games</div><div class="v" id="s_games">0</div></div>
+    <div class="stat"><div class="k">Break-even X</div><div class="v" id="s_bex">0.00×</div></div>
+    <div class="stat"><div class="k">Current Avg X</div><div class="v" id="s_avgx">0.00×</div></div>
+  </div>
+
+  <!-- list (endless upward loop) -->
+  <div class="rows">
+    <div id="wRows" class="list"></div>
+  </div>
+
+  <!-- BOTTOM stats -->
+  <div class="statsBtm">
+    <div class="stat"><div class="k">Ending Balance</div><div class="v" id="s_end">$ 0.00</div></div>
+    <div class="stat"><div class="k">BE Progress</div><div class="v" id="s_beprog">0.0%</div></div>
+    <div class="stat"><div class="k">Shortfall to BE</div><div class="v" id="s_short">$ 0.00</div></div>
+    <div class="stat"><div class="k">100x Wins</div><div class="v" id="s_100x">0</div></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const K_BUILDER='bh:builder:bonus', K_G='bh:games', K_R='bh:results', K_S='bh:starting';
+
+  const rowsEl = document.getElementById('wRows');
+  const money = n => '$ '+Number(n||0).toFixed(2);
+  const fmtX = n => Number(n||0).toFixed(2)+'×';
+  const esc = s => (s??'').toString().replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+  const MIN_ROWS=6, SPEED=22; // px/sec upward
+  let offset=0, lastTs=0, paused=false, blockH=0;
+
+  const sget=(k)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch{return null}};
+
+  function loadSource(){
+    const b=sget(K_BUILDER);
+    if(b && Array.isArray(b.games) && b.games.length){ return {title:b.title||'BONUS HUNT', games:b.games, results:b.results||[], starting:+b.startingBalance||0}; }
+    const g=sget(K_G)||[], r=sget(K_R)||[], s=+(sget(K_S)||0);
+    return {title:'BONUS HUNT', games:g, results:r, starting:s};
+  }
+
+  function calc(){
+    const src=loadSource();
+    const byId=new Map((src.results||[]).map(r=>[r.gameId,r]));
+    const entries=(src.games||[]).map(g=>{
+      const r=byId.get(g.id)||{};
+      const bet = (r.bet!=null? +r.bet : +g.betSize)||0;
+      const win = +r.win||0;
+      const x = (r.x!=null)? +r.x : (bet>0? (win/bet) : 0);
+      return { title:(g.title||'').toString(), provider:(g.provider||'').toString(), img:g.image||g.imageUrl||'', bet, win, x };
+    });
+
+    const tBet=entries.reduce((a,e)=>a+e.bet,0);
+    const tWin=entries.reduce((a,e)=>a+e.win,0);
+
+    const starting=+src.starting||0;
+    return {
+      title:src.title||'BONUS HUNT',
+      entries,
+      stats:{
+        start:starting,
+        games:entries.length,
+        beX: (tBet>0 && starting>0)? (starting/tBet):0,
+        avgX:(tBet>0)?(tWin/tBet):0,
+        end:tWin,
+        beProg:(starting>0)?(tWin/starting):0,
+        shortfall:(starting>0)?Math.max(0,starting-tWin):0,
+        x100: entries.filter(e=>e.x>=100).length
+      }
+    };
+  }
+
+  function rowsHTML(entries){
+    return entries.map((e,i)=>`
+      <div class="row">
+        <div class="idx">${i+1}</div>
+        <div class="thumb">${e.img? `<img src="${esc(e.img)}" alt="">` : ''}</div>
+        <div class="slotWrap">
+          <div class="slot"><span>${esc(e.title||'—')}</span></div>
+          <div class="sub">${esc(e.provider||'—')}</div>
+        </div>
+        <div class="right money">${money(e.bet)}</div>
+        <div class="right money">${money(e.win)}</div>
+        <div class="right x">${(e.win>0||e.x>0)? Number(e.x||0).toFixed(2)+'×' : '—'}</div>
+      </div>
+    `).join('');
+  }
+
+  function applyMarquee(container){
+    container.querySelectorAll('.slot').forEach(el=>{
+      const span=el.querySelector('span');
+      el.classList.remove('isOverflow');
+      el.style.removeProperty('--marqW'); el.style.removeProperty('--marqDur');
+      if(span && span.scrollWidth>el.clientWidth){
+        el.classList.add('isOverflow');
+        const overflow=span.scrollWidth-el.clientWidth+40;
+        el.style.setProperty('--marqW', overflow+'px');
+        el.style.setProperty('--marqDur', Math.max(6, overflow/60)+'s');
+      }
+    });
+  }
+
+  function render(){
+    const d=calc();
+
+    document.getElementById('wTitle').textContent=d.title.toUpperCase();
+    document.getElementById('wTime').textContent=new Date().toLocaleTimeString();
+
+    const s=d.stats;
+    document.getElementById('s_start').textContent=money(s.start);
+    document.getElementById('s_games').textContent=s.games;
+    document.getElementById('s_bex').textContent=fmtX(s.beX);
+    document.getElementById('s_avgx').textContent=fmtX(s.avgX);
+    document.getElementById('s_end').textContent=money(s.end);
+    document.getElementById('s_beprog').textContent=(s.beProg*100).toFixed(1)+'%';
+    document.getElementById('s_short').textContent=money(s.shortfall);
+    document.getElementById('s_100x').textContent=s.x100;
+
+    // build seamless loop (duplicate block)
+    const htmlOne = rowsHTML(d.entries);
+    rowsEl.innerHTML = `<div class="inner" id="blk1">${htmlOne}</div><div class="inner" id="blk2">${htmlOne}</div>`;
+
+    applyMarquee(document.getElementById('blk1'));
+    applyMarquee(document.getElementById('blk2'));
+
+    const blk1=document.getElementById('blk1');
+    blockH = blk1 ? blk1.offsetHeight : 0;
+
+    if(offset >= blockH) offset=0;
+    rowsEl.style.transform=`translateY(${-offset}px)`;
+  }
+
+  function loop(ts){
+    if(!lastTs) lastTs=ts;
+    const dt=(ts-lastTs)/1000; lastTs=ts;
+
+    const totalRows = rowsEl.querySelectorAll('.row').length/2; // duplicated
+    const hostH=rowsEl.parentElement.clientHeight;
+
+    if(!paused && blockH>hostH && totalRows>=MIN_ROWS){
+      offset += SPEED*dt;
+      if(offset >= blockH){ offset=0; }
+      rowsEl.style.transform=`translateY(${-offset}px)`;
+    }else{
+      if(offset!==0){ offset=0; rowsEl.style.transform='translateY(0)'; }
+    }
+    requestAnimationFrame(loop);
+  }
+
+  rowsEl.parentElement.addEventListener('mouseenter',()=>paused=true);
+  rowsEl.parentElement.addEventListener('mouseleave',()=>paused=false);
+
+  render();
+  setInterval(render,1000);
+  window.addEventListener('storage', e=>{
+    if([K_BUILDER,K_G,K_R,K_S].includes(e.key)) render();
+  });
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

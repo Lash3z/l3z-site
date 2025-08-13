@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Admin Login • LASH3Z</title>
+  <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
+  <style>
+    body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:#0b1113;color:#eaf7ff;display:flex;align-items:center;justify-content:center;min-height:100vh}
+    .card{background:rgba(0,0,0,.75);border:1px solid rgba(0,255,255,.2);border-radius:14px;padding:22px;width:320px;box-shadow:0 0 18px rgba(0,255,255,.15)}
+    h1{font-size:18px;margin:0 0 12px;color:#00ffff}
+    label{display:block;font-size:12px;opacity:.85;margin:10px 0 6px}
+    input{width:100%;padding:10px;border-radius:10px;border:1px solid #1b1b1b;background:#061214;color:#eaf7ff}
+    button{margin-top:14px;width:100%;padding:10px;border-radius:10px;border:1px solid rgba(0,255,255,.25);background:#132026;color:#cfe;cursor:pointer}
+    button:hover{background:#173038}
+    .ok{color:#9effa4;margin-top:10px;display:none}
+    .err{color:#ff8080;margin-top:10px;display:none}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Admin Login</h1>
+    <label>Username</label>
+    <input id="u" autocomplete="username">
+    <label>Password</label>
+    <input id="p" type="password" autocomplete="current-password">
+    <button id="loginBtn">Sign in</button>
+    <div id="ok" class="ok">Logged in. You can close this tab.</div>
+    <div id="err" class="err">Bad credentials.</div>
+  </div>
+  <script>
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+      const user = document.getElementById('u').value.trim();
+      const pass = document.getElementById('p').value;
+      const res = await fetch('/api/admin/login.html', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ user, pass }),
+        credentials:'include'
+      });
+      document.getElementById('ok').style.display = res.ok ? 'block' : 'none';
+      document.getElementById('err').style.display = res.ok ? 'none'  : 'block';
+    });
+  </script>
+</body>
+</html>

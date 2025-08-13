@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>L3Z — Overall Leaderboard</title>
+<style>
+  :root{
+    --bg:#05090b; --panel:#0e1416; --ink:#eaf7ff; --muted:#9cc; --teal:#00ffff; --gold:#ffb42d; --line:rgba(0,255,255,.14);
+    --row1: rgba(255,215,0,.10); --row2: rgba(192,192,192,.10); --row3: rgba(205,127,50,.10);
+    --you: rgba(0,255,255,.10);
+  }
+  html,body{margin:0;background:#000 url("/assets/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  .wrap{max-width:1200px;margin:22px auto;padding:0 16px}
+  h1{margin:0 0 8px;color:var(--teal);text-shadow:0 0 12px #00ffff55}
+  .mini{color:var(--muted);font-size:12px;margin-bottom:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+  .left{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .pill{padding:4px 10px;border-radius:999px;background:#132025;border:1px solid var(--line);color:#cfe;font-size:12px}
+  input,select{background:#0f171a;border:1px solid var(--line);color:var(--ink);padding:8px;border-radius:10px}
+  .tableWrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
+  table{width:100%;border-collapse:separate;border-spacing:0;min-width:900px}
+  thead th{position:sticky;top:0;background:#0b1316;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted);text-align:left;padding:10px}
+  tbody td{padding:10px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:middle}
+  tbody tr:hover{background:#0a1214}
+  .rank{font-weight:900;white-space:nowrap}
+  .user{display:flex;align-items:center;gap:10px}
+  .avatar{width:28px;height:28px;border-radius:6px;border:1px solid var(--line);object-fit:cover;background:#000}
+  .uname{display:flex;align-items:center;gap:8px}
+  .medal{font-size:18px;line-height:1}
+  .row-gold   { background: var(--row1); }
+  .row-silver { background: var(--row2); }
+  .row-bronze { background: var(--row3); }
+  .row-you    { outline: 1px solid rgba(0,255,255,.35); background: linear-gradient(0deg, var(--you), transparent); }
+  .btn{padding:8px 12px;border:none;border-radius:10px;font-weight:800;cursor:pointer}
+  .btn.alt{background:#103036;border:1px solid var(--line);color:#cfe}
+  .btn.primary{background:var(--gold);color:#222}
+  .sort{cursor:pointer;user-select:none}
+  .up::after{content:" ▲";font-size:11px;color:#9fd}
+  .down::after{content:" ▼";font-size:11px;color:#9fd}
+  .right{display:flex;gap:8px;align-items:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Overall Leaderboard</h1>
+  <div class="mini" id="sourceNote">
+    Source: trying server wallets <code>/api/wallet/:user</code> (fallback to local
+    <code>lbx:wallet:*</code>/<code>sb:wallet:*</code>). Points from local
+    <code>points:bonus</code>, <code>points:tournament</code>, <code>points:pvp</code>, <code>points:lucky7</code>.
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <div class="left">
+        <input id="search" placeholder="Search username…" style="width:220px">
+        <span class="pill">Players: <span id="pCount">0</span></span>
+        <span class="pill">Total LBX: <span id="sumLBX">0</span></span>
+        <span class="pill" id="youStat" style="display:none"></span>
+      </div>
+      <div class="right">
+        <span class="pill" id="apiBadge">API: checking…</span>
+        <button id="exportCSV" class="btn alt" type="button">Export CSV</button>
+        <button id="refresh" class="btn primary" type="button">Refresh</button>
+      </div>
+    </div>
+
+    <div class="tableWrap">
+      <table id="board">
+        <thead>
+          <tr>
+            <th class="sort" data-key="rank">#</th>
+            <th class="sort" data-key="username">Username</th>
+            <th class="sort" data-key="bonus">Bonus Hunt</th>
+            <th class="sort" data-key="tourney">Tournament</th>
+            <th class="sort" data-key="pvp">PVP</th>
+            <th class="sort" data-key="lucky7">Lucky 7</th>
+            <th class="sort" data-key="total">Total Pts</th>
+            <th class="sort" data-key="lbx">LBX</th>
+            <th>Last Updated</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================== utils ===================== */
+const $ = (s, root=document)=>root.querySelector(s);
+const up = s => (s||'').toString().trim().toUpperCase();
+const fmt0 = n => (n==null||isNaN(+n)) ? '0' : Math.round(+n).toString();
+const esc = s => (s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+
+const apiBadge = $("#apiBadge");
+let API_OK = false;
+async function probeAPI(){
+  try{
+    const r = await fetch("/healthz",{cache:"no-store"});
+    API_OK = r.ok;
+  }catch{ API_OK=false; }
+  apiBadge.textContent = API_OK ? "API: online" : "API: offline";
+  apiBadge.style.color = API_OK ? "#baffea" : "#ffb5be";
+}
+
+/* ===================== discovery ===================== */
+function read(key, fallback=null){
+  try{ const v = localStorage.getItem(key); return v==null ? fallback : JSON.parse(v); }
+  catch{ return fallback; }
+}
+function discoverUsers(){
+  const set = new Set(read('users:all', []) || []);
+  for(let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    if(k.startsWith('lbx:wallet:')) set.add(k.slice(11));
+    if(k.startsWith('sb:wallet:'))  set.add(k.slice(10));
+    if(k.startsWith('points:bonus:')) set.add(k.slice(13));
+    if(k.startsWith('points:tournament:')) set.add(k.slice(18));
+    if(k.startsWith('points:pvp:')) set.add(k.slice(12));
+    if(k.startsWith('points:lucky7:')) set.add(k.slice(15));
+  }
+  return Array.from(set).filter(Boolean).sort((a,b)=>a.localeCompare(b));
+}
+
+/* ===================== local reads ===================== */
+function localWallet(u){
+  const w1 = read(`lbx:wallet:${u}`, null);
+  const w2 = read(`sb:wallet:${u}`,  null);
+  const w  = w1 || w2 || { balance:0 };
+  return Number(w?.balance || 0);
+}
+function points(u){
+  let b = read(`points:bonus:${u}`, 0) || 0;
+  let t = read(`points:tournament:${u}`, 0) || 0;
+  let p = read(`points:pvp:${u}`, 0) || 0;
+  let l = read(`points:lucky7:${u}`, 0) || 0;
+  return {
+    bonus:Number(b)||0,
+    tour:Number(t)||0,
+    pvp:Number(p)||0,
+    lucky7:Number(l)||0
+  };
+}
+function lastUpdated(u){
+  const c = [];
+  const w1 = read(`lbx:wallet:${u}`, null); if (w1?.updatedAt) c.push(Number(w1.updatedAt));
+  const w2 = read(`sb:wallet:${u}`, null);  if (w2?.updatedAt) c.push(Number(w2.updatedAt));
+  const pb = localStorage.getItem(`points:bonus:${u}:updatedAt`); if(pb) c.push(Number(pb));
+  const pt = localStorage.getItem(`points:tournament:${u}:updatedAt`); if(pt) c.push(Number(pt));
+  const pp = localStorage.getItem(`points:pvp:${u}:updatedAt`); if(pp) c.push(Number(pp));
+  const pl = localStorage.getItem(`points:lucky7:${u}:updatedAt`); if(pl) c.push(Number(pl));
+  return new Date((c.length?Math.max(...c):Date.now())).toLocaleString();
+}
+
+/* ===================== server wallets (concurrency) ===================== */
+async function fetchWalletBalancesFromAPI(users, concurrency=6){
+  const out = new Map();
+  let idx = 0;
+  async function worker(){
+    while(idx < users.length){
+      const u = users[idx++];
+      try{
+        const r = await fetch(`/api/wallet/${encodeURIComponent(u)}`,{cache:"no-store"});
+        if(r.ok){
+          const data = await r.json();
+          const bal = Number(data?.wallet?.balance || 0);
+          out.set(u, bal);
+        }
+      }catch(_){}
+    }
+  }
+  const workers = Array.from({length:Math.min(concurrency, users.length)}, worker);
+  await Promise.all(workers);
+  return out;
+}
+
+/* ===================== aggregate & render ===================== */
+let SORT = { key:'rank', dir:'up' };
+let lastData = [];
+
+function medalFor(rank){
+  if(rank===1) return '🥇';
+  if(rank===2) return '🥈';
+  if(rank===3) return '🥉';
+  return '';
+}
+function rowClass(rank, isYou){
+  if(isYou) return 'row-you';
+  if(rank===1) return 'row-gold';
+  if(rank===2) return 'row-silver';
+  if(rank===3) return 'row-bronze';
+  return '';
+}
+
+async function aggregate(){
+  const users = discoverUsers();
+  let lbxMap;
+  if(API_OK){
+    lbxMap = await fetchWalletBalancesFromAPI(users);
+    $("#sourceNote").innerHTML =
+      'Source: <b>server wallets</b> (<code>/api/wallet/:user</code>). Points from local keys.';
+  } else {
+    lbxMap = new Map();
+    $("#sourceNote").innerHTML =
+      'Source: <b>local fallback</b> (<code>lbx:wallet:*</code>/<code>sb:wallet:*</code>). Points from local keys.';
+  }
+
+  const rows = users.map(u=>{
+    const lbx = lbxMap.has(u) ? lbxMap.get(u) : localWallet(u);
+    const {bonus,tour,pvp,lucky7} = points(u);
+    return {
+      username:u,
+      bonus, tour, pvp, lucky7,
+      total: bonus + tour + pvp + lucky7,
+      lbx: Number(lbx)||0,
+      updatedAt: lastUpdated(u)
+    };
+  });
+
+  // default ranking
+  rows.sort((a,b)=>{
+    if(b.total!==a.total) return b.total-a.total;
+    if(b.lbx!==a.lbx) return b.lbx-a.lbx;
+    return a.username.localeCompare(b.username);
+  });
+
+  // dense rank
+  let lastKey=null, r=0;
+  rows.forEach((row,i)=>{
+    const key=`${row.total}|${row.lbx}`;
+    if(key!==lastKey){ r=i+1; lastKey=key; }
+    row.rank=r;
+  });
+
+  lastData = rows;
+  return rows;
+}
+
+function currentUser(){
+  return up(localStorage.getItem('lash3z_last_user') || localStorage.getItem('user:username') || '');
+}
+
+function renderTable(rows){
+  const term = ($('#search').value||'').trim().toLowerCase();
+  let data = rows;
+  if(term) data = data.filter(r=>r.username.toLowerCase().includes(term));
+
+  if(SORT.key && SORT.key!=='rank'){
+    const dir = SORT.dir==='down' ? -1 : 1;
+    data = data.slice().sort((a,b)=>{
+      const va=a[SORT.key], vb=b[SORT.key];
+      return (typeof va==='string' ? va.localeCompare(vb) : va-vb)*dir;
+    });
+  }
+
+  const me = currentUser();
+  const tbody = $('#rows');
+  tbody.innerHTML = data.map(r=>`
+    <tr class="${rowClass(r.rank, me && r.username===me)}">
+      <td class="rank">${r.rank}</td>
+      <td>
+        <div class="user">
+          <img class="avatar" src="/assets/lash3zbux_pp.png" alt="">
+          <div class="uname">
+            <span>${esc(r.username)}</span>
+            ${medalFor(r.rank) ? '<span class="medal" title="Top ' + r.rank + '">' + medalFor(r.rank) + '</span>' : ''}
+          </div>
+        </div>
+      </td>
+      <td>${r.bonus}</td>
+      <td>${r.tour}</td>
+      <td>${r.pvp}</td>
+      <td>${r.lucky7}</td>
+      <td><strong>${r.total}</strong></td>
+      <td>${fmt0(r.lbx)}</td>
+      <td class="mini">${r.updatedAt}</td>
+    </tr>
+  `).join('');
+
+  $('#pCount').textContent = data.length;
+  const sumLBX = data.reduce((a,r)=>a+Number(r.lbx||0),0);
+  $('#sumLBX').textContent = fmt0(sumLBX);
+
+  // "You are #n"
+  if(me){
+    const rec = rows.find(r=>r.username===me);
+    if(rec){
+      const you = $('#youStat');
+      you.style.display = 'inline-block';
+      you.textContent = `You: #${rec.rank} • ${fmt0(rec.lbx)} LBX • ${rec.total} pts`;
+    }
+  }
+
+  document.querySelectorAll('thead th.sort').forEach(th=>{
+    th.classList.remove('up','down');
+    if(th.dataset.key===SORT.key) th.classList.add(SORT.dir);
+  });
+}
+
+/* ===================== CSV ===================== */
+function toCSV(rows){
+  const hdr = ['Rank','Username','Bonus Hunt','Tournament','PVP','Lucky 7','Total Pts','LBX','Last Updated'];
+  const lines = [hdr.join(',')];
+  rows.forEach(r=>{
+    lines.push([r.rank,r.username,r.bonus,r.tour,r.pvp,r.lucky7,r.total,Math.round(r.lbx),`"${r.updatedAt}"`].join(','));
+  });
+  return lines.join('\n');
+}
+function downloadCSV(name, text){
+  const blob = new Blob([text], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=name; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ===================== wire ===================== */
+document.getElementById('refresh').addEventListener('click', async ()=>{
+  await probeAPI();
+  const rows = await aggregate();
+  renderTable(rows);
+});
+document.getElementById('search').addEventListener('input', ()=>renderTable(lastData));
+document.querySelectorAll('thead th.sort').forEach(th=>{
+  th.addEventListener('click', ()=>{
+    const key = th.dataset.key;
+    if(SORT.key===key){ SORT.dir = SORT.dir==='up'?'down':'up'; }
+    else { SORT.key=key; SORT.dir='up'; }
+    renderTable(lastData);
+  });
+});
+document.getElementById('exportCSV').addEventListener('click', ()=>{
+  downloadCSV('overall_leaderboard.csv', toCSV(lastData));
+});
+
+// live updates from other tabs/windows
+window.addEventListener('storage', (e)=>{
+  if(!e.key) return;
+  if(e.key.startsWith('lbx:wallet:') || e.key.startsWith('sb:wallet:') ||
+     e.key.startsWith('points:bonus:') || e.key.startsWith('points:tournament:') ||
+     e.key.startsWith('points:pvp:') || e.key.startsWith('points:lucky7:') ||
+     e.key==='users:all'){
+    renderTable(lastData);
+  }
+});
+
+// gentle auto-refresh
+let _tick = null;
+async function boot(){
+  await probeAPI();
+  const rows = await aggregate();
+  renderTable(rows);
+  if(_tick) clearInterval(_tick);
+  _tick = setInterval(async ()=>{
+    await probeAPI();
+    const rows = await aggregate();
+    renderTable(rows);
+  }, 3000);
+}
+boot();
+</script>
+</body>
+</html>

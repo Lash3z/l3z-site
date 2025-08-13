@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LASH3Z VIP Club</title>
+  <link rel="stylesheet" href="/assets/styles/global.css">
+  <style>
+    body{
+      margin:0;
+      font-family:'Segoe UI',sans-serif;
+      background: url("/assets/media/BG_page.png") no-repeat center center fixed;
+      background-size: cover;
+      color:#fff;
+    }
+    .vip-container{
+      max-width: 900px;
+      margin: 50px auto;
+      background: rgba(0,0,0,.8);
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 0 20px #00ffff;
+    }
+    h1{
+      text-align:center;
+      color:#00ffff;
+      font-size:2.5rem;
+      margin: 14px 0 20px;
+    }
+    p{
+      font-size:1.1rem;
+      line-height:1.6;
+      text-align:justify;
+      margin:0;
+    }
+    .vip-video{
+      display:block;
+      margin: 0 auto;
+      width: 100%;
+      max-width: 520px;
+      height: auto;
+      border-radius: 12px;
+      box-shadow: 0 0 15px #00ffff;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="vip-container">
+    <!-- Video instead of logo; absolute paths fix loading -->
+    <video
+      class="vip-video"
+      autoplay
+      loop
+      muted
+      playsinline
+      preload="metadata"
+      poster="/assets/media/lash3z_logo.png">
+      <source src="/assets/media/littlelash.mp4" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+
+    <h1>Welcome to the LASH3Z VIP Club</h1>
+    <p>
+      Becoming a VIP in the LASH3Z community is your ticket to unlocking extra rewards, exclusive perks, and a front-row seat to the action. As a VIP, you can earn bonus Lashes Bucks simply by being an active part of the stream and supporting the channel. Gift subscriptions to other viewers, keep your own subscription active, and you’ll see your balance grow faster than a jackpot on a hot streak. Supporting me through my trusted casino affiliates is another big way to climb the VIP ranks — every deposit and every game you play helps fuel the channel and brings you closer to premium rewards. Regular play and consistent support don’t just keep the stream alive; they stack your VIP status higher and higher, unlocking even bigger bonuses. The more you’re involved, the more you’ll earn — from priority access to giveaways, to double points on special event nights. As a VIP, you’ll also get early access to exclusive tournaments and the inside scoop on upcoming hunts. You’ll be part of a tight-knit group of dedicated supporters who get noticed, appreciated, and rewarded. Whether it’s cheering in chat, playing alongside the community, or repping the brand on social media, every bit of engagement counts. Think of VIP status as your backstage pass to the LASH3Z experience — more perks, more rewards, and more fun. And remember, VIPs aren’t just spectators — they’re part of the action, helping shape the stream and sharing in the wins. So keep showing up, keep playing, and keep supporting — because the next big reward could have your name on it.
+    </p>
+  </div>
+
+</body>
+</html>

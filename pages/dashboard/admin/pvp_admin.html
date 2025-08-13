@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PVP — Admin</title>
+<meta http-equiv="Cache-Control" content="no-store"/>
+<style>
+  :root{
+    --bg:#060b0d; --panel:#0b1417; --ink:#eaf7ff; --muted:#9fd0d6; --line:rgba(0,255,255,.18);
+    --teal:#00ffff; --ok:#12d48a; --warn:#ffb42d; --danger:#e25a6f; --gold:#ffb42d;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}
+  h1{margin:16px 0 10px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
+  .wrap{max-width:1500px;margin:0 auto;padding:0 16px 48px}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  input,select,button{border-radius:10px;border:1px solid var(--line);background:#0c1519;color:#eaf7ff;padding:10px}
+  button{cursor:pointer;font-weight:800}
+  .btn{padding:10px 12px;border:1px solid var(--line);background:#0f1720;color:#eaf7ff;border-radius:10px}
+  .btn.ok{background:#103d30;border-color:#1fa37b}
+  .btn.warn{background:#3a2e10;border-color:#b38328}
+  .btn.del{background:#2b1116;border-color:#7e2a3c}
+  .card{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
+  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cfffff}
+  .note{font-size:12px;color:#bfe}
+  .grid2{display:grid;grid-template-columns:1fr 1.1fr;gap:16px}
+  @media (max-width:1200px){.grid2{grid-template-columns:1fr}}
+
+  .frow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:8px}
+  .frow .col{display:flex;flex-direction:column;gap:8px}
+  .cap{text-transform:uppercase}
+
+  .gamesList{display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 360px);overflow:auto;padding-right:6px}
+  .gameCard{display:grid;grid-template-columns:64px 1fr auto auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:8px 10px}
+  .tiny{width:64px;height:86px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#000}
+  .tiny img{width:100%;height:100%;object-fit:cover;display:block}
+  .gtitle{font-weight:900}
+  .sub{font-size:12px;color:#9fd0d6}
+
+  .matches{display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 360px);overflow:auto;padding-right:6px}
+  .matchCard{
+    display:grid;grid-template-columns:1fr 48px 1fr 210px 84px;gap:12px;align-items:center;
+    border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:10px 12px;
+  }
+  .sideL{display:grid;grid-template-columns:1fr 40px;gap:10px;align-items:center}
+  .sideR{display:grid;grid-template-columns:40px 1fr;gap:10px;align-items:center}
+  .thumb{width:40px;height:56px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#000}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .sname{font-weight:900;display:flex;align-items:center;gap:6px}
+  .cup{color:var(--gold);filter:drop-shadow(0 0 4px #ffb42d66)}
+  .vs{display:grid;place-items:center;color:#9fe;font-weight:900}
+  input[type="number"]{appearance:textfield}
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  .score{width:70px;text-align:center;font-weight:900}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>PVP — Admin</h1>
+
+  <div class="card" style="display:flex;gap:10px;align-items:center">
+    <button id="btnSave" class="btn warn">Save Draft</button>
+    <button id="btnPublish" class="btn ok">Publish → Player UIs + Live</button>
+    <button id="btnClear" class="btn del">Delete All</button>
+    <span id="msg" class="pill" style="margin-left:auto">Ready</span>
+  </div>
+
+  <!-- Add game -->
+  <div class="card">
+    <div class="frow">
+      <div class="col">
+        <label>GAME TITLE</label>
+        <input id="inGTitle" class="cap" placeholder="E.G. DUCK HUNTERS"/>
+      </div>
+      <div class="col">
+        <label>PROVIDER</label>
+        <input id="inProv" class="cap" placeholder="E.G. HACKSAW"/>
+      </div>
+      <div class="col">
+        <label>OTHER / NOTE</label>
+        <input id="inNote" class="cap" placeholder="OPTIONAL"/>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div class="col">
+        <label>UPLOAD IMAGE</label>
+        <input id="inFile" type="file" accept="image/*"/>
+      </div>
+      <div class="col" style="flex:1;min-width:360px">
+        <label>OR ASSET PATH (relative)</label>
+        <div class="row" style="gap:8px">
+          <input id="inAsset" style="flex:1" placeholder="assets/slot images/duck-hunters.webp"/>
+          <button id="btnAuto" class="btn">Auto</button>
+        </div>
+      </div>
+      <button id="btnAdd" class="btn ok">+ Add Game</button>
+      <span class="note">“Auto” searches /assets/slot images/ (multi-base, index.json, spaces & case friendly).</span>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3>Games</h3>
+        <span class="note">Select two → Add Match.</span>
+      </div>
+      <div id="gamesList" class="gamesList"></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3>Matchups & Live Scores</h3>
+        <button id="btnAddMatch" class="btn">+ Add Match (pair selected)</button>
+      </div>
+      <div id="matches" class="matches"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="note">
+      Stores draft in <code>localStorage["pvp:games"]</code> / <code>["pvp:matches"]</code>, and publishes a combined feed at
+      <code>localStorage["pvp:builder"]</code>. Images from <b>assets/slot images/</b>.
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ------------ CONFIG (same robust Auto finder) ------------ */
+  const BASES = ['assets/slot images/', '../assets/slot images/', '/assets/slot images/'];
+  const EXT = ['webp','png','jpg','jpeg'];
+  let IMG_INDEX = null;
+
+  /* ------------ KEYS ------------ */
+  const GKEY='pvp:games', MKEY='pvp:matches', BKEY='pvp:builder';
+
+  /* ------------ DOM ------------ */
+  const $ = s=>document.querySelector(s);
+  const els = {
+    msg: $('#msg'),
+    inGTitle: $('#inGTitle'), inProv: $('#inProv'), inNote: $('#inNote'),
+    inFile: $('#inFile'), inAsset: $('#inAsset'), btnAuto: $('#btnAuto'),
+    btnAdd: $('#btnAdd'), btnSave: $('#btnSave'), btnPublish: $('#btnPublish'), btnClear: $('#btnClear'),
+    gamesList: $('#gamesList'), matches: $('#matches'), btnAddMatch: $('#btnAddMatch')
+  };
+
+  /* ------------ STATE ------------ */
+  let games = load(GKEY) || []; // {id,title,provider,note,image,imageUrl}
+  let matches = load(MKEY) || []; // {id,leftId,rightId,leftTitle,rightTitle,leftImg,rightImg,leftScore,rightScore,winnerId}
+
+  /* ------------ UTILS ------------ */
+  function load(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null;}catch{ return null; } }
+  function save(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+  function toast(t,ok){ els.msg.textContent=t; els.msg.style.color=ok===false?'#ff9aa7':'#baffea'; clearTimeout(els._t); els._t=setTimeout(()=>els.msg.textContent='',2200); }
+  function slug(s){ return (s||'').toString().trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+  function enc(u){ return encodeURI(u); }
+
+  async function imgExists(url){
+    return new Promise(res=>{
+      const i=new Image(); i.onload=()=>res(true); i.onerror=()=>res(false);
+      i.src = enc(url) + (url.includes('?')?'&':'?') + 'v=' + Date.now();
+    });
+  }
+
+  async function loadIndex(){
+    for (const b of BASES){
+      try{
+        const r = await fetch(enc(b + 'index.json'), {cache:'no-store'});
+        if(r.ok){ const j = await r.json(); return j.images || j; }
+      }catch(e){}
+    }
+    return null;
+  }
+
+  async function autoFind(){
+    const raw = els.inGTitle.value.trim();
+    const prv = els.inProv.value.trim();
+    if(!raw){ toast('Type a game title first.', false); return; }
+    if(IMG_INDEX===null) IMG_INDEX = await loadIndex();
+
+    const tSlug = slug(raw), pSlug = slug(prv), rawLower = raw.toLowerCase();
+
+    const k1 = tSlug, k2 = pSlug ? `${pSlug}__${tSlug}` : null;
+    const mapVal = IMG_INDEX && (IMG_INDEX[k2] || IMG_INDEX[k1]);
+    if(mapVal){
+      const cands = (/^(?:\/|\.{1,2}\/|assets\/)/.test(mapVal)) ? [mapVal] : BASES.map(b=>b+mapVal);
+      for(const u of cands){ if(await imgExists(u)){ els.inAsset.value=u; toast('Found image (index) ✓'); return; } }
+    }
+
+    const guesses=[];
+    for(const base of BASES){
+      EXT.forEach(ext=>guesses.push(`${base}${raw}.${ext}`));
+      EXT.forEach(ext=>guesses.push(`${base}${rawLower}.${ext}`));
+      EXT.forEach(ext=>guesses.push(`${base}${tSlug}.${ext}`));
+      if(pSlug){
+        EXT.forEach(ext=>guesses.push(`${base}${pSlug}__${tSlug}.${ext}`));
+        EXT.forEach(ext=>guesses.push(`${base}${pSlug}/${tSlug}.${ext}`));
+      }
+    }
+    for(const u of guesses){ if(await imgExists(u)){ els.inAsset.value=u; toast('Found image ✓'); return; } }
+    toast('No matching image found. Upload or paste a path.', false);
+  }
+
+  els.btnAuto.addEventListener('click', autoFind);
+  ['inGTitle','inProv'].forEach(id=>document.getElementById(id).addEventListener('blur', ()=>{ if(!els.inAsset.value) autoFind(); }));
+  ['inGTitle','inProv','inNote'].forEach(id=>document.getElementById(id).addEventListener('input', function(){ this.value=this.value.toUpperCase(); }));
+
+  /* ------------ RENDER ------------ */
+  function renderGames(){
+    els.gamesList.innerHTML='';
+    if(!games.length){ els.gamesList.innerHTML='<div class="pill">No games yet.</div>'; return; }
+    games.forEach(g=>{
+      const div=document.createElement('div'); div.className='gameCard'; div.dataset.id=g.id;
+      const src=g.imageUrl||g.image||'';
+      div.innerHTML=`
+        <div class="tiny">${src?`<img src="${enc(src)}" alt="">`:''}</div>
+        <div><div class="gtitle">${g.title||'UNTITLED'}</div><div class="sub">${g.provider||''}</div></div>
+        <button class="btn" data-act="pick">Select</button>
+        <button class="btn del" data-act="del">Delete</button>
+      `;
+      div.querySelector('[data-act="pick"]').addEventListener('click', ()=>{ div.classList.toggle('picked'); });
+      div.querySelector('[data-act="del"]').addEventListener('click', ()=>{
+        games = games.filter(x=>x.id!==g.id);
+        matches = matches.filter(mx=>mx.leftId!==g.id && mx.rightId!==g.id);
+        save(GKEY,games); save(MKEY,matches); renderGames(); renderMatches();
+      });
+      els.gamesList.appendChild(div);
+    });
+  }
+
+  function renderMatches(){
+    els.matches.innerHTML='';
+    if(!matches.length){ els.matches.innerHTML='<div class="pill">No matchups yet.</div>'; return; }
+    matches.forEach(mx=>{
+      const L = games.find(x=>x.id===mx.leftId)||{}, R = games.find(x=>x.id===mx.rightId)||{};
+      const leftWin = mx.winnerId && mx.winnerId===mx.leftId;
+      const rightWin = mx.winnerId && mx.winnerId===mx.rightId;
+      const li=document.createElement('div'); li.className='matchCard'; li.dataset.id=mx.id;
+      li.innerHTML=`
+        <div class="sideL">
+          <div class="sname">${leftWin?'<span class="cup">🏆</span>':''}${mx.leftTitle||L.title||'LEFT'}</div>
+          <div class="thumb">${(L.imageUrl||L.image)?`<img src="${enc(L.imageUrl||L.image)}" alt="">`:''}</div>
+        </div>
+        <div class="vs">VS</div>
+        <div class="sideR">
+          <div class="thumb">${(R.imageUrl||R.image)?`<img src="${enc(R.imageUrl||R.image)}" alt="">`:''}</div>
+          <div class="sname">${rightWin?'<span class="cup">🏆</span>':''}${mx.rightTitle||R.title||'RIGHT'}</div>
+        </div>
+        <div class="row" style="gap:8px;justify-content:center">
+          <input class="score sL" type="number" min="0" step="1" value="${+mx.leftScore||0}"/>
+          <span class="vs">:</span>
+          <input class="score sR" type="number" min="0" step="1" value="${+mx.rightScore||0}"/>
+          <button class="btn ok btnSettle">Set Winner</button>
+        </div>
+        <div style="text-align:right"><button class="btn del" data-act="del">Delete</button></div>
+      `;
+      li.querySelector('.sL').addEventListener('input', e=>{ mx.leftScore=+e.target.value||0; save(MKEY,matches); });
+      li.querySelector('.sR').addEventListener('input', e=>{ mx.rightScore=+e.target.value||0; save(MKEY,matches); });
+      li.querySelector('.btnSettle').addEventListener('click', ()=>{
+        const Ls=+mx.leftScore||0, Rs=+mx.rightScore||0;
+        if(Ls===Rs){ toast('Scores tied. Adjust first.', false); return; }
+        mx.winnerId = (Ls>Rs)? mx.leftId : mx.rightId;
+        save(MKEY,matches); renderMatches(); toast('Winner set.');
+      });
+      li.querySelector('[data-act="del"]').addEventListener('click', ()=>{
+        matches = matches.filter(x=>x.id!==mx.id); save(MKEY,matches); renderMatches();
+      });
+      els.matches.appendChild(li);
+    });
+  }
+
+  /* ------------ ACTIONS ------------ */
+  els.btnAdd.addEventListener('click', ()=>{
+    const t=els.inGTitle.value.trim().toUpperCase();
+    const p=els.inProv.value.trim().toUpperCase();
+    const n=els.inNote.value.trim().toUpperCase();
+    const asset=els.inAsset.value.trim();
+    if(!t){ toast('Enter a game title.', false); return; }
+
+    function add(imgUrl){
+      games.push({id:'PG'+Math.random().toString(36).slice(2,10).toUpperCase(), title:t, provider:p, note:n, imageUrl:imgUrl||null});
+      els.inGTitle.value=''; els.inProv.value=''; els.inNote.value=''; els.inAsset.value=''; els.inFile.value='';
+      save(GKEY,games); renderGames(); toast('Game added.');
+    }
+    if(els.inFile.files && els.inFile.files[0]){
+      const fr=new FileReader(); fr.onload=e=>add(e.target.result); fr.readAsDataURL(els.inFile.files[0]);
+    }else{ add(asset||null); }
+  });
+
+  els.btnAddMatch.addEventListener('click', ()=>{
+    const picks=[...els.gamesList.querySelectorAll('.gameCard.picked')].map(x=>x.dataset.id);
+    if(picks.length!==2){ toast('Pick exactly TWO games (click “Select”).', false); return; }
+    const L=games.find(x=>x.id===picks[0]), R=games.find(x=>x.id===picks[1]);
+    matches.push({
+      id:'PM'+Math.random().toString(36).slice(2,10).toUpperCase(),
+      leftId:L.id,rightId:R.id,leftTitle:L.title,rightTitle:R.title,
+      leftImg:L.imageUrl||L.image||'', rightImg:R.imageUrl||R.image||'',
+      leftScore:0,rightScore:0,winnerId:null
+    });
+    els.gamesList.querySelectorAll('.picked').forEach(x=>x.classList.remove('picked'));
+    save(MKEY,matches); renderMatches(); toast('Match added.');
+  });
+
+  els.btnSave.addEventListener('click', ()=>{ save(GKEY,games); save(MKEY,matches); toast('Draft saved.'); });
+
+  els.btnPublish.addEventListener('click', ()=>{
+    const builder={
+      games: games.map(g=>({id:g.id,title:g.title,provider:g.provider,note:g.note,imageUrl:g.imageUrl||null})),
+      matches: matches.map(mx=>({
+        id:mx.id,leftId:mx.leftId,rightId:mx.rightId,
+        leftTitle:mx.leftTitle,rightTitle:mx.rightTitle,
+        leftImg:mx.leftImg||null,rightImg:mx.rightImg||null,
+        leftScore:+mx.leftScore||0,rightScore:+mx.rightScore||0,winnerId:mx.winnerId||null
+      })),
+      lastUpdated: Date.now()
+    };
+    save(BKEY,builder); toast('Published builder feed.');
+  });
+
+  els.btnClear.addEventListener('click', ()=>{
+    if(!confirm('Delete ALL games & matches?')) return;
+    games=[]; matches=[]; save(GKEY,games); save(MKEY,matches); toast('Cleared.'); renderGames(); renderMatches();
+  });
+
+  (async()=>{ IMG_INDEX = await loadIndex(); renderGames(); renderMatches(); })();
+
+})();
+</script>
+</body>
+</html>

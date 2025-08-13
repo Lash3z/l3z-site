@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>My Bets — L3Z</title>
+<style>
+  :root{
+    --bg:#0b0f10; --ink:#eaf7ff; --muted:#9bc; --panel:#0f1416; --ring:rgba(0,255,255,.22);
+    --gold:#ffb42d; --cyan:#00ffff; --ok:#12f3d6; --bad:#ff5a73; --dark:#0a1316;
+  }
+  *,*:before,*:after{box-sizing:border-box}
+  html,body{margin:0;background:#000 url("/assets/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  html[data-auth="checking"] body { opacity:0; transition:opacity .12s ease; }
+
+  .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:12px;background:rgba(0,0,0,.7);border-bottom:1px solid var(--ring)}
+  .title{font-weight:900;letter-spacing:.4px;color:var(--gold);text-shadow:0 0 14px rgba(255,180,45,.35)}
+  .grow{flex:1}
+  .pill{padding:6px 10px;border-radius:999px;border:1px solid var(--ring);background:#0b1f21;color:#cfffff;font-weight:800}
+  .lbx-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:14px;border:1px solid rgba(0,255,255,.18);
+    background:#0b1f21;color:#cfffff;font-weight:800;font-size:12px;box-shadow:0 0 12px rgba(0,255,255,.10)}
+  .lbx-dot{width:8px;height:8px;border-radius:50%;background:#ffb42d;box-shadow:0 0 8px #ffb42d66}
+  .wrap{max-width:1200px;margin:18px auto;padding:0 12px}
+  .section{margin-top:14px}
+  .card{background:linear-gradient(180deg,#0f1416,#0a1113);border:1px solid var(--ring);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:16px}
+  .muted{color:var(--muted);font-size:13px}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .tab{padding:8px 12px;border-radius:999px;border:1px solid var(--ring);background:#0b1f21;color:#cfffff;font-weight:800;cursor:pointer}
+  .tab.active{outline:2px solid var(--cyan);box-shadow:0 0 0 3px rgba(0,255,255,.12) inset}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .grid{display:grid;grid-template-columns:1fr;gap:12px}
+  @media(min-width: 900px){ .grid.cols-2{grid-template-columns:1fr 1fr} .grid.cols-3{grid-template-columns:1fr 1fr 1fr} }
+
+  /* Live big cards (fixed) */
+  .live{display:grid;grid-template-columns:1fr;gap:12px}
+  @media(min-width:900px){ .live{grid-template-columns:1fr 1fr} }
+  .live-card{
+    display:grid;
+    grid-template-columns:max-content 1fr auto; /* let badge size itself */
+    gap:12px; align-items:center;
+    border:1px solid rgba(0,255,255,.15);
+    border-radius:14px;
+    background:linear-gradient(180deg,#0c1519,#091114);
+    padding:12px;
+  }
+  .badge{padding:4px 8px;border-radius:999px;border:1px solid var(--ring);background:#0b1f21;color:#bfe;font-size:12px;white-space:nowrap}
+  .big{font-size:18px;font-weight:900;margin:0}
+  .odds{font-variant-numeric:tabular-nums}
+  .right{text-align:right}
+  .live-card .kvs{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end }
+  @media(max-width:780px){
+    .live-card{ grid-template-columns:1fr; }
+    .live-card .right{ text-align:left }
+  }
+
+  /* Bet history table */
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
+  th{color:#bfe}
+  .nowrap{white-space:nowrap}
+  .good{color:#baffea} .bad{color:#ffb5be}
+  .kvs{display:flex;gap:10px;flex-wrap:wrap}
+  .kv{display:flex;gap:6px;align-items:center}
+  .kv b{color:#cfe}
+
+  .search{display:flex;gap:8px;align-items:center;margin-top:8px}
+  input[type="search"], select{height:40px;border-radius:10px;border:1px solid var(--ring);background:#0a1719;color:#eaf7ff;padding:8px 12px;outline:none}
+
+  .toast{position:fixed;right:16px;bottom:16px;background:#0b1f21;border:1px solid var(--ring);border-radius:10px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:.18s}
+  .toast.on{opacity:1;transform:translateY(0)}
+</style>
+
+<!-- AUTH GATE (require active session & wallet) -->
+<script>
+(function(){
+  "use strict";
+  const LOGIN="/pages/dashboard/home/login.html";
+  const SESSION_KEY="l3z:session", PROFILE_KEY="l3z:user", UNAME_KEY="user:username", LAST_KEY="lash3z_last_user";
+  const WALLET = u=>`lbx:wallet:${(u||'').toUpperCase()}`, LEDGER=u=>`lbx:ledger:${(u||'').toUpperCase()}`;
+  const now=()=>Date.now(); const up=s=>(s||"").toString().trim().toUpperCase();
+  function sget(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch{ return null; } }
+  function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+  function redirectToLogin(){ const back=encodeURIComponent(location.pathname+location.search+location.hash); location.replace(`${LOGIN}?redirect=${back}`); }
+  document.documentElement.setAttribute("data-auth","checking");
+  const sess=sget(SESSION_KEY);
+  if(!sess || !sess.user || Number(sess.expiresAt)<=now()){ redirectToLogin(); throw new Error("no session"); }
+  const USER=up(sess.user);
+  localStorage.setItem(UNAME_KEY,USER); localStorage.setItem(LAST_KEY,USER); sset(PROFILE_KEY,{username:USER});
+  // Ensure wallet
+  let w=sget(WALLET(USER)); if(!w){ w={balance:50,created:now(),lastDaily:0}; sset(WALLET(USER),w); sset(LEDGER(USER),[{ts:now(),delta:+50,reason:"WELCOME_BONUS",balance:50}]); }
+  window.__L3Z__ = { USER, WALLET, LEDGER };
+  window.addEventListener("DOMContentLoaded",()=> document.documentElement.removeAttribute("data-auth"));
+})();
+</script>
+</head>
+<body>
+  <div class="topbar">
+    <div class="title">My Bets</div>
+    <div class="grow"></div>
+    <div class="pill">Welcome, <span id="welcomeName">PLAYER</span></div>
+    <div class="lbx-badge"><span class="lbx-dot"></span><span id="lbxAmt">0</span><span class="muted">LBX</span></div>
+  </div>
+
+  <div class="wrap">
+    <!-- Tabs + quick stats -->
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div class="row">
+          <button class="tab active" data-tab="all">All</button>
+          <button class="tab" data-tab="battleground">Battleground</button>
+          <button class="tab" data-tab="bonus">Bonus Hunt</button>
+          <button class="tab" data-tab="pvp">PVP</button>
+        </div>
+        <div class="kvs">
+          <div class="kv"><b>Total Bets:</b> <span id="statTotal">0</span></div>
+          <div class="kv"><b>This Week:</b> <span id="statWeek">0</span></div>
+          <div class="kv"><b>Latest Event:</b> <span id="statEvent">—</span></div>
+        </div>
+      </div>
+      <div class="search">
+        <input id="q" type="search" placeholder="Search event, pick, or ID…"/>
+        <select id="range">
+          <option value="7">Last 7 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="90">Last 90 days</option>
+          <option value="all">All time</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- LIVE NOW -->
+    <div class="section">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px">
+          <h2 style="margin:0">Live Now</h2>
+          <span class="muted">Latest bets in the last 48 hours</span>
+        </div>
+        <div id="live" class="live"></div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="section">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px">
+          <h2 style="margin:0">History</h2>
+          <span class="muted">Your most recent 200 bets</span>
+        </div>
+        <div class="grid cols-1">
+          <table>
+            <thead>
+              <tr>
+                <th class="nowrap">When</th>
+                <th>Mode</th>
+                <th>Event</th>
+                <th>Market</th>
+                <th>Pick</th>
+                <th class="right">Stake (LBX)</th>
+                <th class="right">Odds</th>
+                <th class="right">Potential</th>
+              </tr>
+            </thead>
+            <tbody id="hist"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">Saved.</div>
+
+<script>
+(function(){
+  "use strict";
+  const $=s=>document.querySelector(s);
+  const esc=s=>(s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+  const fmt=n=> (n==null||isNaN(+n)) ? '—' : (+n).toFixed(2);
+  const up=s=>(s||'').toString().trim().toUpperCase();
+  const now=()=>Date.now();
+
+  const { USER, WALLET } = window.__L3Z__;
+  const BETS_KEY = "lash3z_bets";
+  const PUB_BG_KEY = "sb:markets:battleground";       // optional cross-ref for odds
+  const BG_UNIFIED_KEY = "sb:markets:unified";        // optional global state
+
+  const welcomeName = $("#welcomeName");
+  const lbxAmt = $("#lbxAmt");
+  const liveBox = $("#live");
+  const histBody = $("#hist");
+  const statTotal = $("#statTotal");
+  const statWeek = $("#statWeek");
+  const statEvent = $("#statEvent");
+  const tabs = Array.from(document.querySelectorAll(".tab"));
+  const searchEl = $("#q");
+  const rangeEl = $("#range");
+
+  // ---------- data access ----------
+  function sget(k,def=null){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch{ return def; } }
+  function getWallet(u){ return sget(WALLET(u),{balance:0}); }
+  function getBets(){ const arr=sget(BETS_KEY,[]); return Array.isArray(arr)?arr:[]; }
+
+  // subset by user/mode/time/search
+  function filterBets(raw, mode, days, q){
+    const since = days==='all'? 0 : (now() - Number(days)*86400000);
+    const term = (q||'').trim().toLowerCase();
+    return raw.filter(r=>{
+      if(up(r.user)!==USER) return false;
+      if(mode!=='all' && r.mode!==mode) return false;
+      if(Number(r.ts||0) < since) return false;
+      if(!term) return true;
+      const hay = `${r.eventId||''} ${r.pickName||''} ${r.label||''} ${r.matchId||''} ${r.mode||''}`.toLowerCase();
+      return hay.includes(term);
+    }).sort((a,b)=>Number(b.ts||0)-Number(a.ts||0));
+  }
+
+  // live = last 48h
+  function liveSlice(arr){
+    const cutoff = now() - 48*3600*1000;
+    return arr.filter(r=>Number(r.ts||0)>=cutoff).slice(0,8);
+  }
+
+  // cross-ref odds for Battleground H2H if available
+  function attachOdds(bet){
+    if(bet.odds!=null) return bet;
+    if(bet.mode!=="battleground" || !bet.matchId) return bet;
+    const pub = sget(PUB_BG_KEY) || sget(BG_UNIFIED_KEY) || {};
+    const h2h = (pub.h2h || (pub.sections?.battleground?.h2h) || []);
+    const m = h2h.find(x => (x.id||x.matchId) === bet.matchId);
+    if(!m) return bet;
+    const pick = (bet.pick||'').toLowerCase();
+    let o = null;
+    if(pick==="left")  o = Number(m.leftOdds||m.left?.odds||null);
+    if(pick==="right") o = Number(m.rightOdds||m.right?.odds||null);
+    if(o) bet.odds = o;
+    return bet;
+  }
+
+  function potential(stake, odds){
+    const s=Number(stake||0), o=Number(odds||0);
+    if(!s || !o) return null;
+    return +(s*o).toFixed(2);
+  }
+
+  // ---------- painters ----------
+  function paintHeader(){
+    welcomeName.textContent = USER;
+    lbxAmt.textContent = fmt(getWallet(USER).balance||0);
+  }
+
+  function paintStats(arr){
+    statTotal.textContent = arr.length;
+    const weekCut = now() - 7*86400000;
+    statWeek.textContent = arr.filter(r=>Number(r.ts||0)>=weekCut).length;
+    statEvent.textContent = arr[0]?.eventId || '—';
+  }
+
+  function liveCard(b){
+    const when = new Date(Number(b.ts||now())).toLocaleString();
+    const stake = b.stake!=null ? fmt(b.stake) : '—';
+    const withOdds = attachOdds({...b});
+    const oddstxt = withOdds.odds!=null ? fmt(withOdds.odds) : '—';
+    const pot = potential(withOdds.stake, withOdds.odds);
+    const potTxt = pot!=null? fmt(pot) : '—';
+
+    const subtitle = (b.mode==='battleground') ? `${b.eventId||''} • ${b.matchId||''}` :
+                     (b.mode==='bonus') ? `${b.eventId||''} • ${b.marketCode||b.code||''}` :
+                     (b.mode==='pvp') ? `${b.eventId||''} • ${b.marketId||''}` : (b.eventId||'');
+
+    return `
+      <div class="live-card">
+        <div class="badge">${esc((b.mode||'').toUpperCase())}</div>
+        <div>
+          <div class="big">${esc(b.pickName || b.label || '—')}</div>
+          <div class="muted">${esc(subtitle)}</div>
+          <div class="muted">${when}</div>
+        </div>
+        <div class="right">
+          <div class="kvs">
+            <div class="kv"><b>Stake</b> ${stake}</div>
+            <div class="kv"><b>Odds</b> <span class="odds">${oddstxt}</span></div>
+            <div class="kv"><b>Potential</b> ${potTxt}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function paintLive(arr){
+    const html = liveSlice(arr).map(liveCard).join('');
+    liveBox.innerHTML = html || `<div class="muted">No fresh bets in the last 48 hours.</div>`;
+  }
+
+  function paintHistory(arr){
+    const rows = arr.slice(0,200).map(b=>{
+      const withOdds = attachOdds({...b});
+      const pot = potential(withOdds.stake, withOdds.odds);
+      return `
+        <tr>
+          <td class="nowrap">${new Date(Number(b.ts||now())).toLocaleString()}</td>
+          <td>${esc((b.mode||'').toUpperCase())}</td>
+          <td>${esc(b.eventId||'—')}</td>
+          <td>${esc(b.type||b.marketType||'—')}</td>
+          <td>${esc(b.pickName || b.label || '—')}</td>
+          <td class="right">${b.stake!=null?fmt(b.stake):'—'}</td>
+          <td class="right">${withOdds.odds!=null?fmt(withOdds.odds):'—'}</td>
+          <td class="right">${pot!=null?fmt(pot):'—'}</td>
+        </tr>`;
+    }).join('');
+    histBody.innerHTML = rows || `<tr><td colspan="8" class="muted">No bets yet.</td></tr>`;
+  }
+
+  // ---------- controller ----------
+  let currentTab = 'all';
+  function apply(){
+    const all = getBets();
+    const days = rangeEl.value;
+    const q = searchEl.value;
+    const filtered = filterBets(all, currentTab, days, q);
+    paintStats(filtered);
+    paintLive(filtered);
+    paintHistory(filtered);
+  }
+
+  Array.from(document.querySelectorAll(".tab")).forEach(t=>{
+    t.addEventListener('click', ()=>{
+      document.querySelectorAll(".tab").forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');
+      currentTab = t.dataset.tab;
+      apply();
+    });
+  });
+  searchEl.addEventListener('input', ()=>apply());
+  rangeEl.addEventListener('change', ()=>apply());
+
+  // storage sync (other tabs)
+  window.addEventListener('storage', (e)=>{
+    if(!e.key) return;
+    if(e.key===BETS_KEY || e.key.startsWith("lbx:wallet:")){ paintHeader(); apply(); }
+    if(e.key===PUB_BG_KEY || e.key===BG_UNIFIED_KEY){ apply(); }
+  });
+
+  // boot
+  paintHeader();
+  apply();
+})();
+</script>
+</body>
+</html>

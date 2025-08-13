@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Lash3zbux — Scoring & Rules</title>
+<style>
+  :root{
+    --bg:#000;
+    --ink:#eaf7ff;
+    --muted:#9cc;
+    --teal:#00ffff;
+    --accent:#ffb42d;
+    --panel:#0f1416;
+    --line:rgba(0,255,255,.16);
+  }
+  html,body{
+    margin:0;
+    background:#000 url("../../../../assets/media/BG_page.png") center/cover fixed no-repeat;
+    color:var(--ink);
+    font-family:Segoe UI,system-ui,Arial,sans-serif;
+  }
+  .wrap{max-width:980px;margin:28px auto 40px;padding:0 16px}
+  .hero{
+    display:flex;align-items:center;gap:16px;margin-bottom:16px;
+    background:linear-gradient(180deg, rgba(0,255,255,.08), rgba(0,0,0,.0));
+    border:1px solid var(--line);border-radius:16px;padding:14px 16px;
+    box-shadow:0 12px 30px rgba(0,0,0,.35);
+  }
+  .logo{
+    width:56px;height:56px;border-radius:14px;object-fit:cover;
+    border:1px solid var(--line);box-shadow:0 0 14px #00ffff44;background:#000;
+  }
+  h1{margin:0;color:var(--teal);text-shadow:0 0 12px #00ffff55}
+  .sub{color:var(--muted);font-size:13px;margin-top:4px}
+
+  .grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:18px}
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:14px 16px;
+    box-shadow:0 8px 26px rgba(0,0,0,.35);
+  }
+  .card h2{
+    margin:0 0 8px;color:var(--teal);font-size:18px;text-shadow:0 0 10px #00ffff44
+  }
+  p{margin:8px 0 10px;line-height:1.6}
+  ul{margin:8px 0 0 18px}
+  li{margin:6px 0}
+  .callout{
+    border-left:3px solid var(--accent);
+    background:rgba(255,180,45,.07);
+    padding:10px 12px;border-radius:12px;margin-top:10px;color:#ffe9b6
+  }
+  .pillrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{
+    font-size:12px;color:#112; background:linear-gradient(180deg,#ffd36d,#ffb42d);
+    padding:6px 10px;border-radius:999px;font-weight:800;box-shadow:0 4px 12px rgba(255,180,45,.35)
+  }
+  .tbl{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:8px}
+  .tbl th,.tbl td{padding:10px;border-bottom:1px solid rgba(255,255,255,.06)}
+  .tbl th{background:#0b1316;color:#cfe;text-align:left;font-weight:700}
+  .tbl tr:last-child td{border-bottom:none}
+  .mini{font-size:12px;color:var(--muted)}
+  a.link{color:#cfe;text-decoration:none;border-bottom:1px dashed rgba(0,255,255,.35)}
+  a.link:hover{color:#fff;border-bottom-color:#fff}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="hero">
+    <img class="logo" src="../../../../assets/media/lash3zbux_pp.png" alt="Lash3zbux"/>
+    <div>
+      <h1>Lash3zbux — Scoring & Rules</h1>
+      <div class="sub">How betting, rounds, events, and points work across the Lash3z ecosystem.</div>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- Bets -->
+    <div class="card">
+      <h2>L3Z Bets — How Betting Works</h2>
+      <p>Place LBX bets on available markets from the <a class="link" href="#" onclick="loadPage('pages/dashboard/home/lash3z_bets.html')">L3Z Bets</a> page. Markets are opened/locked/settled by the admin panel. Payouts are automatic when a market settles.</p>
+      <table class="tbl">
+        <tr><th>Concept</th><th>How it works</th></tr>
+        <tr><td>Stake</td><td>You choose how many LBX to risk on a selection.</td></tr>
+        <tr><td>Odds</td><td>Shown per selection. Estimated return = Stake × Odds.</td></tr>
+        <tr><td>One pick per market</td><td>For Head-to-Head/Yes-No/Over-Under you can only hold one selection per market.</td></tr>
+        <tr><td>Settlement</td><td>When admin marks a result, winners get paid automatically in LBX.</td></tr>
+        <tr><td>Wallet</td><td>Your LBX wallet is local to your username and used for all bets.</td></tr>
+      </table>
+      <div class="callout">Example: Stake 10 LBX at 2.20 odds → Payout 22 LBX if you win (profit +12).</div>
+    </div>
+
+    <!-- Bonus Hunt -->
+    <div class="card">
+      <h2>Bonus Hunt — Scoring</h2>
+      <p>Each slot round records: bet size, payout ($), and auto-computed <em>X</em> multiplier (payout ÷ bet). The hunt tracks “Returned” vs “To Break-Even”.</p>
+      <ul>
+        <li><strong>Payout → X:</strong> X = payout ÷ bet (e.g., $36.80 on $0.40 bet = 92.00x).</li>
+        <li><strong>Stats:</strong> Avg X, count of 100x+, total returned, to break-even, and P/L.</li>
+        <li><strong>Ending Balance:</strong> Set manually at end; “break-even” and profit reflect that value.</li>
+        <li><strong>Predictions:</strong> Players can bet on final balance buckets, 100x over/under, 500x yes/no, and H2H halves.</li>
+      </ul>
+      <div class="pillrow">
+        <div class="pill">Auto X calc</div>
+        <div class="pill">Break-even tracker</div>
+        <div class="pill">Final balance bets</div>
+      </div>
+    </div>
+
+    <!-- Battleground -->
+    <div class="card">
+      <h2>L3Z Battleground — Scoring</h2>
+      <p>Two games go head-to-head. You (or the market) predict which game posts the higher X. Admin sets the result once both are played.</p>
+      <ul>
+        <li><strong>Win:</strong> Higher X wins the battle.</li>
+        <li><strong>Tie:</strong> If exactly equal, admin may mark a tie or use a tie-breaker (e.g., higher payout).</li>
+        <li><strong>Markets:</strong> H2H winner, side props (e.g., any 300x+, total 100x+).</li>
+      </ul>
+      <div class="callout">Your LBX payout is determined by the odds set for the winner market.</div>
+    </div>
+
+    <!-- PVP -->
+    <div class="card">
+      <h2>PVP — Scoring & Bracket Flow</h2>
+      <p>PVP is an East vs West bracket (8/16/32). Players enter with a game pick. Rounds advance toward the middle and a champion is crowned.</p>
+      <ul>
+        <li><strong>Round Win:</strong> Higher X (or admin-defined metric) advances to the next round.</li>
+        <li><strong>Bracket:</strong> R1 → Semi → Final → Champion (displayed big at the bottom).</li>
+        <li><strong>Predictions:</strong> Exact Ending Balance, Highest X (value only), Lowest X (value only), Highest paying game (populated post-hunt).</li>
+      </ul>
+      <table class="tbl">
+        <tr><th>Placement</th><th>Leaderboard Points</th></tr>
+        <tr><td>Champion</td><td>+50</td></tr>
+        <tr><td>Runner-up</td><td>+25</td></tr>
+        <tr><td>Semi Finalists (each)</td><td>+10</td></tr>
+        <tr><td>Quarter Finalists (each)</td><td>+5</td></tr>
+      </table>
+      <p class="mini">Points above are defaults; admin can tune in the panel if needed.</p>
+    </div>
+
+    <!-- Lucky 7 -->
+    <div class="card">
+      <h2>Lucky 7 Blackjack — Awards</h2>
+      <p>Admin awards Lash3zbux during live Blackjack using the Lucky 7 admin tool. The following presets are one-click adds:</p>
+      <table class="tbl">
+        <tr><th>Event</th><th>LBX Award</th></tr>
+        <tr><td>1×7</td><td>+7</td></tr>
+        <tr><td>2×7</td><td>+14</td></tr>
+        <tr><td>3×7</td><td>+25</td></tr>
+        <tr><td>4×7</td><td>+100</td></tr>
+        <tr><td>Flush</td><td>+21</td></tr>
+        <tr><td>Straight</td><td>+21</td></tr>
+        <tr><td>Straight Flush</td><td>+50</td></tr>
+      </table>
+      <div class="callout">Awards push straight to the player’s profile, update their LBX wallet, and reflect in the leaderboard.</div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="card">
+      <h2>Overall Leaderboard — Points & Emblems</h2>
+      <ul>
+        <li><strong>Sources:</strong> Bonus Hunt points, Tournament/PVP points, and earned LBX bonuses.</li>
+        <li><strong>Top 3 Emblems:</strong> 🥇 🥈 🥉 badges display next to the #1, #2, #3 players.</li>
+        <li><strong>Automation:</strong> All awards/bets/events update profiles and the leaderboard automatically.</li>
+      </ul>
+      <div class="pillrow">
+        <div class="pill">Real-time</div>
+        <div class="pill">Auto-calculated</div>
+        <div class="pill">Top-3 badges</div>
+      </div>
+    </div>
+
+    <!-- Tie-breakers & Fair Play -->
+    <div class="card">
+      <h2>Tie-Breakers & Fair Play</h2>
+      <ul>
+        <li><strong>H2H ties:</strong> Admin may apply a tie rule (e.g., higher dollar payout, earlier achieved X, or replay).</li>
+        <li><strong>Leaderboard ties:</strong> Broken by most recent points earned, then total LBX held.</li>
+        <li><strong>Fair play:</strong> Account sharing, exploits, or spam entries can result in disqualification or LBX removal.</li>
+      </ul>
+      <p class="mini">Rules may be adjusted slightly for special events; watch the stream or Discord for announcements.</p>
+    </div>
+
+    <!-- Worked Examples -->
+    <div class="card">
+      <h2>Worked Examples</h2>
+      <ul>
+        <li><strong>Betting:</strong> You stake 20 LBX @ 1.80 on “Over 2.5 (100x+)”. It settles “Over”. You receive 36 LBX (profit +16).</li>
+        <li><strong>Bonus Hunt X:</strong> $28.00 payout on $0.20 bet → 140.00x. Counts as a 100x+ and boosts your Avg X.</li>
+        <li><strong>PVP:</strong> You reach the final and lose → +25 leaderboard points. If you win the final → +50 instead.</li>
+        <li><strong>Lucky 7:</strong> Dealer hits a straight flush → admin taps +50 → instantly added to your profile & wallet.</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
+
+
