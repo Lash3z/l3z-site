@@ -25,9 +25,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = Number(process.env.PORT) || 3000;       // Render supplies PORT
-// don't pin HOST on Render; let Node bind to all interfaces
-
+const PORT = Number(process.env.PORT) || 3000; // Render supplies PORT
 app.disable("x-powered-by");
 app.set("trust proxy", 1); // good for cookies behind proxy
 
@@ -93,7 +91,9 @@ try {
   );
   raffleSchema.index({ rid: 1, user: 1 }, { unique: true });
   RaffleEntry = mongoose.models.RaffleEntry || mongoose.model("RaffleEntry", raffleSchema);
-} catch { /* ignore if mongo not ready */ }
+} catch {
+  /* ignore if mongo not ready */
+}
 
 /* ------------------------------------
  * Admin Gate (server-side, 6h cookie)
@@ -351,7 +351,7 @@ const pagesDir  = path.resolve(__dirname, "pages");
 const adminDir  = path.resolve(__dirname, "admin");
 const indexHtml = path.resolve(__dirname, "index.html");
 
-// 🔐 Guard BOTH admin paths BEFORE static
+// 🔐 Guard BOTH admin paths BEFORE any HTML/static handling
 app.use("/pages/dashboard/admin", adminGuard);
 app.use("/admin", adminGuard);
 
