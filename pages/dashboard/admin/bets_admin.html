@@ -25,12 +25,13 @@
   input[type="number"],input[type="text"],select,textarea{
     background:#0e141a;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:8px 10px
   }
+  textarea{width:100%;min-height:140px;resize:vertical}
   .small{font-size:12px;color:var(--muted)}
   .list{max-height:420px;overflow:auto;border:1px dashed var(--line);border-radius:12px;padding:8px}
   .card{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:8px;background:#0e141a}
   .pill{padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:#0a1116;color:#9feaff;font-size:12px}
   .right{margin-left:auto}
-  .soft{color:var(--muted)}
+  .soft{color:#9fb1c7}
   .odd{width:70px}
   .line{width:100px}
   .range{width:120px}
@@ -40,11 +41,15 @@
   .bad{color:#ffb5be}
   .hr{height:1px;background:var(--line);margin:10px 0}
   .hint{padding:8px 10px;border-left:3px solid #224b55;background:#0d171c;border-radius:8px;color:#cfe8ff}
+  details{border:1px solid var(--line);border-radius:14px;padding:8px;margin:12px 0;background:#0e1416}
+  details>summary{cursor:pointer;list-style:none;font-weight:900;color:#ffdb8b}
+  details>summary::-webkit-details-marker{display:none}
 </style>
 </head>
 <body>
 <div class="wrap">
 
+  <!-- Global actions -->
   <div class="bar">
     <button class="btn primary" id="btnPublish">Publish to Players</button>
     <button class="btn" id="btnOpenAll">Open All</button>
@@ -53,426 +58,463 @@
     <span class="right small">Last publish: <span id="lastPub" class="soft">never</span></span>
   </div>
 
-  <div class="panel">
-    <div class="bar">
-      <span class="title">Battleground</span>
-      <span class="pill" id="secStatus">OPEN</span>
-      <button class="btn" id="btnImport">Import Matchups</button>
-      <button class="btn" id="btnBuild">Build/Refresh H2H</button>
-    </div>
+  <!-- ========= Battleground ========= -->
+  <details open>
+    <summary>Battleground <span class="pill" id="bgState">OPEN</span></summary>
+    <div class="panel" style="margin-top:8px">
 
-    <div class="grid g2">
-      <!-- Left: games library & selected -->
-      <div>
-        <h3>Games</h3>
-        <div class="small soft">Select two → “Add Match” to create H2H.</div>
-        <div class="row" style="margin:6px 0 10px">
-          <input id="gameSearch" class="w100" placeholder="Search by name or provider"/>
-          <button class="btn" id="addPair" title="Add Match from the two blue selected cards">+ Add Match (pair selected)</button>
-        </div>
-        <div id="gamesList" class="list"></div>
+      <div class="bar">
+        <button class="btn" id="bgImport">Import Matchups</button>
+        <button class="btn" id="bgBuild">Build/Refresh H2H</button>
+        <button class="btn warn" id="bgToggle">Toggle OPEN/LOCKED</button>
       </div>
 
-      <!-- Right: current matchups & live -->
-      <div>
+      <div class="grid g2">
+        <div>
+          <h3>Games</h3>
+          <div class="small soft">Select two → “Add Match” to create H2H.</div>
+          <div class="row" style="margin:6px 0 10px">
+            <input id="bgSearch" class="w100" placeholder="Search by name or provider"/>
+            <button class="btn" id="bgAddPair">+ Add Match (pair selected)</button>
+          </div>
+          <div id="bgGames" class="list"></div>
+        </div>
+        <div>
+          <div class="row" style="justify-content:space-between">
+            <h3>Matchups & Live Scores</h3>
+            <div class="small">Total: <span id="bgMCount">0</span></div>
+          </div>
+          <div id="bgMatches" class="list"></div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <h3>Overall Markets</h3>
+      <div class="hint" id="bgOUHint" style="display:none"></div>
+
+      <div class="card">
+        <div class="title" style="min-width:140px">OVER / UNDER</div>
+        <label>Line <input id="bgOuLine" type="number" step="0.5" class="line"/></label>
+        <label class="row">Over odds <input id="bgOuOver" type="number" step="0.01" class="odd"/></label>
+        <label class="row">Under odds <input id="bgOuUnder" type="number" step="0.01" class="odd"/></label>
+        <select id="bgOuStatus"><option value="open">OPEN</option><option value="locked">LOCKED</option></select>
+        <button class="btn right" id="bgSaveOU">Save</button>
+      </div>
+
+      <div class="card" style="flex-direction:column;align-items:stretch">
         <div class="row" style="justify-content:space-between">
-          <h3>Matchups & Live Scores</h3>
-          <div class="small">Total: <span id="mCount">0</span></div>
+          <div class="title">Total Games Played — Multi Range</div>
+          <div class="row">
+            <label class="row">Status
+              <select id="bgMrStatus"><option value="open">OPEN</option><option value="locked">LOCKED</option></select>
+            </label>
+            <button class="btn" id="bgAutoRanges">Auto ranges</button>
+            <button class="btn" id="bgSaveMR">Save</button>
+          </div>
         </div>
-        <div id="matchList" class="list"></div>
+        <div id="bgRanges" class="grid g3" style="margin-top:10px"></div>
+        <div class="small soft" style="margin-top:8px">“Auto ranges” proposes four buckets around the expected total games.</div>
       </div>
-    </div>
 
-    <div class="hr"></div>
-
-    <h3>Overall Markets</h3>
-    <div class="hint" id="ouHint" style="display:none"></div>
-
-    <!-- Over/Under -->
-    <div class="card">
-      <div class="title" style="min-width:140px">OVER / UNDER</div>
-      <label>Line <input id="ouLine" type="number" step="0.5" class="line"/></label>
-      <label class="row">Over odds <input id="ouOver" type="number" step="0.01" class="odd"/></label>
-      <label class="row">Under odds <input id="ouUnder" type="number" step="0.01" class="odd"/></label>
-      <select id="ouStatus">
-        <option value="open">OPEN</option>
-        <option value="locked">LOCKED</option>
-      </select>
-      <button class="btn right" id="saveOU">Save</button>
-    </div>
-
-    <!-- Total Games Played (multi-range) -->
-    <div class="card" style="flex-direction:column;align-items:stretch">
-      <div class="row" style="justify-content:space-between">
-        <div class="title">Total Games Played — Multi Range</div>
-        <div class="row">
-          <label class="row">Status
-            <select id="mrStatus">
-              <option value="open">OPEN</option>
-              <option value="locked">LOCKED</option>
-            </select>
-          </label>
-          <button class="btn" id="autoRanges">Auto ranges</button>
-          <button class="btn" id="saveMR">Save</button>
+      <div class="grid g3">
+        <div class="card">
+          <div class="title">Expected per match</div>
+          <div class="small soft">Driving OU + ranges.</div>
+          <div class="row" style="margin-top:6px">
+            <input id="bgPerMatch" type="number" class="line" step="1" value="1"/>
+          </div>
+        </div>
+        <div class="card">
+          <div class="title">Computed totals</div>
+          <div class="small">Matchups: <span id="bgCM" class="good">0</span></div>
+          <div class="small">Expected total games: <span id="bgCT" class="good">0</span></div>
+        </div>
+        <div class="card">
+          <div class="title">Section state</div>
+          <div class="small">Battleground: <span id="bgSecState" class="soft">OPEN</span></div>
         </div>
       </div>
-      <div id="rangesWrap" class="grid g3" style="margin-top:10px"></div>
-      <div class="small soft" style="margin-top:8px">Tip: “Auto ranges” proposes four buckets centered around the expected total games (see below). You can tweak numbers/odds before saving.</div>
-    </div>
 
-    <div class="hr"></div>
-    <div class="grid g3">
-      <div class="card">
-        <div class="title">Expected per match</div>
-        <div class="small soft">Used for Over/Under + multi-range proposals.</div>
-        <div class="row" style="margin-top:6px">
-          <input id="expectedPerMatch" type="number" class="line" step="1" value="1"/>
-          <span class="small soft">e.g. 1 = each matchup counts as “one game”</span>
+    </div>
+  </details>
+
+  <!-- ========= Bonus Hunt ========= -->
+  <details>
+    <summary>Bonus Hunt <span class="pill" id="bhState">OPEN</span></summary>
+    <div class="panel" style="margin-top:8px">
+      <div class="bar">
+        <button class="btn" id="bhSeed6">Enable 6 fixed markets</button>
+        <button class="btn" id="bhSaveOdds">Save fixed odds</button>
+        <button class="btn warn" id="bhToggle">Toggle OPEN/LOCKED</button>
+      </div>
+
+      <!-- fixed TEXT_GUESS markets -->
+      <div class="card" style="flex-direction:column;align-items:stretch">
+        <div class="title">Fixed markets (TEXT_GUESS)</div>
+        <div class="small soft">Players type or click a slot name. Odds apply per-market.</div>
+        <div id="bhFixedWrap" class="grid g2" style="margin-top:8px"></div>
+      </div>
+
+      <!-- slot list import / publish -->
+      <div class="grid g2">
+        <div class="card" style="flex-direction:column;align-items:stretch">
+          <div class="title">Import slot list → Draft</div>
+          <div class="small soft">Paste lines like: <i>Slot Name | Provider</i></div>
+          <textarea id="bhPaste" placeholder="Big Bass Bonanza | Pragmatic&#10;Crystal Robot | Hacksaw"></textarea>
+          <div class="row">
+            <button class="btn" id="bhParse">Parse to Draft</button>
+            <span class="small">Draft count: <span id="bhDraftCount">0</span></span>
+          </div>
+        </div>
+        <div class="card" style="flex-direction:column;align-items:stretch">
+          <div class="title">Draft → Live</div>
+          <div class="small soft">Publish for player chips/search on the Bonus Hunt tab.</div>
+          <div class="row" style="margin-top:6px">
+            <button class="btn primary" id="bhPublishList">Publish Draft to Live</button>
+            <span class="small">Live count: <span id="bhLiveCount">0</span></span>
+          </div>
+          <div class="hint" style="margin-top:8px">Player page reads <code>bh:live</code> (or falls back to <code>bh:draft</code>).</div>
         </div>
       </div>
-      <div class="card">
-        <div class="title">Computed totals</div>
-        <div class="small">Matchups: <span id="cMatches" class="good">0</span></div>
-        <div class="small">Expected total games: <span id="cTotal" class="good">0</span></div>
-      </div>
-      <div class="card">
-        <div class="title">Section state</div>
-        <div class="small">Battleground: <span id="cSectionState" class="soft">OPEN</span></div>
-        <button class="btn warn" id="btnToggleSection" style="margin-top:6px">Toggle OPEN/LOCKED</button>
-      </div>
     </div>
+  </details>
 
-  </div><!--/panel-->
+  <!-- ========= PVP ========= -->
+  <details>
+    <summary>PVP <span class="pill" id="pvpState">OPEN</span></summary>
+    <div class="panel" style="margin-top:8px">
 
-</div><!--/wrap-->
+      <div class="bar">
+        <button class="btn" id="pvpSeedFighters">Seed Fighters</button>
+        <button class="btn" id="pvpBuild">Build/Refresh H2H</button>
+        <button class="btn warn" id="pvpToggle">Toggle OPEN/LOCKED</button>
+      </div>
+
+      <div class="grid g2">
+        <div>
+          <h3>Fighters</h3>
+          <div class="small soft">Click two → “Add Match”.</div>
+          <div class="row" style="margin:6px 0 10px">
+            <input id="pvpNew" class="w100" placeholder="Add fighter name"/>
+            <button class="btn" id="pvpAddF">Add</button>
+            <button class="btn" id="pvpAddPair">+ Add Match (pair selected)</button>
+          </div>
+          <div id="pvpFList" class="list"></div>
+        </div>
+        <div>
+          <div class="row" style="justify-content:space-between">
+            <h3>Matchups</h3>
+            <div class="small">Total: <span id="pvpMCount">0</span></div>
+          </div>
+          <div id="pvpMatches" class="list"></div>
+        </div>
+      </div>
+
+    </div>
+  </details>
+
+</div>
 
 <script>
 (function(){
   "use strict";
 
-  // ======= storage keys (match your player page) =======
-  const K_UNIFIED = "sb:markets:unified";
-  // admin scratchpads
-  const K_BG_GAMES = "bg:games";                // [{name,provider,img}] – put your game library here (or import)
-  const K_BG_MATCHES = "bg:admin:matches";      // [{a,b,oddsA,oddsB,scoreA,scoreB}]
-  const K_BG_SELECTED = "bg:selected";          // [name,...] – for pairing convenience
-  const K_LAST_PUB = "sb:lastPublishTs";
+  // ====== storage keys ======
+  const K_UNIFIED="sb:markets:unified";
+  const K_LAST_PUB="sb:lastPublishTs";
 
-  // ======= helpers =======
-  const $ = (q,r)=> (r||document).querySelector(q);
-  const $all = (q,r)=> Array.from((r||document).querySelectorAll(q));
-  const sget = k => { try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch{ return null; } };
-  const sset = (k,v) => localStorage.setItem(k, JSON.stringify(v));
-  const nowISO = ()=> new Date().toLocaleString();
-  const clamp2 = x => Math.max(1, Math.round(x*100)/100);
+  // battleground admin scratch
+  const K_BG_GAMES="bg:games";
+  const K_BG_MATCHES="bg:admin:matches";
+  const K_BG_SELECTED="bg:selected";
 
-  // ======= state =======
-  let unified = sget(K_UNIFIED) || { sections:{ battleground:{ status:"open", overall:[], h2h:[] }, bonus:{status:"open",overall:[]}, pvp:{status:"open",overall:[]} } };
-  const BG = ()=> (unified.sections.battleground ||= {status:"open", overall:[], h2h:[]});
-  const games = ()=> sget(K_BG_GAMES) || [];           // should be pre-populated somewhere else (or import JSON once then sset)
-  const matches = ()=> sget(K_BG_MATCHES) || [];
-  const selected = ()=> sget(K_BG_SELECTED) || [];
+  // bonus hunt lists
+  const K_BH_DRAFT="bh:draft";
+  const K_BH_LIVE="bh:live";
 
-  // ======= UI paint =======
-  function paintHeader(){
-    $("#secStatus").textContent = (BG().status||"open").toUpperCase();
-    $("#cSectionState").textContent = (BG().status||"open").toUpperCase();
-    $("#lastPub").textContent = sget(K_LAST_PUB) ? new Date(sget(K_LAST_PUB)).toLocaleString() : "never";
+  // pvp scratch
+  const K_PVP_F="pvp:fighters";
+  const K_PVP_MATCHES="pvp:admin:matches";
+  const K_PVP_SELECTED="pvp:selected";
+
+  // ===== helpers =====
+  const $=(q,r)=> (r||document).querySelector(q);
+  const $all=(q,r)=> Array.from((r||document).querySelectorAll(q));
+  const sget=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}};
+  const sset=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+  const clamp2=x=> Math.max(1,Math.round(Number(x||1.84)*100)/100);
+
+  // unified object with 3 sections
+  let unified = sget(K_UNIFIED) || {
+    sections:{
+      battleground:{status:"open",overall:[],h2h:[]},
+      bonus:{status:"open",overall:[]},
+      pvp:{status:"open",overall:[],h2h:[]}
+    }
+  };
+
+  // region — GLOBAL buttons
+  function paintGlobal(){
+    $("#lastPub").textContent = sget(K_LAST_PUB)? new Date(sget(K_LAST_PUB)).toLocaleString() : "never";
+  }
+  $("#btnPublish").addEventListener("click", ()=>{ sset(K_UNIFIED,unified); sset(K_LAST_PUB,Date.now()); paintGlobal(); alert("Published to players."); });
+  $("#btnOpenAll").addEventListener("click", ()=>{
+    Object.values(unified.sections).forEach(sec=>{
+      (sec.overall||[]).forEach(m=> m.status="open");
+      (sec.h2h||[]).forEach(m=> m.status="open");
+      sec.status="open";
+    });
+    sset(K_UNIFIED,unified); paintAllStates();
+  });
+  $("#btnLockAll").addEventListener("click", ()=>{
+    Object.values(unified.sections).forEach(sec=>{
+      (sec.overall||[]).forEach(m=> m.status="locked");
+      (sec.h2h||[]).forEach(m=> m.status="locked");
+      sec.status="locked";
+    });
+    sset(K_UNIFIED,unified); paintAllStates();
+  });
+  $("#btnDeleteAll").addEventListener("click", ()=>{
+    if(!confirm("Delete ALL markets across all sections?")) return;
+    Object.values(unified.sections).forEach(sec=>{sec.overall=[];sec.h2h=[];});
+    sset(K_UNIFIED,unified); paintAllStates(); // details panes will refresh from empty
+  });
+
+  function paintAllStates(){
+    $("#bgState").textContent=(unified.sections.battleground.status||"open").toUpperCase();
+    $("#bgSecState").textContent=(unified.sections.battleground.status||"open").toUpperCase();
+    $("#bhState").textContent=(unified.sections.bonus.status||"open").toUpperCase();
+    $("#pvpState").textContent=(unified.sections.pvp.status||"open").toUpperCase();
   }
 
-  function paintGames(){
-    const list = $("#gamesList");
-    const q = ($("#gameSearch").value||"").toLowerCase();
-    const sel = new Set(selected());
-    list.innerHTML = "";
-    games()
-      .filter(g => !q || (g.name||"").toLowerCase().includes(q) || (g.provider||"").toLowerCase().includes(q))
+  // region — BATTLEGROUND (same as previous answer, condensed a bit)
+  const bg=()=> (unified.sections.battleground ||= {status:"open",overall:[],h2h:[]});
+  const bgGames=()=> sget(K_BG_GAMES)||[];
+  const bgMatches=()=> sget(K_BG_MATCHES)||[];
+  const bgSel=()=> new Set(sget(K_BG_SELECTED)||[]);
+
+  function bgPaintGames(){
+    const list=$("#bgGames"), q=($("#bgSearch").value||"").toLowerCase(), sel=bgSel(); list.innerHTML="";
+    (bgGames()).filter(g=>!q || (g.name||"").toLowerCase().includes(q) || (g.provider||"").toLowerCase().includes(q))
       .forEach(g=>{
-        const card = document.createElement("div");
-        card.className = "card";
-        card.style.cursor = "pointer";
-        card.innerHTML = `<div class="pill">${(g.provider||"").toUpperCase()}</div>
-                          <div class="w100">${g.name}</div>
-                          <div class="pill ${sel.has(g.name)?"good":""}">${sel.has(g.name)?"Selected":"Select"}</div>`;
-        card.addEventListener("click", ()=>{
-          const cur = new Set(selected());
-          if(cur.has(g.name)) cur.delete(g.name); else cur.add(g.name);
-          sset(K_BG_SELECTED, [...cur]); paintGames();
-        });
+        const card=document.createElement("div"); card.className="card"; card.style.cursor="pointer";
+        const picked = sel.has(g.name);
+        card.innerHTML=`<div class="pill">${(g.provider||"").toUpperCase()}</div><div class="w100">${g.name}</div><div class="pill ${picked?"good":""}">${picked?"Selected":"Select"}</div>`;
+        card.addEventListener("click",()=>{ const c=bgSel(); if(c.has(g.name)) c.delete(g.name); else c.add(g.name); sset(K_BG_SELECTED,[...c]); bgPaintGames(); });
         list.appendChild(card);
       });
   }
-
-  function paintMatches(){
-    const list = $("#matchList");
-    const ms = matches();
-    list.innerHTML = "";
-    $("#mCount").textContent = ms.length;
-
-    ms.forEach((m,idx)=>{
-      const card = document.createElement("div");
-      card.className = "card";
-      card.style.flexDirection = "column";
-      card.innerHTML = `
-        <div class="row" style="gap:14px;align-items:center;justify-content:space-between;width:100%">
-          <div class="row" style="gap:10px;align-items:center">
-            <div class="pill">${idx+1}</div>
-            <div><strong>${m.a}</strong> <span class="soft">vs</span> <strong>${m.b}</strong></div>
-          </div>
-          <button class="btn danger" data-del>Delete</button>
-        </div>
-        <div class="row" style="gap:14px;flex-wrap:wrap;margin-top:8px">
-          <label class="row">A odds <input class="odd" type="number" step="0.01" data-a value="${m.oddsA??1.84}"/></label>
-          <label class="row">B odds <input class="odd" type="number" step="0.01" data-b value="${m.oddsB??1.84}"/></label>
-          <label class="row">A score <input class="line" type="number" step="1" data-sa value="${m.scoreA??0}"/></label>
-          <label class="row">B score <input class="line" type="number" step="1" data-sb value="${m.scoreB??0}"/></label>
-          <button class="btn" data-save>Save</button>
-        </div>`;
-      card.querySelector("[data-del]").addEventListener("click", ()=>{
-        const cur = matches(); cur.splice(idx,1); sset(K_BG_MATCHES, cur); paintMatches(); recalcComputed();
+  function bgPaintMatches(){
+    const ms=bgMatches(); $("#bgMatches").innerHTML=""; $("#bgMCount").textContent=ms.length;
+    const list=$("#bgMatches");
+    ms.forEach((m,i)=>{
+      const row=document.createElement("div"); row.className="card"; row.style.flexDirection="column";
+      row.innerHTML=`<div class="row" style="justify-content:space-between;width:100%">
+        <div class="row" style="gap:8px"><div class="pill">${i+1}</div><div><strong>${m.a}</strong> <span class="soft">vs</span> <strong>${m.b}</strong></div></div>
+        <button class="btn danger" data-del>Delete</button></div>
+        <div class="row" style="gap:12px;margin-top:6px">
+          <label>A odds <input data-a class="odd" type="number" step="0.01" value="${m.oddsA??1.84}"/></label>
+          <label>B odds <input data-b class="odd" type="number" step="0.01" value="${m.oddsB??1.84}"/></label>
+          <label>A score <input data-sa class="line" type="number" step="1" value="${m.scoreA??0}"/></label>
+          <label>B score <input data-sb class="line" type="number" step="1" value="${m.scoreB??0}"/></label>
+          <button class="btn" data-save>Save</button></div>`;
+      row.querySelector("[data-save]").addEventListener("click",()=>{
+        const cur=bgMatches(); cur[i].oddsA=clamp2(row.querySelector("[data-a]").value); cur[i].oddsB=clamp2(row.querySelector("[data-b]").value);
+        cur[i].scoreA=Number(row.querySelector("[data-sa]").value||0); cur[i].scoreB=Number(row.querySelector("[data-sb]").value||0); sset(K_BG_MATCHES,cur);
       });
-      card.querySelector("[data-save]").addEventListener("click", ()=>{
-        const cur = matches();
-        const row = card;
-        cur[idx].oddsA = clamp2(Number(row.querySelector("[data-a]").value||1.84));
-        cur[idx].oddsB = clamp2(Number(row.querySelector("[data-b]").value||1.84));
-        cur[idx].scoreA = Number(row.querySelector("[data-sa]").value||0);
-        cur[idx].scoreB = Number(row.querySelector("[data-sb]").value||0);
-        sset(K_BG_MATCHES, cur);
-      });
-      list.appendChild(card);
+      row.querySelector("[data-del]").addEventListener("click",()=>{ const cur=bgMatches(); cur.splice(i,1); sset(K_BG_MATCHES,cur); bgPaintMatches(); bgRecalc();});
+      list.appendChild(row);
     });
   }
-
-  // ======= computed totals & proposals =======
-  function recalcComputed(){
-    const ms = matches();
-    const per = Number($("#expectedPerMatch").value||1);
-    const expectedTotal = ms.length * per;
-    $("#cMatches").textContent = ms.length;
-    $("#cTotal").textContent = expectedTotal;
-
-    // propose OU line if empty
-    const ouLine = $("#ouLine");
-    if(!ouLine.value) ouLine.value = per===1 ? (ms.length-0.5) : (expectedTotal - 0.5);
-
-    // helpful text
-    const txt = `Expected total = (matchups ${ms.length}) × (per-match ${per}) = ${expectedTotal}. 
-    Over/Under line proposes ${ouLine.value}.`;
-    const hint = $("#ouHint"); hint.style.display=""; hint.textContent = txt;
+  function bgRecalc(){
+    const per=Number($("#bgPerMatch").value||1), ms=bgMatches().length, total=ms*per;
+    $("#bgCM").textContent=ms; $("#bgCT").textContent=total;
+    const line=$("#bgOuLine"); if(!line.value) line.value = per===1 ? (ms-0.5) : (total-0.5);
+    const hint=$("#bgOUHint"); hint.style.display=""; hint.textContent = `Expected total = ${ms} × ${per} = ${total}. Proposed OU line ${line.value}.`;
   }
-
-  // build multi-range default 4 buckets around expected
-  function proposeRanges(){
-    const ms = matches();
-    const per = Number($("#expectedPerMatch").value||1);
-    const base = ms.length * per;
-    // Build 4 windows around base
-    const buckets = [
-      {label:`${Math.max(0,Math.floor(base-2))}–${Math.floor(base-1)}.5`, odds:1.70},
-      {label:`${Math.floor(base-1)}–${Math.floor(base)}.5`, odds:1.40},
-      {label:`${Math.floor(base)}–${Math.floor(base+1)}.5`, odds:2.25},
-      {label:`${Math.floor(base+1)}+`, odds:3.14},
+  function bgPropRanges(){
+    const per=Number($("#bgPerMatch").value||1), ms=bgMatches().length, base=ms*per;
+    return [
+      {label:`${Math.max(0,Math.floor(base-2))}–${Math.floor(base-1)}.5`,odds:1.70},
+      {label:`${Math.floor(base-1)}–${Math.floor(base)}.5`,odds:1.40},
+      {label:`${Math.floor(base)}–${Math.floor(base+1)}.5`,odds:2.25},
+      {label:`${Math.floor(base+1)}+`,odds:3.14},
     ];
-    return buckets;
   }
-
-  function paintRangeEditor(ranges){
-    const wrap = $("#rangesWrap");
-    wrap.innerHTML = "";
-    ranges.forEach((r,idx)=>{
-      const row = document.createElement("div");
-      row.className = "card";
-      row.innerHTML = `
-        <label>Range <input class="range" type="text" value="${r.label}"/></label>
-        <label>Odds <input class="odd" type="number" step="0.01" value="${r.odds||1.84}"/></label>
-        <button class="btn danger" data-x>✕</button>`;
-      row.querySelector("[data-x]").addEventListener("click", ()=>{ row.remove(); });
-      wrap.appendChild(row);
-    });
-    // add row button
-    const add = document.createElement("button");
-    add.className = "btn"; add.textContent = "+ Add Line";
-    add.addEventListener("click", ()=>{
-      const r = document.createElement("div");
-      r.className="card";
-      r.innerHTML = `<label>Range <input class="range" type="text" placeholder="e.g. 26–27.5"/></label>
-                     <label>Odds <input class="odd" type="number" step="0.01" value="1.84"/></label>
+  function bgPaintRangeEditor(ranges){
+    const wrap=$("#bgRanges"); wrap.innerHTML=""; ranges.forEach(r=>{
+      const row=document.createElement("div"); row.className="card";
+      row.innerHTML=`<label>Range <input class="range" type="text" value="${r.label}"/></label>
+                     <label>Odds <input class="odd" type="number" step="0.01" value="${r.odds||1.84}"/></label>
                      <button class="btn danger" data-x>✕</button>`;
-      r.querySelector("[data-x]").addEventListener("click", ()=> r.remove());
-      wrap.appendChild(r);
+      row.querySelector("[data-x]").addEventListener("click",()=>row.remove()); wrap.appendChild(row);
+    });
+    const add=document.createElement("button"); add.className="btn"; add.textContent="+ Add Line";
+    add.addEventListener("click",()=>{ const r=document.createElement("div"); r.className="card";
+      r.innerHTML=`<label>Range <input class="range" type="text" placeholder="26–27.5"/></label>
+                   <label>Odds <input class="odd" type="number" step="0.01" value="1.84"/></label>
+                   <button class="btn danger" data-x>✕</button>`;
+      r.querySelector("[data-x]").addEventListener("click",()=>r.remove()); wrap.appendChild(r);
     });
     wrap.appendChild(add);
   }
-
-  // ======= OVERALL MARKETS load/save =======
-  function loadOverallToUI(){
-    const sec = BG();
-    const ou = (sec.overall||[]).find(m => m.type==="OVER_UNDER");
-    if(ou){
-      $("#ouLine").value = ou.line ?? "";
-      const a = (ou.selections||[])[0]||{};
-      const b = (ou.selections||[])[1]||{};
-      $("#ouOver").value = a.odds ?? 1.84;
-      $("#ouUnder").value = b.odds ?? 1.84;
-      $("#ouStatus").value = (ou.status||"open");
-    }
-    const mr = (sec.overall||[]).find(m => m.type==="MULTI_RANGE");
-    if(mr){
-      $("#mrStatus").value = (mr.status||"open");
-      const ranges = (mr.selections||[]).map(s => ({label:(s.label||s.range||""), odds:(s.odds||1.84)}));
-      if(ranges.length) paintRangeEditor(ranges);
-    }
+  function bgLoadOverallToUI(){
+    const sec=bg(); const ou=(sec.overall||[]).find(m=>m.type==="OVER_UNDER");
+    if(ou){ $("#bgOuLine").value=ou.line??""; $("#bgOuOver").value=ou.selections?.[0]?.odds??1.84; $("#bgOuUnder").value=ou.selections?.[1]?.odds??1.84; $("#bgOuStatus").value=ou.status||"open"; }
+    const mr=(sec.overall||[]).find(m=>m.type==="MULTI_RANGE");
+    if(mr){ $("#bgMrStatus").value=mr.status||"open"; const ranges=(mr.selections||[]).map(s=>({label:s.label||s.range||"",odds:s.odds||1.84})); if(ranges.length) bgPaintRangeEditor(ranges); }
+  }
+  function bgSaveOU(){
+    const sec=bg(); const idx=(sec.overall||[]).findIndex(m=>m.type==="OVER_UNDER");
+    const line=Number($("#bgOuLine").value||0);
+    const m={id:"OU_BG",type:"OVER_UNDER",label:"Over / Under",status:$("#bgOuStatus").value,line,
+      selections:[{label:`Over ${line}`,odds:clamp2($("#bgOuOver").value)},{label:`Under ${line}`,odds:clamp2($("#bgOuUnder").value)}]};
+    if(idx<0) (sec.overall||=[]).push(m); else sec.overall[idx]=m; sset(K_UNIFIED,unified);
+  }
+  function bgSaveMR(){
+    const sec=bg(); const idx=(sec.overall||[]).findIndex(m=>m.type==="MULTI_RANGE"); const sels=[];
+    $all("#bgRanges .card").forEach(row=>{ const range=row.querySelector(".range").value.trim(); const odds=clamp2(row.querySelector(".odd").value); if(range) sels.push({label:range,odds});});
+    if(!sels.length) return alert("Add at least one range."); const m={id:"MR_BG",type:"MULTI_RANGE",label:"Total Games Played",status:$("#bgMrStatus").value,selections:sels};
+    if(idx<0) (sec.overall||=[]).push(m); else sec.overall[idx]=m; sset(K_UNIFIED,unified);
+  }
+  function bgBuildH2H(){
+    const h2h=bgMatches().map((m,i)=>({id:`BG_H2H_${i+1}`,type:"CUSTOM",label:`${m.a} vs ${m.b}`,status:"open",
+      selections:[{label:m.a,odds:clamp2(m.oddsA||1.84)},{label:m.b,odds:clamp2(m.oddsB||1.84)}],live:{a:m.scoreA||0,b:m.scoreB||0}}));
+    bg().h2h=h2h; sset(K_UNIFIED,unified);
   }
 
-  function saveOU(){
-    const sec = BG();
-    const idx = (sec.overall||[]).findIndex(m=> m.type==="OVER_UNDER");
-    const m = {
-      id: "OU_BG",
-      type: "OVER_UNDER",
-      label: "Over / Under",
-      status: $("#ouStatus").value,
-      line: Number($("#ouLine").value||0),
-      selections: [
-        { label:"Over "+$("#ouLine").value, odds: clamp2(Number($("#ouOver").value||1.84)) },
-        { label:"Under "+$("#ouLine").value, odds: clamp2(Number($("#ouUnder").value||1.84)) },
-      ]
-    };
-    if(idx<0) (sec.overall ||= []).push(m); else sec.overall[idx] = m;
-    sset(K_UNIFIED, unified);
-  }
+  // events BG
+  $("#bgImport").addEventListener("click",()=>{ if(!bgGames().length){ sset(K_BG_GAMES,[{name:"CRYSTAL ROBOT",provider:"HACKSAW"},{name:"DUEL AT DAWN",provider:"HACKSAW"},{name:"FIRE IN THE HOLE 3",provider:"NOLIMIT"},{name:"GATES 1000",provider:"PRAGMATIC"},{name:"FLIGHT MODE",provider:"NOLIMIT"},{name:"CLOUD PRINCESS",provider:"HACKSAW"},{name:"DUCK HUNTERS",provider:"NOLIMIT"},{name:"BRUTE FORCE",provider:"NOLIMIT"},{name:"BIG BASS BONANZA",provider:"PRAGMATIC"}]); } bgPaintGames(); });
+  $("#bgSearch").addEventListener("input",bgPaintGames);
+  $("#bgAddPair").addEventListener("click",()=>{ const sel=[...bgSel()]; if(sel.length<2) return alert("Select two games."); const cur=bgMatches(); cur.push({a:sel[0],b:sel[1],oddsA:1.84,oddsB:1.84,scoreA:0,scoreB:0}); sset(K_BG_MATCHES,cur); sset(K_BG_SELECTED,[]); bgPaintGames(); bgPaintMatches(); bgRecalc(); });
+  $("#bgBuild").addEventListener("click",()=>{ bgBuildH2H(); alert("Battleground H2H built from current matchups."); });
+  $("#bgPerMatch").addEventListener("input",bgRecalc);
+  $("#bgAutoRanges").addEventListener("click",()=>bgPaintRangeEditor(bgPropRanges()));
+  $("#bgSaveOU").addEventListener("click",bgSaveOU);
+  $("#bgSaveMR").addEventListener("click",bgSaveMR);
+  $("#bgToggle").addEventListener("click",()=>{ bg().status=bg().status==="open"?"locked":"open"; sset(K_UNIFIED,unified); paintAllStates(); });
 
-  function saveMR(){
-    const sec = BG();
-    const idx = (sec.overall||[]).findIndex(m=> m.type==="MULTI_RANGE");
-    const sels = [];
-    $all("#rangesWrap .card").forEach(row=>{
-      const range = row.querySelector(".range")?.value?.trim();
-      const odds = clamp2(Number(row.querySelector(".odd")?.value||1.84));
-      if(range) sels.push({label:range, odds});
+  // init BG
+  $("#bgState").textContent=(bg().status||"open").toUpperCase();
+  $("#bgSecState").textContent=(bg().status||"open").toUpperCase();
+  bgPaintGames(); bgPaintMatches(); bgLoadOverallToUI(); if(!$("#bgRanges").children.length) bgPaintRangeEditor(bgPropRanges()); bgRecalc();
+
+  // region — BONUS HUNT
+  const bh=()=> (unified.sections.bonus ||= {status:"open",overall:[]});
+  function bhFixedDefs(){
+    return [
+      {id:"BH_FIRST", label:"First Bonus Triggered", fixedOdds:1.84},
+      {id:"BH_LAST",  label:"Last Bonus Triggered",  fixedOdds:1.84},
+      {id:"BH_BIG",   label:"Biggest Win (slot)",    fixedOdds:2.25},
+      {id:"BH_SMALL", label:"Smallest Win (slot)",   fixedOdds:3.10},
+      {id:"BH_MOST",  label:"Most Bonuses (slot)",   fixedOdds:2.50},
+      {id:"BH_HOT",   label:"Hot Slot (stream pick)",fixedOdds:2.00},
+    ];
+  }
+  function bhSeedSix(){
+    const sec=bh(); const ds=bhFixedDefs();
+    ds.forEach(d=>{
+      const i=(sec.overall||[]).findIndex(m=>m.id===d.id);
+      const m={id:d.id,type:"TEXT_GUESS",label:d.label,status:"open",fixedOdds:d.fixedOdds};
+      if(i<0) sec.overall.push(m); else sec.overall[i]=m;
     });
-    if(!sels.length){ alert("Add at least one range line"); return; }
-    const m = {
-      id:"MR_BG",
-      type:"MULTI_RANGE",
-      label:"Total Games Played",
-      status: $("#mrStatus").value,
-      selections: sels
-    };
-    if(idx<0) (sec.overall ||= []).push(m); else sec.overall[idx]=m;
-    sset(K_UNIFIED, unified);
+    sset(K_UNIFIED,unified); bhPaintFixed();
+  }
+  function bhPaintFixed(){
+    const wrap=$("#bhFixedWrap"); wrap.innerHTML="";
+    const sec=bh(); const ds=bhFixedDefs();
+    ds.forEach(d=>{
+      const m=(sec.overall||[]).find(x=>x.id===d.id) || {fixedOdds:d.fixedOdds,status:"open"};
+      const row=document.createElement("div"); row.className="card";
+      row.innerHTML=`<div class="w100">${d.label}</div>
+        <label>Odds <input class="odd" data-id="${d.id}" type="number" step="0.01" value="${m.fixedOdds??d.fixedOdds}"/></label>
+        <select data-s="${d.id}"><option value="open"${(m.status||"open")==="open"?" selected":""}>OPEN</option><option value="locked"${(m.status||"open")==="locked"?" selected":""}>LOCKED</option></select>`;
+      wrap.appendChild(row);
+    });
+  }
+  function bhSaveOdds(){
+    const sec=bh();
+    bhFixedDefs().forEach(d=>{
+      const i=(sec.overall||[]).findIndex(m=>m.id===d.id);
+      if(i>=0){
+        const odd=clamp2($(`[data-id="${d.id}"]`).value); const st=$(`[data-s="${d.id}"]`).value;
+        sec.overall[i].fixedOdds=odd; sec.overall[i].status=st;
+      }
+    });
+    sset(K_UNIFIED,unified);
+  }
+  function bhParsePaste(){
+    const txt=$("#bhPaste").value||""; const lines=txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    const entries=[];
+    lines.forEach(line=>{
+      const m=line.split("|"); const name=(m[0]||"").trim(); const provider=(m[1]||"").trim();
+      if(name) entries.push({slot:name,provider});
+    });
+    sset(K_BH_DRAFT,{entries,ts:Date.now()}); $("#bhDraftCount").textContent=entries.length;
+  }
+  function bhRefreshCounts(){
+    $("#bhDraftCount").textContent = (sget(K_BH_DRAFT)?.entries||[]).length;
+    $("#bhLiveCount").textContent  = (sget(K_BH_LIVE)?.entries||[]).length;
   }
 
-  // ======= H2H build/refresh =======
-  function buildH2HFromMatches(){
-    const h2h = matches().map((m,i)=>({
-      id: `H2H_${i+1}`,
-      type: "CUSTOM",
-      label: `${m.a} vs ${m.b}`,
-      status: "open",
-      selections: [
-        { label: m.a, odds: clamp2(Number(m.oddsA||1.84)) },
-        { label: m.b, odds: clamp2(Number(m.oddsB||1.84)) },
-      ],
-      live: { a:m.scoreA||0, b:m.scoreB||0 }
-    }));
-    BG().h2h = h2h;
-    sset(K_UNIFIED, unified);
+  // events BH
+  $("#bhSeed6").addEventListener("click",()=>{ bhSeedSix(); alert("Six fixed Bonus Hunt markets enabled."); });
+  $("#bhSaveOdds").addEventListener("click",bhSaveOdds);
+  $("#bhToggle").addEventListener("click",()=>{ bh().status=bh().status==="open"?"locked":"open"; sset(K_UNIFIED,unified); paintAllStates(); });
+  $("#bhParse").addEventListener("click",bhParsePaste);
+  $("#bhPublishList").addEventListener("click",()=>{ const d=sget(K_BH_DRAFT)||{entries:[]}; sset(K_BH_LIVE,d); bhRefreshCounts(); alert("Published slot list to Live."); });
+
+  // init BH
+  $("#bhState").textContent=(bh().status||"open").toUpperCase();
+  bhPaintFixed(); bhRefreshCounts();
+
+  // region — PVP
+  const pvp=()=> (unified.sections.pvp ||= {status:"open",overall:[],h2h:[]});
+  const pvpF=()=> sget(K_PVP_F)||[];
+  const pvpSel=()=> new Set(sget(K_PVP_SELECTED)||[]);
+  const pvpMatches=()=> sget(K_PVP_MATCHES)||[];
+
+  function pvpPaintF(){
+    const list=$("#pvpFList"); list.innerHTML=""; const sel=pvpSel();
+    pvpF().forEach(n=>{
+      const row=document.createElement("div"); row.className="card"; row.style.cursor="pointer";
+      const picked=sel.has(n);
+      row.innerHTML=`<div class="w100">${n}</div><div class="pill ${picked?"good":""}">${picked?"Selected":"Select"}</div>`;
+      row.addEventListener("click",()=>{ const c=pvpSel(); if(c.has(n)) c.delete(n); else c.add(n); sset(K_PVP_SELECTED,[...c]); pvpPaintF(); });
+      list.appendChild(row);
+    });
+  }
+  function pvpPaintMatches(){
+    const ms=pvpMatches(); $("#pvpMatches").innerHTML=""; $("#pvpMCount").textContent=ms.length;
+    const list=$("#pvpMatches");
+    ms.forEach((m,i)=>{
+      const row=document.createElement("div"); row.className="card"; row.style.flexDirection="column";
+      row.innerHTML=`<div class="row" style="justify-content:space-between;width:100%">
+        <div class="row"><div class="pill">${i+1}</div><div><strong>${m.a}</strong> <span class="soft">vs</span> <strong>${m.b}</strong></div></div>
+        <button class="btn danger" data-del>Delete</button></div>
+        <div class="row" style="gap:12px;margin-top:6px">
+          <label>A odds <input data-a class="odd" type="number" step="0.01" value="${m.oddsA??1.84}"/></label>
+          <label>B odds <input data-b class="odd" type="number" step="0.01" value="${m.oddsB??1.84}"/></label>
+          <button class="btn" data-save>Save</button></div>`;
+      row.querySelector("[data-save]").addEventListener("click",()=>{ const cur=pvpMatches(); cur[i].oddsA=clamp2(row.querySelector("[data-a]").value); cur[i].oddsB=clamp2(row.querySelector("[data-b]").value); sset(K_PVP_MATCHES,cur); });
+      row.querySelector("[data-del]").addEventListener("click",()=>{ const cur=pvpMatches(); cur.splice(i,1); sset(K_PVP_MATCHES,cur); pvpPaintMatches();});
+      list.appendChild(row);
+    });
   }
 
-  // ======= import helpers =======
-  function quickImport() {
-    // If you already have a game library stored in bg:games, this just refreshes the view.
-    // If not, we seed with a few example rows so the UI works right away.
-    if(!games().length){
-      sset(K_BG_GAMES, [
-        {name:"CRYSTAL ROBOT",provider:"HACKSAW"},
-        {name:"DUEL AT DAWN",provider:"HACKSAW"},
-        {name:"FIRE IN THE HOLE 3",provider:"NOLIMIT"},
-        {name:"GATES 1000",provider:"PRAGMATIC"},
-        {name:"FLIGHT MODE",provider:"NOLIMIT"},
-        {name:"CLOUD PRINCESS",provider:"HACKSAW"},
-        {name:"DUCK HUNTERS",provider:"NOLIMIT"},
-        {name:"BRUTE FORCE",provider:"NOLIMIT"},
-        {name:"BIG BASS BONANZA",provider:"PRAGMATIC"},
-      ]);
-    }
-    paintGames();
-  }
+  // events PVP
+  $("#pvpSeedFighters").addEventListener("click",()=>{ if(!pvpF().length) sset(K_PVP_F,["LASH3Z","PLAYER_2","PLAYER_3","PLAYER_4"]); pvpPaintF(); });
+  $("#pvpAddF").addEventListener("click",()=>{ const n=$("#pvpNew").value.trim(); if(!n) return; const cur=pvpF(); if(!cur.includes(n)) cur.push(n); sset(K_PVP_F,cur); $("#pvpNew").value=""; pvpPaintF(); });
+  $("#pvpAddPair").addEventListener("click",()=>{ const sel=[...pvpSel()]; if(sel.length<2) return alert("Select two fighters."); const cur=pvpMatches(); cur.push({a:sel[0],b:sel[1],oddsA:1.84,oddsB:1.84}); sset(K_PVP_MATCHES,cur); sset(K_PVP_SELECTED,[]); pvpPaintF(); pvpPaintMatches(); });
+  $("#pvpBuild").addEventListener("click",()=>{ const h2h=pvpMatches().map((m,i)=>({id:`PVP_${i+1}`,type:"CUSTOM",label:`${m.a} vs ${m.b}`,status:"open",selections:[{label:m.a,odds:clamp2(m.oddsA||1.84)},{label:m.b,odds:clamp2(m.oddsB||1.84)}]})); pvp().h2h=h2h; sset(K_UNIFIED,unified); alert("PVP H2H built."); });
+  $("#pvpToggle").addEventListener("click",()=>{ pvp().status=pvp().status==="open"?"locked":"open"; sset(K_UNIFIED,unified); paintAllStates(); });
 
-  function addPairFromSelected(){
-    const sel = selected();
-    if(sel.length<2){ alert("Select two games on the left first."); return; }
-    const a = sel[0], b = sel[1];
-    const cur = matches();
-    cur.push({ a, b, oddsA:1.84, oddsB:1.84, scoreA:0, scoreB:0 });
-    sset(K_BG_MATCHES, cur);
-    sset(K_BG_SELECTED, []); // clear selection after pairing
-    paintGames(); paintMatches(); recalcComputed();
-  }
+  // init PVP
+  $("#pvpState").textContent=(pvp().status||"open").toUpperCase(); pvpPaintF(); pvpPaintMatches();
 
-  // ======= publish / section toggles / bulk =======
-  function publishToPlayers(){
-    sset(K_UNIFIED, unified);
-    sset(K_LAST_PUB, Date.now());
-    $("#lastPub").textContent = new Date(sget(K_LAST_PUB)).toLocaleString();
-    alert("Published to players.\n\nPlayer page reads `sb:markets:unified` which is now updated.");
-  }
-
-  function openAll(){
-    const sec = BG();
-    (sec.overall||[]).forEach(m=> m.status="open");
-    (sec.h2h||[]).forEach(m=> m.status="open");
-    sset(K_UNIFIED, unified);
-    paintHeader();
-  }
-  function lockAll(){
-    const sec = BG();
-    (sec.overall||[]).forEach(m=> m.status="locked");
-    (sec.h2h||[]).forEach(m=> m.status="locked");
-    sset(K_UNIFIED, unified);
-    paintHeader();
-  }
-  function delAll(){
-    const sec = BG();
-    sec.overall = [];
-    sec.h2h = [];
-    sset(K_UNIFIED, unified);
-    loadOverallToUI(); paintMatches(); recalcComputed();
-  }
-
-  function toggleSection(){
-    BG().status = (BG().status==="open")? "locked":"open";
-    sset(K_UNIFIED, unified);
-    paintHeader();
-  }
-
-  // ======= events =======
-  $("#btnPublish").addEventListener("click", publishToPlayers);
-  $("#btnOpenAll").addEventListener("click", openAll);
-  $("#btnLockAll").addEventListener("click", lockAll);
-  $("#btnDeleteAll").addEventListener("click", delAll);
-
-  $("#btnImport").addEventListener("click", quickImport);
-  $("#gameSearch").addEventListener("input", paintGames);
-  $("#addPair").addEventListener("click", addPairFromSelected);
-  $("#btnBuild").addEventListener("click", ()=>{ buildH2HFromMatches(); alert("H2H built from current matchups."); });
-
-  $("#expectedPerMatch").addEventListener("input", recalcComputed);
-  $("#autoRanges").addEventListener("click", ()=> paintRangeEditor(proposeRanges()));
-  $("#saveOU").addEventListener("click", saveOU);
-  $("#saveMR").addEventListener("click", saveMR);
-  $("#btnToggleSection").addEventListener("click", toggleSection);
-
-  // ======= init =======
-  paintHeader();
-  paintGames();
-  paintMatches();
-  loadOverallToUI();
-  if(!$("#rangesWrap").children.length) paintRangeEditor(proposeRanges());
-  recalcComputed();
-
+  // finally
+  paintGlobal(); paintAllStates();
 })();
 </script>
 </body>
