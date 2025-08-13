@@ -25,10 +25,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.set("trust proxy", 1);
-
 const PORT = process.env.PORT || 3000;
-// bind all interfaces by default so it works on hosts/containers
 const HOST = process.env.HOST || "0.0.0.0";
 
 // Public API base for client (blank = same-origin)
@@ -54,8 +51,7 @@ app.use(
   cors({
     origin(origin, cb) {
       if (!origin || ALLOW.has(origin)) return cb(null, true);
-      // dev: allow others; tighten for prod if needed
-      return cb(null, true);
+      return cb(null, true); // allow all in dev
     },
     credentials: true,
   })
@@ -292,6 +288,7 @@ app.use("/api/vip-awards", vipAwardsRouter);
 app.use("/api/battleground", battlegroundRouter);
 app.use("/api/pvp", pvpRouter);
 app.use("/api", lbxRouter);
+app.use("/api/raffles", rafflesRouter);
 app.use("/api/wallet", walletRouter);
 
 // Simple slot wheel entries
@@ -354,9 +351,6 @@ app.post("/api/raffles/:id/entries", async (req, res) => {
   return res.json({ ok: true });
 });
 
-// Keep the richer raffle API
-app.use("/api/raffles", rafflesRouter);
-
 // Health
 app.get("/healthz", (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 
@@ -369,19 +363,20 @@ const pagesDir  = path.resolve(__dirname, "pages");
 const adminDir  = path.resolve(__dirname, "admin");
 const indexHtml = path.resolve(__dirname, "index.html");
 
-// Guard admin pages (MUST run before any static that could serve /admin)
-app.use("/admin", adminGuard);
+// Guard only admin pages
 app.use("/pages/dashboard/admin", adminGuard);
 
 // HTML injector (adds API_BASE + api-base.js into every HTML)
 async function sendInjectedHtml(filePath, res, next) {
   try {
     let html = await fs.readFile(filePath, "utf8");
-    const already = html.includes("/assets/js/api-base.js") || html.includes("window.API_BASE");
+
+    // Avoid double-injecting if already present
+    const already = html.includes("/assets/api-base.js") || html.includes("window.API_BASE");
     if (!already) {
       const inject =
         `\n<script>window.API_BASE=${JSON.stringify(PUBLIC_API_BASE)};</script>\n` +
-        `<script src="/assets/js/api-base.js"></script>\n`;
+        `<script src="/assets/api-base.js"></script>\n`;
       if (/<\/head>/i.test(html)) {
         html = html.replace(/<\/head>/i, inject + "</head>");
       } else if (/<\/body>/i.test(html)) {
@@ -409,10 +404,7 @@ app.get(/.*\.html$/i, async (req,res,next) => {
   });
 });
 
-// Static — order matters: lock /admin first, then narrower mounts, then root
-app.use("/admin",  adminGuard, express.static(adminDir,  { fallthrough: true }));
-app.use("/assets", express.static(assetsDir, { fallthrough: true }));
-app.use("/pages",  express.static(pagesDir,  { fallthrough: true }));
+// Static
 app.use(
   express.static(ROOT_DIR, {
     index: false,
@@ -426,6 +418,9 @@ app.use(
     },
   })
 );
+app.use("/assets", express.static(assetsDir, { fallthrough: true }));
+app.use("/pages",  express.static(pagesDir,  { fallthrough: true }));
+app.use("/admin",  express.static(adminDir,  { fallthrough: true }));
 
 // Redirect old path to root
 app.get(
@@ -442,7 +437,7 @@ app.get("/favicon.ico", (_req, res) => {
 });
 
 /* ------------------------------------
- * 404 + 500 handlers
+ * 404 handler (HTML for pages, JSON for API)
  * ------------------------------------ */
 app.use((req, res) => {
   if (req.path.startsWith("/api/")) {
@@ -461,24 +456,13 @@ app.use((req, res) => {
     );
 });
 
-// final error handler (keeps API JSON-shaped)
-app.use((err, req, res, _next) => {
-  console.error("[server-error]", err?.stack || err);
-  if (req.path?.startsWith?.("/api/")) {
-    return res.status(500).json({ ok: false, error: "server_error" });
-  }
-  res.status(500).type("html").send(
-    `<!doctype html><meta charset="utf-8">
-     <title>500</title>
-     <style>body{background:#0b0f10;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif;padding:32px}</style>
-     <h1>Server Error</h1>
-     <p>Something blew a gasket. Check logs.</p>`
-  );
-});
-
 /* ------------------------------------
  * Boot
  * ------------------------------------ */
+process.on("unhandledRejection", e => console.error("[unhandledRejection]", e));
+process.on("uncaughtException", e => console.error("[uncaughtException]", e));
+
 app.listen(PORT, HOST, () => {
   console.log(`Server running: http://${HOST}:${PORT}`);
 });
+
