@@ -149,14 +149,12 @@
         <button class="btn warn" id="bhToggle">Toggle OPEN/LOCKED</button>
       </div>
 
-      <!-- fixed TEXT_GUESS markets -->
       <div class="card" style="flex-direction:column;align-items:stretch">
         <div class="title">Fixed markets (TEXT_GUESS)</div>
         <div class="small soft">Players type or click a slot name. Odds apply per-market.</div>
         <div id="bhFixedWrap" class="grid g2" style="margin-top:8px"></div>
       </div>
 
-      <!-- slot list import / publish -->
       <div class="grid g2">
         <div class="card" style="flex-direction:column;align-items:stretch">
           <div class="title">Import slot list → Draft</div>
@@ -245,6 +243,21 @@
   const sset=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
   const clamp2=x=> Math.max(1,Math.round(Number(x||1.84)*100)/100);
 
+  // --- NEW: normalizers to prevent "undefined" names/providers
+  function normalizeGame(g){
+    return {
+      name: (g?.name || g?.slot || g?.game || g?.title || g?.label || '').toString(),
+      provider: (g?.provider || g?.gameProvider || g?.vendor || g?.studio || '').toString()
+    };
+  }
+  function normalizeGamesKey(){
+    let arr = sget(K_BG_GAMES) || [];
+    if (arr.length){
+      arr = arr.map(normalizeGame).filter(x=>x.name);
+      sset(K_BG_GAMES, arr);
+    }
+  }
+
   // unified object with 3 sections
   let unified = sget(K_UNIFIED) || {
     sections:{
@@ -278,7 +291,7 @@
   $("#btnDeleteAll").addEventListener("click", ()=>{
     if(!confirm("Delete ALL markets across all sections?")) return;
     Object.values(unified.sections).forEach(sec=>{sec.overall=[];sec.h2h=[];});
-    sset(K_UNIFIED,unified); paintAllStates(); // details panes will refresh from empty
+    sset(K_UNIFIED,unified); paintAllStates();
   });
 
   function paintAllStates(){
@@ -288,7 +301,7 @@
     $("#pvpState").textContent=(unified.sections.pvp.status||"open").toUpperCase();
   }
 
-  // region — BATTLEGROUND (same as previous answer, condensed a bit)
+  // region — BATTLEGROUND
   const bg=()=> (unified.sections.battleground ||= {status:"open",overall:[],h2h:[]});
   const bgGames=()=> sget(K_BG_GAMES)||[];
   const bgMatches=()=> sget(K_BG_MATCHES)||[];
@@ -296,12 +309,19 @@
 
   function bgPaintGames(){
     const list=$("#bgGames"), q=($("#bgSearch").value||"").toLowerCase(), sel=bgSel(); list.innerHTML="";
-    (bgGames()).filter(g=>!q || (g.name||"").toLowerCase().includes(q) || (g.provider||"").toLowerCase().includes(q))
+    (bgGames()).map(normalizeGame)
+      .filter(g=> g.name && (!q || g.name.toLowerCase().includes(q) || (g.provider||"").toLowerCase().includes(q)))
       .forEach(g=>{
         const card=document.createElement("div"); card.className="card"; card.style.cursor="pointer";
         const picked = sel.has(g.name);
-        card.innerHTML=`<div class="pill">${(g.provider||"").toUpperCase()}</div><div class="w100">${g.name}</div><div class="pill ${picked?"good":""}">${picked?"Selected":"Select"}</div>`;
-        card.addEventListener("click",()=>{ const c=bgSel(); if(c.has(g.name)) c.delete(g.name); else c.add(g.name); sset(K_BG_SELECTED,[...c]); bgPaintGames(); });
+        card.innerHTML=`<div class="pill">${(g.provider||"").toUpperCase()}</div>
+                        <div class="w100">${g.name || "(unnamed)"}</div>
+                        <div class="pill ${picked?"good":""}">${picked?"Selected":"Select"}</div>`;
+        card.addEventListener("click",()=>{
+          const c=bgSel();
+          if(c.has(g.name)) c.delete(g.name); else c.add(g.name);
+          sset(K_BG_SELECTED,[...c]); bgPaintGames();
+        });
         list.appendChild(card);
       });
   }
@@ -315,15 +335,21 @@
         <button class="btn danger" data-del>Delete</button></div>
         <div class="row" style="gap:12px;margin-top:6px">
           <label>A odds <input data-a class="odd" type="number" step="0.01" value="${m.oddsA??1.84}"/></label>
-          <label>B odds <input data-b class="odd" type="number" step="0.01" value="${m.oddsB??1.84}"/></label>
+          <label	B odds <input data-b class="odd" type="number" step="0.01" value="${m.oddsB??1.84}"/></label>
           <label>A score <input data-sa class="line" type="number" step="1" value="${m.scoreA??0}"/></label>
-          <label>B score <input data-sb class="line" type="number" step="1" value="${m.scoreB??0}"/></label>
+          <label	B score <input data-sb class="line" type="number" step="1" value="${m.scoreB??0}"/></label>
           <button class="btn" data-save>Save</button></div>`;
       row.querySelector("[data-save]").addEventListener("click",()=>{
-        const cur=bgMatches(); cur[i].oddsA=clamp2(row.querySelector("[data-a]").value); cur[i].oddsB=clamp2(row.querySelector("[data-b]").value);
-        cur[i].scoreA=Number(row.querySelector("[data-sa]").value||0); cur[i].scoreB=Number(row.querySelector("[data-sb]").value||0); sset(K_BG_MATCHES,cur);
+        const cur=bgMatches();
+        cur[i].oddsA=clamp2(row.querySelector("[data-a]").value);
+        cur[i].oddsB=clamp2(row.querySelector("[data-b]").value);
+        cur[i].scoreA=Number(row.querySelector("[data-sa]").value||0);
+        cur[i].scoreB=Number(row.querySelector("[data-sb]").value||0);
+        sset(K_BG_MATCHES,cur);
       });
-      row.querySelector("[data-del]").addEventListener("click",()=>{ const cur=bgMatches(); cur.splice(i,1); sset(K_BG_MATCHES,cur); bgPaintMatches(); bgRecalc();});
+      row.querySelector("[data-del]").addEventListener("click",()=>{
+        const cur=bgMatches(); cur.splice(i,1); sset(K_BG_MATCHES,cur); bgPaintMatches(); bgRecalc();
+      });
       list.appendChild(row);
     });
   }
@@ -343,27 +369,41 @@
     ];
   }
   function bgPaintRangeEditor(ranges){
-    const wrap=$("#bgRanges"); wrap.innerHTML=""; ranges.forEach(r=>{
+    const wrap=$("#bgRanges"); wrap.innerHTML="";
+    ranges.forEach(r=>{
       const row=document.createElement("div"); row.className="card";
       row.innerHTML=`<label>Range <input class="range" type="text" value="${r.label}"/></label>
                      <label>Odds <input class="odd" type="number" step="0.01" value="${r.odds||1.84}"/></label>
                      <button class="btn danger" data-x>✕</button>`;
-      row.querySelector("[data-x]").addEventListener("click",()=>row.remove()); wrap.appendChild(row);
+      row.querySelector("[data-x]").addEventListener("click",()=>row.remove());
+      wrap.appendChild(row);
     });
-    const add=document.createElement("button"); add.className="btn"; add.textContent="+ Add Line";
-    add.addEventListener("click",()=>{ const r=document.createElement("div"); r.className="card";
+    const add=document.createElement("button");
+    add.className="btn"; add.textContent="+ Add Line";
+    add.addEventListener("click",()=>{
+      const r=document.createElement("div"); r.className="card";
       r.innerHTML=`<label>Range <input class="range" type="text" placeholder="26–27.5"/></label>
                    <label>Odds <input class="odd" type="number" step="0.01" value="1.84"/></label>
                    <button class="btn danger" data-x>✕</button>`;
-      r.querySelector("[data-x]").addEventListener("click",()=>r.remove()); wrap.appendChild(r);
+      r.querySelector("[data-x]").addEventListener("click",()=>r.remove());
+      $("#bgRanges").appendChild(r);
     });
     wrap.appendChild(add);
   }
   function bgLoadOverallToUI(){
     const sec=bg(); const ou=(sec.overall||[]).find(m=>m.type==="OVER_UNDER");
-    if(ou){ $("#bgOuLine").value=ou.line??""; $("#bgOuOver").value=ou.selections?.[0]?.odds??1.84; $("#bgOuUnder").value=ou.selections?.[1]?.odds??1.84; $("#bgOuStatus").value=ou.status||"open"; }
+    if(ou){
+      $("#bgOuLine").value=ou.line??"";
+      $("#bgOuOver").value=ou.selections?.[0]?.odds??1.84;
+      $("#bgOuUnder").value=ou.selections?.[1]?.odds??1.84;
+      $("#bgOuStatus").value=ou.status||"open";
+    }
     const mr=(sec.overall||[]).find(m=>m.type==="MULTI_RANGE");
-    if(mr){ $("#bgMrStatus").value=mr.status||"open"; const ranges=(mr.selections||[]).map(s=>({label:s.label||s.range||"",odds:s.odds||1.84})); if(ranges.length) bgPaintRangeEditor(ranges); }
+    if(mr){
+      $("#bgMrStatus").value=mr.status||"open";
+      const ranges=(mr.selections||[]).map(s=>({label:s.label||s.range||"",odds:s.odds||1.84}));
+      if(ranges.length) bgPaintRangeEditor(ranges);
+    }
   }
   function bgSaveOU(){
     const sec=bg(); const idx=(sec.overall||[]).findIndex(m=>m.type==="OVER_UNDER");
@@ -374,8 +414,13 @@
   }
   function bgSaveMR(){
     const sec=bg(); const idx=(sec.overall||[]).findIndex(m=>m.type==="MULTI_RANGE"); const sels=[];
-    $all("#bgRanges .card").forEach(row=>{ const range=row.querySelector(".range").value.trim(); const odds=clamp2(row.querySelector(".odd").value); if(range) sels.push({label:range,odds});});
-    if(!sels.length) return alert("Add at least one range."); const m={id:"MR_BG",type:"MULTI_RANGE",label:"Total Games Played",status:$("#bgMrStatus").value,selections:sels};
+    $all("#bgRanges .card").forEach(row=>{
+      const range=row.querySelector(".range").value.trim();
+      const odds=clamp2(row.querySelector(".odd").value);
+      if(range) sels.push({label:range,odds});
+    });
+    if(!sels.length) return alert("Add at least one range.");
+    const m={id:"MR_BG",type:"MULTI_RANGE",label:"Total Games Played",status:$("#bgMrStatus").value,selections:sels};
     if(idx<0) (sec.overall||=[]).push(m); else sec.overall[idx]=m; sset(K_UNIFIED,unified);
   }
   function bgBuildH2H(){
@@ -385,9 +430,42 @@
   }
 
   // events BG
-  $("#bgImport").addEventListener("click",()=>{ if(!bgGames().length){ sset(K_BG_GAMES,[{name:"CRYSTAL ROBOT",provider:"HACKSAW"},{name:"DUEL AT DAWN",provider:"HACKSAW"},{name:"FIRE IN THE HOLE 3",provider:"NOLIMIT"},{name:"GATES 1000",provider:"PRAGMATIC"},{name:"FLIGHT MODE",provider:"NOLIMIT"},{name:"CLOUD PRINCESS",provider:"HACKSAW"},{name:"DUCK HUNTERS",provider:"NOLIMIT"},{name:"BRUTE FORCE",provider:"NOLIMIT"},{name:"BIG BASS BONANZA",provider:"PRAGMATIC"}]); } bgPaintGames(); });
+  $("#bgImport").addEventListener("click",()=>{
+    // If no BG games yet, try to import from Bonus Hunt lists first
+    let games = sget(K_BG_GAMES) || [];
+    if (!games.length){
+      const bh = sget(K_BH_LIVE) || sget(K_BH_DRAFT);
+      if (bh && Array.isArray(bh.entries) && bh.entries.length){
+        games = bh.entries.map(e => normalizeGame({name:e.slot, provider:e.provider}));
+      } else {
+        // fallback seed
+        games = [
+          {name:"CRYSTAL ROBOT",provider:"HACKSAW"},
+          {name:"DUEL AT DAWN",provider:"HACKSAW"},
+          {name:"FIRE IN THE HOLE 3",provider:"NOLIMIT"},
+          {name:"GATES 1000",provider:"PRAGMATIC"},
+          {name:"FLIGHT MODE",provider:"NOLIMIT"},
+          {name:"CLOUD PRINCESS",provider:"HACKSAW"},
+          {name:"DUCK HUNTERS",provider:"NOLIMIT"},
+          {name:"BRUTE FORCE",provider:"NOLIMIT"},
+          {name:"BIG BASS BONANZA",provider:"PRAGMATIC"}
+        ];
+      }
+    }
+    // normalize + save
+    games = games.map(normalizeGame).filter(x=>x.name);
+    sset(K_BG_GAMES, games);
+    bgPaintGames();
+  });
   $("#bgSearch").addEventListener("input",bgPaintGames);
-  $("#bgAddPair").addEventListener("click",()=>{ const sel=[...bgSel()]; if(sel.length<2) return alert("Select two games."); const cur=bgMatches(); cur.push({a:sel[0],b:sel[1],oddsA:1.84,oddsB:1.84,scoreA:0,scoreB:0}); sset(K_BG_MATCHES,cur); sset(K_BG_SELECTED,[]); bgPaintGames(); bgPaintMatches(); bgRecalc(); });
+  $("#bgAddPair").addEventListener("click",()=>{
+    const sel=[...bgSel()];
+    if(sel.length<2) return alert("Select two games.");
+    const cur=bgMatches();
+    cur.push({a:sel[0],b:sel[1],oddsA:1.84,oddsB:1.84,scoreA:0,scoreB:0});
+    sset(K_BG_MATCHES,cur); sset(K_BG_SELECTED,[]);
+    bgPaintGames(); bgPaintMatches(); bgRecalc();
+  });
   $("#bgBuild").addEventListener("click",()=>{ bgBuildH2H(); alert("Battleground H2H built from current matchups."); });
   $("#bgPerMatch").addEventListener("input",bgRecalc);
   $("#bgAutoRanges").addEventListener("click",()=>bgPaintRangeEditor(bgPropRanges()));
@@ -395,7 +473,8 @@
   $("#bgSaveMR").addEventListener("click",bgSaveMR);
   $("#bgToggle").addEventListener("click",()=>{ bg().status=bg().status==="open"?"locked":"open"; sset(K_UNIFIED,unified); paintAllStates(); });
 
-  // init BG
+  // init BG (include legacy normalization once)
+  normalizeGamesKey();
   $("#bgState").textContent=(bg().status||"open").toUpperCase();
   $("#bgSecState").textContent=(bg().status||"open").toUpperCase();
   bgPaintGames(); bgPaintMatches(); bgLoadOverallToUI(); if(!$("#bgRanges").children.length) bgPaintRangeEditor(bgPropRanges()); bgRecalc();
