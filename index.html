@@ -1,367 +1,301 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>L3Z — Bets</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LASH3Z — Home</title>
+  <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
+
   <style>
     :root{
-      --bg:#0b0e13;--panel:#12151c;--ink:#e8ecf3;--soft:#aeb7c6;--line:rgba(0,255,255,.18);
-      --gold:#f0a320;--muted:#7d8596;--danger:#e85c6b;--ok:#12d48a;
-      --card:#0f1319;--chip:#1a202b;--chipLine:rgba(240,163,32,.35);
+      --cyan:#00ffff; --ink:#eaf7ff; --glass:rgba(0,0,0,.85); --panel:#0f1416;
+      --line:rgba(0,255,255,.18); --shadow:0 8px 24px rgba(0,0,0,.35);
+      --sidew:260px; --toph:72px; --gold:#ffb42d; --dark:#0b1113;
+      --icon-size: 54px; --icon-gap: 36px; --icon-radius: 10px; --icon-hover-scale: 1.10;
     }
     *{box-sizing:border-box}
-    html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,Arial,sans-serif}
-    a{color:inherit;text-decoration:none}
-    html[data-auth="checking"] body{opacity:0;transition:opacity .12s}
-
-    .wrap{max-width:1400px;margin:0 auto;padding:14px}
-    .top{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:12px}
-    .tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .tab{padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;cursor:pointer;font-weight:700;color:#ffd78a}
-    .tab.active{background:linear-gradient(180deg,#181d26,#141923);border-color:rgba(255,187,0,.35);box-shadow:0 10px 18px rgba(0,0,0,.35) inset,0 0 0 1px rgba(255,187,0,.08)}
-    .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0a1016;color:#ffd589;font-size:12px}
-
-    .layout{display:grid;grid-template-columns:1fr 380px;gap:16px}
-    @media (max-width:1100px){.layout{grid-template-columns:1fr}}
-
-    .panel{background:linear-gradient(180deg,#0e1319,#0b1016);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
-    .sectionTitle{padding:14px 16px;border-bottom:1px solid var(--line);font-weight:900;color:#ffd589}
-    .markets{display:flex;flex-direction:column;gap:12px;padding:12px}
-    .mkt{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-    .mHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px}
-    .mLabel{display:flex;gap:10px;align-items:center;font-weight:800}
-
-    .options{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 8px 12px}
-    .opt{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#10151d;border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
-    .opt.active{outline:2px solid rgba(240,163,32,.6);box-shadow:0 0 0 3px rgba(240,163,32,.15)}
-    .odd{font-weight:900;color:#ffd78a}
-    .numBox,.textBox{padding:12px;border-top:1px dashed var(--line);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-    .numBox input,.textBox input{background:#0f141b;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--ink)}
-    .chips{display:flex;flex-wrap:wrap;gap:8px}
-    .chip{background:#1a202b;border:1px solid var(--chipLine);border-radius:999px;padding:8px 12px;cursor:pointer}
-
-    .slip{position:sticky;top:10px;display:flex;flex-direction:column;height:calc(100dvh - 24px)}
-    .slipHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px}
-    .slipTabs{display:flex;gap:12px;padding:0 16px 10px}
-    .slipTab{font-weight:800;border-bottom:2px solid transparent;padding:6px 2px;cursor:pointer;color:#ffd589}
-    .slipTab.active{border-bottom-color:var(--gold)}
-    .slipBody{flex:1;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
-    .ticket{border:1px solid var(--line);border-radius:10px;background:#0f151c;padding:10px 12px}
-    .tTop{display:flex;justify-content:space-between;gap:10px}
-    .tMeta{font-size:12px;color:var(--muted)}
-    .trash{cursor:pointer;color:#ffb5be}
-    .totals{border-top:1px solid var(--line);padding:12px 16px;display:grid;gap:8px}
-    .row{display:flex;justify-content:space-between;align-items:center}
-    .amt{display:flex;gap:8px;align-items:center}
-    .amt input{width:120px;background:#0f141b;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--ink)}
-    .btn{border:none;border-radius:12px;padding:12px 16px;font-weight:900;cursor:pointer;background:linear-gradient(180deg,#f2b64a,#d49a2e);color:#1a1204;box-shadow:inset 0 -2px 0 #9a6a13,0 8px 24px rgba(0,0,0,.35)}
-    .btn:disabled{opacity:.5;cursor:not-allowed}
-    .note{padding:8px 12px;color:#c7d0e4;font-size:12px;border-left:3px solid #2d3648;background:#0f151d;border-radius:8px;margin:6px 12px}
-    .msg{font-size:12px}
-    .msg.ok{color:#9ff1c7}
-    .msg.err{color:#ffb5be}
+    body{ margin:0; font-family:'Segoe UI',system-ui,Arial,sans-serif;
+      background:url("/assets/BG_page.png") no-repeat center/cover fixed; color:var(--ink); }
+    .topbar{ position:fixed; top:0; left:0; right:0; height:var(--toph);
+      display:flex; align-items:center; justify-content:center; background:var(--glass);
+      box-shadow:0 0 12px var(--cyan); z-index:1000; padding:0 12px; gap:26px; }
+    .top-inner{position:relative; display:flex; align-items:center; width:100%; max-width:1400px; gap:16px}
+    .menu-btn{display:none; border:1px solid var(--line); background:#061214; color:var(--ink); padding:8px 10px; border-radius:10px; cursor:pointer}
+    .username-display{color:var(--cyan); font-weight:700; white-space:nowrap}
+    .icon-bar{display:flex; align-items:center; gap:var(--icon-gap)}
+    .icon-link{width:var(--icon-size); height:var(--icon-size); display:block}
+    .icon-img{width:100%; height:100%; display:block; object-fit:contain; border-radius:var(--icon-radius); transition:transform .15s}
+    .icon-img:hover{transform:scale(var(--icon-hover-scale))}
+    .icon-bar.right{ margin-left:auto; }
+    .icon-bar.left{ margin-right:auto; }
+    .icon-bar.center{ position:absolute; left:50%; transform:translateX(-50%);}
+    .sidebar{ position:fixed; top:var(--toph); left:0; bottom:0; width:var(--sidew);
+      background:var(--glass); box-shadow:0 0 16px var(--cyan); overflow:auto; padding:12px; z-index:900; }
+    .main{ margin-left:var(--sidew); padding:calc(var(--toph) + 16px) 20px 24px; min-height:100vh; }
+    .sidebar h3{color:var(--cyan); margin:10px 0 6px; font-size:14px; letter-spacing:.3px}
+    .navlink{ display:flex; align-items:center; gap:10px; width:100%; text-decoration:none; color:#fff;
+      background:#111; border:1px solid #1b1b1b; padding:10px 10px; border-radius:8px; margin-bottom:8px;
+      transition:background .15s, color .15s, transform .05s; }
+    .navlink:hover{background:var(--cyan); color:#001113}
+    .navlink:active{transform:translateY(1px)}
+    .navlink img{width:20px; height:20px; object-fit:contain}
+    .banner{text-align:center}
+    .banner img{max-width:100%; height:auto; border-radius:12px; box-shadow:var(--shadow)}
+    .tiles{ display:flex; flex-wrap:wrap; justify-content:center; gap:16px; margin-top:24px; }
+    .tile{ width:170px; height:170px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      text-decoration:none; color:#fff; background:rgba(0,0,0,.80);
+      border-radius:18px; box-shadow:0 0 16px var(--cyan); transition:transform .2s; }
+    .tile:hover{transform:scale(1.04)}
+    .tile img{width:64px; height:64px; margin-bottom:8px; object-fit:contain}
+    .tile span{font-size:15px; text-align:center}
+    .jackpot-wrap{ max-width:1000px; margin:22px auto 8px; padding:0 8px; }
+    .jackpot{ position:relative; background:linear-gradient(180deg,#0e1519,#0a0f12);
+      border:1px solid var(--line); border-radius:18px;
+      box-shadow:0 0 22px rgba(0,255,255,.2), inset 0 0 0 1px rgba(255,255,255,.03);
+      padding:18px 14px 22px; overflow:hidden; }
+    .jp-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:12px; flex-wrap:wrap; }
+    .jp-title{ font-weight:900; letter-spacing:1.2px; color:var(--gold); text-shadow:0 0 18px rgba(255,180,45,.35); font-size:22px; }
+    .jp-ctl{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+    .jp-reset{border:none; background:#132026; color:#cfe; border:1px solid var(--line); padding:6px 10px; border-radius:10px; cursor:pointer}
+    .jp-reset:hover{background:#173038}
+    .reels{ display:flex; justify-content:center; gap:10px; margin:8px auto 0; padding:10px 8px 0; }
+    .reel{ width:110px; height:120px; border-radius:12px;
+      background:radial-gradient(ellipse at 50% 0%, rgba(0,255,255,.10), rgba(0,0,0,.1) 60%), #0a1316;
+      border:1px solid rgba(0,255,255,.14);
+      box-shadow:inset 0 30px 30px rgba(0,0,0,.35), 0 8px 16px rgba(0,0,0,.35);
+      display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; }
+    .reel.small{ width:80px; } .reel.symbol{ width:90px; }
+    .digit{ font-weight:900; font-variant-numeric:tabular-nums; font-size:56px; letter-spacing:1px;
+      text-shadow:0 0 16px rgba(0,255,255,.25); transition:none !important; transform:none !important; }
+    .sep{ display:flex; align-items:center; justify-content:center; width:28px; font-size:44px; opacity:.85 }
+    .cap{ text-align:center; margin-top:10px; font-size:12px; color:#cfe; opacity:.85 }
+    @media (max-width: 1024px){
+      .menu-btn{display:inline-block}
+      .sidebar{transform:translateX(-100%); transition:transform .2s}
+      .sidebar.open{transform:translateX(0)}
+      .main{margin-left:0; padding-top:calc(var(--toph) + 12px)}
+      .reel{width:86px; height:100px}
+      .reel.small{width:64px}
+      .reel.symbol{width:70px}
+      .digit{font-size:46px}
+      :root{ --icon-size: 38px; --icon-gap: 12px; }
+    }
+    @media (max-width: 640px){
+      .reels{gap:6px}
+      .reel{width:70px; height:86px}
+      .reel.small{width:54px}
+      .reel.symbol{width:58px}
+      .digit{font-size:38px}
+      .sep{width:22px; font-size:36px}
+    }
   </style>
 
-  <!-- Wallet + session bridge (inline, self-contained) -->
+  <!-- Make API base available; helper fetch -->
+  <script>window.API_BASE="";</script>
+  <script src="/assets/api-base.js" defer></script>
+
+  <!-- (Optional) raffle shim to prevent 404 — safe to leave blank/placeholder -->
+  <script src="/assets/l3z_raffle.es5.js" defer></script>
+
+  <!-- TOP BAR ICON CONFIG -->
   <script>
-  (function(){
-    "use strict";
-    const LOGIN="/pages/dashboard/home/login.html";
-    const up=s=>String(s||"").trim().toUpperCase();
-    const now=()=>Date.now();
-    const sget=k=>{try{return JSON.parse(localStorage.getItem(k)||"null");}catch{return null;}};
-    const sset=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
+    window.TOPBAR_ICON_CONFIG = {
+      align: 'center',
+      size: 48, gap: 18, radius: 10, hoverScale: 1.12,
+      icons: [
+        { href:'https://kick.com/lash3z',      src:'/assets/kick.png',      alt:'Kick',      show:true },
+        { href:'https://x.com/Lash3_z',        src:'/assets/x_twitter.png', alt:'Twitter',   show:true },
+        { href:'https://www.instagram.com/lash3z50/', src:'/assets/instagram.png', alt:'Instagram', show:true },
+        { href:'https://www.facebook.com/lashesslots', src:'/assets/facebook.png',  alt:'Facebook',  show:true },
+        { href:'https://www.youtube.com/@Lash3z-50',   src:'/assets/youtube.png',   alt:'YouTube',   show:true },
+        { href:'https://discord.gg/fSVqK6cMmB',        src:'/assets/discord.png',   alt:'Discord',   show:true },
+      ]
+    };
+  </script>
 
-    document.documentElement.setAttribute("data-auth","checking");
-    const sess=sget("l3z:session");
-    const USER=up(sess?.user || localStorage.getItem("auth:username") || localStorage.getItem("lash3z_last_user") || "");
-    if(!USER){
-      const back=encodeURIComponent(location.pathname+location.search+location.hash);
-      location.replace(`${LOGIN}?redirect=${back}`); throw 0;
-    }
-    localStorage.setItem("user:username", USER);
-    localStorage.setItem("lash3z_last_user", USER);
+  <!-- Home-only UI wiring (NO redirects anywhere) -->
+  <script>
+    (function(){
+      "use strict";
+      const $ = (s,r)=> (r||document).querySelector(s);
 
-    const WKEY=u=>`lbx:wallet:${up(u)}`;
-    const LKEY=u=>`lbx:ledger:${up(u)}`;
-    function ensureWallet(u){
-      let w=sget(WKEY(u));
-      if(!w){
-        w={balance:50,created:now(),lastDaily:0};
-        sset(WKEY(u),w);
-        sset(LKEY(u),[{ts:now(),delta:+50,reason:"WELCOME_BONUS",balance:50}]);
+      function sanitizeName(x){
+        if (!x) return "";
+        const m = String(x).toUpperCase().match(/[A-Z0-9_]+/g);
+        return m ? m.join("") : "";
       }
-      return w;
-    }
-    function getWallet(){ return sget(WKEY(USER)) || ensureWallet(USER); }
-    function putWallet(w){ sset(WKEY(USER), w); }
-    function balance(){ return Number(getWallet().balance||0); }
 
-    function paintHeader(){
-      const nameSpots = document.querySelectorAll('#who,[data-username],.username-display');
-      nameSpots.forEach(el=> el.textContent = el.id==="who" ? `Welcome, ${USER}` : USER);
-      const b = balance().toLocaleString(undefined,{maximumFractionDigits:0});
-      const buxSpots = document.querySelectorAll('#bal,[data-bux],.wallet-bux');
-      buxSpots.forEach(el=> el.dataset.raw==="1" ? (el.textContent=b) : (el.textContent=`🪙 ${b} BUX`));
-    }
+      async function setUser(){
+        try{
+          const r = await fetch("/api/wallet/me",{credentials:"include",cache:"no-store"});
+          if (r.ok){
+            const j = await r.json();
+            const fromApi = j?.username || j?.user || j?.name || j?.displayName || "";
+            const clean = sanitizeName(fromApi);
+            if (clean){ $("#usernameDisplay").textContent = "Welcome, " + clean; return; }
+          }
+        }catch{}
+        const fallback =
+          localStorage.getItem("auth:username") ||
+          localStorage.getItem("lash3z_last_user") ||
+          localStorage.getItem("user:name") || "";
+        const clean = sanitizeName(fallback);
+        $("#usernameDisplay").textContent = "Welcome, " + (clean || "PLAYER");
+      }
 
-    ensureWallet(USER);
-    document.addEventListener("DOMContentLoaded",()=>{ paintHeader(); document.documentElement.removeAttribute("data-auth"); });
-    window.addEventListener("storage",e=>{
-      if(!e.key) return; if(e.key===WKEY(USER)||e.key===LKEY(USER)) paintHeader();
-    });
+      function wireMenu(){
+        const btn = $("#menuBtn"), side = $("#sidebar");
+        if (!btn || !side) return;
+        btn.addEventListener("click", ()=> side.classList.toggle("open"));
+        side.querySelectorAll("a.navlink").forEach(a=>a.addEventListener("click", ()=> side.classList.remove("open")));
+      }
 
-    // expose to page code
-    window.__L3Z__={USER,WKEY,LKEY,ensureWallet,getWallet,putWallet,balance,sget,sset,now};
-  })();
+      function buildIconBar(){
+        const cfg = window.TOPBAR_ICON_CONFIG || {};
+        const bar = $("#iconBar");
+        if(!bar) return;
+        bar.classList.remove('left','center','right');
+        bar.classList.add((cfg.align||'right').toLowerCase());
+        const root = document.documentElement;
+        if(cfg.size)       root.style.setProperty('--icon-size', cfg.size + 'px');
+        if(cfg.gap)        root.style.setProperty('--icon-gap',  cfg.gap  + 'px');
+        if(cfg.radius!=null) root.style.setProperty('--icon-radius', cfg.radius + 'px');
+        if(cfg.hoverScale) root.style.setProperty('--icon-hover-scale', cfg.hoverScale);
+        const list = (cfg.icons||[]).filter(i=>i && i.show!==false);
+        bar.innerHTML = list.map(i=>`
+          <a class="icon-link" href="${i.href}" target="_blank" rel="noopener">
+            <img class="icon-img" src="${i.src}" alt="${i.alt||''}" title="${i.alt||''}">
+          </a>`).join('');
+      }
+
+      // Important: NEVER redirect from the home page.
+      document.addEventListener("DOMContentLoaded", ()=>{ setUser(); wireMenu(); buildIconBar(); });
+    })();
   </script>
 </head>
 <body>
-  <div class="wrap">
-    <div class="top">
-      <div class="tabs">
-        <div class="tab active" data-tab="battleground">Battleground</div>
-        <div class="tab" data-tab="bonus">Bonus Hunt</div>
-        <div class="tab" data-tab="pvp">PVP</div>
-      </div>
-      <div class="pill" id="who">Welcome, —</div>
-      <div class="pill" id="bal">🪙 0 BUX</div>
-    </div>
 
-    <div class="layout">
-      <!-- LEFT: Markets -->
-      <div class="panel">
-        <div class="sectionTitle" id="sectionLabel">Battleground — Custom Markets</div>
-        <div id="markets" class="markets"></div>
-        <div id="hint" class="note" style="display:none"></div>
+<!-- ====== TOP BAR ====== -->
+<div class="topbar">
+  <div class="top-inner">
+    <button id="menuBtn" class="menu-btn">☰ Menu</button>
+    <div class="username-display" id="usernameDisplay">Welcome, PLAYER</div>
+    <div id="iconBar" class="icon-bar right"></div>
+  </div>
+</div>
+
+<!-- ====== SIDEBAR NAV (links only) ====== -->
+<div id="sidebar" class="sidebar">
+  <h3>Dashboard</h3>
+  <a class="navlink" href="/index.html"><img src="/assets/overview_icon.png" alt="Home">Home Page</a>
+
+  <h3>Account</h3>
+  <a class="navlink" href="/pages/dashboard/home/signup.html"><img src="/assets/signup.png" alt="Sign Up">Sign Up</a>
+  <a class="navlink" href="/pages/dashboard/home/login.html"><img src="/assets/login.png" alt="Login">Login</a>
+  <a class="navlink" href="/pages/dashboard/home/profile.html"><img src="/assets/signup.png" alt="Profile">Profile</a>
+
+  <h3>Prediction Forms</h3>
+  <a class="navlink" href="/pages/dashboard/home/battleground_prediction_form.html"><img src="/assets/battleground_icon.png" alt="Battleground">L3Z Battleground</a>
+  <a class="navlink" href="/pages/dashboard/home/bonus_hunt_slot_requests.html"><img src="/assets/bonus_hunt_icon.png" alt="Bonus Hunt">Bonus Hunt Slot Requests</a>
+  <a class="navlink" href="/pages/dashboard/home/pvp_entry_form.html"><img src="/assets/pvp_icon.png" alt="PVP Entry">PVP Entry Form</a>
+
+  <h3>LASH3Z Bets</h3>
+  <a class="navlink" href="/pages/dashboard/home/lash3z_bets.html"><img src="/assets/lash3zbux_pp.png" alt="L3Z Bets">Place Bets</a>
+  <a class="navlink" href="/pages/dashboard/home/my_bets.html"><img src="/assets/lash3zbux_pp.png" alt="My Bets">My Bets</a>
+  <a class="navlink" href="/pages/dashboard/home/lash3zbux_info.html"><img src="/assets/lash3zbux_pp.png" alt="Info">Bux Info</a>
+  <a class="navlink" href="/pages/dashboard/home/lash3zbux_score_system.html"><img src="/assets/lash3zbux_pp.png" alt="Score">Bux Scoring</a>
+
+  <h3>Leaderboard</h3>
+  <a class="navlink" href="/pages/dashboard/home/leaderboard.html"><img src="/assets/overall_icon.png" alt="Leaderboard">Overall</a>
+
+  <h3>Live Results</h3>
+  <a class="navlink" href="/pages/dashboard/home/live_unified.html"><img src="/assets/overall_icon.png" alt="Unified Live">Unified Live</a>
+  <a class="navlink" href="/pages/dashboard/home/battleground_live_results.html"><img src="/assets/lashes%20battleground.png" alt="Battleground">Battleground</a>
+  <a class="navlink" href="/pages/dashboard/home/bonus_hunt_live.html"><img src="/assets/lashes%20hunt.png" alt="Bonus Hunt">Bonus Hunt</a>
+  <a class="navlink" href="/pages/dashboard/home/pvp_live.html"><img src="/assets/pvpicon.png" alt="PVP">PVP Battles</a>
+
+  <h3>Giveaways</h3>
+  <a class="navlink" href="/pages/dashboard/home/raffle_live.html"><img src="/assets/vip_icon.png" alt="Raffles Live">Raffles (Live)</a>
+  <a class="navlink" href="/pages/dashboard/home/slot_wheel_giveaway.html"><img src="/assets/vip_icon.png" alt="Slot Wheel">Slot Wheel Giveaway</a>
+
+  <h3>Information</h3>
+  <a class="navlink" href="/pages/dashboard/home/about.html"><img src="/assets/paw.png" alt="About">About</a>
+  <a class="navlink" href="/pages/dashboard/home/casino.html"><img src="/assets/dimebit_icon.png" alt="Casino">Casino</a>
+  <a class="navlink" href="/pages/dashboard/home/vip.html"><img src="/assets/vip_icon.png" alt="VIP">VIP</a>
+  <a class="navlink" href="/pages/dashboard/home/overlay.html"><img src="/assets/stats_icon.png" alt="Overlay">Stream Overlay</a>
+
+  <h3>Administration</h3>
+  <div class="navlink" style="justify-content:center;opacity:.8">Admin pages are server-locked</div>
+  <a class="navlink" href="/pages/dashboard/admin/bets_admin.html"><img src="/assets/lash3zbux_pp.png" alt="Bets Admin">Bets Admin (Unified)</a>
+  <a class="navlink" href="/pages/dashboard/admin/battleground_admin.html"><img src="/assets/lashes%20battleground.png" alt="BG Admin">Battleground Admin</a>
+  <a class="navlink" href="/pages/dashboard/admin/battleground_widget.html"><img src="/assets/lashes%20battleground.png" alt="BG Widget">Battleground Widget</a>
+  <a class="navlink" href="/pages/dashboard/admin/bonus_hunt_admin.html"><img src="/assets/bonus_hunt_icon.png" alt="BH Admin">Bonus Hunt Admin</a>
+  <a class="navlink" href="/pages/dashboard/admin/bonus_hunt_widget.html"><img src="/assets/bonus_hunt_icon.png" alt="BH Widget">Bonus Hunt Widget</a>
+  <a class="navlink" href="/pages/dashboard/admin/pvp_admin.html"><img src="/assets/pvp_icon.png" alt="PVP Admin">PVP Admin</a>
+  <a class="navlink" href="/pages/dashboard/admin/lucky7.html"><img src="/assets/L3Z_logoMain.png" alt="Lucky7">Lucky 7</a>
+  <a class="navlink" href="/pages/dashboard/admin/admin_hub.html"><img src="/assets/L3Z_logoMain.png" alt="LBX Deposits">Admin Hub</a>
+</div>
+
+<!-- ====== MAIN ====== -->
+<div class="main">
+  <div class="banner"><img src="/assets/lashes%20banner.png" alt="Banner"></div>
+
+  <div class="jackpot-wrap">
+    <div class="jackpot">
+      <div class="jp-header">
+        <div class="jp-title">MONTHLY JACKPOT</div>
+        <div class="jp-ctl">
+          <button id="resetJackpotBtn" class="jp-reset" title="Reset this month">Reset Jackpot</button>
+        </div>
       </div>
 
-      <!-- RIGHT: Slip -->
-      <div class="panel slip">
-        <div class="slipHead">
-          <div style="font-weight:900;color:#ffd589">Picks <span id="slipCount" class="pill">0</span></div>
-          <div class="trash" id="clearSlip" title="Clear">🗑</div>
-        </div>
-        <div class="slipTabs">
-          <div class="slipTab active" data-mode="single">Single</div>
-          <div class="slipTab" data-mode="multi">Multi</div>
-        </div>
-        <div id="slipBody" class="slipBody"></div>
-        <div class="totals">
-          <div class="row"><div>Bet Amount</div><div class="amt"><input id="stake" type="number" min="1" max="100" step="1" value="10"/><span>BUX</span></div></div>
-          <div class="row"><div>Estimated Winnings</div><div id="payout">0 BUX</div></div>
-          <div id="warn" class="msg"></div>
-          <button id="submit" class="btn" disabled>Place Bet</button>
-          <div class="row" style="justify-content:space-between">
-            <div style="color:#7d8596;font-size:12px">Max 100 BUX per bet.</div>
-            <a class="pill" href="/pages/dashboard/home/my_bets.html">My Bets →</a>
-          </div>
-        </div>
+      <div class="reels">
+        <div class="reel symbol"><div class="digit">$</div></div>
+        <div class="reel"><div class="digit">0</div></div>
+        <div class="reel"><div class="digit">0</div></div>
+        <div class="reel"><div class="digit">0</div></div>
+        <div class="reel"><div class="digit">0</div></div>
+        <div class="sep"><strong>.</strong></div>
+        <div class="reel small"><div class="digit">0</div></div>
+        <div class="reel small"><div class="digit">0</div></div>
+      </div>
+
+      <div class="cap">
+        Jackpots are made up of gifted subscriptions and monthly subscriptions as well as donations from Lash3z.
+        The more gifted, the higher the jackpot.
       </div>
     </div>
   </div>
 
-<script>
-(function(){
-  "use strict";
-  const $=(q,r)=> (r||document).querySelector(q);
-  const $$=(q,r)=> Array.from((r||document).querySelectorAll(q));
-  const esc=s=>String(s??"").replace(/[&<>\"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
-  const kid=(p="ID")=> p+Math.random().toString(36).slice(2,10).toUpperCase();
-  const bux=n=> (Number(n)||0).toLocaleString(undefined,{maximumFractionDigits:0})+" BUX";
+  <div class="tiles">
+    <a class="tile" href="/pages/dashboard/home/battleground_prediction_form.html">
+      <img src="/assets/lashes%20battleground.png" alt="Battle Ground"><span>Battle Ground</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/bonus_hunt_slot_requests.html">
+      <img src="/assets/bonus_hunt_icon.png" alt="Bonus Hunt"><span>Bonus Hunt</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/leaderboard.html">
+      <img src="/assets/lashes%20leaderboard.png" alt="Leaderboard"><span>Leader Board</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/lash3z_bets.html">
+      <img src="/assets/lash3zbux_pp.png" alt="L3Z Bets"><span>L3Z Bets</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/profile.html">
+      <img src="/assets/login.png" alt="Profile"><span>My Profile</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/vip.html">
+      <img src="/assets/vip_icon.png" alt="VIP"><span>VIP Access</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/pvp_live.html">
+      <img src="/assets/pvp_icon.png" alt="PVP Live"><span>PVP Live</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/casino.html">
+      <img src="/assets/dimebit_icon.png" alt="Casino"><span>Casino</span>
+    </a>
+  </div>
+</div>
 
-  const { USER, sget, sset, now, balance, getWallet, putWallet } = window.__L3Z__;
-
-  // state
-  const KEY_UNIFIED='sb:markets:unified';
-  let unified=sget(KEY_UNIFIED) || { sections:{ battleground:{overall:[]}, bonus:{overall:[]}, pvp:{overall:[]} } };
-  let activeTab='battleground';
-  let slipMode='single';
-  let slip=[]; // legs
-
-  // wire UI
-  $$('.tab').forEach(t=> t.addEventListener('click',()=> setTab(t.dataset.tab)));
-  $$('.slipTab').forEach(t=> t.addEventListener('click',()=>{ slipMode=t.dataset.mode; updateSlipUI(); }));
-  $('#clearSlip')?.addEventListener('click',()=>{ slip=[]; updateSlipUI(); });
-  $('#stake')?.addEventListener('input', updateTotals);
-  $('#submit')?.addEventListener('click', submitBet);
-
-  setTab(activeTab);
-
-  // tabs & markets
-  function setTab(tab){
-    activeTab=tab;
-    $$('.tab').forEach(x=> x.classList.toggle('active', x.dataset.tab===tab));
-    $('#sectionLabel').textContent=(tab==='battleground'?'Battleground':tab==='bonus'?'Bonus Hunt':'PVP')+' — Custom Markets';
-    paintMarkets();
-  }
-
-  function paintMarkets(){
-    const host=$('#markets'); host.innerHTML='';
-    const sec=(unified.sections[activeTab]||{overall:[]});
-    const mkts=sec.overall||[];
-
-    const hint=$('#hint');
-    const need=(activeTab==='bonus' && mkts.length===0);
-    hint.style.display= need? '' : 'none';
-    if(need) hint.textContent='Bonus Hunt markets are not prefilled yet. Use Admin to publish them.';
-
-    mkts.forEach(m=> host.appendChild(marketCard(m)));
-  }
-
-  function marketCard(m){
-    const card=document.createElement('div'); card.className='mkt';
-    const head=document.createElement('div'); head.className='mHead';
-    head.innerHTML='<div class="mLabel">'+('📦 ')+'<span>'+esc(m.label||m.type)+'</span></div>'
-                  +'<div class="pill">'+esc((m.status||'open').toUpperCase())+'</div>';
-    card.appendChild(head);
-
-    // selections
-    if(['OVER_UNDER','YES_NO','MULTI_RANGE','CUSTOM'].includes(m.type)){
-      const list=document.createElement('div'); list.className='options';
-      (m.selections||[]).forEach((s,idx)=>{
-        const o=document.createElement('div'); o.className='opt'; o.dataset.idx=idx;
-        o.classList.toggle('active', slip.some(x=> x.marketId===m.id && x.type==='selection' && x.selIdx==idx));
-        o.innerHTML='<div>'+esc(s.label||'Option')+'</div><div class="odd">'+Number(s.odds||1).toFixed(2)+'×</div>';
-        o.addEventListener('click',()=> togglePick(m,{ idx, label:s.label, odds:Number(s.odds||1) }, o));
-        list.appendChild(o);
-      });
-      card.appendChild(list);
-    }
-
-    // numeric guess
-    if(m.type==='NUMERIC_GUESS'){
-      const nb=document.createElement('div'); nb.className='numBox';
-      nb.innerHTML='<span class="pill">Enter your guess</span><input type="number" step="0.01" placeholder="0" style="width:180px" />'
-                  +'<button class="chip" type="button">Add</button>';
-      const input=nb.querySelector('input'); const btn=nb.querySelector('button');
-      btn.addEventListener('click',()=>{ const v=input.value.trim(); if(v==='')return; addToSlip(m,{type:'guess',guess:Number(v)}); input.value=''; });
-      card.appendChild(nb);
-    }
-
-    // text guess
-    if(m.type==='TEXT_GUESS'){
-      const tb=document.createElement('div'); tb.className='textBox';
-      tb.innerHTML='<span class="pill">Your pick</span><input placeholder="Type your pick" style="min-width:240px" />'
-                  +'<button class="chip" type="button">Add</button>';
-      const ti=tb.querySelector('input'), btn=tb.querySelector('button');
-      btn.addEventListener('click',()=>{ const v=ti.value.trim(); if(!v)return; addToSlip(m,{type:'text',guess:v}); ti.value=''; });
-      card.appendChild(tb);
-    }
-
-    return card;
-  }
-
-  function togglePick(m, sel, node){
-    const i=slip.findIndex(x=> x.marketId===m.id && x.type==='selection' && x.selIdx===sel.idx);
-    if(i>=0){ slip.splice(i,1); node?.classList.remove('active'); }
-    else{
-      addToSlip(m,{type:'selection',idx:sel.idx,label:sel.label,odds:sel.odds});
-      node?.classList.add('active');
-    }
-    updateSlipUI();
-  }
-
-  function addToSlip(m,payload){
-    const item={ id:kid('T'), section:activeTab, marketId:m.id, label:m.label||m.type, mtype:m.type };
-    if(payload.type==='selection'){ item.type='selection'; item.selIdx=payload.idx; item.selLabel=payload.label; item.odds=Number(payload.odds||1); }
-    if(payload.type==='guess'){ item.type='guess'; item.guess=payload.guess; item.odds=Number(m.fixedOdds||1.84); }
-    if(payload.type==='text'){ item.type='text'; item.guess=String(payload.guess); item.odds=Number(m.fixedOdds||1.84); }
-    if(slipMode==='single'){ slip = slip.filter(x=> x.marketId!==item.marketId); }
-    slip.push(item); updateSlipUI();
-  }
-
-  function updateSlipUI(){
-    const body=$('#slipBody'); body.innerHTML='';
-    $('#slipCount').textContent=slip.length;
-    if(!slip.length){ body.innerHTML='<div class="note">Your selections will appear here.</div>'; }
-    slip.forEach((t,i)=>{
-      const row=document.createElement('div'); row.className='ticket';
-      const subtitle=t.type==='selection' ? esc(t.selLabel||'')
-                     : t.type==='guess' ? ('Guess: '+esc(t.guess))
-                     : ('Pick: '+esc(t.guess));
-      row.innerHTML='<div class="tTop"><div><div style="font-weight:800">'+esc(t.label)+'</div><div class="tMeta">'+subtitle+'</div></div>'
-                   +'<div class="trash" data-i="'+i+'">✖</div></div>'
-                   +(t.odds?'<div class="tMeta" style="margin-top:6px">Odds ~ '+Number(t.odds).toFixed(2)+'×</div>':'');
-      row.querySelector('.trash')?.addEventListener('click',()=>{ slip.splice(i,1); updateSlipUI(); });
-      body.appendChild(row);
-    });
-
-    // multi available only if all legs have odds
-    const multiTab = $$('.slipTab').find(x=> x.dataset.mode==='multi');
-    const hasNoOdds = slip.some(x=> !x.odds);
-    if(hasNoOdds && slipMode==='multi') slipMode='single';
-    if(multiTab){ multiTab.style.opacity = hasNoOdds? .4 : 1; multiTab.style.pointerEvents = hasNoOdds? 'none' : 'auto'; }
-
-    updateTotals();
-  }
-
-  function updateTotals(){
-    const stakeEl=$('#stake');
-    const stake=Number(stakeEl?.value||0)||0;
-    const bal=balance();
-
-    let est=0;
-    if(slipMode==='single'){ est=slip.reduce((a,x)=> a + (stake * (x.odds||1)), 0); }
-    else{ est = stake * slip.reduce((p,x)=> p*(x.odds||1), 1); }
-    $('#payout').textContent=bux(est);
-
-    const totalStake = (slipMode==='single') ? stake * slip.length : stake;
-
-    let warn='';
-    if(!slip.length) warn='Add at least one selection.';
-    else if(!(stake>0)) warn='Enter your bet amount.';
-    else if(totalStake>100) warn='Max 100 BUX per bet submission.';
-    else if(totalStake>bal) warn='Insufficient balance ('+bux(bal)+').';
-
-    const w=$('#warn'); w.textContent=warn||''; w.className='msg'+(warn?' err':' ok');
-    const btn=$('#submit'); if(btn) btn.disabled=!!warn;
-  }
-
-  function pushLedger(delta, reason){
-    const LKEY = window.__L3Z__.LKEY(USER);
-    const list = sget(LKEY) || [];
-    const w = getWallet(); w.balance = Number(w.balance||0) + Number(delta||0); putWallet(w);
-    list.push({ ts: now(), delta:Number(delta||0), reason:String(reason||'ADJUSTMENT'), balance:w.balance });
-    sset(LKEY, list.slice(-200));
-    // header will update via 'storage' when same-tab set happens; force quick repaint:
-    const b = document.getElementById('bal');
-    if (b) b.textContent = '🪙 ' + (w.balance||0).toLocaleString(undefined,{maximumFractionDigits:0}) + ' BUX';
-  }
-
-  function submitBet(){
-    const stakeEl=$('#stake');
-    const stake=Number(stakeEl?.value||0)||0;
-    const totalStake=(slipMode==='single') ? stake * slip.length : stake;
-    const bal=balance();
-    if(!(slip.length && stake>0 && totalStake<=100 && totalStake<=bal)){ updateTotals(); return; }
-
-    const at=Date.now();
-    let tickets=[];
-    if(slipMode==='single'){
-      tickets = slip.map(leg=> ({ id:kid('TK'), user:USER, at, mode:'single', stake:stake, leg, odds:(leg.odds||1) }));
-    }else{
-      const prod = slip.reduce((p,x)=> p*(x.odds||1), 1);
-      tickets = [{ id:kid('TK'), user:USER, at, mode:'multi', stake:stake, legs:[...slip], odds:prod }];
-    }
-
-    const storeKey='sb:tickets';
-    const store = (sget(storeKey) || []);
-    tickets.forEach(t=> store.push(t));
-    sset(storeKey, store);
-
-    // deduct wallet
-    pushLedger(-totalStake, 'BET_STAKE');
-
-    // reset UI
-    slip=[]; updateSlipUI(); paintMarkets(); if(stakeEl) stakeEl.value=10; updateTotals();
-    const w=$('#warn'); w.textContent='Bet placed for '+bux(totalStake)+'!'; w.className='msg ok';
-  }
-
-  // initial paint
-  updateSlipUI();
-})();
-</script>
+<!-- Jackpot logic (safe to keep, no redirects) -->
+<script src="/assets/js/jackpot.client.js" defer></script>
 </body>
 </html>
