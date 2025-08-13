@@ -1,492 +1,320 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Player Betting Slip — Lash3zBux</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LASH3Z Dashboard</title>
+  <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
+
   <style>
     :root{
-      --bg:#0b0e13;--panel:#12151c;--ink:#e8ecf3;--soft:#aeb7c6;--line:rgba(0,255,255,.18);
-      --gold:#f0a320;--muted:#7d8596;--danger:#e85c6b;--ok:#12d48a;
-      --card:#0f1319;--chip:#1a202b;--chipLine:rgba(240,163,32,.35);
+      --cyan:#00ffff; --ink:#eaf7ff; --glass:rgba(0,0,0,.85); --panel:#0f1416;
+      --line:rgba(0,255,255,.18); --shadow:0 8px 24px rgba(0,0,0,.35);
+      --sidew:260px; --toph:72px; --gold:#ffb42d; --dark:#0b1113;
+
+      /* Icon bar knobs */
+      --icon-size:54px; --icon-gap:36px; --icon-radius:10px; --icon-hover-scale:1.10;
     }
     *{box-sizing:border-box}
-    html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,Arial,sans-serif}
-    a{color:inherit;text-decoration:none}
-    html[data-auth="checking"] body { opacity:0; transition:opacity .12s ease; }
+    body{margin:0;font-family:'Segoe UI',system-ui,Arial,sans-serif;
+      background:url("/assets/BG_page.png") no-repeat center/cover fixed; color:var(--ink);}
 
-    .wrap{max-width:1400px;margin:0 auto;padding:14px}
-    .top{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:12px}
-    .tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .tab{padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;cursor:pointer;font-weight:700;color:#ffd78a}
-    .tab.active{background:linear-gradient(180deg,#181d26,#141923);border-color:rgba(255,187,0,.35);box-shadow:0 10px 18px rgba(0,0,0,.35) inset,0 0 0 1px rgba(255,187,0,.08)}
+    /* Top bar */
+    .topbar{position:fixed;top:0;left:0;right:0;height:var(--toph);
+      display:flex;align-items:center;justify-content:center;background:var(--glass);
+      box-shadow:0 0 12px var(--cyan);z-index:1000;padding:0 12px;}
+    .top-inner{position:relative;display:flex;align-items:center;width:100%;max-width:1400px;gap:16px}
+    .menu-btn{display:none;border:1px solid var(--line);background:#061214;color:var(--ink);
+      padding:8px 10px;border-radius:10px;cursor:pointer}
+    .username-display{color:var(--cyan);font-weight:700;white-space:nowrap}
 
-    .layout{display:grid;grid-template-columns:1fr 380px;gap:16px}
-    @media (max-width:1100px){.layout{grid-template-columns:1fr}}
+    /* Icon bar */
+    .icon-bar{display:flex;align-items:center;gap:var(--icon-gap)}
+    .icon-link{width:var(--icon-size);height:var(--icon-size);display:block}
+    .icon-img{width:100%;height:100%;display:block;object-fit:contain;border-radius:var(--icon-radius);transition:transform .15s}
+    .icon-img:hover{transform:scale(var(--icon-hover-scale))}
+    .icon-bar.right{margin-left:auto;}
+    .icon-bar.left{margin-right:auto;}
+    .icon-bar.center{position:absolute;left:50%;transform:translateX(-50%);}
 
-    .panel{background:linear-gradient(180deg,#0e1319,#0b1016);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+    /* Layout */
+    .sidebar{position:fixed;top:var(--toph);left:0;bottom:0;width:var(--sidew);
+      background:var(--glass);box-shadow:0 0 16px var(--cyan);overflow:auto;padding:12px;z-index:900;}
+    .main{margin-left:var(--sidew);padding:calc(var(--toph) + 16px) 20px 24px;min-height:100vh;}
+    .sidebar h3{color:var(--cyan);margin:10px 0 6px;font-size:14px;letter-spacing:.3px}
+    .navlink{display:flex;align-items:center;gap:10px;width:100%;text-decoration:none;color:#fff;
+      background:#111;border:1px solid #1b1b1b;padding:10px 10px;border-radius:8px;margin-bottom:8px;
+      transition:background .15s,color .15s,transform .05s;}
+    .navlink:hover{background:var(--cyan);color:#001113}
+    .navlink:active{transform:translateY(1px)}
+    .navlink img{width:20px;height:20px;object-fit:contain}
 
-    .sectionTitle{padding:14px 16px;border-bottom:1px solid var(--line);font-weight:900;color:#ffd589}
-    .markets{display:flex;flex-direction:column;gap:12px;padding:12px}
+    .banner{text-align:center}
+    .banner img{max-width:100%;height:auto;border-radius:12px;box-shadow:var(--shadow)}
 
-    .mkt{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-    .mHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px}
-    .mLabel{display:flex;gap:10px;align-items:center;font-weight:800}
-    .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0a1016;color:#ffd589;font-size:12px}
+    .tiles{display:flex;flex-wrap:wrap;justify-content:center;gap:16px;margin-top:24px;}
+    .tile{width:170px;height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      text-decoration:none;color:#fff;background:rgba(0,0,0,.80);
+      border-radius:18px;box-shadow:0 0 16px var(--cyan);transition:transform .2s;}
+    .tile:hover{transform:scale(1.04)}
+    .tile img{width:64px;height:64px;margin-bottom:8px;object-fit:contain}
+    .tile span{font-size:15px;text-align:center}
 
-    .options{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 8px 12px}
-    .opt{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#10151d;border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
-    .opt.active{outline:2px solid rgba(240,163,32,.6);box-shadow:0 0 0 3px rgba(240,163,32,.15)}
-    .odd{font-weight:900;color:#ffd78a}
+    /* Jackpot */
+    .jackpot-wrap{max-width:1000px;margin:22px auto 8px;padding:0 8px;}
+    .jackpot{position:relative;background:linear-gradient(180deg,#0e1519,#0a0f12);
+      border:1px solid var(--line);border-radius:18px;
+      box-shadow:0 0 22px rgba(0,255,255,.2), inset 0 0 0 1px rgba(255,255,255,.03);
+      padding:18px 14px 22px;overflow:hidden;}
+    .jp-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px;flex-wrap:wrap;}
+    .jp-title{font-weight:900;letter-spacing:1.2px;color:var(--gold);text-shadow:0 0 18px rgba(255,180,45,.35);font-size:22px;}
+    .jp-ctl{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .jp-reset{border:none;background:#132026;color:#cfe;border:1px solid var(--line);padding:6px 10px;border-radius:10px;cursor:pointer}
+    .jp-reset:hover{background:#173038}
 
-    .numBox,.textBox{padding:12px;border-top:1px dashed var(--line);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-    .numBox input,.textBox input{background:#0f141b;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--ink)}
+    .reels{display:flex;justify-content:center;gap:10px;margin:8px auto 0;padding:10px 8px 0;}
+    .reel{width:110px;height:120px;border-radius:12px;
+      background:radial-gradient(ellipse at 50% 0%, rgba(0,255,255,.10), rgba(0,0,0,.1) 60%), #0a1316;
+      border:1px solid rgba(0,255,255,.14);
+      box-shadow:inset 0 30px 30px rgba(0,0,0,.35), 0 8px 16px rgba(0,0,0,.35);
+      display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
+    .reel.small{width:80px;}
+    .reel.symbol{width:90px;}
+    .digit{font-weight:900;font-variant-numeric:tabular-nums;font-size:56px;letter-spacing:1px;
+      text-shadow:0 0 16px rgba(0,255,255,.25);}
+    .sep{display:flex;align-items:center;justify-content:center;width:28px;font-size:44px;opacity:.85}
+    .cap{text-align:center;margin-top:10px;font-size:12px;color:#cfe;opacity:.85}
 
-    .chips{display:flex;flex-wrap:wrap;gap:8px}
-    .chip{background:#1a202b;border:1px solid var(--chipLine);border-radius:999px;padding:8px 12px;cursor:pointer}
-    .chip.active{background:#2b3545;border-color:rgba(240,163,32,.8)}
-
-    /* Slip */
-    .slip{position:sticky;top:10px;display:flex;flex-direction:column;height:calc(100dvh - 24px)}
-    .slipHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px}
-    .slipTabs{display:flex;gap:12px;padding:0 16px 10px}
-    .slipTab{font-weight:800;border-bottom:2px solid transparent;padding:6px 2px;cursor:pointer;color:#ffd589}
-    .slipTab.active{border-bottom-color:var(--gold)}
-    .slipBody{flex:1;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
-    .ticket{border:1px solid var(--line);border-radius:10px;background:#0f151c;padding:10px 12px}
-    .tTop{display:flex;justify-content:space-between;gap:10px}
-    .tMeta{font-size:12px;color:var(--muted)}
-    .trash{cursor:pointer;color:#ffb5be}
-    .totals{border-top:1px solid var(--line);padding:12px 16px;display:grid;gap:8px}
-    .row{display:flex;justify-content:space-between;align-items:center}
-    .amt{display:flex;gap:8px;align-items:center}
-    .amt input{width:120px;background:#0f141b;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--ink)}
-    .btn{border:none;border-radius:12px;padding:12px 16px;font-weight:900;cursor:pointer;background:linear-gradient(180deg,#f2b64a,#d49a2e);color:#1a1204;box-shadow:inset 0 -2px 0 #9a6a13,0 8px 24px rgba(0,0,0,.35)}
-    .btn:disabled{opacity:.5;cursor:not-allowed}
-    .ghost{display:flex;align-items:center;gap:8px;color:#7d8596;font-size:12px}
-    .note{padding:8px 12px;color:#c7d0e4;font-size:12px;border-left:3px solid #2d3648;background:#0f151d;border-radius:8px;margin:6px 12px}
-    .msg{font-size:12px}
-    .msg.ok{color:#9ff1c7}
-    .msg.err{color:#ffb5be}
+    @media (max-width:1024px){
+      .menu-btn{display:inline-block}
+      .sidebar{transform:translateX(-100%);transition:transform .2s}
+      .sidebar.open{transform:translateX(0)}
+      .main{margin-left:0;padding-top:calc(var(--toph) + 12px)}
+      .reel{width:86px;height:100px}
+      .reel.small{width:64px}
+      .reel.symbol{width:70px}
+      .digit{font-size:46px}
+      :root{--icon-size:38px;--icon-gap:12px;}
+    }
+    @media (max-width:640px){
+      .reels{gap:6px}
+      .reel{width:70px;height:86px}
+      .reel.small{width:54px}
+      .reel.symbol{width:58px}
+      .digit{font-size:38px}
+      .sep{width:22px;font-size:36px}
+    }
   </style>
 
-  <!-- AUTH + wallet bridge (same model as profile.html) -->
+  <!-- Make API base available even if server injector is bypassed -->
+  <script>window.API_BASE="";</script>
+  <script src="/assets/api-base.js" defer></script>
+
+  <!-- (Optional) legacy raffle shim; keep only if you have script hooked to it -->
+  <script src="/assets/l3z_raffle.es5.js" defer></script>
+
+  <!-- Icon bar configuration (edit as you like) -->
+  <script>
+    window.TOPBAR_ICON_CONFIG = {
+      align:'center', size:48, gap:18, radius:10, hoverScale:1.12,
+      icons:[
+        { href:'https://kick.com/lash3z',             src:'/assets/kick.png',      alt:'Kick',      show:true },
+        { href:'https://x.com/Lash3_z',               src:'/assets/x_twitter.png', alt:'Twitter',   show:true },
+        { href:'https://www.instagram.com/lash3z50/', src:'/assets/instagram.png', alt:'Instagram', show:true },
+        { href:'https://www.facebook.com/lashesslots',src:'/assets/facebook.png',  alt:'Facebook',  show:true },
+        { href:'https://www.youtube.com/@Lash3z-50',  src:'/assets/youtube.png',   alt:'YouTube',   show:true },
+        { href:'https://discord.gg/fSVqK6cMmB',       src:'/assets/discord.png',   alt:'Discord',   show:true },
+      ]
+    };
+  </script>
+
+  <!-- Header user + mobile menu + icon bar build -->
   <script>
   (function(){
     "use strict";
-    const LOGIN="/pages/dashboard/home/login.html";
-    const SESSION_KEY="l3z:session", PROFILE_KEY="l3z:user", UNAME_KEY="user:username", LAST_KEY="lash3z_last_user";
-    const WALLET = u=>`lbx:wallet:${(u||'').toUpperCase()}`, LEDGER=u=>`lbx:ledger:${(u||'').toUpperCase()}`;
-    const now=()=>Date.now(); const DAY=86400000; const up=s=>(s||"").toString().trim().toUpperCase();
-    function sget(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch{ return null; } }
-    function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+    const $ = (s,r)=> (r||document).querySelector(s);
 
-    document.documentElement.setAttribute("data-auth","checking");
-    const sess=sget(SESSION_KEY);
-    if(!sess || !sess.user || Number(sess.expiresAt)<=now()){ const back=encodeURIComponent(location.pathname+location.search+location.hash); location.replace(`${LOGIN}?redirect=${back}`); throw new Error("no session"); }
-    const USER=up(sess.user);
-    localStorage.setItem(UNAME_KEY,USER); localStorage.setItem(LAST_KEY,USER); sset(PROFILE_KEY,{username:USER});
-
-    function ensureWallet(u){
-      let w=sget(WALLET(u));
-      if(!w){
-        w={balance:50,created:now(),lastDaily:0};
-        sset(WALLET(u),w);
-        sset(LEDGER(u),[{ts:now(),delta:+50,reason:"WELCOME_BONUS",balance:50}]);
-      }
-      return w;
+    function sanitizeName(x){
+      if (!x) return "";
+      const m = String(x).toUpperCase().match(/[A-Z0-9_]+/g);
+      return m ? m.join("") : "";
     }
-    window.__L3Z__ = { USER, WALLET, LEDGER, ensureWallet, now, DAY, sget, sset };
-    window.addEventListener("DOMContentLoaded",()=>document.documentElement.removeAttribute("data-auth"));
+    async function setUser(){
+      try{
+        const r = await fetch("/api/wallet/me",{credentials:"include",cache:"no-store"});
+        if (r.ok){
+          const j = await r.json();
+          const fromApi = j?.username || j?.user || j?.name || j?.displayName || "";
+          const clean = sanitizeName(fromApi);
+          if (clean){ $("#usernameDisplay").textContent = "Welcome, " + clean; return; }
+        }
+      }catch{}
+      const fallback =
+        localStorage.getItem("auth:username") ||
+        localStorage.getItem("lash3z_last_user") ||
+        localStorage.getItem("user:name") || "";
+      const clean = sanitizeName(fallback);
+      $("#usernameDisplay").textContent = "Welcome, " + (clean || "PLAYER");
+    }
+
+    function wireMenu(){
+      const btn = $("#menuBtn"), side = $("#sidebar");
+      if (!btn || !side) return;
+      btn.addEventListener("click", ()=> side.classList.toggle("open"));
+      side.querySelectorAll("a.navlink").forEach(a=>a.addEventListener("click", ()=> side.classList.remove("open")));
+    }
+
+    function buildIconBar(){
+      const cfg = window.TOPBAR_ICON_CONFIG || {};
+      const bar = $("#iconBar"); if(!bar) return;
+
+      bar.classList.remove('left','center','right');
+      bar.classList.add((cfg.align||'right').toLowerCase());
+
+      const root = document.documentElement;
+      if(cfg.size)        root.style.setProperty('--icon-size', cfg.size + 'px');
+      if(cfg.gap)         root.style.setProperty('--icon-gap',  cfg.gap  + 'px');
+      if(cfg.radius!=null)root.style.setProperty('--icon-radius', cfg.radius + 'px');
+      if(cfg.hoverScale)  root.style.setProperty('--icon-hover-scale', cfg.hoverScale);
+
+      const list = (cfg.icons||[]).filter(i=>i && i.show!==false);
+      bar.innerHTML = list.map(i=>`
+        <a class="icon-link" href="${i.href}" target="_blank" rel="noopener">
+          <img class="icon-img" src="${i.src}" alt="${i.alt||''}" title="${i.alt||''}">
+        </a>`).join('');
+    }
+
+    document.addEventListener("DOMContentLoaded", ()=>{ setUser(); wireMenu(); buildIconBar(); });
   })();
   </script>
 </head>
 <body>
-  <div class="wrap">
-    <div class="top">
-      <div class="tabs">
-        <div class="tab active" data-tab="battleground">Battleground</div>
-        <div class="tab" data-tab="bonus">Bonus Hunt</div>
-        <div class="tab" data-tab="pvp">PVP</div>
-      </div>
-      <div class="pill" id="who">Welcome, —</div>
-      <div class="pill" id="bal">🪙 0 BUX</div>
-    </div>
 
-    <div class="layout">
-      <!-- LEFT: Markets -->
-      <div class="panel">
-        <div class="sectionTitle" id="sectionLabel">Battleground — Custom Markets</div>
-        <div id="markets" class="markets"></div>
-        <div id="hint" class="note" style="display:none"></div>
+<!-- TOP -->
+<div class="topbar">
+  <div class="top-inner">
+    <button id="menuBtn" class="menu-btn">☰ Menu</button>
+    <div class="username-display" id="usernameDisplay">Welcome, PLAYER</div>
+    <div id="iconBar" class="icon-bar right"></div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<div id="sidebar" class="sidebar">
+  <h3>Dashboard</h3>
+  <a class="navlink" href="/index.html"><img src="/assets/overview_icon.png" alt="Home">Home Page</a>
+
+  <h3>Account</h3>
+  <a class="navlink" href="/pages/dashboard/home/signup.html"><img src="/assets/signup.png" alt="Sign Up">Sign Up</a>
+  <a class="navlink" href="/pages/dashboard/home/login.html"><img src="/assets/login.png" alt="Login">Login</a>
+  <a class="navlink" href="/pages/dashboard/home/profile.html"><img src="/assets/signup.png" alt="Profile">Profile</a>
+
+  <h3>Prediction Forms</h3>
+  <a class="navlink" href="/pages/dashboard/home/battleground_prediction_form.html"><img src="/assets/battleground_icon.png" alt="Battleground">L3Z Battleground</a>
+  <a class="navlink" href="/pages/dashboard/home/bonus_hunt_slot_requests.html"><img src="/assets/bonus_hunt_icon.png" alt="Bonus Hunt">Bonus Hunt Slot Requests</a>
+  <a class="navlink" href="/pages/dashboard/home/pvp_entry_form.html"><img src="/assets/pvp_icon.png" alt="PVP Entry">PVP Entry Form</a>
+
+  <h3>LASH3Z Bets</h3>
+  <a class="navlink" href="/pages/dashboard/home/lash3z_bets.html"><img src="/assets/lash3zbux_pp.png" alt="L3Z Bets">Place Bets</a>
+  <a class="navlink" href="/pages/dashboard/home/my_bets.html"><img src="/assets/lash3zbux_pp.png" alt="My Bets">My Bets</a>
+  <a class="navlink" href="/pages/dashboard/home/lash3zbux_info.html"><img src="/assets/lash3zbux_pp.png" alt="Info">Bux Info</a>
+  <a class="navlink" href="/pages/dashboard/home/lash3zbux_score_system.html"><img src="/assets/lash3zbux_pp.png" alt="Score">Bux Scoring</a>
+
+  <h3>Leaderboard</h3>
+  <a class="navlink" href="/pages/dashboard/home/leaderboard.html"><img src="/assets/overall_icon.png" alt="Leaderboard">Overall</a>
+
+  <h3>Live Results</h3>
+  <a class="navlink" href="/pages/dashboard/home/live_unified.html"><img src="/assets/overall_icon.png" alt="Unified Live">Unified Live</a>
+  <a class="navlink" href="/pages/dashboard/home/battleground_live_results.html"><img src="/assets/lashes%20battleground.png" alt="Battleground">Battleground</a>
+  <a class="navlink" href="/pages/dashboard/home/bonus_hunt_live.html"><img src="/assets/lashes%20hunt.png" alt="Bonus Hunt">Bonus Hunt</a>
+  <a class="navlink" href="/pages/dashboard/home/pvp_live.html"><img src="/assets/pvpicon.png" alt="PVP">PVP Battles</a>
+
+  <h3>Giveaways</h3>
+  <a class="navlink" href="/pages/dashboard/home/raffle_live.html"><img src="/assets/vip_icon.png" alt="Raffles Live">Raffles (Live)</a>
+  <a class="navlink" href="/pages/dashboard/home/slot_wheel_giveaway.html"><img src="/assets/vip_icon.png" alt="Slot Wheel">Slot Wheel Giveaway</a>
+
+  <h3>Information</h3>
+  <a class="navlink" href="/pages/dashboard/home/about.html"><img src="/assets/paw.png" alt="About">About</a>
+  <a class="navlink" href="/pages/dashboard/home/casino.html"><img src="/assets/dimebit_icon.png" alt="Casino">Casino</a>
+  <a class="navlink" href="/pages/dashboard/home/vip.html"><img src="/assets/vip_icon.png" alt="VIP">VIP</a>
+  <a class="navlink" href="/pages/dashboard/home/overlay.html"><img src="/assets/stats_icon.png" alt="Overlay">Stream Overlay</a>
+
+  <h3>Administration</h3>
+  <div class="navlink" style="justify-content:center;opacity:.8">Admin pages are server-locked</div>
+  <a class="navlink" href="/pages/dashboard/admin/bets_admin.html"><img src="/assets/lash3zbux_pp.png" alt="Bets Admin">Bets Admin (Unified)</a>
+  <a class="navlink" href="/pages/dashboard/admin/battleground_admin.html"><img src="/assets/lashes%20battleground.png" alt="BG Admin">Battleground Admin</a>
+  <a class="navlink" href="/pages/dashboard/admin/battleground_widget.html"><img src="/assets/lashes%20battleground.png" alt="BG Widget">Battleground Widget</a>
+  <a class="navlink" href="/pages/dashboard/admin/bonus_hunt_admin.html"><img src="/assets/bonus_hunt_icon.png" alt="BH Admin">Bonus Hunt Admin</a>
+  <a class="navlink" href="/pages/dashboard/admin/bonus_hunt_widget.html"><img src="/assets/bonus_hunt_icon.png" alt="BH Widget">Bonus Hunt Widget</a>
+  <a class="navlink" href="/pages/dashboard/admin/pvp_admin.html"><img src="/assets/pvp_icon.png" alt="PVP Admin">PVP Admin</a>
+  <a class="navlink" href="/pages/dashboard/admin/lucky7.html"><img src="/assets/L3Z_logoMain.png" alt="Lucky7">Lucky 7</a>
+  <a class="navlink" href="/pages/dashboard/admin/admin_hub.html"><img src="/assets/L3Z_logoMain.png" alt="LBX Deposits">Admin Hub</a>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="banner">
+    <img src="/assets/lashes%20banner.png" alt="Banner">
+  </div>
+
+  <!-- JACKPOT SECTION -->
+  <div class="jackpot-wrap">
+    <div class="jackpot">
+      <div class="jp-header">
+        <div class="jp-title">MONTHLY JACKPOT</div>
+        <div class="jp-ctl">
+          <button id="resetJackpotBtn" class="jp-reset" title="Reset this month">Reset Jackpot</button>
+        </div>
       </div>
 
-      <!-- RIGHT: Slip -->
-      <div class="panel slip">
-        <div class="slipHead">
-          <div style="font-weight:900;color:#ffd589">Picks <span id="slipCount" class="pill">0</span></div>
-          <div class="trash" id="clearSlip" title="Clear">🗑</div>
-        </div>
-        <div class="slipTabs">
-          <div class="slipTab active" data-mode="single">Single</div>
-          <div class="slipTab" data-mode="multi">Multi</div>
-        </div>
-        <div id="slipBody" class="slipBody"></div>
-        <div class="totals">
-          <div class="row"><div>Bet Amount</div><div class="amt"><input id="stake" type="number" min="1" max="100" step="1" value="10"/><span>BUX</span></div></div>
-          <div class="row"><div>Estimated Winnings</div><div id="payout">0 BUX</div></div>
-          <div id="warn" class="msg"></div>
-          <button id="submit" class="btn" disabled>Place Bet</button>
-          <div class="row" style="justify-content:space-between">
-            <div class="ghost"><label><input id="ghost" type="checkbox"/> Ghost Mode</label></div>
-            <div class="ghost">Max 100 BUX per bet.</div>
-          </div>
-        </div>
+      <div class="reels">
+        <div class="reel symbol"><div class="digit">$</div></div>
+        <div class="reel"><div class="digit">0</div></div>
+        <div class="reel"><div class="digit">0</div></div>
+        <div class="reel"><div class="digit">0</div></div>
+        <div class="reel"><div class="digit">0</div></div>
+        <div class="sep"><strong>.</strong></div>
+        <div class="reel small"><div class="digit">0</div></div>
+        <div class="reel small"><div class="digit">0</div></div>
+      </div>
+
+      <div class="cap">
+        Jackpots are made up of gifted subscriptions and monthly subscriptions as well as donations from Lash3z.
+        The more gifted, the higher the jackpot.
       </div>
     </div>
   </div>
 
-<script>
-(function(){
-  "use strict";
+  <!-- Quick tiles -->
+  <div class="tiles">
+    <a class="tile" href="/pages/dashboard/home/battleground_prediction_form.html">
+      <img src="/assets/lashes%20battleground.png" alt="Battle Ground"><span>Battle Ground</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/bonus_hunt_slot_requests.html">
+      <img src="/assets/bonus_hunt_icon.png" alt="Bonus Hunt"><span>Bonus Hunt</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/leaderboard.html">
+      <img src="/assets/lashes%20leaderboard.png" alt="Leaderboard"><span>Leader Board</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/lash3z_bets.html">
+      <img src="/assets/lash3zbux_pp.png" alt="L3Z Bets"><span>L3Z Bets</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/profile.html">
+      <img src="/assets/login.png" alt="Profile"><span>My Profile</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/vip.html">
+      <img src="/assets/vip_icon.png" alt="VIP"><span>VIP Access</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/pvp_live.html">
+      <img src="/assets/pvp_icon.png" alt="PVP Live"><span>PVP Live</span>
+    </a>
+    <a class="tile" href="/pages/dashboard/home/casino.html">
+      <img src="/assets/dimebit_icon.png" alt="Casino"><span>Casino</span>
+    </a>
+  </div>
+</div>
 
-  // ===== Mini helpers =====
-  function $(q,root){return (root||document).querySelector(q);}
-  function $all(q,root){return Array.from((root||document).querySelectorAll(q));}
-  function esc(s){ s=String(s==null?'':s); return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;'); }
-  function kid(p){ return (p||'ID')+Math.random().toString(36).slice(2,10).toUpperCase(); }
-  function bux(n){ return (Number(n)||0).toLocaleString(undefined,{maximumFractionDigits:0})+' BUX'; }
-
-  // ===== Shared keys & session (from auth bridge) =====
-  const { USER, WALLET, LEDGER, ensureWallet, now, sget, sset } = window.__L3Z__;
-
-  // ensure wallet exists and paint header
-  ensureWallet(USER);
-  $('#who').textContent = 'Welcome, ' + USER;
-
-  function readWallet(){ return sget(WALLET(USER)) || {balance:0,created:now(),lastDaily:0}; }
-  function writeWallet(w){ sset(WALLET(USER), w); }
-  function readLedger(){ return sget(LEDGER(USER)) || []; }
-  function pushLedger(delta, reason){
-    const w = readWallet();
-    w.balance = +(w.balance||0) + (+delta||0);
-    writeWallet(w);
-    const list = readLedger();
-    list.push({ ts: now(), delta:+delta, reason:String(reason||'ADJUSTMENT'), balance:w.balance });
-    sset(LEDGER(USER), list.slice(-200));
-    refreshBux();
-  }
-
-  // ===== Markets state (unchanged) =====
-  const K_UNIFIED='sb:markets:unified';
-  const K_BH_LIVE='bh:live';
-  const K_BH_DRAFT='bh:draft';
-
-  var K_SUBS = 'sb:submitted:'+USER;               // tie submissions to the logged-in user
-  var submitted = (function(){ try{ const v=localStorage.getItem(K_SUBS); return v?JSON.parse(v):{}; }catch{ return {}; } })();
-
-  var unified = (function(){ try{ const v=localStorage.getItem(K_UNIFIED); return v?JSON.parse(v):{sections:{battleground:{overall:[]},bonus:{overall:[]},pvp:{overall:[]}}}; }catch{ return {sections:{battleground:{overall:[]},bonus:{overall:[]},pvp:{overall:[]}}}; }})();
-  var activeTab='battleground';
-  var slipMode='single';
-  var slip=[]; // {marketId, type, odds, ...}
-  var bhFilter = {providers:[], q:''};
-
-  // Wiring
-  $all('.tab').forEach(t=> t.addEventListener('click',()=>setTab(t.dataset.tab)));
-  $all('.slipTab').forEach(t=> t.addEventListener('click',()=>{ slipMode=t.dataset.mode; updateSlipUI(); }));
-  $('#clearSlip')?.addEventListener('click',()=>{ slip=[]; updateSlipUI(); });
-  $('#stake')?.addEventListener('input', updateTotals);
-  $('#submit')?.addEventListener('click', submitBet);
-
-  setTab(activeTab);
-  refreshBux();
-
-  // ===== Tabs =====
-  function setTab(tab){
-    activeTab=tab;
-    $all('.tab').forEach(x=> x.classList.toggle('active', x.dataset.tab===tab));
-    $('#sectionLabel').textContent=(tab==='battleground'?'Battleground':tab==='bonus'?'Bonus Hunt':'PVP')+' — Custom Markets';
-    paintMarkets();
-  }
-
-  // ===== Bonus Hunt helpers (unchanged) =====
-  function sgetLocal(k){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch{ return null; } }
-  function readBH(){ return sgetLocal(K_BH_LIVE) || sgetLocal(K_BH_DRAFT); }
-  function bhSlotList(){
-    const src=readBH(); const arr=[];
-    if(src && Array.isArray(src.entries)){
-      src.entries.forEach(e=>{
-        const name = e.slot || e.name || e.game || '';
-        if(!name) return;
-        const prov = e.provider || e.gameProvider || e.vendor || '';
-        arr.push({name, provider:prov});
-      });
-    }
-    const seen={}, res=[]; arr.forEach(x=>{ if(!seen[x.name]){ seen[x.name]=1; res.push(x); }});
-    return res;
-  }
-
-  // ===== Painting markets (unchanged) =====
-  function paintMarkets(){
-    const host=$('#markets'); host.innerHTML='';
-    const sec = (unified.sections[activeTab]||{overall:[]});
-    const mkts = sec.overall||[];
-
-    if(activeTab==='bonus'){
-      const hint=$('#hint');
-      const need=mkts.length===0;
-      hint.style.display= need? '' : 'none';
-      if(need){ hint.textContent='Bonus Hunt markets are not prefilled yet. Open the Admin and enable Bonus Hunt so the six fixed markets appear.'; }
-    }
-    mkts.forEach(m=> host.appendChild(marketCard(m)));
-  }
-
-  function isLocked(m){ return String(m.status||'open').toLowerCase()==='locked'; }
-  function isSubmitted(marketId){ return !!submitted[marketId]; }
-  function saveSubmitted(){ localStorage.setItem(K_SUBS, JSON.stringify(submitted)); }
-
-  function marketCard(m){
-    const card=document.createElement('div'); card.className='mkt';
-    const locked = isLocked(m);
-    const already = isSubmitted(m.id);
-
-    const head=document.createElement('div'); head.className='mHead';
-    head.innerHTML='<div class="mLabel">'+(locked?'🔒 ':'📦 ')+'<span>'+esc(m.label||m.type)+'</span></div>'
-                   +'<div class="pill">'+esc((m.status||'open').toUpperCase())+'</div>';
-    card.appendChild(head);
-
-    if(already){
-      const bar=document.createElement('div'); bar.className='numBox';
-      bar.innerHTML='<span class="pill">Submitted ✓</span>'+(locked?'':' <button class="chip" data-act="undo">Undo</button>');
-      if(!locked){
-        const ub = bar.querySelector('[data-act="undo"]');
-        ub?.addEventListener('click', ()=>{ undoSubmit(m.id); });
-      }
-      card.appendChild(bar);
-    }
-
-    if(['OVER_UNDER','YES_NO','MULTI_RANGE','CUSTOM'].includes(m.type)){
-      const box=document.createElement('div'); box.className='options';
-      (m.selections||[]).forEach((s,idx)=>{
-        const o=document.createElement('div'); o.className='opt'; o.dataset.idx=idx;
-        if(locked||already) o.style.pointerEvents='none';
-        o.classList.toggle('active', slip.some(x=> x.marketId===m.id && x.type==='selection' && x.selIdx==idx));
-        o.innerHTML='<div>'+esc(s.label||'Option')+'</div><div class="odd">'+Number(s.odds||1).toFixed(2)+'×</div>';
-        o.addEventListener('click', ()=> togglePick(m, {type:'selection', idx:idx, label:s.label, odds:Number(s.odds||1)} , o));
-        box.appendChild(o);
-      });
-      card.appendChild(box);
-    }
-
-    if(m.type==='NUMERIC_GUESS'){
-      const nb=document.createElement('div'); nb.className='numBox';
-      nb.innerHTML='<span class="pill">Enter your guess</span><input type="number" step="0.01" placeholder="0" style="width:180px" '+(locked||already?'disabled':'')+' />'
-                   +'<button class="chip" type="button" '+(locked||already?'disabled':'')+'>Add to Slip</button>';
-      const input=nb.querySelector('input');
-      const btn=nb.querySelector('button');
-      btn?.addEventListener('click', ()=>{
-        const val=(input&&input.value?input.value.trim():''); if(val==='') return;
-        addToSlip(m,{type:'guess', guess:Number(val)}); if(input) input.value='';
-      });
-      card.appendChild(nb);
-    }
-
-    if(m.type==='TEXT_GUESS'){
-      const list = activeTab==='bonus' ? bhSlotList() : [];
-      const box=document.createElement('div'); box.className='textBox';
-      if(list.length){
-        const provs=[]; list.forEach(x=>{ if(x.provider && !provs.includes(x.provider)) provs.push(x.provider); });
-        const filterBar=document.createElement('div'); filterBar.className='chips';
-        const allBtn=document.createElement('div'); allBtn.className='chip active'; allBtn.textContent='All';
-        filterBar.appendChild(allBtn);
-        provs.forEach(p=>{
-          const b=document.createElement('div'); b.className='chip'; b.textContent=p;
-          b.addEventListener('click', ()=>{
-            $all('.chip',filterBar).forEach(x=>x.classList.remove('active'));
-            b.classList.add('active'); bhFilter.providers=[p]; renderChips();
-          });
-          filterBar.appendChild(b);
-        });
-        const q=document.createElement('input'); q.placeholder='Search slot'; q.style.minWidth='200px';
-        q.addEventListener('input', ()=>{ bhFilter.q=q.value.toLowerCase(); renderChips(); });
-        filterBar.appendChild(q);
-        box.appendChild(filterBar);
-
-        const wrap=document.createElement('div'); wrap.className='chips'; box.appendChild(wrap);
-        if(locked||already) wrap.style.pointerEvents='none';
-
-        function renderChips(){
-          wrap.innerHTML='';
-          const filtered = list.filter(x=>{
-            const passProv = !bhFilter.providers.length || (x.provider && bhFilter.providers.includes(x.provider));
-            const passQ = !bhFilter.q || x.name.toLowerCase().includes(bhFilter.q);
-            return passProv && passQ;
-          });
-          filtered.forEach(o=>{
-            const c=document.createElement('div'); c.className='chip'; c.textContent=o.name;
-            c.addEventListener('click', ()=>{
-              $all('.chip',wrap).forEach(x=>x.classList.remove('active'));
-              c.classList.add('active'); addToSlip(m,{type:'text', guess:o.name});
-            });
-            wrap.appendChild(c);
-          });
-        }
-        allBtn.addEventListener('click', ()=>{
-          bhFilter.providers=[]; $all('.chip',filterBar).forEach(x=>x.classList.remove('active'));
-          allBtn.classList.add('active'); renderChips();
-        });
-        renderChips();
-      }else{
-        box.innerHTML = '<span class="pill">Your pick</span><input placeholder="Type the slot name" style="min-width:240px" '+(locked||already?'disabled':'')+' />'
-                        +'<button class="chip" type="button" '+(locked||already?'disabled':'')+'>Add</button>';
-        const ti=box.querySelector('input'), tb=box.querySelector('button');
-        tb?.addEventListener('click', ()=>{ const v=ti&&ti.value?ti.value.trim():''; if(!v) return; addToSlip(m,{type:'text', guess:v}); if(ti) ti.value=''; });
-      }
-      card.appendChild(box);
-    }
-
-    return card;
-  }
-
-  // ===== Balance & messages =====
-  function getBalance(){ return Number((readWallet().balance)||0); }
-  function refreshBux(){
-    const bal = getBalance();
-    const b=$('#bal'); if(b) b.textContent='🪙 '+ (bal||0).toLocaleString(undefined,{maximumFractionDigits:0}) +' BUX';
-  }
-  function setMsg(text, ok){
-    const w=$('#warn'); if(!w) return;
-    w.textContent = text||'';
-    w.className = 'msg'+(text? (ok?' ok':' err') : '');
-  }
-
-  // ===== Picks & slip (unchanged) =====
-  function addToSlip(m, payload){
-    if(isLocked(m) || isSubmitted(m.id)) return;
-    const item={ id:kid('T'), section:activeTab, marketId:m.id, label:m.label||m.type, mtype:m.type };
-    if(payload.type==='selection'){ item.type='selection'; item.selIdx=payload.idx; item.selLabel=payload.label; item.odds=Number(payload.odds||1); }
-    if(payload.type==='guess'){ item.type='guess'; item.guess=payload.guess; item.odds=Number(m.fixedOdds||1.84); }
-    if(payload.type==='text'){ item.type='text'; item.guess=String(payload.guess); item.odds=Number(m.fixedOdds||1.84); }
-    if(slipMode==='single'){ slip = slip.filter(x=> x.marketId!==item.marketId); }
-    slip.push(item); updateSlipUI();
-  }
-
-  function togglePick(m, sel, node){
-    if(isLocked(m) || isSubmitted(m.id)) return;
-    const i=slip.findIndex(x=> x.marketId===m.id && x.type==='selection' && x.selIdx===sel.idx);
-    if(i>=0){ slip.splice(i,1); node?.classList.remove('active'); }
-    else{ addToSlip(m, {type:'selection', idx:sel.idx, label:sel.label, odds:sel.odds}); node?.classList.add('active'); }
-    updateSlipUI();
-  }
-
-  function undoSubmit(marketId){
-    if(!submitted[marketId]) return;
-    delete submitted[marketId]; saveSubmitted();
-    paintMarkets(); updateSlipUI(); refreshBux();
-    setMsg('Submission undone.', true);
-  }
-
-  function updateSlipUI(){
-    const body=$('#slipBody'); body.innerHTML='';
-    $('#slipCount').textContent=slip.length;
-    if(!slip.length){ body.innerHTML='<div class="note">Your selections will appear here.</div>'; }
-    slip.forEach((t,i)=>{
-      const row=document.createElement('div'); row.className='ticket';
-      const subtitle = t.type==='selection' ? esc(t.selLabel||'') : (t.type==='guess' ? ('Guess: '+esc(t.guess)) : ('Pick: '+esc(t.guess)));
-      row.innerHTML='<div class="tTop"><div><div style="font-weight:800">'+esc(t.label)+'</div><div class="tMeta">'+subtitle+'</div></div>'
-                   +'<div class="trash" data-i="'+i+'">✖</div></div>'
-                   +(t.odds?'<div class="tMeta" style="margin-top:6px">Odds ~ '+Number(t.odds).toFixed(2)+'×</div>':'');
-      row.querySelector('.trash')?.addEventListener('click',()=>{ slip.splice(i,1); updateSlipUI(); });
-      body.appendChild(row);
-    });
-
-    // multi eligibility (all legs must have odds)
-    const multiTab = $all('.slipTab').find(x=> x.dataset.mode==='multi');
-    const hasNoOdds = slip.some(x=> !x.odds);
-    if(hasNoOdds && slipMode==='multi') slipMode='single';
-    if(multiTab){ multiTab.style.opacity = hasNoOdds? .4 : 1; multiTab.style.pointerEvents = hasNoOdds? 'none':'auto'; }
-
-    updateTotals();
-  }
-
-  function updateTotals(){
-    const stakeEl=$('#stake');
-    const stake = Number(stakeEl? stakeEl.value : 0) || 0;
-    const balance = getBalance();
-
-    let est = 0;
-    if(slipMode==='single'){
-      est = slip.reduce((a,x)=> a + (stake * (x.odds||1)), 0);
-    }else{
-      const prod = slip.reduce((p,x)=> p * (x.odds||1), 1);
-      est = stake * prod;
-    }
-    $('#payout').textContent = bux(est);
-
-    const totalStake = (slipMode==='single') ? stake * slip.length : stake;
-
-    let warn = '';
-    if(!slip.length){ warn='Add at least one selection.'; }
-    else if(!(stake>0)){ warn='Enter your bet amount.'; }
-    else if(totalStake>100){ warn='Max 100 BUX per bet submission.'; }
-    else if(totalStake>balance){ warn='Insufficient balance ('+bux(balance)+').'; }
-
-    setMsg(warn || '', !warn);
-    const btn=$('#submit'); if(btn) btn.disabled = !!warn;
-  }
-
-  function submitBet(){
-    const stakeEl=$('#stake');
-    const stake = Number(stakeEl? stakeEl.value : 0) || 0;
-    const balance = getBalance();
-    const totalStake = (slipMode==='single') ? stake * slip.length : stake;
-    if(!(slip.length && stake>0 && totalStake<=100 && totalStake<=balance)) { updateTotals(); return; }
-
-    const at=Date.now();
-    // mark submitted per market
-    slip.forEach(leg=>{ if(!submitted[leg.marketId]) submitted[leg.marketId]={leg, at, section:leg.section}; });
-    saveSubmitted();
-
-    // tickets (local)
-    let tickets=[];
-    if(slipMode==='single'){
-      tickets = slip.map(leg=> ({ id:kid('TK'), at, mode:'single', stake:stake, leg, odds:(leg.odds||1) }));
-    }else{
-      const prod = slip.reduce((p,x)=> p * (x.odds||1), 1);
-      tickets = [{ id:kid('TK'), at, mode:'multi', stake:stake, legs:[...slip], odds:prod }];
-    }
-    const storeKey='sb:tickets';
-    try{ const store=(JSON.parse(localStorage.getItem(storeKey)||'[]')); tickets.forEach(t=>store.push(t)); localStorage.setItem(storeKey, JSON.stringify(store)); }catch{}
-
-    // deduct from the real wallet + ledger (shared with Profile)
-    pushLedger(-totalStake, 'BET_STAKE');
-
-    // clear UI
-    slip=[]; updateSlipUI(); paintMarkets(); refreshBux();
-    if(stakeEl){ stakeEl.value=10; }
-    updateTotals();
-    setMsg('Bet placed for '+bux(totalStake)+'!', true);
-  }
-
-  // cross-tab updates if wallet changes elsewhere
-  window.addEventListener('storage', (e)=>{
-    if(!e.key) return;
-    if(e.key.startsWith('lbx:wallet:') || e.key.startsWith('lbx:ledger:')) refreshBux();
-  });
-
-  // Simple tests (optional: add ?test=1)
-  if(location.search.indexOf('test=1')>=0){
-    try{
-      console.assert(bux(0)==='0 BUX','bux(0)');
-      slip=[{odds:2,label:'A',type:'YES_NO',marketId:'A'},{odds:3,label:'B',type:'YES_NO',marketId:'B'}];
-      slipMode='single'; const stakeEl=$('#stake'); if(stakeEl){ stakeEl.value=10; }
-      updateTotals();
-      console.assert($('#payout').textContent==='50 BUX','single payout 10*(2+3)=50');
-      slip=[]; updateSlipUI();
-      console.log('Smoke tests passed');
-    }catch(e){ console.warn('Smoke tests failed', e); }
-  }
-})();
-</script>
+<!-- IMPORTANT: point to where your jackpot client actually lives -->
+<script src="/assets/js/jackpot.client.js?v=10" defer></script>
 </body>
 </html>
