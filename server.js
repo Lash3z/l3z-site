@@ -25,8 +25,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || "0.0.0.0";
+const PORT = Number(process.env.PORT) || 3000;       // Render supplies PORT
+// don't pin HOST on Render; let Node bind to all interfaces
+
+app.disable("x-powered-by");
+app.set("trust proxy", 1); // good for cookies behind proxy
 
 // Public API base for client (blank = same-origin)
 const PUBLIC_API_BASE = process.env.PUBLIC_API_BASE || "";
@@ -90,9 +93,7 @@ try {
   );
   raffleSchema.index({ rid: 1, user: 1 }, { unique: true });
   RaffleEntry = mongoose.models.RaffleEntry || mongoose.model("RaffleEntry", raffleSchema);
-} catch {
-  /* ignore if mongo not ready */
-}
+} catch { /* ignore if mongo not ready */ }
 
 /* ------------------------------------
  * Admin Gate (server-side, 6h cookie)
@@ -175,23 +176,19 @@ app.get("/api/admin/gate/check", (req, res) => {
 });
 
 /* ------------------------------------
- * JACKPOT API  (AUD floor + subs cap + monthly rollover)
+ * JACKPOT API
  * ------------------------------------ */
-const JACKPOT_BASE_AUD   = Number(process.env.JACKPOT_BASE_AUD || 150);
-const SUBS_CAP_AUD       = Number(process.env.JACKPOT_SUBS_CAP_AUD || 100);
-const SUB_VALUE_AUD      = Number(process.env.JACKPOT_PER_SUB_AUD || 2.5);
-const DATA_DIR           = path.resolve(__dirname, "data");
-const JACKPOT_FILE       = path.join(DATA_DIR, "jackpot.json");
+const JACKPOT_BASE_AUD = Number(process.env.JACKPOT_BASE_AUD || 150);
+const SUBS_CAP_AUD     = Number(process.env.JACKPOT_SUBS_CAP_AUD || 100);
+const SUB_VALUE_AUD    = Number(process.env.JACKPOT_PER_SUB_AUD || 2.5);
+const DATA_DIR         = path.resolve(__dirname, "data");
+const JACKPOT_FILE     = path.join(DATA_DIR, "jackpot.json");
 
-// Melbourne helpers
 function melNow(){ return new Date(new Date().toLocaleString("en-AU",{ timeZone:"Australia/Melbourne" })); }
 function melMonthKey(d=melNow()){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
 function melNextMonthStartTs(){
-  const d = melNow();
-  const y = d.getFullYear();
-  const m = d.getMonth();
-  const nextY = m===11 ? y+1 : y;
-  const nextM = m===11 ? 1   : (m+2);
+  const d = melNow(); const y = d.getFullYear(); const m = d.getMonth();
+  const nextY = m===11 ? y+1 : y, nextM = m===11 ? 1 : (m+2);
   return Date.parse(`${nextY}-${String(nextM).padStart(2,"0")}-01T00:00:00+10:00`);
 }
 
@@ -223,29 +220,22 @@ function computeAmountAUD(state){
 async function rolloverIfNeeded(state){
   const keyNow = melMonthKey();
   if(state.month !== keyNow){
-    state.month = keyNow;
-    state.subsCents = 0;
-    state.manualCents = 0;
+    state.month = keyNow; state.subsCents = 0; state.manualCents = 0;
     await saveJackpot(state);
   }
   return state;
 }
 
-// GET current jackpot (public)
+// Public
 app.get("/api/jackpot", async (_req,res)=>{
   const st = await rolloverIfNeeded(await loadJackpot());
   res.json({
-    ok:true,
-    currency:"AUD",
-    month: st.month,
-    base: JACKPOT_BASE_AUD,
-    subsCap: SUBS_CAP_AUD,
-    amount: Number(computeAmountAUD(st).toFixed(2)),
-    nextResetTs: melNextMonthStartTs()
+    ok:true, currency:"AUD", month: st.month, base: JACKPOT_BASE_AUD, subsCap: SUBS_CAP_AUD,
+    amount: Number(computeAmountAUD(st).toFixed(2)), nextResetTs: melNextMonthStartTs()
   });
 });
 
-// Admin endpoints (require admin cookie)
+// Admin
 app.post("/api/jackpot/add-subs", adminGuard, async (req,res)=>{
   const count = Math.max(0, Math.floor(Number(req.body?.count||0)));
   const st = await rolloverIfNeeded(await loadJackpot());
@@ -256,7 +246,7 @@ app.post("/api/jackpot/add-subs", adminGuard, async (req,res)=>{
   res.json({ ok:true, amount: Number(computeAmountAUD(st).toFixed(2)) });
 });
 app.post("/api/jackpot/adjust", adminGuard, async (req,res)=>{
-  const delta = Number(req.body?.delta||0); // +/- AUD
+  const delta = Number(req.body?.delta||0);
   const st = await rolloverIfNeeded(await loadJackpot());
   st.manualCents = Math.max(0, st.manualCents + Math.round(delta*100));
   await saveJackpot(st);
@@ -273,9 +263,7 @@ app.post("/api/jackpot/set", adminGuard, async (req,res)=>{
 });
 app.post("/api/jackpot/reset", adminGuard, async (_req,res)=>{
   const st = await loadJackpot();
-  st.month = melMonthKey();
-  st.subsCents = 0;
-  st.manualCents = 0;
+  st.month = melMonthKey(); st.subsCents = 0; st.manualCents = 0;
   await saveJackpot(st);
   res.json({ ok:true, amount: Number(computeAmountAUD(st).toFixed(2)) });
 });
@@ -321,7 +309,7 @@ app.post("/api/giveaways/slotwheel/:id/entries", async (req, res) => {
   return res.json({ ok: true });
 });
 
-// Simple raffle entries (base endpoints)
+// Simple raffle entries
 app.get("/api/raffles/:id/entries", async (req, res) => {
   const rid = String(req.params.id || "").trim();
   if (!rid) return res.status(400).json({ ok: false, error: "bad_id" });
@@ -363,8 +351,9 @@ const pagesDir  = path.resolve(__dirname, "pages");
 const adminDir  = path.resolve(__dirname, "admin");
 const indexHtml = path.resolve(__dirname, "index.html");
 
-// Guard only admin pages
+// 🔐 Guard BOTH admin paths BEFORE static
 app.use("/pages/dashboard/admin", adminGuard);
+app.use("/admin", adminGuard);
 
 // HTML injector (adds API_BASE + api-base.js into every HTML)
 async function sendInjectedHtml(filePath, res, next) {
@@ -462,7 +451,6 @@ app.use((req, res) => {
 process.on("unhandledRejection", e => console.error("[unhandledRejection]", e));
 process.on("uncaughtException", e => console.error("[uncaughtException]", e));
 
-app.listen(PORT, HOST, () => {
-  console.log(`Server running: http://${HOST}:${PORT}`);
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
-
