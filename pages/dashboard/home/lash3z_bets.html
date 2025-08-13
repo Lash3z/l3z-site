@@ -13,6 +13,7 @@
     *{box-sizing:border-box}
     html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,Arial,sans-serif}
     a{color:inherit;text-decoration:none}
+    html[data-auth="checking"] body{opacity:0;transition:opacity .12s ease}
 
     .wrap{max-width:1400px;margin:0 auto;padding:14px}
     .top{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:12px}
@@ -24,7 +25,6 @@
     @media (max-width:1100px){.layout{grid-template-columns:1fr}}
 
     .panel{background:linear-gradient(180deg,#0e1319,#0b1016);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
-
     .sectionTitle{padding:14px 16px;border-bottom:1px solid var(--line);font-weight:900;color:#ffd589}
     .markets{display:flex;flex-direction:column;gap:12px;padding:12px}
 
@@ -54,7 +54,7 @@
     .slipBody{flex:1;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
     .ticket{border:1px solid var(--line);border-radius:10px;background:#0f151c;padding:10px 12px}
     .tTop{display:flex;justify-content:space-between;gap:10px}
-    .tMeta{font-size:12px;color:var(--muted)}
+    .tMeta{font-size:12px;color:#7d8596}
     .trash{cursor:pointer;color:#ffb5be}
     .totals{border-top:1px solid var(--line);padding:12px 16px;display:grid;gap:8px}
     .row{display:flex;justify-content:space-between;align-items:center}
@@ -62,12 +62,63 @@
     .amt input{width:120px;background:#0f141b;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--ink)}
     .btn{border:none;border-radius:12px;padding:12px 16px;font-weight:900;cursor:pointer;background:linear-gradient(180deg,#f2b64a,#d49a2e);color:#1a1204;box-shadow:inset 0 -2px 0 #9a6a13,0 8px 24px rgba(0,0,0,.35)}
     .btn:disabled{opacity:.5;cursor:not-allowed}
-    .ghost{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px}
+    .ghost{display:flex;align-items:center;gap:8px;color:#7d8596;font-size:12px}
     .note{padding:8px 12px;color:#c7d0e4;font-size:12px;border-left:3px solid #2d3648;background:#0f151d;border-radius:8px;margin:6px 12px}
     .msg{font-size:12px}
     .msg.ok{color:#9ff1c7}
     .msg.err{color:#ffb5be}
   </style>
+
+  <!-- Session + wallet bridge (same model as Profile) -->
+  <script>
+  (function(){
+    "use strict";
+    const LOGIN="/pages/dashboard/home/login.html";
+    const up=s=>String(s||"").trim().toUpperCase();
+    const now=()=>Date.now();
+    const sget=k=>{try{return JSON.parse(localStorage.getItem(k)||"null");}catch{return null;}};
+    const sset=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
+
+    document.documentElement.setAttribute("data-auth","checking");
+    const sess=sget("l3z:session");
+    const USER=up(sess?.user || localStorage.getItem("auth:username") || localStorage.getItem("lash3z_last_user") || "");
+    if(!USER){
+      const back=encodeURIComponent(location.pathname+location.search+location.hash);
+      location.replace(`${LOGIN}?redirect=${back}`); throw 0;
+    }
+    localStorage.setItem("user:username", USER);
+    localStorage.setItem("lash3z_last_user", USER);
+
+    const WKEY=u=>`lbx:wallet:${up(u)}`;
+    const LKEY=u=>`lbx:ledger:${up(u)}`;
+
+    function ensureWallet(u){
+      let w=sget(WKEY(u));
+      if(!w){
+        w={balance:50,created:now(),lastDaily:0};
+        sset(WKEY(u),w);
+        sset(LKEY(u),[{ts:now(),delta:+50,reason:"WELCOME_BONUS",balance:50}]);
+      }
+      return w;
+    }
+    function getWallet(){ return sget(WKEY(USER)) || ensureWallet(USER); }
+    function putWallet(w){ sset(WKEY(USER), w); }
+    function balance(){ return Number(getWallet().balance||0); }
+
+    function paintHeader(){
+      const who=document.getElementById('who'); if(who) who.textContent=`Welcome, ${USER}`;
+      const b=document.getElementById('bal');
+      if(b) b.textContent='🪙 '+(balance()||0).toLocaleString(undefined,{maximumFractionDigits:0})+' BUX';
+    }
+
+    ensureWallet(USER);
+    document.addEventListener("DOMContentLoaded",()=>{ paintHeader(); document.documentElement.removeAttribute("data-auth"); });
+    window.addEventListener("storage",(e)=>{ if(!e.key) return; if(e.key===WKEY(USER)||e.key===LKEY(USER)) paintHeader(); });
+
+    // Expose for the page logic
+    window.__L3Z__={USER,WKEY,LKEY,ensureWallet,getWallet,putWallet,balance,sget,sset,now};
+  })();
+  </script>
 </head>
 <body>
   <div class="wrap">
@@ -77,6 +128,7 @@
         <div class="tab" data-tab="bonus">Bonus Hunt</div>
         <div class="tab" data-tab="pvp">PVP</div>
       </div>
+      <div class="pill" id="who">Welcome, —</div>
       <div class="pill" id="bal">🪙 0 BUX</div>
     </div>
 
@@ -117,39 +169,35 @@
 (function(){
   "use strict";
   // ===== Helpers =====
-  function $(q,root){return (root||document).querySelector(q);}
-  function $all(q,root){return Array.from((root||document).querySelectorAll(q));}
-  function sget(k){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch(_){ return null; } }
-  function sset(k,v){ localStorage.setItem(k,JSON.stringify(v)); }
-  function esc(s){ s=String(s==null?'':s); return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;'); }
-  function kid(p){ return (p||'ID')+Math.random().toString(36).slice(2,10).toUpperCase(); }
-  function bux(n){ return (Number(n)||0).toLocaleString(undefined,{maximumFractionDigits:0})+' BUX'; }
+  const $=(q,r)=> (r||document).querySelector(q);
+  const $$=(q,r)=> Array.from((r||document).querySelectorAll(q));
+  const esc=s=>String(s??'').replace(/[&<>\"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
+  const kid=(p='ID')=> p+Math.random().toString(36).slice(2,10).toUpperCase();
+  const bux=n=> (Number(n)||0).toLocaleString(undefined,{maximumFractionDigits:0})+' BUX';
 
-  // ===== Shared keys =====
+  // ===== Shared keys / session objects from bridge =====
+  const { USER, sget, sset, now, balance, getWallet, putWallet, LKEY } = window.__L3Z__;
+
+  // ===== Keys =====
   const K_UNIFIED='sb:markets:unified';
   const K_BH_LIVE='bh:live';
   const K_BH_DRAFT='bh:draft';
+  const K_SUBS='sb:submitted:'+USER;     // submissions tied to logged-in user
 
-  // viewer identity & submissions
-  var viewerId = localStorage.getItem('viewer:id');
-  if(!viewerId){ viewerId = 'U'+Math.random().toString(36).slice(2,8).toUpperCase(); localStorage.setItem('viewer:id',viewerId); }
-  var viewerName = localStorage.getItem('viewer:name') || viewerId;
-  var K_SUBS = 'sb:submitted:'+viewerId;
-  var submitted = sget(K_SUBS) || {}; // marketId -> {leg, at, section}
+  // ===== State =====
+  let submitted = sget(K_SUBS) || {};    // marketId -> {leg, at, section}
+  let unified = sget(K_UNIFIED) || {sections:{battleground:{overall:[]},bonus:{overall:[]},pvp:{overall:[]}}};
+  let activeTab='battleground';
+  let slipMode='single';
+  let slip=[]; // {marketId, type, odds, ...}
+  let bhFilter = {providers:[], q:''};
 
-  // ===== App state =====
-  var unified = sget(K_UNIFIED) || {sections:{battleground:{overall:[]},bonus:{overall:[]},pvp:{overall:[]}}};
-  var activeTab='battleground';
-  var slipMode='single';
-  var slip=[]; // {marketId, type, odds, ...}
-  var bhFilter = {providers:[], q:''};
-
-  // ===== Boot wiring =====
-  $all('.tab').forEach(function(t){ t.addEventListener('click',function(){ setTab(t.dataset.tab); }); });
-  $all('.slipTab').forEach(function(t){ t.addEventListener('click',function(){ slipMode=t.dataset.mode; updateSlipUI(); }); });
-  var cs=$('#clearSlip'); if(cs){ cs.addEventListener('click',function(){ slip=[]; updateSlipUI(); }); }
-  var st=$('#stake'); if(st){ st.addEventListener('input', updateTotals); }
-  var sb=$('#submit'); if(sb){ sb.addEventListener('click', submitBet); }
+  // ===== Wire UI =====
+  $$('.tab').forEach(t=> t.addEventListener('click',()=> setTab(t.dataset.tab)));
+  $$('.slipTab').forEach(t=> t.addEventListener('click',()=>{ slipMode=t.dataset.mode; updateSlipUI(); }));
+  $('#clearSlip')?.addEventListener('click',()=>{ slip=[]; updateSlipUI(); });
+  $('#stake')?.addEventListener('input', updateTotals);
+  $('#submit')?.addEventListener('click', submitBet);
 
   setTab(activeTab);
   refreshBux();
@@ -157,144 +205,123 @@
   // ===== Tabs =====
   function setTab(tab){
     activeTab=tab;
-    $all('.tab').forEach(function(x){ x.classList.toggle('active', x.dataset.tab===tab); });
+    $$('.tab').forEach(x=> x.classList.toggle('active', x.dataset.tab===tab));
     $('#sectionLabel').textContent=(tab==='battleground'?'Battleground':tab==='bonus'?'Bonus Hunt':'PVP')+' — Custom Markets';
     paintMarkets();
   }
 
   // ===== Bonus Hunt slot list =====
-  function readBH(){ return sget(K_BH_LIVE) || sget(K_BH_DRAFT); }
+  const readBH=()=> sget(K_BH_LIVE) || sget(K_BH_DRAFT);
   function bhSlotList(){
-    var src=readBH(); var arr=[];
+    const src=readBH(); const arr=[];
     if(src && Array.isArray(src.entries)){
-      src.entries.forEach(function(e){
-        var name = e.slot || e.name || e.game || '';
-        if(!name) return;
-        var prov = e.provider || e.gameProvider || e.vendor || '';
-        arr.push({name:name, provider:prov});
+      src.entries.forEach(e=>{
+        const name = e.slot || e.name || e.game || ''; if(!name) return;
+        const prov = e.provider || e.gameProvider || e.vendor || '';
+        arr.push({name, provider:prov});
       });
     }
-    var seen={}; var res=[];
-    arr.forEach(function(x){ if(!seen[x.name]){ seen[x.name]=1; res.push(x); }});
-    return res; // [{name,provider}]
+    const seen={}, res=[]; arr.forEach(x=>{ if(!seen[x.name]){ seen[x.name]=1; res.push(x); }});
+    return res;
   }
 
   // ===== Painting =====
   function paintMarkets(){
-    var host=$('#markets'); host.innerHTML='';
-    var sec = (unified.sections[activeTab]||{overall:[]});
-    var mkts = sec.overall||[];
+    const host=$('#markets'); host.innerHTML='';
+    const sec=(unified.sections[activeTab]||{overall:[]});
+    const mkts=sec.overall||[];
 
     if(activeTab==='bonus'){
-      var hint=$('#hint');
-      var need=mkts.length===0;
+      const hint=$('#hint'); const need=mkts.length===0;
       hint.style.display= need? '' : 'none';
-      if(need){ hint.textContent='Bonus Hunt markets are not prefilled yet. Open the Admin and enable Bonus Hunt so the six fixed markets appear.'; }
+      if(need){ hint.textContent='Bonus Hunt markets are not prefilled yet. Open Admin and enable Bonus Hunt so the fixed markets appear.'; }
     }
-    mkts.forEach(function(m){ host.appendChild(marketCard(m)); });
+    mkts.forEach(m=> host.appendChild(marketCard(m)));
   }
 
-  function isLocked(m){ return String(m.status||'open').toLowerCase()==='locked'; }
-  function isSubmitted(marketId){ return !!submitted[marketId]; }
-  function saveSubmitted(){ sset(K_SUBS, submitted); }
+  const isLocked=m=> String(m.status||'open').toLowerCase()==='locked';
+  const isSubmitted=marketId=> !!submitted[marketId];
+  const saveSubmitted=()=> sset(K_SUBS, submitted);
 
   function marketCard(m){
-    var card=document.createElement('div'); card.className='mkt';
-    var locked = isLocked(m);
-    var already = isSubmitted(m.id);
+    const card=document.createElement('div'); card.className='mkt';
+    const locked=isLocked(m); const already=isSubmitted(m.id);
 
-    var head=document.createElement('div'); head.className='mHead';
+    const head=document.createElement('div'); head.className='mHead';
     head.innerHTML='<div class="mLabel">'+(locked?'🔒 ':'📦 ')+'<span>'+esc(m.label||m.type)+'</span></div>'
-                   +'<div class="pill">'+esc((m.status||'open').toUpperCase())+'</div>';
+                  +'<div class="pill">'+esc((m.status||'open').toUpperCase())+'</div>';
     card.appendChild(head);
 
-    // submitted bar
     if(already){
-      var bar=document.createElement('div'); bar.className='numBox';
+      const bar=document.createElement('div'); bar.className='numBox';
       bar.innerHTML='<span class="pill">Submitted ✓</span>'+(locked?'':' <button class="chip" data-act="undo">Undo</button>');
-      if(!locked){
-        var ub = bar.querySelector('[data-act="undo"]');
-        if(ub){ ub.addEventListener('click', function(){ undoSubmit(m.id); }); }
-      }
+      if(!locked){ bar.querySelector('[data-act="undo"]')?.addEventListener('click',()=>undoSubmit(m.id)); }
       card.appendChild(bar);
     }
 
-    if(['OVER_UNDER','YES_NO','MULTI_RANGE','CUSTOM'].indexOf(m.type)>=0){
-      var box=document.createElement('div'); box.className='options';
-      (m.selections||[]).forEach(function(s,idx){
-        var o=document.createElement('div'); o.className='opt'; o.dataset.idx=idx;
+    if(['OVER_UNDER','YES_NO','MULTI_RANGE','CUSTOM'].includes(m.type)){
+      const box=document.createElement('div'); box.className='options';
+      (m.selections||[]).forEach((s,idx)=>{
+        const o=document.createElement('div'); o.className='opt'; o.dataset.idx=idx;
         if(locked||already) o.style.pointerEvents='none';
-        o.classList.toggle('active', slip.some(function(x){ return x.marketId===m.id && x.selIdx==idx; }));
+        o.classList.toggle('active', slip.some(x=> x.marketId===m.id && x.selIdx==idx));
         o.innerHTML='<div>'+esc(s.label||'Option')+'</div><div class="odd">'+Number(s.odds||1).toFixed(2)+'×</div>';
-        o.addEventListener('click', function(){ togglePick(m, {type:'selection', idx:idx, label:s.label, odds:Number(s.odds||1)} , o); });
+        o.addEventListener('click',()=> togglePick(m,{ idx, label:s.label, odds:Number(s.odds||1) }, o));
         box.appendChild(o);
       });
       card.appendChild(box);
     }
 
     if(m.type==='NUMERIC_GUESS'){
-      var nb=document.createElement('div'); nb.className='numBox';
+      const nb=document.createElement('div'); nb.className='numBox';
       nb.innerHTML='<span class="pill">Enter your guess</span><input type="number" step="0.01" placeholder="0" style="width:180px" '+(locked||already?'disabled':'')+' />'
-                   +'<button class="chip" type="button" '+(locked||already?'disabled':'')+'>Add to Slip</button>';
-      var input=nb.querySelector('input');
-      var btn=nb.querySelector('button');
-      if(btn){ btn.addEventListener('click', function(){
-        var val=(input&&input.value?input.value.trim():''); if(val==='') return;
-        addToSlip(m,{type:'guess', guess:Number(val)}); if(input) input.value='';
-      });}
+                  +'<button class="chip" type="button" '+(locked||already?'disabled':'')+'>Add to Slip</button>';
+      const input=nb.querySelector('input'); const btn=nb.querySelector('button');
+      btn?.addEventListener('click',()=>{ const v=input?.value.trim(); if(!v) return; addToSlip(m,{type:'guess',guess:Number(v)}); if(input) input.value=''; });
       card.appendChild(nb);
     }
 
     if(m.type==='TEXT_GUESS'){
-      var list = activeTab==='bonus' ? bhSlotList() : [];
-      var box=document.createElement('div'); box.className='textBox';
+      const list = activeTab==='bonus' ? bhSlotList() : [];
+      const box=document.createElement('div'); box.className='textBox';
       if(list.length){
-        var provs=[]; list.forEach(function(x){ if(x.provider && provs.indexOf(x.provider)<0) provs.push(x.provider); });
-        var filterBar=document.createElement('div'); filterBar.className='chips';
-        var allBtn=document.createElement('div'); allBtn.className='chip active'; allBtn.textContent='All';
+        const provs=[]; list.forEach(x=>{ if(x.provider && !provs.includes(x.provider)) provs.push(x.provider); });
+        const filterBar=document.createElement('div'); filterBar.className='chips';
+        const allBtn=document.createElement('div'); allBtn.className='chip active'; allBtn.textContent='All';
         filterBar.appendChild(allBtn);
-        provs.forEach(function(p){
-          var b=document.createElement('div'); b.className='chip'; b.textContent=p;
-          b.addEventListener('click', function(){
-            $all('.chip',filterBar).forEach(function(x){ x.classList.remove('active'); });
-            b.classList.add('active'); bhFilter.providers=[p]; renderChips();
-          });
+        provs.forEach(p=>{
+          const b=document.createElement('div'); b.className='chip'; b.textContent=p;
+          b.addEventListener('click',()=>{ $$('.chip',filterBar).forEach(x=>x.classList.remove('active')); b.classList.add('active'); bhFilter.providers=[p]; renderChips(); });
           filterBar.appendChild(b);
         });
-        var q=document.createElement('input'); q.placeholder='Search slot'; q.style.minWidth='200px';
-        q.addEventListener('input', function(){ bhFilter.q=q.value.toLowerCase(); renderChips(); });
+        const q=document.createElement('input'); q.placeholder='Search slot'; q.style.minWidth='200px';
+        q.addEventListener('input',()=>{ bhFilter.q=q.value.toLowerCase(); renderChips(); });
         filterBar.appendChild(q);
         box.appendChild(filterBar);
 
-        var wrap=document.createElement('div'); wrap.className='chips'; box.appendChild(wrap);
+        const wrap=document.createElement('div'); wrap.className='chips'; box.appendChild(wrap);
         if(locked||already) wrap.style.pointerEvents='none';
 
         function renderChips(){
           wrap.innerHTML='';
-          var filtered = list.filter(function(x){
-            var passProv = !bhFilter.providers.length || (x.provider && bhFilter.providers.indexOf(x.provider)>=0);
-            var passQ = !bhFilter.q || x.name.toLowerCase().indexOf(bhFilter.q)>=0;
+          const filtered=list.filter(x=>{
+            const passProv=!bhFilter.providers.length || (x.provider && bhFilter.providers.includes(x.provider));
+            const passQ=!bhFilter.q || x.name.toLowerCase().includes(bhFilter.q);
             return passProv && passQ;
           });
-          filtered.forEach(function(o){
-            var c=document.createElement('div'); c.className='chip'; c.textContent=o.name;
-            c.addEventListener('click', function(){
-              $all('.chip',wrap).forEach(function(x){ x.classList.remove('active'); });
-              c.classList.add('active'); addToSlip(m,{type:'text', guess:o.name});
-            });
+          filtered.forEach(o=>{
+            const c=document.createElement('div'); c.className='chip'; c.textContent=o.name;
+            c.addEventListener('click',()=>{ $$('.chip',wrap).forEach(x=>x.classList.remove('active')); c.classList.add('active'); addToSlip(m,{type:'text',guess:o.name}); });
             wrap.appendChild(c);
           });
         }
-        allBtn.addEventListener('click', function(){
-          bhFilter.providers=[]; $all('.chip',filterBar).forEach(function(x){ x.classList.remove('active'); });
-          allBtn.classList.add('active'); renderChips();
-        });
+        allBtn.addEventListener('click',()=>{ bhFilter.providers=[]; $$('.chip',filterBar).forEach(x=>x.classList.remove('active')); allBtn.classList.add('active'); renderChips(); });
         renderChips();
       }else{
-        box.innerHTML = '<span class="pill">Your pick</span><input placeholder="Type the slot name" style="min-width:240px" '+(locked||already?'disabled':'')+' />'
-                        +'<button class="chip" type="button" '+(locked||already?'disabled':'')+'>Add</button>';
-        var ti=box.querySelector('input'), tb=box.querySelector('button');
-        if(tb){ tb.addEventListener('click', function(){ var v=ti&&ti.value?ti.value.trim():''; if(!v) return; addToSlip(m,{type:'text', guess:v}); if(ti) ti.value=''; }); }
+        box.innerHTML='<span class="pill">Your pick</span><input placeholder="Type the slot name" style="min-width:240px" '+(locked||already?'disabled':'')+' />'
+                     +'<button class="chip" type="button" '+(locked||already?'disabled':'')+'>Add</button>';
+        const ti=box.querySelector('input'), tb=box.querySelector('button');
+        tb?.addEventListener('click',()=>{ const v=ti?.value.trim(); if(!v) return; addToSlip(m,{type:'text',guess:v}); if(ti) ti.value=''; });
       }
       card.appendChild(box);
     }
@@ -302,47 +329,32 @@
     return card;
   }
 
-  // ===== Balance & messages =====
-  function getBalance(){
-    try{
-      var viewer = localStorage.getItem('viewer:name')||null; var total=0;
-      for(var i=0;i<localStorage.length;i++){
-        var k=localStorage.key(i); if(!k||k.indexOf('bux:awards:')!==0) continue;
-        try{
-          var arr=JSON.parse(localStorage.getItem(k))||[];
-          arr.forEach(function(a){ if(!viewer || a.name===viewer || a.userId===viewer) total += Number(a.amount||0); });
-        }catch(_){}
-      }
-      var spent = Number(localStorage.getItem('bux:spent:'+viewerId) || '0');
-      return Math.max(0, total - spent);
-    }catch(_){ return 0; }
-  }
+  // ===== BUX & messages =====
   function refreshBux(){
-    var bal = getBalance();
-    var b=$('#bal'); if(b) b.textContent='🪙 '+ (bal||0).toLocaleString(undefined,{maximumFractionDigits:0}) +' BUX';
+    const b=document.getElementById('bal');
+    if(b) b.textContent='🪙 '+(balance()||0).toLocaleString(undefined,{maximumFractionDigits:0})+' BUX';
   }
   function setMsg(text, ok){
-    var w=$('#warn'); if(!w) return;
-    w.textContent = text||'';
-    w.className = 'msg'+(text? (ok?' ok':' err') : '');
+    const w=$('#warn'); if(!w) return;
+    w.textContent=text||''; w.className='msg'+(text?(ok?' ok':' err'):'');
   }
 
   // ===== Picks =====
   function addToSlip(m, payload){
     if(isLocked(m) || isSubmitted(m.id)) return;
-    var item={ id:kid('T'), section:activeTab, marketId:m.id, label:m.label||m.type, mtype:m.type };
+    const item={ id:kid('T'), section:activeTab, marketId:m.id, label:m.label||m.type, mtype:m.type };
     if(payload.type==='selection'){ item.type='selection'; item.selIdx=payload.idx; item.selLabel=payload.label; item.odds=Number(payload.odds||1); }
     if(payload.type==='guess'){ item.type='guess'; item.guess=payload.guess; item.odds=Number(m.fixedOdds||1.84); }
     if(payload.type==='text'){ item.type='text'; item.guess=String(payload.guess); item.odds=Number(m.fixedOdds||1.84); }
-    if(slipMode==='single'){ slip = slip.filter(function(x){ return x.marketId!==item.marketId; }); }
+    if(slipMode==='single'){ slip = slip.filter(x=> x.marketId!==item.marketId); }
     slip.push(item); updateSlipUI();
   }
 
   function togglePick(m, sel, node){
     if(isLocked(m) || isSubmitted(m.id)) return;
-    var i=slip.findIndex(function(x){ return x.marketId===m.id && x.type==='selection' && x.selIdx===sel.idx; });
-    if(i>=0){ slip.splice(i,1); if(node) node.classList.remove('active'); }
-    else{ addToSlip(m, {type:'selection', idx:sel.idx, label:sel.label, odds:sel.odds}); if(node) node.classList.add('active'); }
+    const i=slip.findIndex(x=> x.marketId===m.id && x.type==='selection' && x.selIdx===sel.idx);
+    if(i>=0){ slip.splice(i,1); node?.classList.remove('active'); }
+    else{ addToSlip(m,{type:'selection',idx:sel.idx,label:sel.label,odds:sel.odds}); node?.classList.add('active'); }
     updateSlipUI();
   }
 
@@ -354,102 +366,97 @@
   }
 
   function updateSlipUI(){
-    var body=$('#slipBody'); body.innerHTML='';
+    const body=$('#slipBody'); body.innerHTML='';
     $('#slipCount').textContent=slip.length;
     if(!slip.length){ body.innerHTML='<div class="note">Your selections will appear here.</div>'; }
-    slip.forEach(function(t,i){
-      var row=document.createElement('div'); row.className='ticket';
-      var subtitle = t.type==='selection' ? esc(t.selLabel||'') : (t.type==='guess' ? ('Guess: '+esc(t.guess)) : ('Pick: '+esc(t.guess)));
+    slip.forEach((t,i)=>{
+      const row=document.createElement('div'); row.className='ticket';
+      const subtitle = t.type==='selection' ? esc(t.selLabel||'') : (t.type==='guess' ? ('Guess: '+esc(t.guess)) : ('Pick: '+esc(t.guess)));
       row.innerHTML='<div class="tTop"><div><div style="font-weight:800">'+esc(t.label)+'</div><div class="tMeta">'+subtitle+'</div></div>'
                    +'<div class="trash" data-i="'+i+'">✖</div></div>'
                    +(t.odds?'<div class="tMeta" style="margin-top:6px">Odds ~ '+Number(t.odds).toFixed(2)+'×</div>':'');
-      var trash = row.querySelector('.trash');
-      if(trash){ trash.addEventListener('click',function(){ slip.splice(i,1); updateSlipUI(); }); }
+      row.querySelector('.trash')?.addEventListener('click',()=>{ slip.splice(i,1); updateSlipUI(); });
       body.appendChild(row);
     });
 
-    // multi eligibility (all legs must have odds)
-    var multiTab = $all('.slipTab').find(function(x){ return x.dataset.mode==='multi'; });
-    var hasNoOdds = slip.some(function(x){ return !x.odds; });
+    // Multi disabled if any leg lacks odds
+    const multiTab=$$('.slipTab').find(x=> x.dataset.mode==='multi');
+    const hasNoOdds=slip.some(x=> !x.odds);
     if(hasNoOdds && slipMode==='multi') slipMode='single';
-    if(multiTab){ multiTab.style.opacity = hasNoOdds? .4 : 1; multiTab.style.pointerEvents = hasNoOdds? 'none':'auto'; }
+    if(multiTab){ multiTab.style.opacity=hasNoOdds?.4:1; multiTab.style.pointerEvents=hasNoOdds?'none':'auto'; }
 
     updateTotals();
   }
 
   function updateTotals(){
-    var stakeEl=$('#stake');
-    var stake = Number(stakeEl? stakeEl.value : 0) || 0;
-    var balance = getBalance();
+    const stakeEl=$('#stake');
+    const stake = Number(stakeEl?.value||0) || 0;
+    const bal = balance();
 
-    var est = 0;
-    if(slipMode==='single'){
-      est = slip.reduce(function(a,x){ return a + (stake * (x.odds||1)); }, 0);
-    }else{
-      var prod = slip.reduce(function(p,x){ return p * (x.odds||1); }, 1);
-      est = stake * prod;
-    }
-    var pay=$('#payout'); if(pay) pay.textContent = bux(est);
+    let est=0;
+    if(slipMode==='single'){ est = slip.reduce((a,x)=> a + (stake * (x.odds||1)), 0); }
+    else{ est = stake * slip.reduce((p,x)=> p*(x.odds||1), 1); }
+    $('#payout').textContent=bux(est);
 
-    var totalStake = (slipMode==='single') ? stake * slip.length : stake;
+    const totalStake = (slipMode==='single') ? stake * slip.length : stake;
 
-    var warn = '';
-    if(!slip.length){ warn='Add at least one selection.'; }
-    else if(!(stake>0)){ warn='Enter your bet amount.'; }
-    else if(totalStake>100){ warn='Max 100 BUX per bet submission.'; }
-    else if(totalStake>balance){ warn='Insufficient balance ('+bux(balance)+').'; }
+    let warn='';
+    if(!slip.length) warn='Add at least one selection.';
+    else if(!(stake>0)) warn='Enter your bet amount.';
+    else if(totalStake>100) warn='Max 100 BUX per bet submission.';
+    else if(totalStake>bal) warn='Insufficient balance ('+bux(bal)+').';
 
-    setMsg(warn || '', !warn);
-    var btn=$('#submit'); if(btn) btn.disabled = !!warn;
+    setMsg(warn||'', !warn);
+    const btn=$('#submit'); if(btn) btn.disabled=!!warn;
+  }
+
+  function pushLedger(delta, reason){
+    const ledgerKey = LKEY(USER);
+    const list = sget(ledgerKey) || [];
+    const w = getWallet(); w.balance = Number(w.balance||0) + Number(delta||0); putWallet(w);
+    list.push({ ts: now(), delta: Number(delta||0), reason: String(reason||'ADJUSTMENT'), balance: w.balance });
+    sset(ledgerKey, list.slice(-200));
+    refreshBux();
   }
 
   function submitBet(){
-    var stakeEl=$('#stake');
-    var stake = Number(stakeEl? stakeEl.value : 0) || 0;
-    var balance = getBalance();
-    var totalStake = (slipMode==='single') ? stake * slip.length : stake;
-    if(!(slip.length && stake>0 && totalStake<=100 && totalStake<=balance)) { updateTotals(); return; }
+    const stakeEl=$('#stake');
+    const stake = Number(stakeEl?.value||0) || 0;
+    const totalStake = (slipMode==='single') ? stake * slip.length : stake;
+    const bal=balance();
+    if(!(slip.length && stake>0 && totalStake<=100 && totalStake<=bal)){ updateTotals(); return; }
 
-    var at=Date.now();
-    // mark submitted per market (one submission per market)
-    slip.forEach(function(leg){ if(!submitted[leg.marketId]) submitted[leg.marketId]={leg:leg, at:at, section:leg.section}; });
+    const at=Date.now();
+    // mark submitted per market
+    slip.forEach(leg=>{ if(!submitted[leg.marketId]) submitted[leg.marketId]={leg, at, section:leg.section}; });
     saveSubmitted();
 
-    // create tickets
-    var tickets=[];
+    // tickets
+    let tickets=[];
     if(slipMode==='single'){
-      tickets = slip.map(function(leg){ return { id:kid('TK'), at:at, mode:'single', stake:stake, leg:leg, odds:(leg.odds||1) }; });
+      tickets = slip.map(leg=> ({ id:kid('TK'), user:USER, at, mode:'single', stake:stake, leg, odds:(leg.odds||1) }));
     }else{
-      var prod = slip.reduce(function(p,x){ return p * (x.odds||1); }, 1);
-      tickets = [{ id:kid('TK'), at:at, mode:'multi', stake:stake, legs:[].concat(slip), odds:prod }];
+      const prod = slip.reduce((p,x)=> p*(x.odds||1), 1);
+      tickets = [{ id:kid('TK'), user:USER, at, mode:'multi', stake:stake, legs:[...slip], odds:prod }];
     }
+    const storeKey='sb:tickets';
+    const store=sget(storeKey)||[]; tickets.forEach(t=>store.push(t)); sset(storeKey,store);
 
-    // persist locally
-    var store=sget('sb:tickets')||[]; tickets.forEach(function(t){ store.push(t); }); sset('sb:tickets',store);
+    // deduct wallet + write ledger
+    pushLedger(-totalStake, 'BET_STAKE');
 
-    // deduct balance (spent)
-    var skey='bux:spent:'+viewerId; var prev=Number(localStorage.getItem(skey)||'0'); localStorage.setItem(skey,String(prev+totalStake));
-
-    // clear
-    slip=[]; updateSlipUI(); paintMarkets(); refreshBux();
-    if(stakeEl){ stakeEl.value=10; }
-    updateTotals();
+    // reset UI
+    slip=[]; updateSlipUI(); paintMarkets(); if(stakeEl) stakeEl.value=10; updateTotals();
     setMsg('Bet placed for '+bux(totalStake)+'!', true);
   }
 
-  // ===== Simple tests (enable with ?test=1) =====
-  if(location.search.indexOf('test=1')>=0){
+  // optional smoke tests (?test=1)
+  if(location.search.includes('test=1')){
     try{
-      console.assert(bux(0)==='0 BUX','bux(0)');
       slip=[{odds:2,label:'A',type:'YES_NO',marketId:'A'},{odds:3,label:'B',type:'YES_NO',marketId:'B'}];
-      slipMode='single'; var stakeEl=$('#stake'); if(stakeEl){ stakeEl.value=10; }
-      updateTotals();
-      console.assert($('#payout').textContent==='50 BUX','single payout 10*(2+3)=50');
-      if(stakeEl){ stakeEl.value=101; } updateTotals();
-      console.assert($('#warn').textContent.indexOf('Max 100')>=0,'cap warning appears');
-      slip=[]; updateSlipUI();
-      console.log('Smoke tests passed');
-    }catch(e){ console.warn('Smoke tests failed', e); }
+      slipMode='single'; const stakeEl=$('#stake'); if(stakeEl) stakeEl.value=10; updateTotals();
+      console.assert($('#payout').textContent==='50 BUX','calc ok'); slip=[]; updateSlipUI();
+    }catch(e){ console.warn('tests failed', e); }
   }
 })();
 </script>
