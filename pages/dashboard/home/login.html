@@ -1,52 +1,23 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Sign in — LASH3Z</title>
-  <style>
-    :root{--bg:#0b0f14;--panel:#11161d;--ink:#e9f1ff;--line:rgba(0,255,255,.18);--gold:#ffcc66}
-    html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial,sans-serif}
-    .card{max-width:420px;margin:10vh auto;padding:20px;background:#0e141a;border:1px solid var(--line);border-radius:14px}
-    label{display:block;margin:10px 0 6px}
-    input{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:#0c1218;color:var(--ink)}
-    button{width:100%;margin-top:14px;padding:12px;border:0;border-radius:12px;background:linear-gradient(180deg,#ffd27a,#e3a93b);color:#1a1304;font-weight:800;cursor:pointer}
-    .hint{margin-top:10px;color:#9fb1c7;font-size:12px}
-    .err{color:#ffb5be;margin-top:8px;font-size:12px}
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h2>Sign in</h2>
-    <form id="f">
-      <label>Username</label>
-      <input id="u" autocomplete="username" required />
-      <label>Password</label>
-      <input id="p" type="password" autocomplete="current-password" required />
-      <button>Sign in</button>
-    </form>
-    <div class="hint">Admins: set your username in the <code>ADMIN_USERS</code> list inside this page’s script.</div>
-    <div id="msg" class="err"></div>
-  </div>
-
 <script>
 (function(){
   "use strict";
 
-  // EDIT this list to your actual admin usernames (case-insensitive).
+  // 👇 Add your admin usernames here (case-insensitive)
   const ADMIN_USERS = ["LASH3Z","ADMIN","OWNER"];
 
   const SESSION_KEY = "l3z:session";
-  const WEEK = 7*24*60*60*1000;
+  const ADMIN_TOKEN = "admin:token";
+  const SESSION_DAYS = 7;    // session lifetime
+  const ADMIN_HOURS  = 12;   // auto-unlock lifetime
 
   function sset(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
 
-  const form = document.getElementById("f");
-  const U = document.getElementById("u");
-  const P = document.getElementById("p");
-  const msg = document.getElementById("msg");
+  const form = document.querySelector("form");
+  const U = document.getElementById("u") || document.querySelector('[name="username"]');
+  const P = document.getElementById("p") || document.querySelector('[name="password"]');
+  const msg = document.getElementById("msg") || document.createElement("div");
 
-  form.addEventListener("submit", (e)=>{
+  form.addEventListener("submit",(e)=>{
     e.preventDefault();
     const user = (U.value||"").trim();
     const pass = (P.value||"").trim();
@@ -54,23 +25,32 @@
       msg.textContent = "Please enter a valid username and password.";
       return;
     }
+
+    // Decide admin by username
     const isAdmin = ADMIN_USERS.includes(user.toUpperCase());
+
+    // Write session
     const session = {
       user: user.toUpperCase(),
       isAdmin,
-      expiresAt: Date.now() + WEEK
+      expiresAt: Date.now() + SESSION_DAYS*24*60*60*1000
     };
     sset(SESSION_KEY, session);
 
-    // if you want to auto-unlock admin on login for admins, uncomment next line:
-    // if(isAdmin) sset("admin:token", {by: session.user, ts: Date.now(), expiresAt: Date.now()+8*60*60*1000});
+    // 🔓 Auto-unlock admin on login for admins (no dashboard step needed)
+    if(isAdmin){
+      const tok = {
+        by: session.user,
+        ts: Date.now(),
+        expiresAt: Date.now() + ADMIN_HOURS*60*60*1000
+      };
+      sset(ADMIN_TOKEN, tok);
+    }
 
-    // redirect
+    // Redirect back
     const params = new URLSearchParams(location.search);
     const redirect = params.get("redirect");
     location.replace(redirect || "/pages/dashboard/home/index.html");
   });
 })();
 </script>
-</body>
-</html>
