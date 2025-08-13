@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>LASH3Z Dashboard</title>
   <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
+
   <style>
     :root{
       --cyan:#00ffff; --ink:#eaf7ff; --glass:rgba(0,0,0,.85); --panel:#0f1416;
@@ -98,197 +99,198 @@
 
   <!-- Header user + mobile menu + ICON BAR CONFIG -->
   <script>
-  window.TOPBAR_ICON_CONFIG = {
-    align: 'center',
-    size: 48, gap: 18, radius: 10, hoverScale: 1.12,
-    icons: [
-      { href:'https://kick.com/lash3z',      src:'/assets/kick.png',      alt:'Kick',      show:true },
-      { href:'https://x.com/Lash3_z',        src:'/assets/x_twitter.png', alt:'Twitter',   show:true },
-      { href:'https://www.instagram.com/lash3z50/', src:'/assets/instagram.png', alt:'Instagram', show:true },
-      { href:'https://www.facebook.com/lashesslots', src:'/assets/facebook.png',  alt:'Facebook',  show:true },
-      { href:'https://www.youtube.com/@Lash3z-50',   src:'/assets/youtube.png',   alt:'YouTube',   show:true },
-      { href:'https://discord.gg/fSVqK6cMmB',        src:'/assets/discord.png',   alt:'Discord',   show:true },
-    ]
-  };
+    window.TOPBAR_ICON_CONFIG = {
+      align: 'center',
+      size: 48, gap: 18, radius: 10, hoverScale: 1.12,
+      icons: [
+        { href:'https://kick.com/lash3z',      src:'/assets/kick.png',      alt:'Kick',      show:true },
+        { href:'https://x.com/Lash3_z',        src:'/assets/x_twitter.png', alt:'Twitter',   show:true },
+        { href:'https://www.instagram.com/lash3z50/', src:'/assets/instagram.png', alt:'Instagram', show:true },
+        { href:'https://www.facebook.com/lashesslots', src:'/assets/facebook.png',  alt:'Facebook',  show:true },
+        { href:'https://www.youtube.com/@Lash3z-50',   src:'/assets/youtube.png',   alt:'YouTube',   show:true },
+        { href:'https://discord.gg/fSVqK6cMmB',        src:'/assets/discord.png',   alt:'Discord',   show:true },
+      ]
+    };
   </script>
 
   <script>
-  (function(){
-    "use strict";
-    const $ = (s,r)=> (r||document).querySelector(s);
+    (function(){
+      "use strict";
+      const $ = (s,r)=> (r||document).querySelector(s);
 
-    function sanitizeName(x){
-      if (!x) return "";
-      const m = String(x).toUpperCase().match(/[A-Z0-9_]+/g);
-      return m ? m.join("") : "";
-    }
-    async function setUser(){
-      try{
-        const r = await fetch("/api/wallet/me",{credentials:"include",cache:"no-store"});
-        if (r.ok){
-          const j = await r.json();
-          const fromApi = j?.username || j?.user || j?.name || j?.displayName || "";
-          const clean = sanitizeName(fromApi);
-          if (clean){ $("#usernameDisplay").textContent = "Welcome, " + clean; return; }
-        }
-      }catch{}
-      const fallback =
-        localStorage.getItem("auth:username") ||
-        localStorage.getItem("lash3z_last_user") ||
-        localStorage.getItem("user:name") || "";
-      const clean = sanitizeName(fallback);
-      $("#usernameDisplay").textContent = "Welcome, " + (clean || "PLAYER");
-    }
+      function sanitizeName(x){
+        if (!x) return "";
+        const m = String(x).toUpperCase().match(/[A-Z0-9_]+/g);
+        return m ? m.join("") : "";
+      }
 
-    function wireMenu(){
-      const btn = $("#menuBtn"), side = $("#sidebar");
-      if (!btn || !side) return;
-      btn.addEventListener("click", ()=> side.classList.toggle("open"));
-      side.querySelectorAll("a.navlink").forEach(a=>a.addEventListener("click", ()=> side.classList.remove("open")));
-    }
+      async function setUser(){
+        try{
+          const r = await fetch("/api/wallet/me",{credentials:"include",cache:"no-store"});
+          if (r.ok){
+            const j = await r.json();
+            const fromApi = j?.username || j?.user || j?.name || j?.displayName || "";
+            const clean = sanitizeName(fromApi);
+            if (clean){ $("#usernameDisplay").textContent = "Welcome, " + clean; return; }
+          }
+        }catch{}
+        const fallback =
+          localStorage.getItem("auth:username") ||
+          localStorage.getItem("lash3z_last_user") ||
+          localStorage.getItem("user:name") || "";
+        const clean = sanitizeName(fallback);
+        $("#usernameDisplay").textContent = "Welcome, " + (clean || "PLAYER");
+      }
 
-    function buildIconBar(){
-      const cfg = window.TOPBAR_ICON_CONFIG || {};
-      const bar = $("#iconBar");
-      if(!bar) return;
-      bar.classList.remove('left','center','right');
-      bar.classList.add((cfg.align||'right').toLowerCase());
-      const root = document.documentElement;
-      if(cfg.size)       root.style.setProperty('--icon-size', cfg.size + 'px');
-      if(cfg.gap)        root.style.setProperty('--icon-gap',  cfg.gap  + 'px');
-      if(cfg.radius!=null) root.style.setProperty('--icon-radius', cfg.radius + 'px');
-      if(cfg.hoverScale) root.style.setProperty('--icon-hover-scale', cfg.hoverScale);
-      const list = (cfg.icons||[]).filter(i=>i && i.show!==false);
-      bar.innerHTML = list.map(i=>`
-        <a class="icon-link" href="${i.href}" target="_blank" rel="noopener">
-          <img class="icon-img" src="${i.src}" alt="${i.alt||''}" title="${i.alt||''}">
-        </a>`).join('');
-    }
+      function wireMenu(){
+        const btn = $("#menuBtn"), side = $("#sidebar");
+        if (!btn || !side) return;
+        btn.addEventListener("click", ()=> side.classList.toggle("open"));
+        side.querySelectorAll("a.navlink").forEach(a=>a.addEventListener("click", ()=> side.classList.remove("open")));
+      }
 
-    document.addEventListener("DOMContentLoaded", ()=>{ setUser(); wireMenu(); buildIconBar(); });
-  })();
+      function buildIconBar(){
+        const cfg = window.TOPBAR_ICON_CONFIG || {};
+        const bar = $("#iconBar");
+        if(!bar) return;
+        bar.classList.remove('left','center','right');
+        bar.classList.add((cfg.align||'right').toLowerCase());
+        const root = document.documentElement;
+        if(cfg.size)       root.style.setProperty('--icon-size', cfg.size + 'px');
+        if(cfg.gap)        root.style.setProperty('--icon-gap',  cfg.gap  + 'px');
+        if(cfg.radius!=null) root.style.setProperty('--icon-radius', cfg.radius + 'px');
+        if(cfg.hoverScale) root.style.setProperty('--icon-hover-scale', cfg.hoverScale);
+        const list = (cfg.icons||[]).filter(i=>i && i.show!==false);
+        bar.innerHTML = list.map(i=>`
+          <a class="icon-link" href="${i.href}" target="_blank" rel="noopener">
+            <img class="icon-img" src="${i.src}" alt="${i.alt||''}" title="${i.alt||''}">
+          </a>`).join('');
+      }
+
+      document.addEventListener("DOMContentLoaded", ()=>{ setUser(); wireMenu(); buildIconBar(); });
+    })();
   </script>
 </head>
 <body>
 
-<div class="topbar">
-  <div class="top-inner">
-    <button id="menuBtn" class="menu-btn">☰ Menu</button>
-    <div class="username-display" id="usernameDisplay">Welcome, PLAYER</div>
-    <div id="iconBar" class="icon-bar right"></div>
-  </div>
-</div>
-
-<div id="sidebar" class="sidebar">
-  <h3>Dashboard</h3>
-  <a class="navlink" href="/index.html"><img src="/assets/overview_icon.png" alt="Home">Home Page</a>
-
-  <h3>Account</h3>
-  <a class="navlink" href="/pages/dashboard/home/signup.html"><img src="/assets/signup.png" alt="Sign Up">Sign Up</a>
-  <a class="navlink" href="/pages/dashboard/home/login.html"><img src="/assets/login.png" alt="Login">Login</a>
-  <a class="navlink" href="/pages/dashboard/home/profile.html"><img src="/assets/signup.png" alt="Profile">Profile</a>
-
-  <h3>Prediction Forms</h3>
-  <a class="navlink" href="/pages/dashboard/home/battleground_prediction_form.html"><img src="/assets/battleground_icon.png" alt="Battleground">L3Z Battleground</a>
-  <a class="navlink" href="/pages/dashboard/home/bonus_hunt_slot_requests.html"><img src="/assets/bonus_hunt_icon.png" alt="Bonus Hunt">Bonus Hunt Slot Requests</a>
-  <a class="navlink" href="/pages/dashboard/home/pvp_entry_form.html"><img src="/assets/pvp_icon.png" alt="PVP Entry">PVP Entry Form</a>
-
-  <h3>LASH3Z Bets</h3>
-  <a class="navlink" href="/pages/dashboard/home/lash3z_bets.html"><img src="/assets/lash3zbux_pp.png" alt="L3Z Bets">Place Bets</a>
-  <a class="navlink" href="/pages/dashboard/home/my_bets.html"><img src="/assets/lash3zbux_pp.png" alt="My Bets">My Bets</a>
-  <a class="navlink" href="/pages/dashboard/home/lash3zbux_info.html"><img src="/assets/lash3zbux_pp.png" alt="Info">Bux Info</a>
-  <a class="navlink" href="/pages/dashboard/home/lash3zbux_score_system.html"><img src="/assets/lash3zbux_pp.png" alt="Score">Bux Scoring</a>
-
-  <h3>Leaderboard</h3>
-  <a class="navlink" href="/pages/dashboard/home/leaderboard.html"><img src="/assets/overall_icon.png" alt="Leaderboard">Overall</a>
-
-  <h3>Live Results</h3>
-  <a class="navlink" href="/pages/dashboard/home/live_unified.html"><img src="/assets/overall_icon.png" alt="Unified Live">Unified Live</a>
-  <a class="navlink" href="/pages/dashboard/home/battleground_live_results.html"><img src="/assets/lashes%20battleground.png" alt="Battleground">Battleground</a>
-  <a class="navlink" href="/pages/dashboard/home/bonus_hunt_live.html"><img src="/assets/lashes%20hunt.png" alt="Bonus Hunt">Bonus Hunt</a>
-  <a class="navlink" href="/pages/dashboard/home/pvp_live.html"><img src="/assets/pvpicon.png" alt="PVP">PVP Battles</a>
-
-  <h3>Giveaways</h3>
-  <a class="navlink" href="/pages/dashboard/home/raffle_live.html"><img src="/assets/vip_icon.png" alt="Raffles Live">Raffles (Live)</a>
-  <a class="navlink" href="/pages/dashboard/home/slot_wheel_giveaway.html"><img src="/assets/vip_icon.png" alt="Slot Wheel">Slot Wheel Giveaway</a>
-
-  <h3>Information</h3>
-  <a class="navlink" href="/pages/dashboard/home/about.html"><img src="/assets/paw.png" alt="About">About</a>
-  <a class="navlink" href="/pages/dashboard/home/casino.html"><img src="/assets/dimebit_icon.png" alt="Casino">Casino</a>
-  <a class="navlink" href="/pages/dashboard/home/vip.html"><img src="/assets/vip_icon.png" alt="VIP">VIP</a>
-  <a class="navlink" href="/pages/dashboard/home/overlay.html"><img src="/assets/stats_icon.png" alt="Overlay">Stream Overlay</a>
-
-  <h3>Administration</h3>
-  <div class="navlink" style="justify-content:center;opacity:.8">Admin pages are server-locked</div>
-  <a class="navlink" href="/pages/dashboard/admin/bets_admin.html"><img src="/assets/lash3zbux_pp.png" alt="Bets Admin">Bets Admin (Unified)</a>
-  <a class="navlink" href="/pages/dashboard/admin/battleground_admin.html"><img src="/assets/lashes%20battleground.png" alt="BG Admin">Battleground Admin</a>
-  <a class="navlink" href="/pages/dashboard/admin/battleground_widget.html"><img src="/assets/lashes%20battleground.png" alt="BG Widget">Battleground Widget</a>
-  <a class="navlink" href="/pages/dashboard/admin/bonus_hunt_admin.html"><img src="/assets/bonus_hunt_icon.png" alt="BH Admin">Bonus Hunt Admin</a>
-  <a class="navlink" href="/pages/dashboard/admin/bonus_hunt_widget.html"><img src="/assets/bonus_hunt_icon.png" alt="BH Widget">Bonus Hunt Widget</a>
-  <a class="navlink" href="/pages/dashboard/admin/pvp_admin.html"><img src="/assets/pvp_icon.png" alt="PVP Admin">PVP Admin</a>
-  <a class="navlink" href="/pages/dashboard/admin/lucky7.html"><img src="/assets/L3Z_logoMain.png" alt="Lucky7">Lucky 7</a>
-  <a class="navlink" href="/pages/dashboard/admin/admin_hub.html"><img src="/assets/L3Z_logoMain.png" alt="LBX Deposits">Admin Hub</a>
-</div>
-
-<div class="main">
-  <div class="banner"><img src="/assets/lashes%20banner.png" alt="Banner"></div>
-
-  <div class="jackpot-wrap">
-    <div class="jackpot">
-      <div class="jp-header">
-        <div class="jp-title">MONTHLY JACKPOT</div>
-        <div class="jp-ctl">
-          <button id="resetJackpotBtn" class="jp-reset" title="Reset this month">Reset Jackpot</button>
-        </div>
-      </div>
-
-      <div class="reels">
-        <div class="reel symbol"><div class="digit">$</div></div>
-        <div class="reel"><div class="digit">0</div></div>
-        <div class="reel"><div class="digit">0</div></div>
-        <div class="reel"><div class="digit">0</div></div>
-        <div class="reel"><div class="digit">0</div></div>
-        <div class="sep"><strong>.</strong></div>
-        <div class="reel small"><div class="digit">0</div></div>
-        <div class="reel small"><div class="digit">0</div></div>
-      </div>
-
-      <div class="cap">
-        Jackpots are made up of gifted subscriptions and monthly subscriptions as well as donations from Lash3z.
-        The more gifted, the higher the jackpot.
-      </div>
+  <div class="topbar">
+    <div class="top-inner">
+      <button id="menuBtn" class="menu-btn">☰ Menu</button>
+      <div class="username-display" id="usernameDisplay">Welcome, PLAYER</div>
+      <div id="iconBar" class="icon-bar right"></div>
     </div>
   </div>
 
-  <div class="tiles">
-    <a class="tile" href="/pages/dashboard/home/battleground_prediction_form.html">
-      <img src="/assets/lashes%20battleground.png" alt="Battle Ground"><span>Battle Ground</span>
-    </a>
-    <a class="tile" href="/pages/dashboard/home/bonus_hunt_slot_requests.html">
-      <img src="/assets/bonus_hunt_icon.png" alt="Bonus Hunt"><span>Bonus Hunt</span>
-    </a>
-    <a class="tile" href="/pages/dashboard/home/leaderboard.html">
-      <img src="/assets/lashes%20leaderboard.png" alt="Leaderboard"><span>Leader Board</span>
-    </a>
-    <a class="tile" href="/pages/dashboard/home/lash3z_bets.html">
-      <img src="/assets/lash3zbux_pp.png" alt="L3Z Bets"><span>L3Z Bets</span>
-    </a>
-    <a class="tile" href="/pages/dashboard/home/profile.html">
-      <img src="/assets/login.png" alt="Profile"><span>My Profile</span>
-    </a>
-    <a class="tile" href="/pages/dashboard/home/vip.html">
-      <img src="/assets/vip_icon.png" alt="VIP"><span>VIP Access</span>
-    </a>
-    <a class="tile" href="/pages/dashboard/home/pvp_live.html">
-      <img src="/assets/pvp_icon.png" alt="PVP Live"><span>PVP Live</span>
-    </a>
-    <a class="tile" href="/pages/dashboard/home/casino.html">
-      <img src="/assets/dimebit_icon.png" alt="Casino"><span>Casino</span>
-    </a>
-  </div>
-</div>
+  <div id="sidebar" class="sidebar">
+    <h3>Dashboard</h3>
+    <a class="navlink" href="/index.html"><img src="/assets/overview_icon.png" alt="Home">Home Page</a>
 
-<!-- Keep jackpot at /assets/js where your file lives -->
-<script src="/assets/js/jackpot.client.js?v=10" defer></script>
+    <h3>Account</h3>
+    <a class="navlink" href="/pages/dashboard/home/signup.html"><img src="/assets/signup.png" alt="Sign Up">Sign Up</a>
+    <a class="navlink" href="/pages/dashboard/home/login.html"><img src="/assets/login.png" alt="Login">Login</a>
+    <a class="navlink" href="/pages/dashboard/home/profile.html"><img src="/assets/signup.png" alt="Profile">Profile</a>
+
+    <h3>Prediction Forms</h3>
+    <a class="navlink" href="/pages/dashboard/home/battleground_prediction_form.html"><img src="/assets/battleground_icon.png" alt="Battleground">L3Z Battleground</a>
+    <a class="navlink" href="/pages/dashboard/home/bonus_hunt_slot_requests.html"><img src="/assets/bonus_hunt_icon.png" alt="Bonus Hunt">Bonus Hunt Slot Requests</a>
+    <a class="navlink" href="/pages/dashboard/home/pvp_entry_form.html"><img src="/assets/pvp_icon.png" alt="PVP Entry">PVP Entry Form</a>
+
+    <h3>LASH3Z Bets</h3>
+    <a class="navlink" href="/pages/dashboard/home/lash3z_bets.html"><img src="/assets/lash3zbux_pp.png" alt="L3Z Bets">Place Bets</a>
+    <a class="navlink" href="/pages/dashboard/home/my_bets.html"><img src="/assets/lash3zbux_pp.png" alt="My Bets">My Bets</a>
+    <a class="navlink" href="/pages/dashboard/home/lash3zbux_info.html"><img src="/assets/lash3zbux_pp.png" alt="Info">Bux Info</a>
+    <a class="navlink" href="/pages/dashboard/home/lash3zbux_score_system.html"><img src="/assets/lash3zbux_pp.png" alt="Score">Bux Scoring</a>
+
+    <h3>Leaderboard</h3>
+    <a class="navlink" href="/pages/dashboard/home/leaderboard.html"><img src="/assets/overall_icon.png" alt="Leaderboard">Overall</a>
+
+    <h3>Live Results</h3>
+    <a class="navlink" href="/pages/dashboard/home/live_unified.html"><img src="/assets/overall_icon.png" alt="Unified Live">Unified Live</a>
+    <a class="navlink" href="/pages/dashboard/home/battleground_live_results.html"><img src="/assets/lashes%20battleground.png" alt="Battleground">Battleground</a>
+    <a class="navlink" href="/pages/dashboard/home/bonus_hunt_live.html"><img src="/assets/lashes%20hunt.png" alt="Bonus Hunt">Bonus Hunt</a>
+    <a class="navlink" href="/pages/dashboard/home/pvp_live.html"><img src="/assets/pvpicon.png" alt="PVP">PVP Battles</a>
+
+    <h3>Giveaways</h3>
+    <a class="navlink" href="/pages/dashboard/home/raffle_live.html"><img src="/assets/vip_icon.png" alt="Raffles Live">Raffles (Live)</a>
+    <a class="navlink" href="/pages/dashboard/home/slot_wheel_giveaway.html"><img src="/assets/vip_icon.png" alt="Slot Wheel">Slot Wheel Giveaway</a>
+
+    <h3>Information</h3>
+    <a class="navlink" href="/pages/dashboard/home/about.html"><img src="/assets/paw.png" alt="About">About</a>
+    <a class="navlink" href="/pages/dashboard/home/casino.html"><img src="/assets/dimebit_icon.png" alt="Casino">Casino</a>
+    <a class="navlink" href="/pages/dashboard/home/vip.html"><img src="/assets/vip_icon.png" alt="VIP">VIP</a>
+    <a class="navlink" href="/pages/dashboard/home/overlay.html"><img src="/assets/stats_icon.png" alt="Overlay">Stream Overlay</a>
+
+    <h3>Administration</h3>
+    <div class="navlink" style="justify-content:center;opacity:.8">Admin pages are server-locked</div>
+    <a class="navlink" href="/pages/dashboard/admin/bets_admin.html"><img src="/assets/lash3zbux_pp.png" alt="Bets Admin">Bets Admin (Unified)</a>
+    <a class="navlink" href="/pages/dashboard/admin/battleground_admin.html"><img src="/assets/lashes%20battleground.png" alt="BG Admin">Battleground Admin</a>
+    <a class="navlink" href="/pages/dashboard/admin/battleground_widget.html"><img src="/assets/lashes%20battleground.png" alt="BG Widget">Battleground Widget</a>
+    <a class="navlink" href="/pages/dashboard/admin/bonus_hunt_admin.html"><img src="/assets/bonus_hunt_icon.png" alt="BH Admin">Bonus Hunt Admin</a>
+    <a class="navlink" href="/pages/dashboard/admin/bonus_hunt_widget.html"><img src="/assets/bonus_hunt_icon.png" alt="BH Widget">Bonus Hunt Widget</a>
+    <a class="navlink" href="/pages/dashboard/admin/pvp_admin.html"><img src="/assets/pvp_icon.png" alt="PVP Admin">PVP Admin</a>
+    <a class="navlink" href="/pages/dashboard/admin/lucky7.html"><img src="/assets/L3Z_logoMain.png" alt="Lucky7">Lucky 7</a>
+    <a class="navlink" href="/pages/dashboard/admin/admin_hub.html"><img src="/assets/L3Z_logoMain.png" alt="LBX Deposits">Admin Hub</a>
+  </div>
+
+  <div class="main">
+    <div class="banner"><img src="/assets/lashes%20banner.png" alt="Banner"></div>
+
+    <div class="jackpot-wrap">
+      <div class="jackpot">
+        <div class="jp-header">
+          <div class="jp-title">MONTHLY JACKPOT</div>
+          <div class="jp-ctl">
+            <button id="resetJackpotBtn" class="jp-reset" title="Reset this month">Reset Jackpot</button>
+          </div>
+        </div>
+
+        <div class="reels">
+          <div class="reel symbol"><div class="digit">$</div></div>
+          <div class="reel"><div class="digit">0</div></div>
+          <div class="reel"><div class="digit">0</div></div>
+          <div class="reel"><div class="digit">0</div></div>
+          <div class="reel"><div class="digit">0</div></div>
+          <div class="sep"><strong>.</strong></div>
+          <div class="reel small"><div class="digit">0</div></div>
+          <div class="reel small"><div class="digit">0</div></div>
+        </div>
+
+        <div class="cap">
+          Jackpots are made up of gifted subscriptions and monthly subscriptions as well as donations from Lash3z.
+          The more gifted, the higher the jackpot.
+        </div>
+      </div>
+    </div>
+
+    <div class="tiles">
+      <a class="tile" href="/pages/dashboard/home/battleground_prediction_form.html">
+        <img src="/assets/lashes%20battleground.png" alt="Battle Ground"><span>Battle Ground</span>
+      </a>
+      <a class="tile" href="/pages/dashboard/home/bonus_hunt_slot_requests.html">
+        <img src="/assets/bonus_hunt_icon.png" alt="Bonus Hunt"><span>Bonus Hunt</span>
+      </a>
+      <a class="tile" href="/pages/dashboard/home/leaderboard.html">
+        <img src="/assets/lashes%20leaderboard.png" alt="Leaderboard"><span>Leader Board</span>
+      </a>
+      <a class="tile" href="/pages/dashboard/home/lash3z_bets.html">
+        <img src="/assets/lash3zbux_pp.png" alt="L3Z Bets"><span>L3Z Bets</span>
+      </a>
+      <a class="tile" href="/pages/dashboard/home/profile.html">
+        <img src="/assets/login.png" alt="Profile"><span>My Profile</span>
+      </a>
+      <a class="tile" href="/pages/dashboard/home/vip.html">
+        <img src="/assets/vip_icon.png" alt="VIP"><span>VIP Access</span>
+      </a>
+      <a class="tile" href="/pages/dashboard/home/pvp_live.html">
+        <img src="/assets/pvp_icon.png" alt="PVP Live"><span>PVP Live</span>
+      </a>
+      <a class="tile" href="/pages/dashboard/home/casino.html">
+        <img src="/assets/dimebit_icon.png" alt="Casino"><span>Casino</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Keep jackpot where your file lives -->
+  <script src="/assets/js/jackpot.client.js?v=10" defer></script>
 </body>
 </html>
