@@ -12,10 +12,10 @@
       --sidew:260px; --toph:72px; --gold:#ffb42d; --dark:#0b1113;
 
       /* === Icon bar knobs (adjust freely) === */
-      --icon-size: 54px;         /* icon width/height */
-      --icon-gap: 36px;          /* space between icons */
-      --icon-radius: 10px;       /* rounding if your images have a bg */
-      --icon-hover-scale: 1.10;  /* how much to grow on hover */
+      --icon-size: 54px;
+      --icon-gap: 36px;
+      --icon-radius: 10px;
+      --icon-hover-scale: 1.10;
     }
     *{box-sizing:border-box}
     body{ margin:0; font-family:'Segoe UI',system-ui,Arial,sans-serif;
@@ -26,15 +26,13 @@
     .top-inner{position:relative; display:flex; align-items:center; width:100%; max-width:1400px; gap:16px}
     .menu-btn{display:none; border:1px solid var(--line); background:#061214; color:var(--ink); padding:8px 10px; border-radius:10px; cursor:pointer}
     .username-display{color:var(--cyan); font-weight:700; white-space:nowrap}
-    /* Icon bar base */
     .icon-bar{display:flex; align-items:center; gap:var(--icon-gap)}
     .icon-link{width:var(--icon-size); height:var(--icon-size); display:block}
     .icon-img{width:100%; height:100%; display:block; object-fit:contain; border-radius:var(--icon-radius); transition:transform .15s}
     .icon-img:hover{transform:scale(var(--icon-hover-scale))}
-    /* Alignment modes for the whole bar */
-    .icon-bar.right{ margin-left:auto; }                             /* Right edge (default) */
-    .icon-bar.left{ margin-right:auto; }                             /* Left, next to username */
-    .icon-bar.center{ position:absolute; left:50%; transform:translateX(-50%);} /* Perfect center */
+    .icon-bar.right{ margin-left:auto; }
+    .icon-bar.left{ margin-right:auto; }
+    .icon-bar.center{ position:absolute; left:50%; transform:translateX(-50%);}
     .sidebar{ position:fixed; top:var(--toph); left:0; bottom:0; width:var(--sidew);
       background:var(--glass); box-shadow:0 0 16px var(--cyan); overflow:auto; padding:12px; z-index:900; }
     .main{ margin-left:var(--sidew); padding:calc(var(--toph) + 16px) 20px 24px; min-height:100vh; }
@@ -55,7 +53,6 @@
     .tile img{width:64px; height:64px; margin-bottom:8px; object-fit:contain}
     .tile span{font-size:15px; text-align:center}
 
-    /* JACKPOT */
     .jackpot-wrap{ max-width:1000px; margin:22px auto 8px; padding:0 8px; }
     .jackpot{ position:relative; background:linear-gradient(180deg,#0e1519,#0a0f12);
       border:1px solid var(--line); border-radius:18px;
@@ -67,7 +64,6 @@
     .jp-reset{border:none; background:#132026; color:#cfe; border:1px solid var(--line); padding:6px 10px; border-radius:10px; cursor:pointer}
     .jp-reset:hover{background:#173038}
 
-    /* Reels */
     .reels{ display:flex; justify-content:center; gap:10px; margin:8px auto 0; padding:10px 8px 0; }
     .reel{ width:110px; height:120px; border-radius:12px;
       background:radial-gradient(ellipse at 50% 0%, rgba(0,255,255,.10), rgba(0,0,0,.1) 60%), #0a1316;
@@ -90,7 +86,6 @@
       .reel.small{width:64px}
       .reel.symbol{width:70px}
       .digit{font-size:46px}
-      /* keep icons comfortable on mobile */
       :root{ --icon-size: 38px; --icon-gap: 12px; }
     }
     @media (max-width: 640px){
@@ -103,31 +98,24 @@
     }
   </style>
 
-  <!-- Only keep this shim if you have a real raffle script to replace it -->
-  <script src="/assets/js/l3z_raffle.es5.js" defer></script>
+  <!-- FIXED: use the path that actually exists -->
+  <script src="/assets/l3z_raffle.es5.js" defer></script>
 
-  <!-- Header user + mobile menu + ICON BAR CONFIG -->
   <script>
-  /* ======================= ICON BAR CONFIG =======================
-     Change these values to control the top icons without editing HTML.
-     align: 'right' | 'center' | 'left'
-     size/gap/radius/hoverScale override the CSS variables if provided here.
-  ================================================================= */
+  /* ======================= ICON BAR CONFIG ======================= */
   window.TOPBAR_ICON_CONFIG = {
-    align: 'center',             // 'right' (default previously), 'center', or 'left'
-    size: 48,                    // px (overrides --icon-size)
-    gap: 18,                     // px (overrides --icon-gap)
-    radius: 10,                  // px (overrides --icon-radius)
-    hoverScale: 1.12,            // (overrides --icon-hover-scale)
+    align: 'center',
+    size: 48,
+    gap: 18,
+    radius: 10,
+    hoverScale: 1.12,
     icons: [
-      { href:'https://kick.com/lash3z',                      src:'/assets/kick.png',      alt:'Kick',      show:true },
-      { href:'https://x.com/Lash3_z',                        src:'/assets/x_twitter.png', alt:'Twitter',   show:true },
-      { href:'https://www.instagram.com/lash3z50/',          src:'/assets/instagram.png', alt:'Instagram', show:true },
-      { href:'https://www.facebook.com/lashesslots',         src:'/assets/facebook.png',  alt:'Facebook',  show:true },
-      { href:'https://www.youtube.com/@Lash3z-50',           src:'/assets/youtube.png',   alt:'YouTube',   show:true },
-      { href:'https://discord.gg/fSVqK6cMmB',                src:'/assets/discord.png',   alt:'Discord',   show:true },
-      // Example toggles:
-      // { href:'https://tiktok.com/@lash3z', src:'/assets/tiktok.png', alt:'TikTok', show:false },
+      { href:'https://kick.com/lash3z', src:'/assets/kick.png', alt:'Kick', show:true },
+      { href:'https://x.com/Lash3_z', src:'/assets/x_twitter.png', alt:'Twitter', show:true },
+      { href:'https://www.instagram.com/lash3z50/', src:'/assets/instagram.png', alt:'Instagram', show:true },
+      { href:'https://www.facebook.com/lashesslots', src:'/assets/facebook.png', alt:'Facebook', show:true },
+      { href:'https://www.youtube.com/@Lash3z-50', src:'/assets/youtube.png', alt:'YouTube', show:true },
+      { href:'https://discord.gg/fSVqK6cMmB', src:'/assets/discord.png', alt:'Discord', show:true },
     ]
   };
   </script>
@@ -137,7 +125,6 @@
     "use strict";
     const $ = (s,r)=> (r||document).querySelector(s);
 
-    /* Username */
     function sanitizeName(x){
       if (!x) return "";
       const m = String(x).toUpperCase().match(/[A-Z0-9_]+/g);
@@ -161,7 +148,6 @@
       $("#usernameDisplay").textContent = "Welcome, " + (clean || "PLAYER");
     }
 
-    /* Mobile menu */
     function wireMenu(){
       const btn = $("#menuBtn"), side = $("#sidebar");
       if (!btn || !side) return;
@@ -169,24 +155,20 @@
       side.querySelectorAll("a.navlink").forEach(a=>a.addEventListener("click", ()=> side.classList.remove("open")));
     }
 
-    /* Render icon bar from config + apply sizing/alignment */
     function buildIconBar(){
       const cfg = window.TOPBAR_ICON_CONFIG || {};
       const bar = $("#iconBar");
       if(!bar) return;
 
-      // alignment class
       bar.classList.remove('left','center','right');
       bar.classList.add((cfg.align||'right').toLowerCase());
 
-      // apply sizing knobs (override CSS variables at runtime)
       const root = document.documentElement;
-      if(cfg.size)       root.style.setProperty('--icon-size', cfg.size + 'px');
-      if(cfg.gap)        root.style.setProperty('--icon-gap', cfg.gap + 'px');
+      if(cfg.size) root.style.setProperty('--icon-size', cfg.size + 'px');
+      if(cfg.gap) root.style.setProperty('--icon-gap', cfg.gap + 'px');
       if(cfg.radius!=null) root.style.setProperty('--icon-radius', cfg.radius + 'px');
       if(cfg.hoverScale) root.style.setProperty('--icon-hover-scale', cfg.hoverScale);
 
-      // build icons
       const list = (cfg.icons||[]).filter(i=>i && i.show!==false);
       bar.innerHTML = list.map(i=>`
         <a class="icon-link" href="${i.href}" target="_blank" rel="noopener">
@@ -201,17 +183,14 @@
 </head>
 <body>
 
-<!-- TOP -->
 <div class="topbar">
   <div class="top-inner">
     <button id="menuBtn" class="menu-btn">☰ Menu</button>
     <div class="username-display" id="usernameDisplay">Welcome, PLAYER</div>
-    <!-- Icon bar is rendered & aligned by JS config -->
     <div id="iconBar" class="icon-bar right"></div>
   </div>
 </div>
 
-<!-- SIDEBAR -->
 <div id="sidebar" class="sidebar">
   <h3>Dashboard</h3>
   <a class="navlink" href="/index.html"><img src="/assets/overview_icon.png" alt="Home">Home Page</a>
@@ -259,20 +238,15 @@
   <a class="navlink" href="/pages/dashboard/admin/bonus_hunt_admin.html"><img src="/assets/bonus_hunt_icon.png" alt="BH Admin">Bonus Hunt Admin</a>
   <a class="navlink" href="/pages/dashboard/admin/bonus_hunt_widget.html"><img src="/assets/bonus_hunt_icon.png" alt="BH Widget">Bonus Hunt Widget</a>
   <a class="navlink" href="/pages/dashboard/admin/pvp_admin.html"><img src="/assets/pvp_icon.png" alt="PVP Admin">PVP Admin</a>
-  
- 
   <a class="navlink" href="/pages/dashboard/admin/lucky7.html"><img src="/assets/L3Z_logoMain.png" alt="Lucky7">Lucky 7</a>
- 
   <a class="navlink" href="/pages/dashboard/admin/admin_hub.html"><img src="/assets/L3Z_logoMain.png" alt="LBX Deposits">Admin Hub</a>
 </div>
 
-<!-- MAIN -->
 <div class="main">
   <div class="banner">
     <img src="/assets/lashes%20banner.png" alt="Banner">
   </div>
 
-  <!-- JACKPOT SECTION -->
   <div class="jackpot-wrap">
     <div class="jackpot">
       <div class="jp-header">
@@ -300,7 +274,6 @@
     </div>
   </div>
 
-  <!-- Quick tiles -->
   <div class="tiles">
     <a class="tile" href="/pages/dashboard/home/battleground_prediction_form.html">
       <img src="/assets/lashes%20battleground.png" alt="Battle Ground"><span>Battle Ground</span>
@@ -329,7 +302,7 @@
   </div>
 </div>
 
-<!-- IMPORTANT: load only ONE jackpot script -->
+<!-- IMPORTANT: this one exists in your repo -->
 <script src="/assets/js/jackpot.client.js?v=10" defer></script>
 </body>
 </html>
