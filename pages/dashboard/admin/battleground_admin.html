@@ -86,13 +86,13 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
 
   <div class="card">
     <div class="row">
-      <span class="pill">Tip: Use <b>Asset Path</b> for covers (e.g. <code>assets/slot_images/duck_hunters.png</code>). These persist across refreshes. The Upload box only previews and is not persisted.</span>
+      <span class="pill">Tip: Use <b>Asset Path</b> for covers (e.g. <code>/assets/slot_images/duck_hunters.png</code>). These persist across refreshes. The Upload box only previews and is not persisted.</span>
     </div>
     <div class="hr"></div>
     <div class="row">
       <label>GAME TITLE <input id="gTitle" placeholder="E.G. DUCK HUNTERS" style="min-width:260px"></label>
       <label>PROVIDER (optional) <input id="gProv" placeholder="E.G. HACKSAW" style="min-width:180px"></label>
-      <label>ASSET PATH <input id="gPath" placeholder="assets/slot_images/duck_hunters.png" style="min-width:360px"></label>
+      <label>ASSET PATH <input id="gPath" placeholder="/assets/slot_images/duck_hunters.png" style="min-width:360px"></label>
       <input id="gUpload" type="file" accept=".png,.jpg,.jpeg,.webp" multiple style="display:none">
       <button id="useUpload" class="btn">Choose Files</button>
       <button id="autoName" class="btn">Use filename → fields</button>
@@ -175,8 +175,14 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   const kid=(p='ID')=>p+Math.random().toString(36).slice(2,10).toUpperCase();
   const toast=(t,ok)=>{ const n=$("#msg"); n.textContent=t; n.style.color = ok===false ? '#ff9aa7' : '#baffea'; setTimeout(()=>{ n.textContent='Ready'; n.style.color=''; },1600); };
 
-  // centralize new asset dir
-  const ASSET_DIR = 'assets/slot_images/';
+  // Always save absolute paths from site root
+  const ASSET_DIR = '/assets/slot_images/';
+  const absPath = p => {
+    if (!p) return '';
+    // remove any leading "./" then ensure single leading slash
+    p = String(p).replace(/^\.?\//,'');
+    return '/' + p;
+  };
 
   // ---------- storage keys ----------
   const K_BUILDER='bg:builder:battleground';   // canonical
@@ -187,10 +193,31 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   let state = read() || { games:[], matches:[], lastUpdated:0, eventId: 'battleground:'+new Date().toISOString().slice(0,10), title:'BATTLEGROUND', bestOf:3 };
 
   function read(){ try{ const j=localStorage.getItem(K_BUILDER); return j?JSON.parse(j):null; }catch{return null;} }
-  function write(){ try{ state.lastUpdated=Date.now(); localStorage.setItem(K_BUILDER, JSON.stringify(state));
-    localStorage.setItem(K_G, JSON.stringify(state.games||[]));
-    localStorage.setItem(K_M, JSON.stringify(state.matches||[]));
-  }catch{} }
+  function write(){
+    try{
+      state.lastUpdated=Date.now();
+      localStorage.setItem(K_BUILDER, JSON.stringify(state));
+      // mirrors for old pages/widgets
+      localStorage.setItem(K_G, JSON.stringify(state.games||[]));
+      localStorage.setItem(K_M, JSON.stringify(state.matches||[]));
+    }catch{}
+  }
+
+  // --- migrate any previously saved relative paths to absolute ---
+  (function migratePaths(){
+    let changed=false;
+    (state.games||[]).forEach(g=>{
+      const fixed = absPath(g.imageUrl||'');
+      if (fixed && fixed!==g.imageUrl){ g.imageUrl=fixed; changed=true; }
+    });
+    (state.matches||[]).forEach(m=>{
+      const L = m.leftImg ? absPath(m.leftImg) : m.leftImg;
+      const R = m.rightImg ? absPath(m.rightImg) : m.rightImg;
+      if (L && L!==m.leftImg){ m.leftImg=L; changed=true; }
+      if (R && R!==m.rightImg){ m.rightImg=R; changed=true; }
+    });
+    if(changed) write();
+  })();
 
   // ---------- painting ----------
   function paintGames(){
@@ -282,7 +309,8 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
       const f=$("#gUpload").files?.[0];
       if(f){ const base=f.name.replace(/\.[^.]+$/,''); path=ASSET_DIR + base + '.png'; }
     }
-    // Persist only the path string so it survives refreshes.
+    path = absPath(path);
+
     const game={ id:kid('G'), title:title.toUpperCase(), provider, imageUrl:path };
     state.games.push(game); write(); paintGames();
     $("#gTitle").value=''; $("#gProv").value=''; $("#gPath").value=''; $("#gUpload").value='';
@@ -296,7 +324,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
       const base=f.name.replace(/\.[^.]+$/,'');
       const title=base.replace(/[_-]+/g,' ').toUpperCase();
       const path=ASSET_DIR + base + '.png';
-      state.games.push({ id:kid('G'), title, provider:'', imageUrl:path });
+      state.games.push({ id:kid('G'), title, provider:'', imageUrl:absPath(path) });
     });
     write(); paintGames(); toast('Added '+Math.min(N,files.length)+' games');
   });
@@ -352,8 +380,11 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     const b=e.target.closest('button'); if(!b) return;
     const i=+b.dataset.i;
     if(b.dataset.act==='sel'){ toggleSelect(i); }
-    else if(b.dataset.act==='del'){ state.games.splice(i,1);
-      (state.matches||[]).forEach(mx=>{ if(mx.leftId===i||mx.rightId===i) mx._deleted=true; }); state.matches = (state.matches||[]).filter(m=>!m._deleted);
+    else if(b.dataset.act==='del'){
+      const gid = (state.games[i]||{}).id;
+      state.games.splice(i,1);
+      // remove any matches that referenced this game id
+      state.matches = (state.matches||[]).filter(mx => mx.leftId!==gid && mx.rightId!==gid);
       write(); paintAll();
     }
   });
