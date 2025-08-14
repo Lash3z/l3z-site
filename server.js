@@ -1,4 +1,4 @@
-// server.js (ESM, single clean file)
+// server.js — single clean ESM entry (Render-friendly, conditional routes)
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
@@ -8,26 +8,17 @@ import mongoose from "mongoose";
 import compression from "compression";
 import crypto from "crypto";
 import fs from "fs/promises";
-import { fileURLToPath } from "url";
-
-import vipAwardsRouter from "./backend/routes/vipAwards.js";
-import rafflesRouter from "./backend/routes/raffles.js";
-import battlegroundRouter from "./backend/routes/battleground.js";
-import pvpRouter from "./backend/routes/pvp.js";
-import adminRouter from "./backend/routes/admin.js";
-// LBX deposits/wallet routes
-import lbxRouter from "./backend/routes/lbx.js";
-import walletRouter from "./backend/routes/wallet.js";
+import { fileURLToPath, pathToFileURL } from "url";
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname  = path.dirname(__filename);
 
-const app = express();
-const PORT = Number(process.env.PORT) || 3000; // Render supplies PORT
+const app  = express();
+const PORT = Number(process.env.PORT) || 3000;
 app.disable("x-powered-by");
-app.set("trust proxy", 1); // good for cookies behind proxy
+app.set("trust proxy", 1);
 
 // Public API base for client (blank = same-origin)
 const PUBLIC_API_BASE = process.env.PUBLIC_API_BASE || "";
@@ -40,7 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(compression());
 
-// CORS
+// CORS — allow local dev, your domain, and Render preview by default
 const ALLOW = new Set([
   "http://localhost:3000",
   "http://127.0.0.1:3000",
@@ -48,15 +39,17 @@ const ALLOW = new Set([
   "https://lash3z.com",
   "https://www.lash3z.com",
 ]);
-app.use(
-  cors({
-    origin(origin, cb) {
-      if (!origin || ALLOW.has(origin)) return cb(null, true);
-      return cb(null, true); // allow all in dev
-    },
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin(origin, cb) {
+    // allow same-origin/no-origin (curl), your allowlist, and Render previews
+    if (!origin) return cb(null, true);
+    if (ALLOW.has(origin)) return cb(null, true);
+    if (/\.onrender\.com$/i.test(new URL(origin).hostname)) return cb(null, true);
+    // loosen during dev to avoid CORS hair-pulling:
+    return cb(null, true);
+  },
+  credentials: true,
+}));
 
 /* ------------------------------------
  * Mongo
@@ -98,15 +91,15 @@ try {
 /* ------------------------------------
  * Admin Gate (server-side, 6h cookie)
  * ------------------------------------ */
-const ADMIN_USER = (process.env.ADMIN_USER || "lash3z").toLowerCase();
-const ADMIN_PASS = process.env.ADMIN_PASS || "Lash3z777";
+const ADMIN_USER   = (process.env.ADMIN_USER || "lash3z").toLowerCase();
+const ADMIN_PASS   = process.env.ADMIN_PASS || "Lash3z777";
 const ADMIN_SECRET = process.env.ADMIN_SECRET || "change-me-now";
 const ADMIN_COOKIE = "adm_sess";
 const ADMIN_MAX_AGE_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 function signToken(payloadObj) {
   const body = Buffer.from(JSON.stringify(payloadObj)).toString("base64url");
-  const sig = crypto.createHmac("sha256", ADMIN_SECRET).update(body).digest("base64url");
+  const sig  = crypto.createHmac("sha256", ADMIN_SECRET).update(body).digest("base64url");
   return `${body}.${sig}`;
 }
 function verifyToken(token) {
@@ -138,7 +131,7 @@ function clearAdminCookie(res) {
 }
 function adminGuard(req, res, next) {
   const tok = req.cookies?.[ADMIN_COOKIE];
-  const ok = verifyToken(tok);
+  const ok  = verifyToken(tok);
   if (ok) return next();
 
   if (req.accepts("html")) {
@@ -176,13 +169,13 @@ app.get("/api/admin/gate/check", (req, res) => {
 });
 
 /* ------------------------------------
- * JACKPOT API
+ * JACKPOT API (AUD)
  * ------------------------------------ */
-const JACKPOT_BASE_AUD = Number(process.env.JACKPOT_BASE_AUD || 150);
-const SUBS_CAP_AUD     = Number(process.env.JACKPOT_SUBS_CAP_AUD || 100);
-const SUB_VALUE_AUD    = Number(process.env.JACKPOT_PER_SUB_AUD || 2.5);
-const DATA_DIR         = path.resolve(__dirname, "data");
-const JACKPOT_FILE     = path.join(DATA_DIR, "jackpot.json");
+const JACKPOT_BASE_AUD  = Number(process.env.JACKPOT_BASE_AUD || 150);
+const SUBS_CAP_AUD      = Number(process.env.JACKPOT_SUBS_CAP_AUD || 100);
+const SUB_VALUE_AUD     = Number(process.env.JACKPOT_PER_SUB_AUD || 2.5);
+const DATA_DIR          = path.resolve(__dirname, "data");
+const JACKPOT_FILE      = path.join(DATA_DIR, "jackpot.json");
 
 function melNow(){ return new Date(new Date().toLocaleString("en-AU",{ timeZone:"Australia/Melbourne" })); }
 function melMonthKey(d=melNow()){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
@@ -191,7 +184,6 @@ function melNextMonthStartTs(){
   const nextY = m===11 ? y+1 : y, nextM = m===11 ? 1 : (m+2);
   return Date.parse(`${nextY}-${String(nextM).padStart(2,"0")}-01T00:00:00+10:00`);
 }
-
 async function ensureDir(p){ try{ await fs.mkdir(p,{recursive:true}); }catch{} }
 async function loadJackpot(){
   await ensureDir(DATA_DIR);
@@ -213,7 +205,7 @@ async function saveJackpot(state){
   await fs.writeFile(JACKPOT_FILE, JSON.stringify(state,null,2));
 }
 function computeAmountAUD(state){
-  const subsAud = Math.min(state.subsCents/100, SUBS_CAP_AUD);
+  const subsAud   = Math.min(state.subsCents/100, SUBS_CAP_AUD);
   const manualAud = state.manualCents/100;
   return JACKPOT_BASE_AUD + subsAud + manualAud;
 }
@@ -253,10 +245,10 @@ app.post("/api/jackpot/adjust", adminGuard, async (req,res)=>{
   res.json({ ok:true, amount: Number(computeAmountAUD(st).toFixed(2)) });
 });
 app.post("/api/jackpot/set", adminGuard, async (req,res)=>{
-  const target = Math.max(0, Number(req.body?.amount||0));
-  const st = await rolloverIfNeeded(await loadJackpot());
+  const target  = Math.max(0, Number(req.body?.amount||0));
+  const st      = await rolloverIfNeeded(await loadJackpot());
   const current = computeAmountAUD(st);
-  const delta = Math.round((target - current)*100);
+  const delta   = Math.round((target - current)*100);
   st.manualCents = Math.max(0, st.manualCents + delta);
   await saveJackpot(st);
   res.json({ ok:true, amount: Number(computeAmountAUD(st).toFixed(2)) });
@@ -269,15 +261,35 @@ app.post("/api/jackpot/reset", adminGuard, async (_req,res)=>{
 });
 
 /* ------------------------------------
- * API routes (rest)
+ * API routes (conditionally mounted to avoid module-not-found)
  * ------------------------------------ */
-app.use("/api/admin", adminRouter);
-app.use("/api/vip-awards", vipAwardsRouter);
-app.use("/api/battleground", battlegroundRouter);
-app.use("/api/pvp", pvpRouter);
-app.use("/api", lbxRouter);
-app.use("/api/raffles", rafflesRouter);
-app.use("/api/wallet", walletRouter);
+async function mountIfExists(relPath, mountPath, label){
+  const abs = path.resolve(__dirname, relPath);
+  try {
+    await fs.access(abs);
+  } catch {
+    console.warn(`[routes] ${label} missing (${relPath}) — skipping`);
+    return;
+  }
+  try {
+    const modUrl = pathToFileURL(abs).href;
+    const mod = await import(modUrl);
+    const router = mod.default || mod.router || mod;
+    app.use(mountPath, router);
+    console.log(`[routes] mounted ${label} at ${mountPath}`);
+  } catch (e) {
+    console.error(`[routes] failed to mount ${label}:`, e?.message || e);
+  }
+}
+
+// Mount known routers if present
+await mountIfExists("./backend/routes/admin.js",        "/api/admin",       "admin");
+await mountIfExists("./backend/routes/vipAwards.js",    "/api/vip-awards",  "vipAwards");
+await mountIfExists("./backend/routes/battleground.js", "/api/battleground","battleground");
+await mountIfExists("./backend/routes/pvp.js",          "/api/pvp",         "pvp");
+await mountIfExists("./backend/routes/lbx.js",          "/api",             "lbx");
+await mountIfExists("./backend/routes/raffles.js",      "/api/raffles",     "raffles");
+await mountIfExists("./backend/routes/wallet.js",       "/api/wallet",      "wallet");
 
 // Simple slot wheel entries
 app.get("/api/giveaways/slotwheel/:id/entries", async (req, res) => {
@@ -339,7 +351,7 @@ app.post("/api/raffles/:id/entries", async (req, res) => {
   return res.json({ ok: true });
 });
 
-// Health
+// Health (JSON)
 app.get("/healthz", (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 
 /* ------------------------------------
