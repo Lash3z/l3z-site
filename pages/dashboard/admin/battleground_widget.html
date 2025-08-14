@@ -12,7 +12,6 @@
     --gold:#ffb42d;
   }
 
-  /* Background lives BEHIND everything; overridable via ?bg=... */
   html,body{
     margin:0;height:100%;
     background:#000 url("/assets/media/BG_page.png") center/cover fixed no-repeat;
@@ -20,7 +19,6 @@
     user-select:none;
   }
 
-  /* Compact, translucent box around just the matchup */
   .wrap{
     width:max-content; margin:14px auto; padding:10px 12px;
     background:linear-gradient(180deg,rgba(5,10,12,.72),rgba(5,10,12,.78));
@@ -31,7 +29,6 @@
   .card{position:absolute; inset:0; display:grid; place-items:center; opacity:0; transform:translateY(14px); transition:opacity .35s ease, transform .35s ease}
   .card.show{opacity:1; transform:translateY(0)}
 
-  /* Layout: left side | center scores w/ VS | right side */
   .row{
     display:grid;
     grid-template-columns: 1fr auto 1fr;
@@ -59,7 +56,6 @@
     padding:6px 10px; border:1px solid var(--line); border-radius:10px; background:#0a1418;
   }
 
-  /* Tiny footer/meta */
   .meta{margin-top:6px; text-align:center; font-size:12px; color:var(--muted)}
 </style>
 </head>
@@ -90,10 +86,65 @@
     document.documentElement.style.backgroundAttachment = 'fixed';
   }
 
+  // ===== Image resolver (title → /assets/slot images/xxxx.png) =====
+  const IMG_BASES=['assets/slot images/','../assets/slot images/','/assets/slot images/'];
+  const IMG_EXT=['png','webp','jpg','jpeg']; // prefer PNG
+  let IMG_INDEX=null;
+  const IMG_CACHE=new Map(); // key -> url or ''
+
+  function slug(s){ return String(s||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+  function imgExists(url){
+    return new Promise(res=>{
+      const i=new Image(); i.onload=()=>res(true); i.onerror=()=>res(false);
+      i.src = encodeURI(url) + (url.includes('?')?'&':'?') + 'v=' + Date.now();
+    });
+  }
+  async function loadIndex(){
+    if(IMG_INDEX!==null) return IMG_INDEX;
+    for(const b of IMG_BASES){
+      try{
+        const r=await fetch(encodeURI(b+'index.json'),{cache:'no-store'});
+        if(r.ok){
+          const j=await r.json();
+          IMG_INDEX = Array.isArray(j) ? j : (Array.isArray(j.images) ? j.images : Object.values(j||{}));
+          return IMG_INDEX;
+        }
+      }catch(_){}
+    }
+    IMG_INDEX=[];
+    return IMG_INDEX;
+  }
+  async function resolveByTitle(title, provider){
+    const key=String(title||'').toUpperCase();
+    if(IMG_CACHE.has(key)) return IMG_CACHE.get(key);
+    await loadIndex();
+    const tSlug=slug(title||''), pSlug=slug(provider||'');
+    // 1) index.json
+    if(IMG_INDEX && IMG_INDEX.length){
+      const hits=IMG_INDEX.filter(e=> typeof e==='string' && e.toLowerCase().includes(tSlug) && (!pSlug || e.toLowerCase().includes(pSlug)));
+      for(const ent of hits){
+        const tries = (/^(?:\/|\.{1,2}\/|assets\/)/.test(ent)) ? [ent] : IMG_BASES.map(b=>b+ent);
+        for(const u of tries){ if(await imgExists(u)){ IMG_CACHE.set(key,u); return u; } }
+      }
+    }
+    // 2) filename guesses
+    const guesses=[];
+    for(const base of IMG_BASES){
+      IMG_EXT.forEach(ext=>guesses.push(`${base}${title}.${ext}`));
+      IMG_EXT.forEach(ext=>guesses.push(`${base}${(title||'').toLowerCase()}.${ext}`));
+      IMG_EXT.forEach(ext=>guesses.push(`${base}${tSlug}.${ext}`));
+      if(pSlug){
+        IMG_EXT.forEach(ext=>guesses.push(`${base}${pSlug}__${tSlug}.${ext}`));
+        IMG_EXT.forEach(ext=>guesses.push(`${base}${pSlug}/${tSlug}.${ext}`));
+      }
+    }
+    for(const u of guesses){ if(await imgExists(u)){ IMG_CACHE.set(key,u); return u; } }
+    IMG_CACHE.set(key,''); return '';
+  }
+
   // ===== State =====
   let data=readBuilder(), idx=readIdx(), lastHash='';
 
-  // ===== Helpers =====
   function readIdx(){
     if (Number.isFinite(startIndex) && startIndex >= 0) return startIndex|0;
     const n=Number(localStorage.getItem(IDXK));
@@ -104,9 +155,7 @@
   function readBuilder(){
     const b=sget(BKEY,null);
     if (b && b.matches && b.games) return b;
-    // fallback to older keys if no builder present
-    const games=sget(GKEY,[]);
-    const matches=sget(MKEY,[]);
+    const games=sget(GKEY,[]); const matches=sget(MKEY,[]);
     return {games,matches,lastUpdated:Date.now()};
   }
   function hash(o){ try{return JSON.stringify(o);}catch{return '';} }
@@ -142,6 +191,26 @@
     const i=new Image(); i.src = enc(imgUrl);
   }
 
+  async function backfillImages(){
+    if(!Array.isArray(data.matches)||!data.matches.length) return;
+    const gmap=new Map((data.games||[]).map(g=>[g.id,g]));
+    let changed=false;
+    for(const mx of data.matches){
+      const L=gmap.get(mx.leftId)||{}; const R=gmap.get(mx.rightId)||{};
+      if(!mx.leftImg){
+        const u=await resolveByTitle(mx.leftTitle||L.title||'LEFT', L.provider||'');
+        if(u){ mx.leftImg=u; changed=true; }
+      }
+      if(!mx.rightImg){
+        const u=await resolveByTitle(mx.rightTitle||R.title||'RIGHT', R.provider||'');
+        if(u){ mx.rightImg=u; changed=true; }
+      }
+    }
+    if(changed){
+      try{ localStorage.setItem(BKEY, JSON.stringify(data)); }catch(_){}
+    }
+  }
+
   // ===== Render =====
   function render(){
     clamp();
@@ -161,7 +230,7 @@
     const lImg=mx.leftImg||L.imageUrl||L.image||'', rImg=mx.rightImg||R.imageUrl||R.image||'';
     const sL=Number(mx.leftScore||0), sR=Number(mx.rightScore||0);
 
-    // Preload next images to minimize flicker
+    // Preload next images
     const next = Math.min(idx+1, Math.max(0,(data.matches?.length||1)-1));
     const nm = data.matches?.[next];
     if(nm){
@@ -198,13 +267,11 @@
     `;
     requestAnimationFrame(()=>cardEl.classList.add('show'));
 
-    // click navigation
     const prevBtn = document.getElementById('goPrev');
     const nextBtn = document.getElementById('goNext');
     if(prevBtn) prevBtn.onclick = ()=> go(idx-1, true);
     if(nextBtn) nextBtn.onclick = ()=> go(idx+1, true);
 
-    // auto-jump to next unfinished when winner is set
     if(autoNext && mx.winnerId){
       const jump = nextUnfinished(idx);
       if(jump!==idx) setTimeout(()=>go(jump,true), 1500);
@@ -214,7 +281,6 @@
   function go(i,animate){
     const len = data.matches?.length||0;
     if(!len) return;
-    // wrap around
     if(i<0) i=len-1; else if(i>=len) i=0;
     if(i===idx) return;
     idx=i; saveIdx(idx);
@@ -222,22 +288,20 @@
     else render();
   }
 
-  function tick(){
+  async function tick(){
     const now=readBuilder(); const h=hash(now);
     if(h!==lastHash){
       data=now;
-      // if current index is out of range, snap to first unfinished or 0
       if(idx >= (data.matches?.length||0)) idx=firstUnfinished();
       lastHash=h;
+      await backfillImages();
       render();
     }
   }
 
-  // Live updates
   window.addEventListener('storage', e=>{ if([BKEY,GKEY,MKEY].includes(e.key)) tick(); });
   setInterval(tick, 800);
 
-  // Keyboard nav
   window.addEventListener('keydown', e=>{
     if(e.key==='ArrowRight') go(idx+1,true);
     else if(e.key==='ArrowLeft') go(idx-1,true);
@@ -246,14 +310,16 @@
     else if(e.key.toLowerCase()==='u') go(firstUnfinished(),true);
   });
 
-  // init
-  data=readBuilder();
-  if(!Number.isFinite(startIndex)) {
-    if(!localStorage.getItem(IDXK)) idx=firstUnfinished();
-  }
-  saveIdx(idx);
-  lastHash=hash(data);
-  render();
+  (async ()=>{
+    data=readBuilder();
+    if(!Number.isFinite(startIndex)) {
+      if(!localStorage.getItem(IDXK)) idx=firstUnfinished();
+    }
+    saveIdx(idx);
+    lastHash=hash(data);
+    await backfillImages();
+    render();
+  })();
 })();
 </script>
 </body>
