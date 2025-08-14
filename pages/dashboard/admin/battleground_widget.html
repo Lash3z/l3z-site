@@ -39,7 +39,7 @@
     display:grid; grid-template-columns:76px 1fr; gap:12px; align-items:center;
     cursor:pointer;
   }
-  /* ⇩ Right side mirrors the left: text first, image on the outside */
+  /* Right side mirrors the left: text first, image on the outside */
   .side.right{
     grid-template-columns:1fr 76px;
   }
@@ -99,6 +99,9 @@
   let IMG_INDEX=null;
   const IMG_CACHE=new Map(); // key -> url or ''
 
+  // normalize any old "slot images/" paths to "slot_images/"
+  const fixPath = (u)=> typeof u==='string' ? u.replace(/slot images\//g,'slot_images/') : u;
+
   function slug(s){ return String(s||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
   function imgExists(url){
     return new Promise(res=>{
@@ -132,7 +135,7 @@
       const hits=IMG_INDEX.filter(e=> typeof e==='string' && e.toLowerCase().includes(tSlug) && (!pSlug || e.toLowerCase().includes(pSlug)));
       for(const ent of hits){
         const tries = (/^(?:\/|\.{1,2}\/|assets\/)/.test(ent)) ? [ent] : IMG_BASES.map(b=>b+ent);
-        for(const u of tries){ if(await imgExists(u)){ IMG_CACHE.set(key,u); return u; } }
+        for(const u of tries){ if(await imgExists(u)){ IMG_CACHE.set(key,fixPath(u)); return fixPath(u); } }
       }
     }
     // 2) filename guesses
@@ -146,7 +149,7 @@
         IMG_EXT.forEach(ext=>guesses.push(`${base}${pSlug}/${tSlug}.${ext}`));
       }
     }
-    for(const u of guesses){ if(await imgExists(u)){ IMG_CACHE.set(key,u); return u; } }
+    for(const u of guesses){ if(await imgExists(u)){ IMG_CACHE.set(key,fixPath(u)); return fixPath(u); } }
     IMG_CACHE.set(key,''); return '';
   }
 
@@ -180,7 +183,7 @@
   }
   function nextUnfinished(i){
     if(!data.matches?.length) return 0;
-    for(let k=i+1;k<data.matches.length;k++) if(!m.winnerId) return k;
+    for(let k=i+1;k<data.matches.length;k++) if(!data.matches[k].winnerId) return k;  // FIX: use data.matches[k]
     return Math.max(0, data.matches.length-1);
   }
   function enc(u){ return encodeURI(String(u||'')); }
@@ -196,7 +199,7 @@
   }
   function preload(imgUrl){
     if(!imgUrl) return;
-    const i=new Image(); i.src = enc(imgUrl);
+    const i=new Image(); i.src = enc(fixPath(imgUrl));
   }
 
   async function backfillImages(){
@@ -204,14 +207,18 @@
     const gmap=new Map((data.games||[]).map(g=>[g.id,g]));
     let changed=false;
     for(const mx of data.matches){
-      const L=gmap.get(mx.leftId)||{}; const R=gmap.get(mx.rightId)||{};
+      const L=gmap.get(mx.leftId)||{}, R=gmap.get(mx.rightId)||{};
       if(!mx.leftImg){
         const u=await resolveByTitle(mx.leftTitle||L.title||'LEFT', L.provider||'');
-        if(u){ mx.leftImg=u; changed=true; }
+        if(u){ mx.leftImg=fixPath(u); changed=true; }
+      }else{
+        mx.leftImg = fixPath(mx.leftImg);
       }
       if(!mx.rightImg){
         const u=await resolveByTitle(mx.rightTitle||R.title||'RIGHT', R.provider||'');
-        if(u){ mx.rightImg=u; changed=true; }
+        if(u){ mx.rightImg=fixPath(u); changed=true; }
+      }else{
+        mx.rightImg = fixPath(mx.rightImg);
       }
     }
     if(changed){
@@ -235,14 +242,14 @@
 
     const lTitle=mx.leftTitle||L.title||'LEFT', rTitle=mx.rightTitle||R.title||'RIGHT';
     const lProv=L.provider||'', rProv=R.provider||'';
-    const lImg=mx.leftImg||L.imageUrl||L.image||'', rImg=mx.rightImg||R.imageUrl||R.image||'';
+    const lImg=fixPath(mx.leftImg||L.imageUrl||L.image||''), rImg=fixPath(mx.rightImg||R.imageUrl||R.image||'');
     const sL=Number(mx.leftScore||0), sR=Number(mx.rightScore||0);
 
     // Preload next images
     const next = Math.min(idx+1, Math.max(0,(data.matches?.length||1)-1));
     const nm = data.matches?.[next];
     if(nm){
-      const nL=(map.get(nm.leftId)||{}), nR=(map.get(nm.rightId)||{};
+      const nL=(map.get(nm.leftId)||{}), nR=(map.get(nm.rightId)||{});   // FIX: close )
       preload(nm.leftImg||nL.imageUrl||nL.image||'');
       preload(nm.rightImg||nR.imageUrl||nR.image||'');
     }
@@ -318,6 +325,7 @@
     else if(e.key.toLowerCase()==='u') go(firstUnfinished(),true);
   });
 
+  // init
   data=readBuilder();
   backfillImages();
   if(!Number.isFinite(startIndex)) {
