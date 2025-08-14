@@ -40,6 +40,7 @@
 
     .numBox,.textBox{padding:12px;border-top:1px dashed var(--line);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
     .numBox input,.textBox input{background:#0f141b;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--ink)}
+
     .chips{display:flex;flex-wrap:wrap;gap:8px}
     .chip{background:var(--chip);border:1px solid var(--chipLine);border-radius:999px;padding:8px 12px;cursor:pointer}
     .chip.active{background:#2b3545;border-color:rgba(240,163,32,.8)}
@@ -75,7 +76,7 @@
     const LOGIN="/pages/dashboard/home/login.html";
     const up=s=>String(s||"").trim().toUpperCase();
     const now=()=>Date.now();
-    const sget=k=>{try{return JSON.parse(localStorage.getItem(k)||"null");}catch{return null;}}; 
+    const sget=k=>{try{return JSON.parse(localStorage.getItem(k)||"null");}catch{return null;}};
     const sset=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
 
     document.documentElement.setAttribute("data-auth","checking");
@@ -226,7 +227,6 @@
 
   // ===== Painting =====
   function paintMarkets(){
-    unified = sget(K_UNIFIED) || unified; // live update if admin changed it
     const host=$('#markets'); host.innerHTML='';
     const sec=(unified.sections[activeTab]||{overall:[]});
     const mkts=sec.overall||[];
@@ -235,11 +235,6 @@
       const hint=$('#hint'); const need=mkts.length===0;
       hint.style.display= need? '' : 'none';
       if(need){ hint.textContent='Bonus Hunt markets are not prefilled yet. Open Admin and enable Bonus Hunt so the fixed markets appear.'; }
-    }
-    if(!mkts.length){
-      const empty=document.createElement('div'); empty.className='note';
-      empty.textContent='No markets published yet. Ask admin to Publish in Bets Admin.';
-      host.appendChild(empty); return;
     }
     mkts.forEach(m=> host.appendChild(marketCard(m)));
   }
@@ -359,7 +354,7 @@
     if(isLocked(m) || isSubmitted(m.id)) return;
     const i=slip.findIndex(x=> x.marketId===m.id && x.type==='selection' && x.selIdx===sel.idx);
     if(i>=0){ slip.splice(i,1); node?.classList.remove('active'); }
-    else{ addToSlip(m,{type:'selection',idx:sel.idx,label:sel.label,odds:sel.odds}); node?.classList.add('active'); }
+    else{ addToSlip(m,{type:'selection',idx:sel.idx,label(sel){return sel.label},label:sel.label,odds:sel.odds}); node?.classList.add('active'); }
     updateSlipUI();
   }
 
