@@ -27,8 +27,8 @@
   h1{margin:0 0 6px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
   .sub{color:var(--muted);margin:4px 0 16px}
 
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
+  /* One full-width card per row, stacked vertically */
+  .list{display:grid;grid-template-columns:1fr;gap:16px}
 
   .card{background:#0e1416;border:1px solid var(--line);border-radius:16px;display:grid;grid-template-columns:180px 1fr;gap:14px;padding:12px;transition:transform .15s ease, box-shadow .15s ease}
   .card:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(0,0,0,.35)}
@@ -37,7 +37,7 @@
   .logoBox{display:flex;align-items:center;justify-content:center;background:#0a0f10;border-radius:12px;border:1px dashed var(--line);padding:16px;cursor:pointer}
   .logo{max-width:140px;max-height:100px;object-fit:contain;filter:drop-shadow(0 6px 24px #00ffff33)}
   .content{display:flex;flex-direction:column;gap:8px}
-  .title{display:flex;align-items:center;gap:10px}
+  .title{display:flex;align-items:center;gap:10px;cursor:pointer}
   .title h2{margin:0;color:#eaf7ff;font-size:20px}
   .tag{font-size:11px;border-radius:999px;border:1px solid rgba(0,255,255,.25);background:#102024;color:#cff;padding:2px 8px}
   .desc{color:#dff6ff;line-height:1.5;margin:2px 0}
@@ -55,9 +55,6 @@
   .disclaimer{margin:18px 0 8px;font-size:12px;color:var(--muted)}
   .divider{height:1px;background:var(--line);margin:18px 0}
   .note{font-size:12px;color:#9fc}
-
-  /* Make entire logoBox + title clickable */
-  .clickable{cursor:pointer}
 </style>
 </head>
 <body>
@@ -74,65 +71,64 @@
   <h1>Recommended Casinos</h1>
   <div class="sub">Click a logo or “Visit” to go via our partner link. Read each summary for what to expect, plus key notes and terms.</div>
 
-  <div class="grid">
-<!-- Dimebit -->
+  <div class="list">
+
+    <!-- Mate Slots -->
     <article class="card" data-href="https://www.mateslots.com/" title="Visit Mate Slots via partner link">
-      <div class="logoBox clickable">
-        <img class="logo" src="../../../../assets/mateslots_logo.png" alt="Dimebit" onerror="this.src='../../../../assets/lash3zbux_pp.png'">
+      <div class="logoBox">
+        <img class="logo" src="../../../../assets/mateslots_logo.png" alt="Mate Slots" onerror="this.src='../../../../assets/lash3zbux_pp.png'">
       </div>
       <div class="content">
-        <div class="title clickable">
-          <h2>Dimebit</h2>
+        <div class="title">
+          <h2>Mate Slots</h2>
           <span class="tag">Community Pick</span>
         </div>
         <p class="desc">
-          Dimebit focuses on a slick, fast lobby with a broad spread of popular providers and frequent promos.
-          Great for hopping between feature hunts and quick sessions. Expect an easy UI, clear bonus terms, and regular
-          events that pair well with our Bonus Hunt streams.
+          Fast lobby, big provider spread, and regular promos. Great for hopping between feature hunts and quick sessions.
         </p>
-
         <div class="bullets">
           <ul>
             <li>Clean UI with quick search & categories</li>
-            <li>Wide slot catalog; stable mobile play</li>
+            <li>Wide slot catalog; solid mobile play</li>
             <li>Transparent promo pages & terms</li>
           </ul>
           <ul>
             <li>Timed drops & community events</li>
             <li>Account tools for limits/timeouts</li>
-            <li>Responsive support during peak hours</li>
+            <li>Responsive support</li>
           </ul>
         </div>
+        <div class="ctaRow">
+          <a class="btn visit" href="https://www.mateslots.com/" target="_blank" rel="noopener">Visit Mate Slots</a>
+        </div>
+      </div>
+    </article>
 
     <!-- Dimebit -->
     <article class="card" data-href="https://dimebit.com/affiliate/fullsend/utm_campaign/lashes-kick/utm_source/kick" title="Visit Dimebit via partner link">
-      <div class="logoBox clickable">
+      <div class="logoBox">
         <img class="logo" src="../../../../assets/dimebit_icon1.png" alt="Dimebit" onerror="this.src='../../../../assets/lash3zbux_pp.png'">
       </div>
       <div class="content">
-        <div class="title clickable">
+        <div class="title">
           <h2>Dimebit</h2>
           <span class="tag">Community Pick</span>
         </div>
         <p class="desc">
-          Dimebit focuses on a slick, fast lobby with a broad spread of popular providers and frequent promos.
-          Great for hopping between feature hunts and quick sessions. Expect an easy UI, clear bonus terms, and regular
-          events that pair well with our Bonus Hunt streams.
+          Slick UI, quick filters, and frequent promos. Good mix for Bonus Hunt streams and casual sessions.
         </p>
-
         <div class="bullets">
           <ul>
-            <li>Clean UI with quick search & categories</li>
-            <li>Wide slot catalog; stable mobile play</li>
-            <li>Transparent promo pages & terms</li>
+            <li>Trending slots & game shows</li>
+            <li>Favorites & recent-played tracking</li>
+            <li>Clear wagering breakdowns</li>
           </ul>
           <ul>
-            <li>Timed drops & community events</li>
-            <li>Account tools for limits/timeouts</li>
-            <li>Responsive support during peak hours</li>
+            <li>Mobile-first performance</li>
+            <li>Regular leaderboard events</li>
+            <li>Solid support</li>
           </ul>
         </div>
-
         <div class="ctaRow">
           <a class="btn visit" href="https://dimebit.com/affiliate/fullsend/utm_campaign/lashes-kick/utm_source/kick" target="_blank" rel="noopener">Visit Dimebit</a>
           <a class="btn tiny" href="https://dimebit.com/tiers/" target="_blank" rel="noopener">Promotions</a>
@@ -143,33 +139,29 @@
 
     <!-- Shuffle -->
     <article class="card" data-href="https://shuffle.com?r=lash3z" title="Visit Shuffle via partner link">
-      <div class="logoBox clickable">
+      <div class="logoBox">
         <img class="logo" src="../../../../assets/shuffle_icon1.png" alt="Shuffle" onerror="this.src='../../../../assets/lash3zbux_pp.png'">
       </div>
       <div class="content">
-        <div class="title clickable">
+        <div class="title">
           <h2>Shuffle</h2>
           <span class="tag">Feature Hunt Friendly</span>
         </div>
         <p class="desc">
-          Shuffle emphasizes variety and session flow — quick loading, tons of slots and game shows, and
-          steady provider updates. Solid for long hunts, with uptime and filtering that make it easy to track picks
-          and revisit favorites during streams.
+          Variety and flow — fast loads, lots of providers, and frequent updates. Easy to track picks during streams.
         </p>
-
         <div class="bullets">
           <ul>
             <li>Strong selection of trending releases</li>
             <li>Favorites & recent-played shortcuts</li>
-            <li>Clear wagering breakdowns</li>
+            <li>Clear wagering notes</li>
           </ul>
           <ul>
-            <li>Mobile-first performance tuning</li>
-            <li>Regular leaderboard/mission events</li>
-            <li>Support that understands slot terms</li>
+            <li>Mobile-tuned performance</li>
+            <li>Regular missions/leaderboards</li>
+            <li>Support that knows slot terms</li>
           </ul>
         </div>
-
         <div class="ctaRow">
           <a class="btn visit" href="https://shuffle.com?r=lash3z" target="_blank" rel="noopener">Visit Shuffle</a>
           <a class="btn tiny" href="https://shuffle.com/promotions" target="_blank" rel="noopener">Promotions</a>
@@ -180,24 +172,21 @@
 
     <!-- Urban VPN -->
     <article class="card" data-href="https://chrome.google.com/webstore/detail/urban-vpn-proxy/egbhgjdccdfjnidimcoajplfclbfegig" title="Get Urban VPN Extension">
-      <div class="logoBox clickable">
+      <div class="logoBox">
         <img class="logo" src="../../../../assets/urbanvpn_icon.png" alt="Urban VPN" onerror="this.src='../../../../assets/lash3zbux_pp.png'">
       </div>
       <div class="content">
-        <div class="title clickable">
+        <div class="title">
           <h2>Urban VPN</h2>
           <span class="tag">Free Browser Extension</span>
         </div>
         <p class="desc">
-          Urban VPN is a 100% free, no-log VPN browser extension that lets you quickly change your location with a single click.
-          Great for checking casino promotions in other regions, bypassing geo-blocks, or securing your connection while streaming.
-          No signup required — just install and go.
+          100% free, no-log VPN extension. Quick location switching for checking promos by region or securing your connection.
         </p>
-
         <div class="bullets">
           <ul>
-            <li>Completely free with no hidden fees</li>
-            <li>Quick location switching</li>
+            <li>Completely free</li>
+            <li>One-click location switch</li>
             <li>No registration needed</li>
           </ul>
           <ul>
@@ -206,37 +195,39 @@
             <li>Works with most Chromium browsers</li>
           </ul>
         </div>
+        <div class="ctaRow">
+          <a class="btn visit" href="https://chrome.google.com/webstore/detail/urban-vpn-proxy/egbhgjdccdfjnidimcoajplfclbfegig" target="_blank" rel="noopener">Get Urban VPN</a>
+        </div>
+      </div>
+    </article>
 
-<!-- csgoGem -->
-    <article class="card" data-href="https://csgogem.com/r/lash3z" title="CSGOGEM open case's Win Cash">
-      <div class="logoBox clickable">
-        <img class="logo" src="../../../../assets/urbanvpn_icon.png" alt="Urban VPN" onerror="this.src='../../../../assets/csgogem.png'">
+    <!-- CSGOGEM -->
+    <article class="card" data-href="https://csgogem.com/r/lash3z" title="CSGOGEM — Open Cases, Win Cash">
+      <div class="logoBox">
+        <img class="logo" src="../../../../assets/csgogem.png" alt="CSGOGEM" onerror="this.src='../../../../assets/lash3zbux_pp.png'">
       </div>
       <div class="content">
-        <div class="title clickable">
-          <h2>Urban VPN</h2>
-          <span class="tag">Free Browser Extension</span>
+        <div class="title">
+          <h2>CSGOGEM</h2>
+          <span class="tag">Cases & Rewards</span>
         </div>
         <p class="desc">
-          What Rewards Does CSGOGem Offer?
-          CSGOGem offers a small selection of rewards, offering rank-based daily cases, 
-          with one case unlocked at Level 10, and every 10 levels afterwards, with a maximum of 10 cases per day. 
-          They also offer a weekly Race Leaderboard, with the top 50 highest wagerers earning a portion of a 30,000-point prize,
-          with the highest wagerer earning 15,000 points. CSGOGem also offers Tip Rain, 
-          where users who tip a minimum of 1 coin are entered to win a portion of the total amount tipped.
+          Rank-based daily cases, weekly race leaderboard, and tip rain events. 18+ only.
         </p>
-
         <div class="bullets">
           <ul>
-            <li>supports multiple deposit methods, such as Cards, Gift Cards, Crypto, </li>
-            <li>Quick location switching</li>
-            <li>No registration needed</li>
+            <li>Cards, gift cards, and crypto supported</li>
+            <li>Daily rank cases (up to 10/day)</li>
+            <li>Weekly race leaderboard</li>
           </ul>
           <ul>
-            <li>Unlimited bandwidth</li>
-            <li>The site requires users to be 18 years old or older.</li>
-            <li>Works with most Chromium browsers</li>
+            <li>Tip Rain entries with minimum tip</li>
+            <li>Clear rewards system</li>
+            <li>18+ requirement</li>
           </ul>
+        </div>
+        <div class="ctaRow">
+          <a class="btn visit" href="https://csgogem.com/r/lash3z" target="_blank" rel="noopener">Visit CSGOGEM</a>
         </div>
       </div>
     </article>
@@ -255,13 +246,11 @@
   // Make the logo box and title area navigate to the card's data-href
   document.querySelectorAll('.card').forEach(card=>{
     const href = card.getAttribute('data-href');
-    const makeClickable = el => el && el.addEventListener('click', () => window.open(href, '_blank', 'noopener'));
-    makeClickable(card.querySelector('.logoBox'));
-    makeClickable(card.querySelector('.title'));
+    const go = () => window.open(href, '_blank', 'noopener');
+    card.querySelector('.logoBox')?.addEventListener('click', go);
+    card.querySelector('.title')?.addEventListener('click', go);
   });
 </script>
 
 </body>
 </html>
-
-
