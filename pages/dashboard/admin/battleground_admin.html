@@ -1,177 +1,165 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-admin="checking">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Battleground — Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Battleground — Admin (Games • Matchups • Live)</title>
 <meta http-equiv="Cache-Control" content="no-store"/>
+
 <style>
-  :root{
-    --bg:#060b0d; --panel:#0b1417; --ink:#eaf7ff; --muted:#9fd0d6; --line:rgba(0,255,255,.18);
-    --teal:#00ffff; --ok:#12d48a; --warn:#ffb42d; --danger:#e25a6f; --gold:#ffb42d;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-  html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
-  h1{margin:16px 0 10px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
-  .wrap{max-width:1500px;margin:0 auto;padding:0 16px 48px}
-  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-  input,select,button{border-radius:10px;border:1px solid var(--line);background:#0c1519;color:var(--ink);padding:10px}
-  button{cursor:pointer;font-weight:800}
-  .btn{padding:10px 12px;border:1px solid var(--line);background:#0f1720;color:var(--ink);border-radius:10px}
-  .btn.ok{background:#103d30;border-color:#1fa37b}
-  .btn.warn{background:#3a2e10;border-color:#b38328}
-  .btn.del{background:#2b1116;border-color:#7e2a3c}
-  .card{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
-  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cfffff}
-  .note{font-size:12px;color:#bfe}
-  .grid2{display:grid;grid-template-columns:1fr 1.1fr;gap:16px}
-  @media (max-width:1200px){.grid2{grid-template-columns:1fr}}
-  .frow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:8px}
-  .frow .col{display:flex;flex-direction:column;gap:8px}
-  .cap{text-transform:uppercase}
-  .gamesList{display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 360px);overflow:auto;padding-right:6px}
-  .gameCard{display:grid;grid-template-columns:64px 1fr auto auto;gap:12px;align-items:center;border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:8px 12px}
-  .tiny{width:64px;height:86px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#000}
-  .tiny img{width:100%;height:100%;object-fit:cover;display:block}
-  .gtitle{font-weight:900}
-  .sub{font-size:12px;color:#9fd0d6}
-  .matchesList{display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 360px);overflow:auto;padding-right:6px}
-  .matchCard{
-    display:grid;grid-template-columns:1fr 48px 48px 48px 1fr 160px 80px;
-    grid-template-rows:auto auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px
-  }
-  .leftName{grid-column:1;grid-row:1;justify-self:end;font-weight:900}
-  .leftImg{grid-column:2;grid-row:1}
-  .vs{grid-column:3;grid-row:1;display:grid;place-items:center;color:#9fe;font-weight:900}
-  .rightImg{grid-column:4;grid-row:1}
-  .rightName{grid-column:5;grid-row:1;font-weight:900}
-  .thumb{width:48px;height:64px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#000}
-  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
-  .scoreL{grid-column:2;grid-row:2}
-  .scoreR{grid-column:4;grid-row:2}
-  .controls{grid-column:6 / 8;grid-row:1 / 3;display:flex;gap:8px;justify-content:flex-end;align-items:center}
-  .winner{color:var(--gold);filter:drop-shadow(0 0 4px #ffb42d66)}
-  input[type="number"]{appearance:textfield;width:70px;text-align:center;font-weight:900}
-  input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+:root{
+  --bg:#060b0d;--panel:#0b1417;--ink:#eaf7ff;--muted:#9fd0d6;--line:rgba(0,255,255,.18);
+  --teal:#00ffff;--gold:#ffb42d;--ok:#12d48a;--bad:#e25a6f;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
+
+.wrap{max-width:1400px;margin:0 auto;padding:16px 16px 64px}
+h1{margin:0 0 12px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
+.card{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
+.hr{height:1px;background:var(--line);margin:10px 0}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cfffff;font-weight:800}
+.btn{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#0f1720;color:#eaf7ff;font-weight:800;cursor:pointer}
+.btn.ok{background:#103d30;border-color:#1fa37b}
+.btn.danger{background:#2b1116;border-color:#7e2a3c}
+.btn.warn{background:#231b0f;border-color:#8c6926}
+input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;color:#eaf7ff;padding:10px}
+.small{font-size:12px;color:var(--muted)}
+.badge{padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#081318;color:#bfe}
+
+/* Games list */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:1100px){.grid{grid-template-columns:1fr}}
+.games{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.gamesHead{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.gamesBody{max-height:520px;overflow:auto;padding:10px;background:#0b1418}
+.game{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:8px;background:#0c1519}
+.game + .game{margin-top:8px}
+.thumb{width:64px;height:86px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#000}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.title{font-weight:900}
+.prov{font-size:12px;color:#9fd0d6}
+
+/* Matches */
+.matches{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.matchesHead{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.matchesBody{max-height:520px;overflow:auto;padding:10px;background:#0b1418}
+.mx{display:grid;grid-template-columns:1fr 40px 1fr auto;gap:10px;align-items:center;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:10px;background:#0c1519}
+.mx .side{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:center}
+.sThumb{width:52px;height:70px;border:1px solid var(--line);border-radius:8px;background:#000;overflow:hidden}
+.sThumb img{width:100%;height:100%;object-fit:cover;display:block}
+.vs{font-weight:900;text-align:center;opacity:.9}
+.mCtrls{display:flex;gap:8px;align-items:center}
+
+/* Live ticker */
+.live{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.liveBody{padding:10px;background:#0b1418;display:grid;gap:10px}
+.liveRow{display:grid;grid-template-columns:1fr 60px 1fr 80px 90px auto;gap:8px;align-items:center}
+.score{display:flex;gap:6px;align-items:center}
+.score input{width:64px;text-align:center}
 </style>
 </head>
 <body>
 
-<!-- Admin gate (unchanged server cookie check). Omit here if you already have it globally -->
+<!-- ===== AdminGate (server cookie) ===== -->
 <script>
 (function(){
   "use strict";
-  const ADMIN_CHECK = "/api/admin/gate/check";
-  const ADMIN_LOGIN = "/pages/dashboard/admin/admin_login.html";
-  const DASHBOARD  = "/index.html";
-  const MAX_AGE_MS = 12*60*60*1000;
-  const H = document.documentElement; H.setAttribute("data-admin","checking");
-  function unlock(){ H.removeAttribute("data-admin"); }
+  const ADMIN_CHECK="/api/admin/gate/check", ADMIN_LOGIN="/pages/dashboard/admin/admin_login.html", DASH="/index.html";
+  const H=document.documentElement; H.setAttribute("data-admin","checking");
   function lock(){
-    unlock();
+    H.removeAttribute("data-admin");
     const s=document.createElement("style");
-    s.textContent=".lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}.lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75);box-shadow:0 0 18px rgba(0,255,255,.15)}.lockcard h1{margin:0 0 10px;color:#cfe}.lockcard a{color:#7ad7ff;text-decoration:underline}";
+    s.textContent=".lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}.lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75)}.lockcard h1{margin:0 0 10px;color:#cfe}.lockcard a{color:#7ad7ff;text-decoration:underline}";
     document.head.appendChild(s);
-    document.body.innerHTML='<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you just logged in elsewhere, your unlock may have expired (lasts ~12 hours).</div><div style="margin-top:14px"><a href="'+DASHBOARD+'">Back to Dashboard</a></div></div></div>';
+    document.body.innerHTML='<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'">Admin Login</a> first.</div><div style="margin-top:8px;opacity:.8">If you already logged in, your session may have expired.</div><div style="margin-top:14px"><a href="'+DASH+'">Back to Dashboard</a></div></div></div>';
   }
-  fetch(ADMIN_CHECK,{credentials:"include",cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{
-    if(j&&j.admin){
-      try{
-        const u=(j.user||"ADMIN").toString().toUpperCase();
-        localStorage.setItem("l3z:session", JSON.stringify({user:u,isAdmin:true,expiresAt:Date.now()+7*24*60*60*1000}));
-        localStorage.setItem("admin:token", JSON.stringify({by:u,ts:Date.now(),expiresAt:Date.now()+MAX_AGE_MS}));
-      }catch(_){}
-      unlock();
-    }else{ lock(); }
-  }).catch(()=>lock());
+  fetch(ADMIN_CHECK,{credentials:"include",cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{ if(j&&j.admin){ H.removeAttribute("data-admin"); }else{ lock(); } }).catch(lock);
 })();
 </script>
+<!-- ===== /AdminGate ===== -->
 
 <div class="wrap">
   <h1>Battleground — Admin</h1>
 
-  <div class="card" style="display:flex;gap:10px;align-items:center">
-    <button id="btnSaveDraft" class="btn warn">Save Draft</button>
-    <button id="btnPublish" class="btn ok">Push → Prediction + Live + Bets</button>
-    <button id="btnDeleteAll" class="btn del" title="Click twice to confirm">Delete All</button>
-    <span id="msg" class="pill" style="margin-left:auto">Ready</span>
-  </div>
-
-  <!-- Add games -->
   <div class="card">
-    <div class="frow">
-      <div class="col">
-        <label>GAME TITLE</label>
-        <input id="inTitle" class="cap" placeholder="E.G. DUCK HUNTERS"/>
-      </div>
-      <div class="col">
-        <label>PROVIDER (optional)</label>
-        <input id="inProv" class="cap" placeholder="E.G. HACKSAW"/>
-      </div>
-      <div class="col">
-        <label>OTHER / UPDATE</label>
-        <input id="inNote" class="cap" placeholder="OPTIONAL NOTE"/>
-      </div>
+    <div class="row">
+      <span class="pill">Tip: Use <b>Asset Path</b> for covers (e.g. <code>assets/slot images/duck hunters.png</code>). These persist across refreshes. The Upload box only previews and is not persisted.</span>
     </div>
-
-    <div class="row" style="margin-top:10px">
-      <div class="col">
-        <label>UPLOAD IMAGE(S)</label>
-        <!-- MULTI-UPLOAD -->
-        <input id="inFile" type="file" accept="image/*" multiple />
-      </div>
-      <div class="col" style="flex:1;min-width:360px">
-        <label>OR ASSET PATH (relative)</label>
-        <div class="row" style="gap:8px">
-          <input id="inAsset" style="flex:1" placeholder="assets/slot images/duck hunters.png"/>
-          <button id="btnAuto" class="btn">Auto</button>
-        </div>
-      </div>
-      <button id="btnUseFileName" class="btn">Use filename</button>
-      <button id="btnAdd" class="btn ok">+ Add Game</button>
-      <span class="note">All text fields auto-CAP. “Auto” looks in <b>assets/slot images/</b>. Prefer Asset Path over Upload for persistent covers.</span>
-    </div>
-
-    <!-- NEW: bulk add from selected files -->
-    <div class="row" style="margin-top:10px">
-      <button id="btnBulkFromSelected" class="btn">+ Add N Games (from selected files)</button>
-      <input id="bulkCount" type="number" step="1" min="1" value="20" style="width:90px" />
-      <span class="note">Select many PNGs above, set N, then click this.</span>
+    <div class="hr"></div>
+    <div class="row">
+      <label>GAME TITLE <input id="gTitle" placeholder="E.G. DUCK HUNTERS" style="min-width:260px"></label>
+      <label>PROVIDER (optional) <input id="gProv" placeholder="E.G. HACKSAW" style="min-width:180px"></label>
+      <label>ASSET PATH <input id="gPath" placeholder="assets/slot images/duck hunters.png" style="min-width:360px"></label>
+      <input id="gUpload" type="file" accept=".png,.jpg,.jpeg,.webp" multiple style="display:none">
+      <button id="useUpload" class="btn">Choose Files</button>
+      <button id="autoName" class="btn">Use filename → fields</button>
+      <button id="addGame" class="btn ok">+ Add Game</button>
     </div>
   </div>
 
-  <div class="grid2">
-    <!-- LEFT: Games -->
-    <div class="card">
-      <h3>Games</h3>
-      <span class="note">Select two → “Add Match” to create a H2H. Unlimited matchups.</span>
-      <div id="gamesList" class="gamesList"></div>
-    </div>
-
-    <!-- RIGHT: Matches & Live Scores -->
-    <div class="card">
-      <div class="row" style="justify-content:space-between">
-        <h3>Matchups & Live Scores</h3>
+  <div class="grid">
+    <!-- Games -->
+    <div class="card games">
+      <div class="gamesHead">
+        <div style="font-weight:900">Games</div>
         <div class="row">
-          <!-- NEW: quick generate controls -->
-          <span class="pill">Auto-generate</span>
-          <input id="autoMxCount" type="number" step="1" min="1" value="10" style="width:80px">
-          <button id="btnAutoMatchups" class="btn ok">⚡ Generate N Matchups</button>
-          <button data-q="5"  class="btn">5</button>
-          <button data-q="10" class="btn">10</button>
-          <button data-q="20" class="btn">20</button>
+          <button id="bulkAddFromFiles" class="btn">+ Add N Games (from selected files)</button>
+          <select id="bulkN">
+            <option>10</option><option selected>20</option><option>40</option>
+          </select>
+          <span class="small">Select N files first via “Choose Files”. Uses filename for title.</span>
         </div>
-        <button id="btnAddMatch" class="btn">+ Add Match (pair selected)</button>
       </div>
-      <div id="matchesList" class="matchesList"></div>
+      <div id="gamesList" class="gamesBody"></div>
+    </div>
+
+    <!-- Matchups -->
+    <div class="card matches">
+      <div class="matchesHead">
+        <div class="row">
+          <div style="font-weight:900">Matchups & Live Scores</div>
+          <div class="pill" id="mxCount">0 matchups</div>
+        </div>
+        <div class="row">
+          <button id="autoGen" class="btn">Auto-generate</button>
+          <select id="autoN"><option>5</option><option selected>10</option><option>20</option></select>
+          <button id="genN" class="btn ok">⚡ Generate N Matchups</button>
+          <button id="addPair" class="btn">+ Add Match (pair selected)</button>
+        </div>
+      </div>
+      <div id="matchesList" class="matchesBody"></div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="note">
-      Push writes to: <code>bg:builder:battleground</code> (primary) and legacy keys:
-      <code>bg:games</code>, <code>bg:matches</code>, <code>BG_SELECTED_GAMES</code>, <code>BG_MATCHUPS</code>, <code>BATTLEGROUND_MATCHUPS</code>, <code>battleground:matches</code>, <code>battleground:admin:matches</code>, <code>bg:admin:matches</code>, <code>bg:matchups</code>. It also updates <code>sb:markets:unified.sections.battleground.h2h</code>.
+  <!-- Live controls + Push -->
+  <div class="card live">
+    <div class="gamesHead">
+      <div style="font-weight:900">Live Controls & Push</div>
+      <div class="row">
+        <span id="stamp" class="pill">Not pushed</span>
+        <span id="msg" class="pill">Ready</span>
+      </div>
+    </div>
+    <div class="liveBody">
+      <div class="liveRow small" style="opacity:.9">
+        <div>Winner</div><div></div><div></div><div>Left</div><div>Right</div><div>Actions</div>
+      </div>
+      <div id="liveRows"></div>
+
+      <div class="hr"></div>
+      <div class="row" style="justify-content:space-between">
+        <div class="row">
+          <button id="openAll" class="btn">Open All</button>
+          <button id="lockAll" class="btn">Lock All</button>
+          <button id="clearAll" class="btn danger">Delete All</button>
+        </div>
+        <div class="row">
+          <button id="pushBuilder" class="btn ok">Push → Prediction + Widget + Bets Admin</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -180,267 +168,214 @@
 (function(){
   "use strict";
 
-  /* ---------- config / utils ---------- */
-  const BASES = ['assets/slot images/','../assets/slot images/','/assets/slot images/'];
-  const EXT = ['png','webp','jpg','jpeg']; // try PNG first per your library
-  const MAX_EMBED_BYTES = 100 * 1024;
-  let IMG_INDEX = null;
+  // ---------- helpers ----------
+  const $=(s,r=document)=>r.querySelector(s);
+  const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const kid=(p='ID')=>p+Math.random().toString(36).slice(2,10).toUpperCase();
+  const toast=(t,ok)=>{ const n=$("#msg"); n.textContent=t; n.style.color = ok===false ? '#ff9aa7' : '#baffea'; setTimeout(()=>{ n.textContent='Ready'; n.style.color=''; },1600); };
 
-  const GKEY='bg:games', MKEY='bg:matches', BKEY='bg:builder:battleground';
-  const K_UNIFIED='sb:markets:unified';
+  // ---------- storage keys ----------
+  const K_BUILDER='bg:builder:battleground';   // canonical
+  const K_G='bg:games';                         // legacy mirror for older widgets
+  const K_M='bg:matches';                       // legacy mirror for older widgets
 
-  const $ = s=>document.querySelector(s);
-  const els = {
-    msg: $('#msg'),
-    inTitle: $('#inTitle'), inProv: $('#inProv'), inNote: $('#inNote'),
-    inFile: $('#inFile'), inAsset: $('#inAsset'), btnAuto: $('#btnAuto'),
-    btnUseFileName: $('#btnUseFileName'),
-    btnAdd: $('#btnAdd'), btnAddMatch: $('#btnAddMatch'),
-    btnSaveDraft: $('#btnSaveDraft'), btnPublish: $('#btnPublish'), btnDeleteAll: $('#btnDeleteAll'),
-    gamesList: $('#gamesList'), matchesList: $('#matchesList'),
-    bulkCount: $('#bulkCount'), btnBulkFromSelected: $('#btnBulkFromSelected'),
-    autoMxCount: $('#autoMxCount'), btnAutoMatchups: $('#btnAutoMatchups')
-  };
+  // ---------- state ----------
+  let state = read() || { games:[], matches:[], lastUpdated:0, eventId: 'battleground:'+new Date().toISOString().slice(0,10), title:'BATTLEGROUND', bestOf:3 };
 
-  function toast(t,ok){ els.msg.textContent=t; els.msg.style.color=ok===false?'#ff9aa7':'#baffea'; clearTimeout(els._t); els._t=setTimeout(()=>els.msg.textContent='',2600); }
-  function load(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null;}catch{ return null; } }
-  function enc(u){ return encodeURI(u); }
-  function pid(prefix){ return (prefix||'G') + Math.random().toString(36).slice(2,10).toUpperCase(); }
-  function unslug(s){ return String(s||'').replace(/\.[a-z0-9]+$/i,'').replace(/[-_]+/g,' ').replace(/\s+/g,' ').trim().replace(/\b\w/g,c=>c.toUpperCase()); }
-  function titleFromFilename(name){ return { title: unslug(name), provider: '' }; }
+  function read(){ try{ const j=localStorage.getItem(K_BUILDER); return j?JSON.parse(j):null; }catch{return null;} }
+  function write(){ try{ state.lastUpdated=Date.now(); localStorage.setItem(K_BUILDER, JSON.stringify(state)); // mirrors
+    localStorage.setItem(K_G, JSON.stringify(state.games||[]));
+    localStorage.setItem(K_M, JSON.stringify(state.matches||[]));
+  }catch{} }
 
-  function save(k,v){
-    try{ localStorage.setItem(k, JSON.stringify(v)); }
-    catch(e){
-      if(k===GKEY){
-        let games2=(v||[]).map(g=>{
-          if(g.imageUrl && /^data:/i.test(g.imageUrl) && g.imageUrl.length > (MAX_EMBED_BYTES*1.37)){ return {...g, imageUrl:null}; }
-          return g;
-        });
-        try{ localStorage.setItem(GKEY, JSON.stringify(games2)); toast('Stripped large embedded covers (use Asset Path).', false); }
-        catch(e2){ toast('Storage full — couldn’t save games.', false); }
-      }else{
-        toast('Storage full — couldn’t save '+k, false);
-      }
-    }
-  }
-
-  async function imgExists(url){
-    return new Promise(res=>{
-      const i=new Image(); i.onload=()=>res(true); i.onerror=()=>res(false);
-      i.src = enc(url) + (url.includes('?')?'&':'?') + 'v=' + Date.now();
+  // ---------- painting ----------
+  function paintGames(){
+    const host=$("#gamesList"); host.innerHTML='';
+    if(!(state.games||[]).length){ host.innerHTML='<div class="small">No games yet. Use the form above to add.</div>'; return; }
+    (state.games||[]).forEach((g,i)=>{
+      const row=document.createElement('div'); row.className='game';
+      row.innerHTML=`
+        <div class="thumb">${g.imageUrl?`<img src="${esc(g.imageUrl)}" alt="">`:''}</div>
+        <div><div class="title">${esc(g.title||'—')}</div><div class="prov">${esc(g.provider||'')}</div><div class="small">${esc(g.imageUrl||'')}</div></div>
+        <div class="row"><button class="btn warn" data-act="sel" data-i="${i}">Select</button><button class="btn danger" data-act="del" data-i="${i}">Delete</button></div>`;
+      host.appendChild(row);
     });
   }
 
-  /* ---------- fields behaviour ---------- */
-  ['inTitle','inProv','inNote'].forEach(id=>{
-    const n=$( '#'+id ); if(!n) return;
-    n.addEventListener('input', function(){ this.value=this.value.toUpperCase(); });
-  });
-
-  async function autoFind(){
-    const raw = (els.inTitle.value||'').trim(); const prv=(els.inProv.value||'').trim();
-    if(!raw){ toast('Type a game title first.', false); return; }
-    const slug = raw.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
-    const rawLower = raw.toLowerCase();
-
-    const guesses=[];
-    for(const base of BASES){
-      EXT.forEach(ext=>guesses.push(`${base}${raw}.${ext}`));
-      EXT.forEach(ext=>guesses.push(`${base}${rawLower}.${ext}`));
-      EXT.forEach(ext=>guesses.push(`${base}${slug}.${ext}`));
-    }
-    for(const u of guesses){ if(await imgExists(u)){ els.inAsset.value=u; toast('Found image ✓'); return; } }
-    toast('No matching image found. Upload or paste a path.', false);
-  }
-  els.btnAuto.addEventListener('click', autoFind);
-
-  function fillFromFileName(){
-    const f = (els.inFile?.files?.[0]) || null;
-    if(!f){ toast('Pick a file first.', false); return; }
-    const { title } = titleFromFilename(f.name);
-    if(title && !els.inTitle.value) els.inTitle.value = title.toUpperCase();
-    if(!els.inAsset.value) autoFind();
-    toast('Filled from filename.');
-  }
-  els.btnUseFileName.addEventListener('click', fillFromFileName);
-  els.inFile.addEventListener('change', ()=>{ if(els.inFile.files?.length===1) fillFromFileName(); });
-
-  /* ---------- state ---------- */
-  let games = load(GKEY) || [];
-  let matches = load(MKEY) || [];
-
-  /* ---------- renderers ---------- */
-  function renderGames(){
-    els.gamesList.innerHTML='';
-    if(!games.length){ els.gamesList.innerHTML='<div class="pill">No games yet.</div>'; return; }
-    games.forEach(g=>{
-      const div=document.createElement('div'); div.className='gameCard'; div.dataset.id=g.id;
-      const src=g.imageUrl||'';
-      div.innerHTML=`
-        <div class="tiny">${src?`<img src="${enc(src)}" alt="">`:''}</div>
-        <div><div class="gtitle">${(g.title||'UNTITLED')}</div><div class="sub">${(g.provider||'')}</div></div>
-        <label class="btn" style="cursor:pointer"><input type="checkbox" class="pick" style="display:none">Select</label>
-        <button class="btn del" data-act="del">Delete</button>
-      `;
-      div.querySelector('[data-act="del"]').addEventListener('click', ()=>{
-        games = games.filter(x=>x.id!==g.id);
-        matches = matches.filter(mx=>mx.leftId!==g.id && mx.rightId!==g.id);
-        save(GKEY,games); save(MKEY,matches); renderGames(); renderMatches();
-      });
-      div.querySelector('.pick').addEventListener('change', e=>{ div.classList.toggle('picked', e.target.checked); });
-      els.gamesList.appendChild(div);
-    });
-  }
-
-  function renderMatches(){
-    els.matchesList.innerHTML='';
-    if(!matches.length){ els.matchesList.innerHTML='<div class="pill">No matchups yet. Select two games, then Add Match — or use “Generate N Matchups”.</div>'; return; }
-    matches.forEach(mx=>{
-      const L=games.find(x=>x.id===mx.leftId)||{}, R=games.find(x=>x.id===mx.rightId)||{};
-      const leftWin = mx.winnerId && mx.winnerId===mx.leftId;
-      const rightWin = mx.winnerId && mx.winnerId===mx.rightId;
-
-      const li=document.createElement('div'); li.className='matchCard'; li.dataset.id=mx.id;
-      li.innerHTML=`
-        <div class="leftName">${leftWin?'<span class="winner">🏆</span> ':''}${(mx.leftTitle||L.title||'LEFT')}</div>
-        <div class="leftImg"><div class="thumb">${(L.imageUrl)?`<img src="${enc(L.imageUrl)}" alt="">`:''}</div></div>
+  function paintMatches(){
+    const host=$("#matchesList"); host.innerHTML='';
+    const L=state.matches||[]; $("#mxCount").textContent=L.length+' matchups';
+    if(!L.length){ host.innerHTML='<div class="small">No matchups yet. Select two games and click “+ Add Match (pair selected)” or use Auto-generate.</div>'; return; }
+    const gMap=new Map((state.games||[]).map(g=>[g.id,g]));
+    L.forEach((m,mi)=>{
+      const GL=gMap.get(m.leftId)||{}, GR=gMap.get(m.rightId)||{};
+      const row=document.createElement('div'); row.className='mx';
+      row.innerHTML=`
+        <div class="side"><div class="sThumb">${(m.leftImg||GL.imageUrl)?`<img src="${esc(m.leftImg||GL.imageUrl)}" alt="">`:''}</div><div><div class="title">${esc(m.leftTitle||GL.title||'LEFT')}</div><div class="prov">${esc(GL.provider||'')}</div></div></div>
         <div class="vs">VS</div>
-        <div class="rightImg"><div class="thumb">${(R.imageUrl)?`<img src="${enc(R.imageUrl)}" alt="">`:''}</div></div>
-        <div class="rightName">${rightWin?'<span class="winner">🏆</span> ':''}${(mx.rightTitle||R.title||'RIGHT')}</div>
-        <div class="scoreL"><input class="sL" type="number" min="0" step="1" value="${+mx.leftScore||0}"/></div>
-        <div class="scoreR"><input class="sR" type="number" min="0" step="1" value="${+mx.rightScore||0}"/></div>
-        <div class="controls">
-          <button class="btn ok btnWinner">Set Winner</button>
-          <button class="btn del btnDel">Delete</button>
-        </div>
-      `;
-      li.querySelector('.sL').addEventListener('input', e=>{ mx.leftScore=+e.target.value||0; save(MKEY,matches); });
-      li.querySelector('.sR').addEventListener('input', e=>{ mx.rightScore=+e.target.value||0; save(MKEY,matches); });
-      li.querySelector('.btnWinner').addEventListener('click', ()=>{
-        const Ls=+mx.leftScore||0, Rs=+mx.rightScore||0;
-        if(Ls===Rs){ toast('Scores tied. Adjust first.', false); return; }
-        mx.winnerId = (Ls>Rs)? mx.leftId : mx.rightId;
-        save(MKEY,matches); renderMatches(); toast('Winner set.');
-      });
-      li.querySelector('.btnDel').addEventListener('click', ()=>{ matches = matches.filter(x=>x.id!==mx.id); save(MKEY,matches); renderMatches(); });
-      els.matchesList.appendChild(li);
+        <div class="side"><div class="sThumb">${(m.rightImg||GR.imageUrl)?`<img src="${esc(m.rightImg||GR.imageUrl)}" alt="">`:''}</div><div><div class="title">${esc(m.rightTitle||GR.title||'RIGHT')}</div><div class="prov">${esc(GR.provider||'')}</div></div></div>
+        <div class="mCtrls">
+          <button class="btn" data-act="winL" data-i="${mi}">Set Winner ←</button>
+          <button class="btn" data-act="winR" data-i="${mi}">→ Set Winner</button>
+          <button class="btn danger" data-act="delMx" data-i="${mi}">Delete</button>
+        </div>`;
+      host.appendChild(row);
+    });
+    paintLiveRows();
+  }
+
+  function paintLiveRows(){
+    const host=$("#liveRows"); host.innerHTML='';
+    const gMap=new Map((state.games||[]).map(g=>[g.id,g]));
+    (state.matches||[]).forEach((m,mi)=>{
+      const GL=gMap.get(m.leftId)||{}, GR=gMap.get(m.rightId)||{};
+      const row=document.createElement('div'); row.className='liveRow';
+      row.innerHTML=`
+        <div class="small">${esc(m.leftTitle||GL.title||'LEFT')} vs ${esc(m.rightTitle||GR.title||'RIGHT')}</div>
+        <div class="pill">${esc(m.winnerId? (m.winnerId===m.leftId?'LEFT':'RIGHT') : '—')}</div>
+        <div></div>
+        <div class="score">L<input type="number" step="1" min="0" value="${+m.leftScore||0}" data-s="l${mi}"></div>
+        <div class="score">R<input type="number" step="1" min="0" value="${+m.rightScore||0}" data-s="r${mi}"></div>
+        <div class="row">
+          <button class="btn" data-act="applyScore" data-i="${mi}">Apply</button>
+          <button class="btn" data-act="clearScore" data-i="${mi}">Clear</button>
+        </div>`;
+      host.appendChild(row);
     });
   }
 
-  /* ---------- add single ---------- */
-  els.btnAdd.addEventListener('click', ()=>{
-    const t=(els.inTitle.value||'').trim().toUpperCase();
-    const p=(els.inProv.value||'').trim().toUpperCase();
-    const n=(els.inNote.value||'').trim().toUpperCase();
-    const asset=(els.inAsset.value||'').trim();
-    if(!t){ toast('Enter a game title.', false); return; }
-    function add(imgUrl){
-      games.push({id:pid('G'), title:t, provider:p, note:n, imageUrl:imgUrl||null});
-      els.inTitle.value=''; els.inProv.value=''; els.inNote.value=''; els.inAsset.value=''; if(els.inFile) els.inFile.value='';
-      save(GKEY,games); renderGames(); toast('Game added.');
-    }
-    const f = (els.inFile?.files?.[0]) || null;
-    if(f){
-      if(f.size > MAX_EMBED_BYTES){ add(null); toast('Image too large to embed. Saved without cover (set Asset Path later).', false); }
-      else{ const url=URL.createObjectURL(f); add(url); }
-    }else{ add(asset||null); }
-  });
+  function paintAll(){ paintGames(); paintMatches(); }
 
-  /* ---------- bulk add from selected files (multi-upload) ---------- */
-  function bulkFromSelected(count){
-    const files = Array.from(els.inFile?.files || []);
-    if(!files.length){ toast('Select PNG files first.', false); return; }
-    count = Math.max(1, Math.floor(+count||0));
-
-    const existing = new Set(games.map(g => (g.title||'').toUpperCase()));
-    let added=0;
-    for(const f of files){
-      if(added>=count) break;
-      if(!/^image\//i.test(f.type)) continue;
-      const { title } = titleFromFilename(f.name);
-      const T = (title||'UNTITLED').toUpperCase();
-      if(existing.has(T)) continue;
-      const url = (f.size > MAX_EMBED_BYTES) ? null : URL.createObjectURL(f); // preview-only
-      games.push({ id:pid('G'), title:T, provider:'', note:'', imageUrl:url });
-      existing.add(T); added++;
-    }
-    if(added===0){ toast('No new games added (all selected already exist?).', false); }
-    else{ save(GKEY,games); renderGames(); toast(`Added ${added} game${added!==1?'s':''} from selected files.`); }
+  // ---------- selection buffer for pairing ----------
+  let selected = []; // game ids
+  function toggleSelect(i){
+    const id=(state.games[i]||{}).id; if(!id) return;
+    const k=selected.indexOf(id); if(k>=0) selected.splice(k,1); else selected.push(id);
+    selected=selected.slice(-2);
+    $$('.game .btn[data-act="sel"]').forEach(btn=>{
+      const gid=(state.games[+btn.dataset.i]||{}).id; btn.textContent = selected.includes(gid)?'Selected ✓':'Select';
+    });
   }
-  els.btnBulkFromSelected.addEventListener('click', ()=> bulkFromSelected(els.bulkCount?.value||20));
 
-  /* ---------- manual add-match ---------- */
-  els.btnAddMatch.addEventListener('click', ()=>{
-    const picks=[...els.gamesList.querySelectorAll('.gameCard .pick:checked')].map(cb=>cb.closest('.gameCard').dataset.id);
-    if(picks.length!==2){ toast('Select exactly TWO games.', false); return; }
-    const L=games.find(x=>x.id===picks[0]), R=games.find(x=>x.id===picks[1]);
-    matches.push({ id:pid('MX'), leftId:L.id,rightId:R.id,leftTitle:L.title,rightTitle:R.title,leftImg:L.imageUrl||'',rightImg:R.imageUrl||'',leftScore:0,rightScore:0,winnerId:null });
-    els.gamesList.querySelectorAll('.pick').forEach(cb=>cb.checked=false);
-    save(MKEY,matches); renderMatches(); toast('Match added.');
+  // ---------- events / handlers ----------
+  $("#useUpload").addEventListener('click',()=>$("#gUpload").click());
+  $("#gUpload").addEventListener('change',()=>{ /* preview only; not persisted */ });
+
+  $("#autoName").addEventListener('click',()=>{
+    const f=$("#gUpload").files?.[0]; if(!f) return;
+    const base=f.name.replace(/\.[^.]+$/,''); // no ext
+    if(!$("#gTitle").value) $("#gTitle").value = base.replace(/[_-]+/g,' ').toUpperCase();
+    if(!$("#gPath").value) $("#gPath").value = 'assets/slot images/'+base+'.png';
   });
 
-  /* ---------- auto-generate N matchups ---------- */
-  function autoGenerateMatchups(n){
-    n = Math.max(1, Math.floor(+n||0));
-    const needGames = n*2;
-    if(games.length < needGames){ toast(`Need ${needGames} games — add more (multi-select PNGs) then try again.`, false); return; }
-    const ids = games.map(g=>g.id);
-    for(let i=ids.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [ids[i],ids[j]]=[ids[j],ids[i]]; }
-    const sel = ids.slice(0,needGames);
-    for(let i=0;i<n;i++){
-      const a = games.find(g=>g.id===sel[i*2]);
-      const b = games.find(g=>g.id===sel[i*2+1]);
-      matches.push({ id:pid('MX'), leftId:a.id,rightId:b.id,leftTitle:a.title,rightTitle:b.title,leftImg:a.imageUrl||'',rightImg:b.imageUrl||'',leftScore:0,rightScore:0,winnerId:null });
+  $("#addGame").addEventListener('click',()=>{
+    const title=$("#gTitle").value.trim(); if(!title) return toast('Enter a GAME TITLE',false);
+    const provider=$("#gProv").value.trim();
+    let path=$("#gPath").value.trim();
+
+    // If user chose a file but no path, suggest a path using filename.
+    if(!path){
+      const f=$("#gUpload").files?.[0];
+      if(f){ const base=f.name.replace(/\.[^.]+$/,''); path='assets/slot images/'+base+'.png'; }
     }
-    save(MKEY,matches); renderMatches(); toast(`Created ${n} matchup${n!==1?'s':''}.`);
+    // Persist only the path string so it survives refreshes.
+    const game={ id:kid('G'), title:title.toUpperCase(), provider, imageUrl:path };
+    state.games.push(game); write(); paintGames();
+    $("#gTitle").value=''; $("#gProv").value=''; $("#gPath").value=''; $("#gUpload").value='';
+  });
+
+  $("#bulkAddFromFiles").addEventListener('click',()=>{
+    const files = Array.from($("#gUpload").files||[]);
+    if(!files.length) return toast('Choose files first',false);
+    const N = +($("#bulkN").value||20) || 20;
+    files.slice(0,N).forEach(f=>{
+      const base=f.name.replace(/\.[^.]+$/,'');
+      const title=base.replace(/[_-]+/g,' ').toUpperCase();
+      const path='assets/slot images/'+base+'.png';
+      state.games.push({ id:kid('G'), title, provider:'', imageUrl:path });
+    });
+    write(); paintGames(); toast('Added '+Math.min(N,files.length)+' games');
+  });
+
+  $("#autoGen").addEventListener('click',()=>{
+    const n=Math.min(10, Math.floor((state.games||[]).length/2));
+    genN(n);
+  });
+  $("#genN").addEventListener('click',()=> genN(+($("#autoN").value||10)||10));
+
+  function genN(n){
+    const G=[...(state.games||[])]; if(G.length<2) return toast('Need at least 2 games',false);
+    // simple shuffle
+    for(let i=G.length-1;i>0;i--){ const j=(Math.random()* (i+1))|0; [G[i],G[j]]=[G[j],G[i]]; }
+    state.matches=[]; for(let i=0;i<n && (2*i+1)<G.length;i++){
+      const A=G[2*i], B=G[2*i+1];
+      state.matches.push({
+        id:kid('M'),
+        leftId:A.id, rightId:B.id,
+        leftTitle:A.title, rightTitle:B.title,
+        leftImg:A.imageUrl||'', rightImg:B.imageUrl||'',
+        leftScore:0, rightScore:0, winnerId:null, status:'OPEN'
+      });
+    }
+    write(); paintMatches(); toast('Generated '+state.matches.length+' matchups');
   }
-  els.btnAutoMatchups.addEventListener('click', ()=> autoGenerateMatchups(els.autoMxCount?.value||10));
-  document.querySelectorAll('button[data-q]').forEach(b=> b.addEventListener('click', ()=>{ els.autoMxCount.value = b.getAttribute('data-q'); }));
 
-  /* ---------- delete all, save, publish (unchanged) ---------- */
-  let delArmed=false, delTimer=null;
-  els.btnDeleteAll.addEventListener('click', ()=>{
-    if(!delArmed){ delArmed=true; toast('Click again to confirm delete all…', false); clearTimeout(delTimer); delTimer=setTimeout(()=>{ delArmed=false; },3000); return; }
-    delArmed=false; games=[]; matches=[]; save(GKEY,games); save(MKEY,matches); save(BKEY,{games:[],matches:[],lastUpdated:Date.now()});
-    renderGames(); renderMatches(); toast('Cleared.');
+  $("#addPair").addEventListener('click',()=>{
+    if(selected.length!==2) return toast('Select exactly TWO games',false);
+    const [A,B]=selected.map(id=> (state.games||[]).find(g=>g.id===id)).filter(Boolean);
+    if(!A||!B) return;
+    state.matches.push({ id:kid('M'), leftId:A.id, rightId:B.id, leftTitle:A.title, rightTitle:B.title, leftImg:A.imageUrl||'', rightImg:B.imageUrl||'', leftScore:0, rightScore:0, winnerId:null, status:'OPEN' });
+    selected=[]; write(); paintMatches();
   });
 
-  els.btnSaveDraft.addEventListener('click', ()=>{ save(GKEY,games); save(MKEY,matches); toast('Draft saved.'); });
+  $("#openAll").addEventListener('click',()=>{ (state.matches||[]).forEach(m=>m.status='OPEN'); write(); paintMatches(); });
+  $("#lockAll").addEventListener('click',()=>{ (state.matches||[]).forEach(m=>m.status='LOCKED'); write(); paintMatches(); });
 
-  els.btnPublish.addEventListener('click', ()=>{
-    const now = Date.now();
-    save(GKEY,games); save(MKEY,matches);
-    const builder={
-      games: games.map(g=>({id:g.id,title:g.title,provider:g.provider,note:g.note,imageUrl:g.imageUrl||null})),
-      matches: matches.map(mx=>({id:mx.id,leftId:mx.leftId,rightId:mx.rightId,leftTitle:mx.leftTitle,rightTitle:mx.rightTitle,leftImg:mx.leftImg||null,rightImg:mx.rightImg||null,leftScore:+mx.leftScore||0,rightScore:+mx.rightScore||0,winnerId:mx.winnerId||null})),
-      lastUpdated: now
-    };
-    save(BKEY,builder);
+  $("#clearAll").addEventListener('click',()=>{
+    if(!confirm('Delete ALL games and matchups?')) return;
+    state={games:[],matches:[],lastUpdated:0,eventId:'battleground:'+new Date().toISOString().slice(0,10),title:'BATTLEGROUND',bestOf:3};
+    write(); paintAll(); toast('Cleared');
+  });
 
-    const legacy = builder.matches.map(m=>({
-      id:m.id,leftId:m.leftId,rightId:m.rightId,leftTitle:m.leftTitle,rightTitle:m.rightTitle,leftImg:m.leftImg||'',rightImg:m.rightImg||'',
-      leftProv:(games.find(g=>g.id===m.leftId)||{}).provider||'', rightProv:(games.find(g=>g.id===m.rightId)||{}).provider||'',
-      leftOdds:1.84,rightOdds:1.84
-    }));
-    try{ localStorage.setItem('BG_SELECTED_GAMES', JSON.stringify(builder.games)); }catch(_){}
-    for(const k of ['BG_MATCHUPS','BATTLEGROUND_MATCHUPS','battleground:matches','battleground:admin:matches','bg:admin:matches','bg:matchups']){
-      try{ localStorage.setItem(k, JSON.stringify(legacy)); }catch(_){}
+  $("#pushBuilder").addEventListener('click',()=>{
+    state.lastUpdated=Date.now(); write();
+    $("#stamp").textContent='Last push @ '+new Date(state.lastUpdated).toLocaleTimeString();
+    toast('Pushed to local storage (Prediction/Widget/Bets Admin will pick this up).', true);
+  });
+
+  // delegated clicks for lists
+  $("#gamesList").addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    const i=+b.dataset.i;
+    if(b.dataset.act==='sel'){ toggleSelect(i); }
+    else if(b.dataset.act==='del'){ state.games.splice(i,1); // also scrub references in matches
+      (state.matches||[]).forEach(mx=>{ if(mx.leftId===i||mx.rightId===i) mx._deleted=true; }); state.matches = (state.matches||[]).filter(m=>!m._deleted);
+      write(); paintAll();
     }
-
-    try{
-      const U = JSON.parse(localStorage.getItem(K_UNIFIED)||'null') || { status:'open', lastUpdated:0, sections:{ battleground:{enabled:true,h2h:[],overall:[]}, bonus:{enabled:false,overall:[]}, pvp:{enabled:false,overall:[]} } };
-      const prev = {}; (U.sections.battleground.h2h||[]).forEach(o=>{ if(o.matchId) prev[o.matchId]=o; });
-      U.sections.battleground.enabled = true;
-      U.sections.battleground.h2h = legacy.map(m=>({ matchId:m.id,leftId:m.leftId,rightId:m.rightId,leftTitle:m.leftTitle,rightTitle:m.rightTitle,leftImg:m.leftImg||'',rightImg:m.rightImg||'',leftProv:m.leftProv||'',rightProv:m.rightProv||'',leftOdds:(prev[m.id]?.leftOdds)||1.84,rightOdds:(prev[m.id]?.rightOdds)||1.84 }));
-      U.lastUpdated = now; localStorage.setItem(K_UNIFIED, JSON.stringify(U));
-    }catch(_){}
-    try{ window.dispatchEvent(new CustomEvent('bg:updated', {detail:{at:now}})); }catch(_){}
-    toast('Pushed to Prediction + Live + Bets ✓');
   });
 
-  /* ---------- boot ---------- */
-  renderGames(); renderMatches();
+  $("#matchesList").addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    const i=+b.dataset.i; const m=state.matches[i]; if(!m) return;
+    if(b.dataset.act==='delMx'){ state.matches.splice(i,1); write(); paintAll(); }
+    else if(b.dataset.act==='winL'){ m.winnerId=m.leftId; write(); paintLiveRows(); paintMatches(); }
+    else if(b.dataset.act==='winR'){ m.winnerId=m.rightId; write(); paintLiveRows(); paintMatches(); }
+  });
+
+  $("#liveRows").addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    const i=+b.dataset.i; const m=state.matches[i]; if(!m) return;
+    if(b.dataset.act==='applyScore'){
+      const l=$('[data-s="l'+i+'"]'); const r=$('[data-s="r'+i+'"]');
+      m.leftScore=+(l?.value||0); m.rightScore=+(r?.value||0); write(); paintMatches();
+    }else if(b.dataset.act==='clearScore'){
+      m.leftScore=0; m.rightScore=0; m.winnerId=null; write(); paintLiveRows(); paintMatches();
+    }
+  });
+
+  // boot
+  paintAll();
 })();
 </script>
 </body>
