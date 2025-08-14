@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-admin="checking">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta http-equiv="Cache-Control" content="no-store"/>
 <title>L3Z — Admin Hub</title>
 <style>
   :root{
@@ -12,6 +13,7 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
   h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
   h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
   .wrap{max-width:1300px;margin:0 auto;padding:0 16px 48px}
@@ -42,19 +44,46 @@
 </style>
 </head>
 <body>
+
+<!-- ===== AdminGate (server cookie is the law) ===== -->
+<script>
+(function(){
+  "use strict";
+  const ADMIN_CHECK = "/api/admin/gate/check";
+  const ADMIN_LOGIN = "/pages/dashboard/admin/admin_login.html";
+  const DASHBOARD   = "/index.html";
+  const H = document.documentElement;
+  H.setAttribute("data-admin","checking");
+
+  function lock(){
+    H.removeAttribute("data-admin");
+    const s=document.createElement("style");
+    s.textContent=".lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}.lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75);box-shadow:0 0 18px rgba(0,255,255,.15)}.lockcard h1{margin:0 0 10px;color:#cfe}.lockcard a{color:#7ad7ff;text-decoration:underline}";
+    document.head.appendChild(s);
+    document.body.innerHTML = '<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you already logged in, your session may have expired.</div><div style="margin-top:14px"><a href="'+DASHBOARD+'">Back to Dashboard</a></div></div></div>';
+  }
+
+  fetch(ADMIN_CHECK, { credentials:"include", cache:"no-store" })
+    .then(r => r.ok ? r.json() : null)
+    .then(j => { if (j && j.admin) H.removeAttribute("data-admin"); else lock(); })
+    .catch(lock);
+})();
+</script>
+<!-- ===== /AdminGate ===== -->
+
 <div class="wrap">
   <h1>Admin Hub</h1>
 
   <!-- Local unlock (UX only). Real protection is your server's admin cookie. -->
   <div id="gate" class="gate">
     <div class="row">
-      <span class="pill">Unlock Admin</span>
+      <span class="pill">Unlock Admin Panels (local)</span>
       <input id="gate-u" placeholder="Username" style="width:160px" autocomplete="username">
       <input id="gate-p" placeholder="Password" type="password" style="width:160px" autocomplete="current-password">
       <button id="gate-unlock" class="ok">Unlock</button>
       <button id="gate-lock" class="danger">Lock</button>
       <span id="gate-status" class="pill">Locked</span>
-      <span class="hint">This shows/hides panels locally. Server cookie still required by APIs.</span>
+      <span class="hint">This only shows/hides panels on this page. API calls still require the server cookie.</span>
     </div>
   </div>
 
@@ -217,7 +246,7 @@
   const up=s=>(s||"").trim().toUpperCase();
   const toast=(t)=>{ const b=$("#toast"); if(!b) return; b.textContent=t; b.classList.add("on"); setTimeout(()=>b.classList.remove("on"),1400); };
 
-  // ---- Gate (UX-only) ----
+  // ---- Gate (UX-only toggler for panels) ----
   const unlocked=()=> localStorage.getItem("l3z:admin:unlocked")==="1";
   function syncGate(){
     $("#gate-status").textContent = unlocked() ? "Unlocked" : "Locked";
@@ -306,12 +335,8 @@
     if(!user){ $("#vipBal").textContent="—"; return; }
     try{
       let j=null;
-      try { 
-        j = await jget("/api/wallet/balance?user="+encodeURIComponent(user));
-      } catch {}
-      if(!j){
-        try { j = await jget("/api/wallet/me?viewer="+encodeURIComponent(user)); } catch {}
-      }
+      try { j = await jget("/api/wallet/balance?user="+encodeURIComponent(user)); } catch {}
+      if(!j){ try { j = await jget("/api/wallet/me?viewer="+encodeURIComponent(user)); } catch {} }
       $("#vipBal").textContent = j ? ("LBX "+Number(j?.balance||j?.wallet?.balance||0).toFixed(0)) : "(no balance endpoint)";
     }catch{ $("#vipBal").textContent="(error)"; }
   }
