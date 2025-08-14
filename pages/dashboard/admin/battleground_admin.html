@@ -26,7 +26,7 @@ h1{margin:0 0 12px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
 .btn.danger{background:#2b1116;border-color:#7e2a3c}
 .btn.warn{background:#231b0f;border-color:#8c6926}
 input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;color:#eaf7ff;padding:10px}
-.small{font-size:12px;color:var(--muted)}
+.small{font-size:12px;color:#9fd0d6}
 .badge{padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#081318;color:#bfe}
 
 /* Games list */
@@ -86,13 +86,13 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
 
   <div class="card">
     <div class="row">
-      <span class="pill">Tip: Use <b>Asset Path</b> for covers (e.g. <code>assets/slot images/duck hunters.png</code>). These persist across refreshes. The Upload box only previews and is not persisted.</span>
+      <span class="pill">Tip: Use <b>Asset Path</b> for covers (e.g. <code>assets/slot_images/duck_hunters.png</code>). These persist across refreshes. The Upload box only previews and is not persisted.</span>
     </div>
     <div class="hr"></div>
     <div class="row">
       <label>GAME TITLE <input id="gTitle" placeholder="E.G. DUCK HUNTERS" style="min-width:260px"></label>
       <label>PROVIDER (optional) <input id="gProv" placeholder="E.G. HACKSAW" style="min-width:180px"></label>
-      <label>ASSET PATH <input id="gPath" placeholder="assets/slot images/duck hunters.png" style="min-width:360px"></label>
+      <label>ASSET PATH <input id="gPath" placeholder="assets/slot_images/duck_hunters.png" style="min-width:360px"></label>
       <input id="gUpload" type="file" accept=".png,.jpg,.jpeg,.webp" multiple style="display:none">
       <button id="useUpload" class="btn">Choose Files</button>
       <button id="autoName" class="btn">Use filename → fields</button>
@@ -175,6 +175,9 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   const kid=(p='ID')=>p+Math.random().toString(36).slice(2,10).toUpperCase();
   const toast=(t,ok)=>{ const n=$("#msg"); n.textContent=t; n.style.color = ok===false ? '#ff9aa7' : '#baffea'; setTimeout(()=>{ n.textContent='Ready'; n.style.color=''; },1600); };
 
+  // centralize new asset dir
+  const ASSET_DIR = 'assets/slot_images/';
+
   // ---------- storage keys ----------
   const K_BUILDER='bg:builder:battleground';   // canonical
   const K_G='bg:games';                         // legacy mirror for older widgets
@@ -184,7 +187,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   let state = read() || { games:[], matches:[], lastUpdated:0, eventId: 'battleground:'+new Date().toISOString().slice(0,10), title:'BATTLEGROUND', bestOf:3 };
 
   function read(){ try{ const j=localStorage.getItem(K_BUILDER); return j?JSON.parse(j):null; }catch{return null;} }
-  function write(){ try{ state.lastUpdated=Date.now(); localStorage.setItem(K_BUILDER, JSON.stringify(state)); // mirrors
+  function write(){ try{ state.lastUpdated=Date.now(); localStorage.setItem(K_BUILDER, JSON.stringify(state));
     localStorage.setItem(K_G, JSON.stringify(state.games||[]));
     localStorage.setItem(K_M, JSON.stringify(state.matches||[]));
   }catch{} }
@@ -266,7 +269,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     const f=$("#gUpload").files?.[0]; if(!f) return;
     const base=f.name.replace(/\.[^.]+$/,''); // no ext
     if(!$("#gTitle").value) $("#gTitle").value = base.replace(/[_-]+/g,' ').toUpperCase();
-    if(!$("#gPath").value) $("#gPath").value = 'assets/slot images/'+base+'.png';
+    if(!$("#gPath").value) $("#gPath").value = ASSET_DIR + base + '.png';
   });
 
   $("#addGame").addEventListener('click',()=>{
@@ -277,7 +280,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     // If user chose a file but no path, suggest a path using filename.
     if(!path){
       const f=$("#gUpload").files?.[0];
-      if(f){ const base=f.name.replace(/\.[^.]+$/,''); path='assets/slot images/'+base+'.png'; }
+      if(f){ const base=f.name.replace(/\.[^.]+$/,''); path=ASSET_DIR + base + '.png'; }
     }
     // Persist only the path string so it survives refreshes.
     const game={ id:kid('G'), title:title.toUpperCase(), provider, imageUrl:path };
@@ -292,7 +295,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     files.slice(0,N).forEach(f=>{
       const base=f.name.replace(/\.[^.]+$/,'');
       const title=base.replace(/[_-]+/g,' ').toUpperCase();
-      const path='assets/slot images/'+base+'.png';
+      const path=ASSET_DIR + base + '.png';
       state.games.push({ id:kid('G'), title, provider:'', imageUrl:path });
     });
     write(); paintGames(); toast('Added '+Math.min(N,files.length)+' games');
@@ -349,7 +352,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     const b=e.target.closest('button'); if(!b) return;
     const i=+b.dataset.i;
     if(b.dataset.act==='sel'){ toggleSelect(i); }
-    else if(b.dataset.act==='del'){ state.games.splice(i,1); // also scrub references in matches
+    else if(b.dataset.act==='del'){ state.games.splice(i,1);
       (state.matches||[]).forEach(mx=>{ if(mx.leftId===i||mx.rightId===i) mx._deleted=true; }); state.matches = (state.matches||[]).filter(m=>!m._deleted);
       write(); paintAll();
     }
