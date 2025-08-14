@@ -19,7 +19,6 @@
   .controls input{background:#061417;border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:8px 10px;outline:none}
   .hint{color:var(--muted);font-size:12px}
 
-  /* Match row grid */
   .match{
     display:grid;grid-template-columns:1fr 52px 60px 52px 1fr;gap:14px;align-items:center;
     border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:rgba(0,0,0,.35)
@@ -47,7 +46,6 @@
 
   .section{margin-top:18px}
 
-  /* Final Score */
   .scoreGrid{
     display:grid;grid-template-columns:1fr 52px 60px 52px 1fr;gap:14px;align-items:center;
     border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:rgba(0,0,0,.35)
@@ -55,7 +53,7 @@
   .scoreTitle{grid-column:1 / -1;font-weight:900;margin-bottom:4px}
   .scoreInput{display:flex;gap:8px;align-items:center}
   .scoreInput input{
-    width:70px;text-align:center;font-weight:900;background:#061417;border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:8px
+    width:70px;text-align:center;font-weight:900;background:#061417;border:1px solid var(--line);border-radius:8px;color:#var(--ink);padding:8px
   }
   .lblL{justify-self:end}
   .lblR{justify-self:start}
@@ -118,10 +116,12 @@
 (() => {
   "use strict";
 
-  const K_PUBLISHED='sb:markets:battleground';   // legacy/stale sometimes
+  // ===== Keys =====
+  const K_PUBLISHED='sb:markets:battleground';   // legacy
   const K_BUILDER='bg:builder:battleground';     // admin pushes here
   const K_BETS='lash3z_bets';
 
+  // ===== Dom =====
   const $=s=>document.querySelector(s);
   const listEl=$('#list'), userEl=$('#user'), evtInfoEl=$('#evtInfo');
   const scoreLEl=$('#scoreL'), scoreREl=$('#scoreR'), scoreErrEl=$('#scoreErr');
@@ -134,9 +134,63 @@
   let leftSeriesName='Left', rightSeriesName='Right';
   let seriesTotal=3;
 
+  // ===== Storage helpers =====
   const read=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch{return null}};
+  const write=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
   const esc=s=>(s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
+  // ===== Image resolver (shared with widget) =====
+  const IMG_BASES=['assets/slot images/','../assets/slot images/','/assets/slot images/'];
+  const IMG_EXT=['png','webp','jpg','jpeg'];
+  let IMG_INDEX=null;
+  const IMG_CACHE=new Map(); // titleKey -> url or ''
+
+  const slug=s=>String(s||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  const imgExists=url=>new Promise(res=>{ const i=new Image(); i.onload=()=>res(true); i.onerror=()=>res(false); i.src=encodeURI(url); });
+  async function loadIndex(){
+    if(IMG_INDEX!==null) return IMG_INDEX;
+    for(const b of IMG_BASES){
+      try{
+        const r=await fetch(encodeURI(b+'index.json'),{cache:'no-store'});
+        if(r.ok){
+          const j=await r.json();
+          IMG_INDEX = Array.isArray(j) ? j : (Array.isArray(j.images) ? j.images : Object.values(j||{}));
+          return IMG_INDEX;
+        }
+      }catch(_){}
+    }
+    IMG_INDEX=[]; return IMG_INDEX;
+  }
+  async function resolveByTitle(title, provider){
+    const key=String(title||'').toUpperCase();
+    if(IMG_CACHE.has(key)) return IMG_CACHE.get(key);
+    await loadIndex();
+    const tSlug=slug(title||''), pSlug=slug(provider||'');
+
+    // (1) index.json
+    if(IMG_INDEX && IMG_INDEX.length){
+      const hits=IMG_INDEX.filter(e=> typeof e==='string' && e.toLowerCase().includes(tSlug) && (!pSlug || e.toLowerCase().includes(pSlug)));
+      for(const ent of hits){
+        const tries = (/^(?:\/|\.{1,2}\/|assets\/)/.test(ent)) ? [ent] : IMG_BASES.map(b=>b+ent);
+        for(const u of tries){ if(await imgExists(u)){ IMG_CACHE.set(key,u); return u; } }
+      }
+    }
+    // (2) filename guesses
+    const guesses=[];
+    for(const base of IMG_BASES){
+      IMG_EXT.forEach(ext=>guesses.push(`${base}${title}.${ext}`));
+      IMG_EXT.forEach(ext=>guesses.push(`${base}${(title||'').toLowerCase()}.${ext}`));
+      IMG_EXT.forEach(ext=>guesses.push(`${base}${tSlug}.${ext}`));
+      if(pSlug){
+        IMG_EXT.forEach(ext=>guesses.push(`${base}${pSlug}__${tSlug}.${ext}`));
+        IMG_EXT.forEach(ext=>guesses.push(`${base}${pSlug}/${tSlug}.${ext}`));
+      }
+    }
+    for(const u of guesses){ if(await imgExists(u)){ IMG_CACHE.set(key,u); return u; } }
+    IMG_CACHE.set(key,''); return '';
+  }
+
+  // ===== Normalizers (as before) =====
   function normalizeFromPublished(o){
     if(!o||typeof o!=='object') return null;
     const m=Array.isArray(o.h2h)?o.h2h:[];
@@ -183,7 +237,8 @@
       eventId:o.eventId||eventId,
       title:o.title||eventTitle,
       matchups:M,
-      seriesTotal:Number(o.seriesTotal||o.bestOf||3)
+      seriesTotal:Number(o.seriesTotal||o.bestOf||3),
+      _raw:o
     };
   }
 
@@ -198,8 +253,42 @@
     return bld || pub || {source:'none', eventId, title:eventTitle, matchups:[], seriesTotal:3, lastUpdated:0};
   }
 
-  function loadData(){
-    const norm=chooseDataset();
+  // ===== Backfill any missing images and persist to builder =====
+  async function backfillAndPersist(norm){
+    if(!norm || !Array.isArray(norm.matchups) || !norm.matchups.length) return norm;
+    let changed=false;
+    for(const m of norm.matchups){
+      if(!m?.left?.img){
+        const u=await resolveByTitle(m.left?.title, m.left?.provider||'');
+        if(u){ m.left.img=u; changed=true; }
+      }
+      if(!m?.right?.img){
+        const u=await resolveByTitle(m.right?.title, m.right?.provider||'');
+        if(u){ m.right.img=u; changed=true; }
+      }
+    }
+    if(changed){
+      // persist into builder so other pages/widgets see it after navigation
+      const b = read(K_BUILDER) || {games:[],matches:[],lastUpdated:Date.now()};
+      // map back by id
+      const byId=new Map(norm.matchups.map(x=>[x.id,x]));
+      (b.matches||[]).forEach(mx=>{
+        const n=byId.get(mx.id);
+        if(n){
+          if(!mx.leftImg && n.left?.img) mx.leftImg=n.left.img;
+          if(!mx.rightImg && n.right?.img) mx.rightImg=n.right.img;
+        }
+      });
+      b.lastUpdated = Date.now();
+      write(K_BUILDER, b);
+    }
+    return norm;
+  }
+
+  // ===== Load + Render =====
+  async function loadData(){
+    let norm=chooseDataset();
+    norm = await backfillAndPersist(norm);
 
     eventId=norm.eventId||eventId;
     eventTitle=(norm.title||'BATTLEGROUND').toString().toUpperCase();
@@ -295,6 +384,7 @@
 
   function clearAll(){ picks.clear(); scoreLEl.value=0; scoreREl.value=0; render(); }
 
+  // ===== Wire UI =====
   userEl.value=(localStorage.getItem('lash3z_last_user')||'').toUpperCase();
   userEl.addEventListener('input',()=>{localStorage.setItem('lash3z_last_user',(userEl.value||'').toUpperCase()); validate();});
   scoreLEl.addEventListener('input',validate);
@@ -302,8 +392,14 @@
   submitBtn.addEventListener('click',submit);
   clearBtn.addEventListener('click',clearAll);
 
-  loadData(); render();
-  window.addEventListener('storage',e=>{ if([K_PUBLISHED,K_BUILDER].includes(e.key)){ loadData(); render(); } });
+  // ===== Boot + live updates =====
+  (async function init(){
+    await loadData(); render();
+  })();
+
+  window.addEventListener('storage',async e=>{
+    if([K_PUBLISHED,K_BUILDER].includes(e.key)){ await loadData(); render(); }
+  });
 })();
 </script>
 </body>
