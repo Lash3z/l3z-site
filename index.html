@@ -39,8 +39,32 @@
     .navlink:hover{background:var(--cyan); color:#001113}
     .navlink:active{transform:translateY(1px)}
     .navlink img{width:20px; height:20px; object-fit:contain}
+
+    /* Banner (slider host keeps same footprint as single image) */
     .banner{text-align:center}
-    .banner img{max-width:100%; height:auto; border-radius:12px; box-shadow:var(--shadow)}
+    .slider{ position:relative; max-width:100%; margin:0 auto;
+      border-radius:12px; box-shadow:var(--shadow); overflow:hidden; border:1px solid var(--line);
+      background:rgba(0,0,0,.5);
+    }
+    .slider .slide{ display:none; }
+    .slider .slide.active{ display:block; }
+    .slider img{ width:100%; height:auto; display:block; }
+
+    /* arrows */
+    .slide-nav{ position:absolute; top:50%; transform:translateY(-50%);
+      background:rgba(0,0,0,.45); color:#fff; border:1px solid var(--line);
+      width:42px; height:42px; border-radius:50%; cursor:pointer; z-index:2;
+      display:grid; place-items:center; font-size:20px;
+    }
+    .slide-nav:hover{ background:rgba(0,0,0,.65); }
+    .slide-nav.prev{ left:10px; }
+    .slide-nav.next{ right:10px; }
+
+    /* dots */
+    .dots{ position:absolute; left:0; right:0; bottom:10px; display:flex; gap:8px; justify-content:center; z-index:2; }
+    .dot{ width:28px; height:6px; border-radius:999px; background:rgba(255,255,255,.35); border:1px solid rgba(255,255,255,.15); cursor:pointer; }
+    .dot.active{ background:#bfff00; }
+
     .tiles{ display:flex; flex-wrap:wrap; justify-content:center; gap:16px; margin-top:24px; }
     .tile{ width:170px; height:170px; display:flex; flex-direction:column; align-items:center; justify-content:center;
       text-decoration:none; color:#fff; background:rgba(0,0,0,.80);
@@ -294,7 +318,14 @@
 
 <!-- ====== MAIN ====== -->
 <div class="main">
-  <div class="banner"><img src="/assets/lashes%20banner.png" alt="Banner"></div>
+  <!-- Banner SLIDER (replaces the single <img>) -->
+  <div class="banner">
+    <div class="slider" id="homeSlider" aria-label="Promotions">
+      <button class="slide-nav prev" aria-label="Previous slide">❮</button>
+      <button class="slide-nav next" aria-label="Next slide">❯</button>
+      <div class="dots" id="homeSliderDots" aria-hidden="true"></div>
+    </div>
+  </div>
 
   <div class="jackpot-wrap">
     <div class="jackpot">
@@ -346,12 +377,92 @@
       <img src="/assets/pvp_icon.png" alt="PVP Live"><span>PVP Live</span>
     </a>
     <a class="tile" href="/pages/dashboard/home/casino.html">
-      <img src="/assets/dimebit_icon.png" alt="Casino"><span>Casino</span>
+      <img src="/assets/mateslots_logo.png" alt="Casino"><span>Casino</span>
     </a>
   </div>
 </div>
 
-<!-- Jackpot logic -->
+<!-- Slider logic (header only) -->
+<script>
+(function(){
+  "use strict";
+  const files = [
+    "mates_slot1.png",
+    "mate_slot2.png",
+    "mate_slot3.png",
+    "mate_slot4.png",
+    "mate_slot 6.png",
+    "mate_sltos5.png",
+    "lashes banner.png"
+  ].map(n => "/assets/" + n);
+
+  const slider = document.getElementById("homeSlider");
+  const dotsBox = document.getElementById("homeSliderDots");
+  if(!slider) return;
+
+  // Insert slides (before dots)
+  const anchor = dotsBox;
+  const slides = files.map((src,i)=>{
+    const d = document.createElement("div");
+    d.className = "slide" + (i===0 ? " active":"");
+    const img = document.createElement("img");
+    img.alt = "Promo " + (i+1);
+    img.src = encodeURI(src);
+    d.appendChild(img);
+    slider.insertBefore(d, anchor);
+    return d;
+  });
+
+  // Dots
+  const dots = files.map((_,i)=>{
+    const b = document.createElement("button");
+    b.type="button"; b.className="dot" + (i===0?" active":"");
+    b.addEventListener("click", ()=>go(i, true));
+    dotsBox.appendChild(b);
+    return b;
+  });
+
+  const prev = slider.querySelector(".slide-nav.prev");
+  const next = slider.querySelector(".slide-nav.next");
+
+  let idx=0, timer=null, hover=false;
+  const INTERVAL=10000;
+
+  function setActive(i){
+    slides[idx].classList.remove("active");
+    dots[idx].classList.remove("active");
+    idx=i;
+    slides[idx].classList.add("active");
+    dots[idx].classList.add("active");
+  }
+  function go(i,user){
+    if(i<0) i = slides.length-1;
+    if(i>=slides.length) i = 0;
+    setActive(i);
+    if(user) restart();
+  }
+  function nextFn(){ go(idx+1,false); }
+  function start(){ if(!timer) timer=setInterval(()=>{ if(!hover) nextFn(); }, INTERVAL); }
+  function stop(){ if(timer){ clearInterval(timer); timer=null; } }
+  function restart(){ stop(); start(); }
+
+  if(prev) prev.addEventListener("click", ()=>go(idx-1,true));
+  if(next) next.addEventListener("click", ()=>go(idx+1,true));
+
+  slider.addEventListener("mouseenter", ()=>{ hover=true; });
+  slider.addEventListener("mouseleave", ()=>{ hover=false; });
+
+  // basic swipe
+  let sx=0, dx=0;
+  slider.addEventListener("touchstart", e=>{ sx=e.touches[0].clientX; dx=0; }, {passive:true});
+  slider.addEventListener("touchmove",  e=>{ dx=e.touches[0].clientX - sx; }, {passive:true});
+  slider.addEventListener("touchend",   ()=>{ if(Math.abs(dx)>40) (dx<0? nextFn(): go(idx-1,true)); dx=0; }, {passive:true});
+
+  start();
+})();
+</script>
+
+<!-- Jackpot logic (unchanged, separate) -->
 <script src="/assets/js/jackpot.client.js" defer></script>
 </body>
 </html>
