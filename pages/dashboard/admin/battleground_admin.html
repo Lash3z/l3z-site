@@ -96,7 +96,6 @@
     .then(r => r.ok ? r.json() : null)
     .then(j => {
       if(j && j.admin){
-        // Optional UX-only cache so other pages fade in quickly
         try{
           const u=(j.user||"ADMIN").toString().toUpperCase();
           localStorage.setItem("l3z:session", JSON.stringify({user:u,isAdmin:true,expiresAt:Date.now()+7*24*60*60*1000}));
@@ -141,17 +140,31 @@
     <div class="row" style="margin-top:10px">
       <div class="col">
         <label>UPLOAD IMAGE</label>
-        <input id="inFile" type="file" accept="image/*"/>
+        <div class="row" style="gap:8px">
+          <input id="inFile" type="file" accept="image/*"/>
+          <button id="btnUseFileName" class="btn" type="button" title="Fill title/provider from file name">Use filename</button>
+        </div>
       </div>
       <div class="col" style="flex:1;min-width:360px">
         <label>OR ASSET PATH (relative)</label>
         <div class="row" style="gap:8px">
-          <input id="inAsset" style="flex:1" placeholder="assets/slot images/duck hunters.webp"/>
-          <button id="btnAuto" class="btn">Auto</button>
+          <input id="inAsset" style="flex:1" placeholder="assets/slot images/duck-hunters.webp"/>
+          <button id="btnAuto" class="btn" type="button">Auto</button>
         </div>
       </div>
-      <button id="btnAdd" class="btn ok">+ Add Game</button>
-      <span class="note">All text fields auto-CAP. “Auto” looks in <b>assets/slot images/</b>. To avoid storage limits, prefer Asset Path over Upload.</span>
+      <button id="btnAdd" class="btn ok" type="button">+ Add Game</button>
+    </div>
+
+    <div class="row" style="margin-top:10px;gap:12px">
+      <span class="note">All text fields auto-CAP. “Auto” looks in <b>assets/slot images/</b>. Prefer Asset Path over Upload to avoid storage limits.</span>
+    </div>
+
+    <div class="row" style="margin-top:14px;gap:10px">
+      <label class="pill" style="display:flex;align-items:center;gap:8px">
+        Bulk add from assets
+        <input id="bulkCount" type="number" min="1" step="1" value="20" style="width:100px">
+      </label>
+      <button id="btnBulkFromAssets" class="btn" type="button">+ Add N Games</button>
     </div>
   </div>
 
@@ -167,9 +180,21 @@
     <div class="card">
       <div class="row" style="justify-content:space-between">
         <h3>Matchups & Live Scores</h3>
-        <button id="btnAddMatch" class="btn">+ Add Match (pair selected)</button>
+        <button id="btnAddMatch" class="btn" type="button">+ Add Match (pair selected)</button>
       </div>
-      <div id="matchesList" class="matchesList"></div>
+
+      <div class="row" style="margin-top:8px;gap:8px">
+        <label class="pill" style="display:flex;align-items:center;gap:8px">
+          Auto-generate
+          <input id="autoMxCount" type="number" min="1" step="1" value="10" style="width:110px">
+        </label>
+        <button id="btnAutoMatchups" class="btn ok" type="button">⚡ Generate N Matchups</button>
+        <button class="btn" type="button" onclick="document.getElementById('autoMxCount').value=5">5</button>
+        <button class="btn" type="button" onclick="document.getElementById('autoMxCount').value=10">10</button>
+        <button class="btn" type="button" onclick="document.getElementById('autoMxCount').value=20">20</button>
+      </div>
+
+      <div id="matchesList" class="matchesList" style="margin-top:8px"></div>
     </div>
   </div>
 
@@ -216,23 +241,18 @@
   function pid(prefix){ return (prefix||'G') + Math.random().toString(36).slice(2,10).toUpperCase(); }
   function slug(s){ return (s||'').toString().trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
   function unslug(s){ return String(s||'').replace(/[-_]+/g,' ').replace(/\s+/g,' ').trim().replace(/\b\w/g,c=>c.toUpperCase()); }
-  function titleFromFilename(name){
-    // supports "hacksaw__duck-hunters.webp", "duck-hunters.jpg", "HACKSAW/duck-hunters.png", etc.
-    name = String(name||'');
-    const base = name.split('/').pop();            // duck-hunters.webp or hacksaw__duck-hunters.webp
-    const noExt = base.replace(/\.[a-z0-9]+$/i,''); // duck-hunters or hacksaw__duck-hunters
-    let provider = '';
-    let titlePart = noExt;
 
-    // pattern 1: provider__title
+  function titleFromFilename(name){
+    name = String(name||'');
+    const base = name.split('/').pop();
+    const noExt = base.replace(/\.[a-z0-9]+$/i,'');
+    let provider = '', titlePart = noExt;
+
     const m1 = /^([a-z0-9\-]+)__(.+)$/i.exec(noExt);
     if(m1){ provider = unslug(m1[1]); titlePart = m1[2]; }
-    // pattern 2: provider/title (caught by folder split above)
     else if(name.includes('/')){
       const parts = name.split('/');
-      if(parts.length>=2){
-        provider = unslug(parts[parts.length-2]);
-      }
+      if(parts.length>=2){ provider = unslug(parts[parts.length-2]); }
     }
     const title = unslug(titlePart);
     return { title, provider };
@@ -267,10 +287,8 @@
         const r = await fetch(encodeURI(b+'index.json'), {cache:'no-store'});
         if(r.ok){
           const j=await r.json();
-          // allow { "images": ["duck-hunters.webp", ...] } or { "duck-hunters": "duck-hunters.webp", ... }
           if(Array.isArray(j)) return j;
           if(Array.isArray(j.images)) return j.images;
-          // if object map, flatten to values (paths)
           return Object.values(j);
         }
       }catch(e){}
@@ -278,7 +296,7 @@
     return null;
   }
 
-  // Try to find image path from typed title/provider using index.json or filename guesses
+  // Try to find image path for typed title/provider using index.json or filename guesses
   async function autoFind(){
     const raw = els.inTitle.value.trim();
     const prv = els.inProv.value.trim();
@@ -287,17 +305,12 @@
 
     const tSlug = slug(raw), pSlug = slug(prv), rawLower = raw.toLowerCase();
 
-    // Try index.json “key” mapping (support both direct strings and nested folder)
     if(IMG_INDEX){
-      // Make candidate paths: direct match, provider__title, provider/title
       const candidates = [];
       IMG_INDEX.forEach(entry=>{
-        // entry is a string path like "hacksaw__duck-hunters.webp" or "hacksaw/duck-hunters.webp"
         if(typeof entry !== 'string') return;
         const e = entry.toLowerCase();
-        if(e.includes(tSlug)){
-          if(!pSlug || e.includes(pSlug)) candidates.push(entry);
-        }
+        if(e.includes(tSlug) && (!pSlug || e.includes(pSlug))) candidates.push(entry);
       });
       for(const mapped of candidates){
         const cands = (/^(?:\/|\.{1,2}\/|assets\/)/.test(mapped)) ? [mapped] : BASES.map(b=>b+mapped);
@@ -305,7 +318,6 @@
       }
     }
 
-    // Filename guesses
     const guesses=[];
     for(const base of BASES){
       EXT.forEach(ext=>guesses.push(`${base}${raw}.${ext}`));
@@ -321,14 +333,13 @@
     toast('No matching image found. Upload or paste a path.', false);
   }
 
-  // NEW: Use filename to fill title/provider (from file input)
+  // Fill title/provider from uploaded file name
   function fillFromFileName(){
     const f = (els.inFile && els.inFile.files && els.inFile.files[0]) ? els.inFile.files[0] : null;
     if(!f){ toast('Pick a file first.', false); return; }
     const { title, provider } = titleFromFilename(f.name);
     if(title && !els.inTitle.value) els.inTitle.value = title.toUpperCase();
     if(provider && !els.inProv.value) els.inProv.value = provider.toUpperCase();
-    // if asset path is empty, try to auto-find now that we have a title/provider
     if(!els.inAsset.value) autoFind();
     toast('Filled fields from file name.');
   }
@@ -372,7 +383,7 @@
   /* ------------------- RENDER: Matches ------------------- */
   function renderMatches(){
     els.matchesList.innerHTML='';
-    if(!matches.length){ els.matchesList.innerHTML='<div class="pill">No matchups yet. Select two games, then Add Match.</div>'; return; }
+    if(!matches.length){ els.matchesList.innerHTML='<div class="pill">No matchups yet. Select two games, then Add Match — or use “Generate N Matchups”.</div>'; return; }
     matches.forEach(mx=>{
       const L=games.find(x=>x.id===mx.leftId)||{}, R=games.find(x=>x.id===mx.rightId)||{};
       const leftWin = mx.winnerId && mx.winnerId===mx.leftId;
@@ -540,19 +551,17 @@
     if(IMG_INDEX===null) IMG_INDEX = await loadIndex();
     if(!IMG_INDEX || !IMG_INDEX.length){ toast('No assets index found (assets/slot images/index.json).', false); return; }
 
-    // Make a set of existing titles to avoid dupes
     const existing = new Set(games.map(g => `${(g.provider||'').toUpperCase()}::${(g.title||'').toUpperCase()}`));
 
     let added = 0;
     outer: for(const entry of IMG_INDEX){
       if(added >= count) break;
       if(typeof entry !== 'string') continue;
-      // Build usable URL
+
+      // build URL candidates and pick first that loads
       const candidates = (/^(?:\/|\.{1,2}\/|assets\/)/.test(entry)) ? [entry] : BASES.map(b=>b+entry);
       let url = null;
-      for(const u of candidates){ /* try first that loads */
-        if(await imgExists(u)){ url = u; break; }
-      }
+      for(const u of candidates){ if(await imgExists(u)){ url = u; break; } }
       if(!url) continue;
 
       const { title, provider } = titleFromFilename(entry);
@@ -568,7 +577,7 @@
   }
 
   if(els.btnBulkFromAssets){
-    els.btnBulkFromAssets.addEventListener('click', ()=> bulkAddFromAssets(els.bulkCount ? els.bulkCount.value : 10));
+    els.btnBulkFromAssets.addEventListener('click', ()=> bulkAddFromAssets(els.bulkCount ? els.bulkCount.value : 20));
   }
 
   /* ------------------- NEW: Auto-generate N matchups ------------------- */
@@ -576,7 +585,6 @@
     n = Math.max(1, Math.floor(+n||0));
     const needGames = n*2;
     if(games.length < needGames){
-      // try to add the deficit from assets
       const deficit = needGames - games.length;
       await bulkAddFromAssets(deficit);
       if(games.length < needGames){
@@ -585,10 +593,8 @@
       }
     }
 
-    // pick 2n distinct games and shuffle
     const ids = games.map(g=>g.id);
-    // Fisher–Yates shuffle
-    for(let i=ids.length-1;i>0;i--){ const j=(Math.random()* (i+1))|0; [ids[i],ids[j]]=[ids[j],ids[i]]; }
+    for(let i=ids.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [ids[i],ids[j]]=[ids[j],ids[i]]; }
     const selected = ids.slice(0, needGames);
 
     for(let i=0;i<n;i++){
@@ -607,7 +613,7 @@
   }
 
   if(els.btnAutoMatchups){
-    els.btnAutoMatchups.addEventListener('click', ()=> autoGenerateMatchups(els.autoMxCount ? els.autoMxCount.value : 8));
+    els.btnAutoMatchups.addEventListener('click', ()=> autoGenerateMatchups(els.autoMxCount ? els.autoMxCount.value : 10));
   }
 
   // init
