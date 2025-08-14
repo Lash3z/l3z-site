@@ -12,6 +12,9 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}
+  /* prevent content flash while admin check runs */
+  html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
+
   h1{margin:16px 0 10px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
   .wrap{max-width:1500px;margin:0 auto;padding:0 16px 48px}
   .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
@@ -57,6 +60,54 @@
 </style>
 </head>
 <body>
+
+<!-- ========= AdminGate v2 (must be first in <body>) ========= -->
+<script>
+(function(){
+  "use strict";
+  const SESSION_KEY = "l3z:session";
+  const ADMIN_TOKEN = "admin:token";
+  const ADMIN_LOGIN = "/pages/dashboard/admin/admin_login.html";
+  const DASHBOARD  = "/index.html";
+  const MAX_AGE_MS = 12*60*60*1000;
+
+  const H = document.documentElement;
+  H.setAttribute("data-admin","checking");
+
+  function sget(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null;}catch{ return null; } }
+  function fresh(x){ return typeof x==="number" && Date.now()<x; }
+
+  function unlock(){ H.removeAttribute("data-admin"); }
+
+  function lock(){
+    unlock();
+    const s=document.createElement("style");
+    s.textContent=".lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}.lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75);box-shadow:0 0 18px rgba(0,255,255,.15)}.lockcard h1{margin:0 0 10px;color:#cfe}.lockcard a{color:#7ad7ff;text-decoration:underline}";
+    document.head.appendChild(s);
+    document.body.innerHTML='<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you just logged in elsewhere, your unlock may have expired (lasts ~12 hours).</div><div style="margin-top:14px"><a href="'+DASHBOARD+'">Back to Dashboard</a></div></div></div>';
+  }
+
+  const sess=sget(SESSION_KEY);
+  const tok =sget(ADMIN_TOKEN);
+  if(sess && tok && fresh(tok.expiresAt)){ unlock(); return; }
+
+  fetch("/api/auth/session",{credentials:"include",cache:"no-store"})
+    .then(r=>r.ok?r.json():null)
+    .then(j=>{
+      if(j && (j.isAdmin || j.admin===true || j.role==="admin")){
+        const u=(j.username||j.user||j.name||"ADMIN").toString().toUpperCase();
+        localStorage.setItem(SESSION_KEY, JSON.stringify({user:u,isAdmin:true,expiresAt:Date.now()+7*24*60*60*1000}));
+        localStorage.setItem(ADMIN_TOKEN, JSON.stringify({by:u,ts:Date.now(),expiresAt:Date.now()+MAX_AGE_MS}));
+        unlock();
+      }else{
+        lock();
+      }
+    })
+    .catch(()=>lock());
+})();
+</script>
+<!-- ========= /AdminGate v2 ========= -->
+
 <div class="wrap">
   <h1>PVP — Admin</h1>
 
