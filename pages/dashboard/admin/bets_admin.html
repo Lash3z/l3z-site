@@ -3,18 +3,14 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Bets Admin — Unified (BG / Bonus / PVP)</title>
+<title>Bets Admin — Unified (Simple: BG / Bonus / PVP)</title>
 <style>
-:root{
-  --bg:#060b0d;--panel:#0b1417;--ink:#eaf7ff;--muted:#9fd0d6;
-  --line:rgba(0,255,255,.18);--teal:#00ffff;--gold:#ffb42d;--bad:#e25a6f;--ok:#12d48a
-}
+:root{--bg:#060b0d;--panel:#0b1417;--ink:#eaf7ff;--muted:#9fd0d6;--line:rgba(0,255,255,.18);--teal:#00ffff;--gold:#ffb42d;--bad:#e25a6f;--ok:#12d48a}
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,Arial,sans-serif}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
 html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
-
 .wrap{max-width:1400px;margin:0 auto;padding:16px 16px 64px}
-h1{margin:0 0 12px;color:var(--teal);text-shadow:0 0 14px rgba(0,255,255,.33)}
+h1{margin:0 0 12px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
 .card{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
 .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .btn{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#0f1720;color:#eaf7ff;font-weight:800;cursor:pointer}
@@ -45,37 +41,32 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
 .kv{display:flex;gap:8px;align-items:center}
 .kv b{color:var(--muted)}
 .hr{height:1px;background:var(--line);margin:10px 0}
-.toggleRow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.toggleRow{display:flex;gap:12px;align-items:center}
 .toggleRow label{display:flex;gap:6px;align-items:center}
 .subtle{font-size:12px;color:var(--muted)}
-.badline{border:1px dashed #7e2a3c;padding:6px;border-radius:8px}
-.goodline{border:1px dashed #1fa37b;padding:6px;border-radius:8px}
 </style>
 </head>
 <body>
 
+<!-- AdminGate (server cookie) -->
 <script>
 (function(){
   "use strict";
   const ADMIN_CHECK="/api/admin/gate/check", ADMIN_LOGIN="/pages/dashboard/admin/admin_login.html", DASH="/index.html";
   const H=document.documentElement; H.setAttribute("data-admin","checking");
-  function unlock(){ H.removeAttribute("data-admin"); }
   function lock(){
-    unlock();
+    H.removeAttribute("data-admin");
     const s=document.createElement("style");
     s.textContent=".lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}.lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75)}.lockcard h1{margin:0 0 10px;color:#cfe}.lockcard a{color:#7ad7ff;text-decoration:underline}";
     document.head.appendChild(s);
-    document.body.innerHTML='<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'">Admin Login</a> first.</div><div style="margin-top:8px;opacity:.85">If you just logged in elsewhere, your unlock may have expired.</div><div style="margin-top:14px"><a href="'+DASH+'">Back to Dashboard</a></div></div></div>';
+    document.body.innerHTML='<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'">Admin Login</a> first.</div><div style="margin-top:8px;opacity:.8">If you already logged in, your session may have expired.</div><div style="margin-top:14px"><a href="'+DASH+'">Back to Dashboard</a></div></div></div>';
   }
-  fetch(ADMIN_CHECK,{credentials:"include",cache:"no-store"})
-    .then(r=>r.ok?r.json():null)
-    .then(j=>{ if(j && (j.admin||j.isAdmin)) unlock(); else lock(); })
-    .catch(lock);
+  fetch(ADMIN_CHECK,{credentials:"include",cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{ if(j&&j.admin){ H.removeAttribute("data-admin"); }else{ lock(); } }).catch(lock);
 })();
 </script>
 
 <div class="wrap">
-  <h1>Bets Admin — Unified</h1>
+  <h1>Bets Admin — Unified (Simple)</h1>
 
   <div class="card row" style="justify-content:space-between">
     <div class="row">
@@ -95,11 +86,10 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     <label><input id="enBG" type="checkbox"> <b>Battleground</b></label>
     <label><input id="enBONUS" type="checkbox"> <b>Bonus Hunt</b></label>
     <label><input id="enPVP" type="checkbox"> <b>PVP Predictions</b></label>
-    <span class="subtle">Bonus Hunt is <b>fixed</b>: six predictions auto-created & auto-settled from the Bonus Hunt page. You only set Stake/Prize.</span>
+    <span class="subtle">Toggle sections on/off. Each section lets you add markets and lines.</span>
   </div>
 
   <div class="grid">
-    <!-- Battleground -->
     <div id="secBG" class="card" style="display:none">
       <div class="head">
         <div class="sectionTitle">Battleground</div>
@@ -127,20 +117,24 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
       <div id="bgMkts" class="mkts"></div>
     </div>
 
-    <!-- Bonus Hunt -->
     <div id="secBONUS" class="card" style="display:none">
-      <div class="head" style="gap:8px">
+      <div class="head">
         <div class="sectionTitle">Bonus Hunt</div>
         <div class="badge" id="statusBONUS">OPEN</div>
-        <span class="pill">Reads <code>bh:live</code> → falls back to <code>bh:draft</code></span>
-        <button class="btn" id="boSettle">Settle from Bonus Hunt</button>
       </div>
-      <div class="subtle">No setup fields. These six are prefilled & settled from the Bonus Hunt Admin data. You only tweak <b>Stake</b> (and optional <b>Prize</b>).</div>
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div class="row">
+          <button class="btn" id="boAddOU">+ Over/Under</button>
+          <button class="btn" id="boAddMR">+ Multi-Range</button>
+          <button class="btn" id="boAddYN">+ Yes/No</button>
+          <button class="btn" id="boAddCU">+ Custom</button>
+          <button class="btn" id="boAddGB">+ Guess the Balance</button>
+        </div>
+      </div>
       <div class="hr"></div>
       <div id="boMkts" class="mkts"></div>
     </div>
 
-    <!-- PVP -->
     <div id="secPVP" class="card" style="display:none">
       <div class="head">
         <div class="sectionTitle">PVP Predictions</div>
@@ -164,33 +158,49 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
 (function(){
   "use strict";
 
-  // helpers
-  const els = (s,r=document)=>Array.from(r.querySelectorAll(s));
-  const el  = (s,r=document)=>r.querySelector(s);
-  const sget=(k)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch{ return null }};
-  const sset=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
-  const esc =(s)=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const kid =(p='ID')=>p+Math.random().toString(36).slice(2,10).toUpperCase();
-  const toast=(t,ok)=>{ const m=el('#msg'); if(!m) return; m.textContent=t; m.style.color = ok===false ? '#ff9aa7' : '#baffea'; setTimeout(()=>{ m.textContent=''; }, 2200); };
-  const slug=(s)=>String(s||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  // ---------- helpers ----------
+  const els=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const el=(s,r=document)=>r.querySelector(s);
+  function sget(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null;}catch{ return null; } }
+  function sset(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+  function esc(s){ s=String(s??''); return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function kid(p){ return (p||'ID')+Math.random().toString(36).slice(2,10).toUpperCase(); }
+  function toast(t,ok){ el('#msg').textContent=t; el('#msg').style.color = ok===false ? '#ff9aa7' : '#baffea'; setTimeout(()=>{ el('#msg').textContent=''; }, 2200); }
 
-  // Normalize any path to absolute /assets/slot_images/…
-  const absPath=(p)=>{
+  // ---------- ABSOLUTE ASSET PATH FIX (Bets Admin only) ----------
+  // Ensures any "assets/..." path is absolute from site root and fixes "slot images" vs "slot_images".
+  function assetPath(p){
     if(!p) return '';
-    let x=String(p).trim();
-    x=x.replace(/\\/g,'/').replace(/slot images\//gi,'slot_images/');
-    x=x.replace(/^\.?\//,''); // drop leading ./ or /
-    if(!/^assets\//i.test(x)) return '/'+x; // if already like images/foo keep absolute
-    return '/'+x; // /assets/...
-  };
+    let s=String(p).trim();
+    s=s.replace(/slot[ _]images\//gi,'slot_images/');           // normalize folder name
+    if(s.startsWith('./')) s=s.slice(1);
+    // If someone saved full URL or already absolute, keep it.
+    if(/^https?:\/\//i.test(s) || s.startsWith('/')) return s;
+    // Most BG Admin saves "assets/slot_images/…"
+    if(s.startsWith('assets/')) return '/'+s;
+    // If something odd came like "pages/dashboard/admin/assets/…", strip prefix:
+    s=s.replace(/^pages\/dashboard\/admin\//,'');
+    if(s.startsWith('assets/')) return '/'+s;
+    return s; // fallback (won't 404 if already good)
+  }
 
-  // keys
+  // ---------- keys ----------
   const K_UNIFIED='sb:markets:unified';
   const K_BG_BUILDER='bg:builder:battleground';
-  const K_BH_LIVE='bh:live';
-  const K_BH_DRAFT='bh:draft';
 
-  // state
+  // ---------- title normalizer + resolvers ----------
+  const normTitle=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  function mapById(games){ const m=new Map(); (games||[]).forEach(g=>m.set(g.id,g)); return m; }
+  function mapByTitle(games){ const m=new Map(); (games||[]).forEach(g=>m.set(normTitle(g.title),g)); return m; }
+  function resolveSide(mxSideTitle, mxSideImg, mxSideId, byId, byTitle){
+    const fromId = mxSideId && byId.get(mxSideId);
+    const fromTitle = byTitle.get(normTitle(mxSideTitle||'')) || null;
+    const imgRaw = mxSideImg || (fromId&&(fromId.imageUrl||fromId.image)) || (fromTitle&&(fromTitle.imageUrl||fromTitle.image)) || '';
+    const prov = (fromId&&fromId.provider) || (fromTitle&&fromTitle.provider) || '';
+    return {img:assetPath(imgRaw), prov};
+  }
+
+  // ---------- state ----------
   let state = sget(K_UNIFIED) || {
     status:'open', lastUpdated:0,
     sections:{
@@ -200,313 +210,211 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     }
   };
 
-  // ---------- safety: normalize BG builder images on boot ----------
-  function normalizeBGBuilder(){
-    const b=sget(K_BG_BUILDER);
-    if(!b) return;
-    let changed=false;
-
-    if(Array.isArray(b.games)){
-      b.games.forEach(g=>{
-        const before=g.imageUrl||g.image;
-        const after = absPath(before||'');
-        if(before!==after){ g.imageUrl=after; changed=true; }
-      });
-    }
-    if(Array.isArray(b.matches)){
-      b.matches.forEach(m=>{
-        const L = absPath(m.leftImg || '');
-        const R = absPath(m.rightImg|| '');
-        if(m.leftImg!==L){ m.leftImg=L; changed=true; }
-        if(m.rightImg!==R){ m.rightImg=R; changed=true; }
-      });
-    }
-    if(changed) sset(K_BG_BUILDER,b);
-  }
-
-  // ---------- toggles & paint ----------
-  function setupBonusDefaults(){
-    const b=state.sections.bonus;
-    if(!b.overall.length){
-      b.overall=[
-        {id:kid('GBAL'),code:'BAL',type:'NUMERIC_GUESS',fixed:true,label:'Guess the Final Balance',stake:10,prize:0,final:null,winners:[]},
-        {id:kid('HPG'), code:'HIGH_PAY',type:'TEXT_GUESS',fixed:true,label:'Which game pays the MOST money?',stake:10,prize:0,finalText:'',winners:[]},
-        {id:kid('LPG'), code:'LOW_PAY', type:'TEXT_GUESS',fixed:true,label:'Which game pays the LEAST money?',stake:10,prize:0,finalText:'',winners:[]},
-        {id:kid('HX'),  code:'HIGH_X',  type:'NUMERIC_GUESS',fixed:true,label:'Highest X payout',stake:10,prize:0,final:null,winners:[]},
-        {id:kid('LX'),  code:'LOW_X',   type:'NUMERIC_GUESS',fixed:true,label:'Lowest X payout',stake:10,prize:0,final:null,winners:[]},
-        {id:kid('C100'),code:'CNT_100X',type:'NUMERIC_GUESS',fixed:true,label:'How many 100x wins?',stake:10,prize:0,final:null,winners:[]}
-      ];
-      save();
-    }
-  }
-
+  // ---------- toggles ----------
   function syncToggles(){
-    const s=state.sections;
-    el('#enBG').checked   = !!s.battleground.enabled;
-    el('#enBONUS').checked= !!s.bonus.enabled;
-    el('#enPVP').checked  = !!s.pvp.enabled;
-
-    el('#secBG').style.display   = s.battleground.enabled ? '' : 'none';
-    el('#secBONUS').style.display= s.bonus.enabled ? '' : 'none';
-    el('#secPVP').style.display  = s.pvp.enabled ? '' : 'none';
-
-    const status=(state.status||'open').toUpperCase();
-    el('#statusBG').textContent=status;
-    el('#statusBONUS').textContent=status;
-    el('#statusPVP').textContent=status;
-
-    if(s.bonus.enabled){ setupBonusDefaults(); autoSettleFromBH(); }
+    el('#enBG').checked=!!state.sections.battleground.enabled;
+    el('#enBONUS').checked=!!state.sections.bonus.enabled;
+    el('#enPVP').checked=!!state.sections.pvp.enabled;
+    el('#secBG').style.display=state.sections.battleground.enabled?'':'none';
+    el('#secBONUS').style.display=state.sections.bonus.enabled?'':'none';
+    el('#secPVP').style.display=state.sections.pvp.enabled?'':'none';
+    const s=(state.status||'open').toUpperCase();
+    el('#statusBG').textContent=s; el('#statusBONUS').textContent=s; el('#statusPVP').textContent=s;
   }
+  el('#enBG').addEventListener('change',()=>{ state.sections.battleground.enabled=el('#enBG').checked; save(); syncToggles(); paintAll(); });
+  el('#enBONUS').addEventListener('change',()=>{ state.sections.bonus.enabled=el('#enBONUS').checked; save(); syncToggles(); paintAll(); });
+  el('#enPVP').addEventListener('change',()=>{ state.sections.pvp.enabled=el('#enPVP').checked; save(); syncToggles(); paintAll(); });
 
-  ['#enBG','#enBONUS','#enPVP'].forEach(sel=>{
-    const n=el(sel);
-    if(!n) return;
-    n.addEventListener('change',()=>{
-      if(sel==='#enBG')   state.sections.battleground.enabled=n.checked;
-      if(sel==='#enBONUS')state.sections.bonus.enabled=n.checked;
-      if(sel==='#enPVP')  state.sections.pvp.enabled=n.checked;
-      save(); syncToggles(); paintAll();
-    });
-  });
-
+  // ---------- paint ----------
   function paintAll(){ paintH2H(); paintMkts('battleground','#bgMkts'); paintMkts('bonus','#boMkts'); paintMkts('pvp','#pvMkts'); }
 
   function paintH2H(){
-    const sec=state.sections.battleground;
-    const box=el('#bgH2H'); box.innerHTML='';
+    const sec=state.sections.battleground, box=el('#bgH2H'); box.innerHTML='';
     if(!sec.h2h.length){ box.innerHTML='<div class="pill">No H2H yet. Import → Build/Refresh.</div>'; return; }
     sec.h2h.forEach((h,idx)=>{
-      const Limg=h.leftImg?`<img src="${esc(absPath(h.leftImg))}" alt="">`:''; 
-      const Rimg=h.rightImg?`<img src="${esc(absPath(h.rightImg))}" alt="">`:'';
-      const L='<div class="side"><div class="thumb">'+Limg+'</div><div><div class="title">'+esc(h.leftTitle||'LEFT')+'</div><div class="prov">'+esc(h.leftProv||'')+'</div><div class="oddBox"><span class="small">Odds</span> <input data-k="l'+idx+'" type="number" step="0.01" value="'+esc(h.leftOdds||1.84)+'" style="width:110px"></div></div></div>';
-      const R='<div class="side"><div class="thumb">'+Rimg+'</div><div><div class="title">'+esc(h.rightTitle||'RIGHT')+'</div><div class="prov">'+esc(h.rightProv||'')+'</div><div class="oddBox"><span class="small">Odds</span> <input data-k="r'+idx+'" type="number" step="0.01" value="'+esc(h.rightOdds||1.84)+'" style="width:110px"></div></div></div>';
+      const leftImg = assetPath(h.leftImg);
+      const rightImg= assetPath(h.rightImg);
+      const L='<div class="side"><div class="thumb">'+(leftImg?('<img src="'+esc(leftImg)+'" alt="">'):'')+'</div><div><div class="title">'+esc(h.leftTitle||'LEFT')+'</div><div class="prov">'+esc(h.leftProv||'')+'</div><div class="oddBox"><span class="small">Odds</span> <input data-k="l'+idx+'" type="number" step="0.01" value="'+esc(h.leftOdds||1.84)+'" style="width:110px"></div></div></div>';
+      const R='<div class="side"><div class="thumb">'+(rightImg?('<img src="'+esc(rightImg)+'" alt="">'):'')+'</div><div><div class="title">'+esc(h.rightTitle||'RIGHT')+'</div><div class="prov">'+esc(h.rightProv||'')+'</div><div class="oddBox"><span class="small">Odds</span> <input data-k="r'+idx+'" type="number" step="0.01" value="'+esc(h.rightOdds||1.84)+'" style="width:110px"></div></div></div>';
       const row=document.createElement('div'); row.className='h2h'; row.innerHTML=L+R;
-      row.querySelector('[data-k="l'+idx+'"]')?.addEventListener('change',e=>{ sec.h2h[idx].leftOdds=+e.target.value||1; save(); });
-      row.querySelector('[data-k="r'+idx+'"]')?.addEventListener('change',e=>{ sec.h2h[idx].rightOdds=+e.target.value||1; save(); });
+      row.querySelector('[data-k="l'+idx+'"]').addEventListener('change',e=>{ sec.h2h[idx].leftOdds=+e.target.value||1; save(); });
+      row.querySelector('[data-k="r'+idx+'"]').addEventListener('change',e=>{ sec.h2h[idx].rightOdds=+e.target.value||1; save(); });
       box.appendChild(row);
     });
   }
 
   function paintMkts(section, mount){
-    const sec=state.sections[section];
-    const host=el(mount); host.innerHTML='';
-    if(!sec.overall.length){ host.innerHTML='<div class="pill">No markets yet.</div>'; return; }
-
+    const sec=state.sections[section]; const host=el(mount); host.innerHTML='';
+    if(!sec.overall.length){ host.innerHTML='<div class="pill">No markets yet. Use the buttons above.</div>'; return; }
     sec.overall.forEach((m,mi)=>{
       const box=document.createElement('div'); box.className='mkt';
-
-      const typePart = m.fixed ? '<span class="pill">'+(m.type.replace('_',' '))+'</span>' : (
-        '<select data-x="type">'+
-          '<option '+(m.type==='OVER_UNDER'?'selected':'')+'>OVER_UNDER</option>'+
-          '<option '+(m.type==='MULTI_RANGE'?'selected':'')+'>MULTI_RANGE</option>'+
-          '<option '+(m.type==='YES_NO'?'selected':'')+'>YES_NO</option>'+
-          '<option '+(m.type==='CUSTOM'?'selected':'')+'>CUSTOM</option>'+
-          '<option '+(m.type==='NUMERIC_GUESS'?'selected':'')+'>NUMERIC_GUESS</option>'+
-          '<option '+(m.type==='TEXT_GUESS'?'selected':'')+'>TEXT_GUESS</option>'+
-        '</select>'
-      );
-
       const top='<div class="mTop">'+
-        typePart+
-        '<input data-x="label" '+(m.fixed?'disabled':'')+' placeholder="Market label" value="'+esc(m.label||'')+'" style="min-width:260px">'+
-        '<span class="pill">Stake</span><input data-x="stake" type="number" step="1" value="'+(m.stake!=null?m.stake:10)+'" style="width:110px">'+
-        '<span class="pill">Prize</span><input data-x="prize" type="number" step="1" value="'+(m.prize||0)+'" style="width:110px">'+
+        '<select data-x="type"><option '+(m.type==='OVER_UNDER'?'selected':'')+'>OVER_UNDER</option><option '+(m.type==='MULTI_RANGE'?'selected':'')+'>MULTI_RANGE</option><option '+(m.type==='YES_NO'?'selected':'')+'>YES_NO</option><option '+(m.type==='CUSTOM'?'selected':'')+'>CUSTOM</option><option '+(m.type==='NUMERIC_GUESS'?'selected':'')+'>NUMERIC_GUESS</option></select>'+
+        '<input data-x="label" placeholder="Market label" value="'+esc(m.label||'')+'" style="min-width:260px">'+
         '<select data-x="status"><option '+(m.status!=='locked'?'selected':'')+'>OPEN</option><option '+(m.status==='locked'?'selected':'')+'>LOCKED</option></select>'+
-        (m.fixed?'':'<button class="del" data-act="del">Delete</button>')+
-      '</div>';
+        '<button class="del" data-act="del">Delete</button></div>';
+      const extraOU=(m.type==='OVER_UNDER')?('<div class="lineRow"><span class="pill">LINE</span> <input data-x="line" type="number" step="0.01" value="'+(m.line!=null?m.line:'')+'" style="width:140px"></div>'):'';
+      const extraNG=(m.type==='NUMERIC_GUESS')?(
+        '<div class="lineRow">'+
+        '<span class="pill">Start</span><input data-x="start" type="number" step="0.01" value="'+(m.start??'')+'" style="width:120px">'+
+        '<span class="pill">Min</span><input data-x="min" type="number" step="0.01" value="'+(m.min??'')+'" style="width:110px">'+
+        '<span class="pill">Max</span><input data-x="max" type="number" step="0.01" value="'+(m.max??'')+'" style="width:110px">'+
+        '<span class="pill">Step</span><input data-x="step" type="number" step="0.01" value="'+(m.step??1)+'" style="width:90px">'+
+        '<span class="pill">Unit</span><input data-x="unit" placeholder="$" value="'+(m.unit||'$')+'" style="width:70px">'+
+        '<span class="pill">Prize</span><input data-x="prize" type="number" step="1" value="'+(m.prize||0)+'" style="width:90px"></div>'+
+        '<div class="lineRow"><span class="pill">Final</span><input data-x="final" type="number" step="0.01" value="'+(m.final??'')+'" style="width:120px">'+
+        '<button class="btn" data-act="settleNG">Auto-Settle</button><button class="btn" data-act="award">Award BUX</button>'+
+        '<span class="small">Entries: <b data-x="entries">'+(getEntries(section,m.id).length)+'</b> &nbsp; Winners: <b>'+(m.winners?m.winners.length:0)+'</b></span></div>'
+      ):'';
+      const sels=(m.selections||[]).map((s,si)=>'<div class="selRow"><input data-sel="'+si+'" data-x="slabel" placeholder="Selection" value="'+esc(s.label||'')+'"><input data-sel="'+si+'" data-x="sodds" type="number" step="0.01" value="'+esc(s.odds||1.84)+'"><button class="del" data-act="sdel" data-sel="'+si+'">×</button></div>').join('');
+      const addBtn=(m.type==='NUMERIC_GUESS')?'':'<div><button class="btn" data-act="addSel">+ Add Line</button></div>';
+      box.innerHTML=top+extraOU+extraNG+sels+addBtn;
 
-      const extraFixed = (section==='bonus' && m.fixed)
-        ? ('<div class="lineRow '+(m.type==='TEXT_GUESS'?'goodline':'badline')+'">'+
-           '<span class="pill">Result from Bonus Hunt</span>'+
-           (m.type==='TEXT_GUESS'?('<b>'+esc(m.finalText||'—')+'</b>'):('<b>'+(m.final!=null?m.final:'—')+'</b>'))+
-           '<span class="small">Entries: <b data-x="entries">'+(getEntries(section,m.id).length)+'</b> · Winners: <b>'+(m.winners?m.winners.length:0)+'</b></span></div>')
-        : '';
-
-      const extraOU = (!m.fixed && m.type==='OVER_UNDER')
-        ? ('<div class="lineRow"><span class="pill">LINE</span> <input data-x="line" type="number" step="0.01" value="'+(m.line!=null?m.line:'')+'" style="width:140px"></div>')
-        : '';
-
-      const sels = (!m.fixed ? (m.selections||[]).map((s,si)=> '<div class="selRow">'+
-            '<input data-sel="'+si+'" data-x="slabel" placeholder="Selection" value="'+esc(s.label||'')+'">'+
-            '<input data-sel="'+si+'" data-x="sodds" type="number" step="0.01" value="'+esc(s.odds||1.84)+'">'+
-            '<button class="del" data-act="sdel" data-sel="'+si+'">×</button>'+ '</div>' ).join('') : '' );
-
-      const addBtn = (!m.fixed ? '<div><button class="btn" data-act="addSel">+ Add Line</button></div>' : '');
-
-      box.innerHTML = top + extraFixed + extraOU + sels + addBtn;
-
-      box.querySelector('[data-x="type"]')?.addEventListener('change',e=>{ sec.overall[mi].type=e.target.value; save(); paintMkts(section,mount); });
-      box.querySelector('[data-x="label"]')?.addEventListener('change',e=>{ sec.overall[mi].label=e.target.value; save(); });
-      box.querySelector('[data-x="stake"]')?.addEventListener('change',e=>{ sec.overall[mi].stake=+e.target.value||0; save(); });
-      box.querySelector('[data-x="prize"]')?.addEventListener('change',e=>{ sec.overall[mi].prize=+e.target.value||0; save(); });
-      box.querySelector('[data-x="status"]')?.addEventListener('change',e=>{ sec.overall[mi].status=(e.target.value||'OPEN').toLowerCase()==='locked'?'locked':'open'; save(); });
-      box.querySelector('[data-x="line"]')?.addEventListener('change',e=>{ const v=+e.target.value; sec.overall[mi].line=v; if(sec.overall[mi].selections?.length>=2){ sec.overall[mi].selections[0].label='Over '+v; sec.overall[mi].selections[1].label='Under '+v; } save(); paintMkts(section,mount); });
+      box.querySelector('[data-x="type"]').addEventListener('change',e=>{ sec.overall[mi].type=e.target.value; save(); paintMkts(section,mount); });
+      box.querySelector('[data-x="label"]').addEventListener('change',e=>{ sec.overall[mi].label=e.target.value; save(); });
+      box.querySelector('[data-x="status"]').addEventListener('change',e=>{ sec.overall[mi].status=(e.target.value||'OPEN').toLowerCase()==='locked'?'locked':'open'; save(); });
+      const lineEl=box.querySelector('[data-x="line"]'); if(lineEl){ lineEl.addEventListener('change',e=>{ const v=+e.target.value; sec.overall[mi].line=v; if(sec.overall[mi].selections?.length>=2){ sec.overall[mi].selections[0].label='Over '+v; sec.overall[mi].selections[1].label='Under '+v; } save(); paintMkts(section,mount); }); }
+      const W=['start','min','max','step','unit','prize','final']; W.forEach(w=>{ const n=box.querySelector('[data-x="'+w+'"]'); if(n) n.addEventListener('change',e=>{ sec.overall[mi][w]= (w==='unit')? e.target.value : +e.target.value; save(); }); });
+      const ent=box.querySelector('[data-x="entries"]'); if(ent){ ent.textContent=getEntries(section,m.id).length; }
+      box.querySelectorAll('[data-x="slabel"]').forEach(n=> n.addEventListener('change',function(){ sec.overall[mi].selections[+this.dataset.sel].label=this.value; save(); }));
+      box.querySelectorAll('[data-x="sodds"]').forEach(n=> n.addEventListener('change',function(){ sec.overall[mi].selections[+this.dataset.sel].odds=+this.value||1; save(); }));
+      box.querySelectorAll('[data-act="sdel"]').forEach(b=> b.addEventListener('click',function(){ sec.overall[mi].selections.splice(+this.dataset.sel,1); save(); paintMkts(section,mount); }));
+      const addSelBtn=box.querySelector('[data-act="addSel"]'); if(addSelBtn){ addSelBtn.addEventListener('click',()=>{ sec.overall[mi].selections.push({id:kid('SEL'),label:'',odds:1.84}); save(); paintMkts(section,mount); }); }
+      const settleBtn=box.querySelector('[data-act="settleNG"]'); if(settleBtn){ settleBtn.addEventListener('click',()=>{ settleNumericGuess(section, mi); }); }
+      const awardBtn=box.querySelector('[data-act="award"]'); if(awardBtn){ awardBtn.addEventListener('click',()=>{ awardBux(section, mi); }); }
 
       host.appendChild(box);
     });
   }
 
-  // quick creators
-  function addOU(sec){ sec.overall.push({id:kid('OU'),type:'OVER_UNDER',label:'Over / Under',status:'open',stake:10,selections:[{id:kid('SEL'),label:'Over 65.5',odds:1.84},{id:kid('SEL'),label:'Under 65.5',odds:1.84}]}); save(); paintAll(); }
-  function addMR(sec){ sec.overall.push({id:kid('MR'),type:'MULTI_RANGE',label:'Total Games Played',status:'open',stake:10,selections:[{id:kid('SEL'),label:'48–55.5',odds:17},{id:kid('SEL'),label:'56–63.5',odds:3.4},{id:kid('SEL'),label:'64–71.5',odds:1.7},{id:kid('SEL'),label:'72–80',odds:4.25}]}); save(); paintAll(); }
-  function addYN(sec){ sec.overall.push({id:kid('YN'),type:'YES_NO',label:'Yes / No',status:'open',stake:10,selections:[{id:kid('SEL'),label:'Yes',odds:1.84},{id:kid('SEL'),label:'No',odds:1.84}]}); save(); paintAll(); }
-  function addCU(sec){ sec.overall.push({id:kid('CU'),type:'CUSTOM',label:'Custom Market',status:'open',stake:10,selections:[]}); save(); paintAll(); }
+  // ---------- creators ----------
+  function addOU(sec){ sec.overall.push({id:kid('OU'),type:'OVER_UNDER',label:'Over / Under',status:'open',line:65.5,selections:[{id:kid('SEL'),label:'Over 65.5',odds:1.84},{id:kid('SEL'),label:'Under 65.5',odds:1.84}]}); save(); paintAll(); }
+  function addMR(sec){ sec.overall.push({id:kid('MR'),type:'MULTI_RANGE',label:'Total Games Played',status:'open',selections:[{id:kid('SEL'),label:'48–55.5',odds:17},{id:kid('SEL'),label:'56–63.5',odds:3.4},{id:kid('SEL'),label:'64–71.5',odds:1.7},{id:kid('SEL'),label:'72–80',odds:4.25}]}); save(); paintAll(); }
+  function addYN(sec){ sec.overall.push({id:kid('YN'),type:'YES_NO',label:'Yes / No',status:'open',selections:[{id:kid('SEL'),label:'Yes',odds:1.84},{id:kid('SEL'),label:'No',odds:1.84}]}); save(); paintAll(); }
+  function addCU(sec){ sec.overall.push({id:kid('CU'),type:'CUSTOM',label:'Custom Market',status:'open',selections:[]}); save(); paintAll(); }
   function addCS(sec){
     if(!state.sections.battleground.h2h.length){ toast('Build H2H first',false); return; }
-    const m={id:kid('CS'),type:'CUSTOM',label:'Which matchup clean sweep?',status:'open',stake:10,selections:[]};
-    state.sections.battleground.h2h.forEach(h=>{
-      m.selections.push({id:kid('SEL'),label:(h.leftTitle||'LEFT')+' 3-0',odds:3.0});
-      m.selections.push({id:kid('SEL'),label:(h.rightTitle||'RIGHT')+' 3-0',odds:3.0});
-    });
+    const m={id:kid('CS'),type:'CUSTOM',label:'Which matchup clean sweep?',status:'open',selections:[]};
+    state.sections.battleground.h2h.forEach(h=>{ m.selections.push({id:kid('SEL'),label:h.leftTitle+' 3–0',odds:3.0}); m.selections.push({id:kid('SEL'),label:h.rightTitle+' 3–0',odds:3.0}); });
     sec.overall.push(m); save(); paintAll();
   }
+  function addGB(sec){ sec.overall.push({id:kid('GB'),type:'NUMERIC_GUESS',label:'Guess the Final Balance',status:'open',start:0,min:0,max:1000,step:1,unit:'$',prize:0,final:null,winners:[]}); save(); paintAll(); }
 
-  // entries/settle (unchanged)
-  const entriesKey=(section,mid)=>'sb:entries:'+section+':'+mid;
-  const getEntries=(section,mid)=>sget(entriesKey(section,mid))||[];
-  function settleNumericGuess(section,m){ const entries=getEntries(section,m.id); if(!entries.length||m.final==null||isNaN(m.final)){m.winners=[];return;} let best=Infinity,win=[]; entries.forEach(e=>{const d=Math.abs((+e.guess)-(+m.final)); if(d<best){best=d;win=[e]} else if(d===best){win.push(e)} }); m.winners=win.map(w=>({userId:w.userId||w.name||'anon',name:w.name||('User'+(w.userId||'')),guess:+w.guess,diff:Math.abs((+w.guess)-(+m.final))})); }
-  function settleTextGuess(section,m){ const entries=getEntries(section,m.id); const final=(m.finalText||'').trim(); if(!entries.length||!final){m.winners=[];return;} const f=slug(final); const win=entries.filter(e=>slug(e.guess)===f); m.winners=win.map(w=>({userId:w.userId||w.name||'anon',name:w.name||('User'+(w.userId||'')),guess:String(w.guess)})); }
-  const readBH=()=>sget(K_BH_LIVE)||sget(K_BH_DRAFT);
-  function autoSettleFromBH(){
-    const src=readBH(),b=state.sections.bonus; if(!b.enabled) return;
-    if(!src||!Array.isArray(src.entries)){ toast('Bonus Hunt data not found (bh:live / bh:draft).',false); return; }
-    const opened=src.entries.filter(e=>e && (e.done||Number(e.payout||0)>0));
-    const start=Number(src.start||0);
-    const sum=(arr,fn)=>arr.reduce((a,x)=>a+Number(fn(x)||0),0);
-    const finalBalance=+(start - sum(opened,e=>e.bet) + sum(opened,e=>e.payout)).toFixed(2);
-    const byPay=opened.slice().sort((a,b)=>Number(b.payout||0)-Number(a.payout||0));
-    const byXH=opened.slice().sort((a,b)=>Number(b.x||0)-Number(a.x||0));
-    const byXL=opened.slice().sort((a,b)=>Number(a.x||0)-Number(b.x||0));
-    const highestGame=byPay[0]?.slot||'', lowestGame=opened.slice().sort((a,b)=>Number(a.payout||0)-Number(b.payout||0))[0]?.slot||'';
-    const highX=byXH[0]?.x!=null?Number(byXH[0].x).toFixed(2):null; const lowX=byXL[0]?.x!=null?Number(byXL[0].x).toFixed(2):null;
-    const cnt100=opened.filter(e=>Number(e.x||0)>=100).length;
-
-    const set=(code,f)=>{const m=b.overall.find(x=>x.code===code); if(m) f(m);};
-    set('BAL',m=>{m.final=finalBalance; settleNumericGuess('bonus',m);});
-    set('HIGH_PAY',m=>{m.finalText=highestGame; settleTextGuess('bonus',m);});
-    set('LOW_PAY',m=>{m.finalText=lowestGame;  settleTextGuess('bonus',m);});
-    set('HIGH_X',m=>{m.final=highX!=null?Number(highX):null; settleNumericGuess('bonus',m);});
-    set('LOW_X', m=>{m.final=lowX!=null?Number(lowX):null;  settleNumericGuess('bonus',m);});
-    set('CNT_100X',m=>{m.final=cnt100; settleNumericGuess('bonus',m);});
-    save(); paintMkts('bonus','#boMkts'); toast('Bonus Hunt results synced.');
+  // ---------- entries / settling ----------
+  function entriesKey(section, marketId){ return 'sb:entries:'+section+':'+marketId; }
+  function getEntries(section, marketId){ return sget(entriesKey(section, marketId)) || []; }
+  function settleNumericGuess(section, mi){
+    const sec=state.sections[section]; const m=sec.overall[mi];
+    const entries=getEntries(section, m.id);
+    if(!entries.length){ toast('No entries to settle', false); return; }
+    if(m.final==null || isNaN(m.final)){ toast('Enter final balance first', false); return; }
+    let best=Infinity, winners=[];
+    entries.forEach(e=>{ const d=Math.abs((+e.guess)-(+m.final)); if(d<best){best=d; winners=[e];} else if(d===best){ winners.push(e); } });
+    m.winners = winners.map(w=>({userId:w.userId||w.name||'anon', name:w.name||('User'+(w.userId||'')), guess:+w.guess, diff:Math.abs((+w.guess)-(+m.final))}));
+    save(); paintAll(); toast('Settled: '+m.winners.length+' winner'+(m.winners.length!==1?'s':''));
+  }
+  function awardBux(section, mi){
+    const sec=state.sections[section], m=sec.overall[mi];
+    if(!m.winners || !m.winners.length){ toast('Settle first', false); return; }
+    const awards=m.winners.map(w=>({userId:w.userId, name:w.name, amount:m.prize||0, marketId:m.id, label:m.label}));
+    sset('bux:awards:'+section+':'+m.id, awards);
+    toast('Awards prepared ('+awards.length+')');
   }
 
-  // BG import/build
+  // ---------- import from BG Admin ----------
   async function importBG(){
-    let used='';
-    const prefer=sget(K_BG_BUILDER);
-    if(prefer && Array.isArray(prefer.matches) && prefer.matches.length){
+    let used=''; const builder=sget(K_BG_BUILDER);
+    if(builder && Array.isArray(builder.matches) && builder.matches.length){
       used='local:'+K_BG_BUILDER;
-      acceptMatches(prefer.matches,used,true);
-      return;
+      return acceptMatches(builder.matches, builder.games||[], used, true);
     }
     const scan=['BG_MATCHUPS','BATTLEGROUND_MATCHUPS','BATTLEGROUND_SELECTED','BG_SELECTED_GAMES','battleground:matches','battleground:admin:matches','bg:admin:matches','bg:matchups'];
     for(const k of scan){
-      const v=sget(k);
-      if(Array.isArray(v)&&v.length){
-        used='local:'+k;
-        const norm=v.map((m,i)=>({
-          id:m.id||m.matchId||('M'+i),
-          leftId:m.leftId||m.AId||m.aId||m.left?.id||m.A?.id||null,
-          rightId:m.rightId||m.BId||m.bId||m.right?.id||m.B?.id||null,
-          leftTitle:m.leftTitle||m.aName||m.A||m.left?.title||m.left?.name||'LEFT',
-          rightTitle:m.rightTitle||m.bName||m.B||m.right?.title||m.right?.name||'RIGHT',
-          leftImg:absPath(m.leftImg||m.left?.image||m.left?.img||''),
-          rightImg:absPath(m.rightImg||m.right?.image||m.right?.img||'')
-        }));
-        acceptMatches(norm,used,true);
-        return;
-      }
+      const v=sget(k); if(Array.isArray(v) && v.length){ used='local:'+k; return acceptMatches(v, (builder?.games)||[], used, false); }
     }
-    try{
-      for(const url of ['/api/battleground/matchups','/api/bg/matchups']){
-        const r=await fetch(url,{cache:'no-store'});
-        if(r.ok){
-          const arr=await r.json();
-          if(Array.isArray(arr)&&arr.length){
-            used='api:'+url;
-            acceptMatches(arr,used,false);
-            return;
-          }
-        }
-      }
-    }catch{}
-    el('#dbgImport').textContent='none';
-    toast('No matchups found (Admin/local/API empty)',false);
+    for(const url of ['/api/battleground/matchups','/api/bg/matchups']){
+      try{ const r=await fetch(url,{cache:"no-store"}); if(r.ok){ const arr=await r.json(); if(Array.isArray(arr)&&arr.length){ used='api:'+url; return acceptMatches(arr, (builder?.games)||[], used, false); } } }catch(_){}
+    }
+    el('#dbgImport').textContent='none'; toast('No matchups found (Admin/local/API empty)',false);
   }
 
-  function acceptMatches(arr,used,alreadyNorm){
-    const matches=arr.map((mx,i)=> alreadyNorm ? mx : ({
+  function acceptMatches(arr, games, used, alreadyNorm){
+    const b = sget(K_BG_BUILDER)||{games:[],matches:[]};
+    b.games = Array.isArray(games) ? games : (b.games||[]);
+    b.matches = (alreadyNorm ? arr : arr.map((mx,i)=>({
       id: mx.id||mx.matchId||('M'+i),
-      leftId: mx.leftId||mx.AId||mx.aId||null,
-      rightId: mx.rightId||mx.BId||mx.bId||null,
-      leftTitle: mx.leftTitle||mx.aName||mx.A||'LEFT',
-      rightTitle: mx.rightTitle||mx.bName||mx.B||'RIGHT',
-      leftImg: absPath(mx.leftImg||mx.aImage||mx.imgA||mx.imageA||''),
-      rightImg: absPath(mx.rightImg||mx.bImage||mx.imgB||mx.imageB||'')
-    }));
-    const builder=sget(K_BG_BUILDER)||{games:[],matches:[]};
-    builder.matches=matches; sset(K_BG_BUILDER,builder);
-    el('#dbgImport').textContent = used+' ('+matches.length+')';
-    toast('Imported '+matches.length+' matchups',true);
+      leftId: mx.leftId||mx.AId||mx.aId||mx.left?.id||null,
+      rightId: mx.rightId||mx.BId||mx.bId||mx.right?.id||null,
+      leftTitle: mx.leftTitle||mx.aName||mx.A||mx.left?.title||'LEFT',
+      rightTitle: mx.rightTitle||mx.bName||mx.B||mx.right?.title||'RIGHT',
+      leftImg: assetPath(mx.leftImg||mx.aImage||mx.imgA||mx.imageA||mx.left?.img||''),
+      rightImg: assetPath(mx.rightImg||mx.bImage||mx.imgB||mx.imageB||mx.right?.img||'')
+    })));
+    sset(K_BG_BUILDER, b);
+    el('#dbgImport').textContent = used+' ('+b.matches.length+')';
+    toast('Imported '+b.matches.length+' matchups',true);
   }
 
   function buildH2H(){
     const builder=sget(K_BG_BUILDER);
     if(!builder || !Array.isArray(builder.matches) || !builder.matches.length){ toast('No matches to build',false); return; }
 
-    // Build a map of games to backfill images/providers if match lacks them
-    const gMap = new Map((builder.games||[]).map(g=>[g.id,g]));
+    const byId=mapById(builder.games||[]);
+    const byTitle=mapByTitle(builder.games||[]);
+
+    const prev={}; (state.sections.battleground.h2h||[]).forEach(o=>prev[o.matchId]=o);
+
     state.sections.battleground.h2h = builder.matches.map(mx=>{
-      const GL=gMap.get(mx.leftId)||{}, GR=gMap.get(mx.rightId)||{};
-      const leftImg  = absPath(mx.leftImg || GL.imageUrl || GL.image || '');
-      const rightImg = absPath(mx.rightImg|| GR.imageUrl || GR.image || '');
+      const leftTitle = mx.leftTitle || (byId.get(mx.leftId)?.title) || 'LEFT';
+      const rightTitle = mx.rightTitle || (byId.get(mx.rightId)?.title) || 'RIGHT';
+
+      const L=resolveSide(leftTitle, mx.leftImg, mx.leftId, byId, byTitle);
+      const R=resolveSide(rightTitle, mx.rightImg, mx.rightId, byId, byTitle);
+
       return {
         matchId: mx.id,
         leftId: mx.leftId||null, rightId: mx.rightId||null,
-        leftTitle: mx.leftTitle||GL.title||'LEFT',
-        rightTitle: mx.rightTitle||GR.title||'RIGHT',
-        leftImg, rightImg,
-        leftProv: GL.provider||'', rightProv: GR.provider||'',
-        leftOdds: 1.84, rightOdds: 1.84
+        leftTitle, rightTitle,
+        leftImg: L.img, rightImg: R.img,
+        leftProv: L.prov||'', rightProv: R.prov||'',
+        leftOdds: (prev[mx.id]?.leftOdds)||1.84, rightOdds:(prev[mx.id]?.rightOdds)||1.84
       };
     });
-    save(); paintH2H(); toast('H2H built');
+    save(); paintH2H(); toast('H2H built (images resolved)');
   }
 
-  // save/publish
-  const save = ()=>sset(K_UNIFIED,state);
-  function publish(){
-    state.lastUpdated=Date.now(); save();
-    const d=new Date(state.lastUpdated); el('#stamp').textContent='Last publish @ '+d.toLocaleString();
-    toast('Published to players');
-  }
+  // ---------- save/publish ----------
+  function save(){ sset(K_UNIFIED,state); }
+  function publish(){ state.lastUpdated=Date.now(); save(); el('#stamp').textContent='Last publish @ '+new Date(state.lastUpdated).toLocaleTimeString(); toast('Published to players'); }
 
-  // wire
-  el('#btnSave')?.addEventListener('click',()=>{ save(); toast('Saved'); });
-  el('#btnPublish')?.addEventListener('click',publish);
-  el('#btnOpenAll')?.addEventListener('click',()=>{ state.status='open'; save(); syncToggles(); });
-  el('#btnLockAll')?.addEventListener('click',()=>{ state.status='locked'; save(); syncToggles(); });
-  el('#btnDelete')?.addEventListener('click',()=>{ if(confirm('Delete ALL markets?')){ state={status:'open',lastUpdated:0,sections:{battleground:{enabled:false,h2h:[],overall:[]},bonus:{enabled:false,overall:[]},pvp:{enabled:false,overall:[]}}}; save(); syncToggles(); paintAll(); } });
+  // ---------- wire ----------
+  el('#btnSave').addEventListener('click',()=>{ save(); toast('Saved'); });
+  el('#btnPublish').addEventListener('click',publish);
+  el('#btnOpenAll').addEventListener('click',()=>{ state.status='open'; save(); syncToggles(); });
+  el('#btnLockAll').addEventListener('click',()=>{ state.status='locked'; save(); syncToggles(); });
+  el('#btnDelete').addEventListener('click',()=>{ if(confirm('Delete ALL markets?')){ state={status:'open',lastUpdated:0,sections:{battleground:{enabled:false,h2h:[],overall:[]},bonus:{enabled:false,overall:[]},pvp:{enabled:false,overall:[]}}}; save(); syncToggles(); paintAll(); } });
 
-  el('#bgAddOU')?.addEventListener('click',()=>addOU(state.sections.battleground));
-  el('#bgAddMR')?.addEventListener('click',()=>addMR(state.sections.battleground));
-  el('#bgAddYN')?.addEventListener('click',()=>addYN(state.sections.battleground));
-  el('#bgAddCU')?.addEventListener('click',()=>addCU(state.sections.battleground));
-  el('#bgAddCS')?.addEventListener('click',()=>addCS(state.sections.battleground));
-  el('#bgImport')?.addEventListener('click',importBG);
-  el('#bgBuild') ?.addEventListener('click',buildH2H);
+  el('#bgAddOU').addEventListener('click',()=>addOU(state.sections.battleground));
+  el('#bgAddMR').addEventListener('click',()=>addMR(state.sections.battleground));
+  el('#bgAddYN').addEventListener('click',()=>addYN(state.sections.battleground));
+  el('#bgAddCU').addEventListener('click',()=>addCU(state.sections.battleground));
+  el('#bgAddCS').addEventListener('click',()=>addCS(state.sections.battleground));
+  el('#bgImport').addEventListener('click',importBG);
+  el('#bgBuild').addEventListener('click',buildH2H);
 
-  el('#boSettle')?.addEventListener('click',autoSettleFromBH);
-  el('#pvAddOU')?.addEventListener('click',()=>addOU(state.sections.pvp));
-  el('#pvAddMR')?.addEventListener('click',()=>addMR(state.sections.pvp));
-  el('#pvAddYN')?.addEventListener('click',()=>addYN(state.sections.pvp));
-  el('#pvAddCU')?.addEventListener('click',()=>addCU(state.sections.pvp));
+  el('#boAddOU').addEventListener('click',()=>addOU(state.sections.bonus));
+  el('#boAddMR').addEventListener('click',()=>addMR(state.sections.bonus));
+  el('#boAddYN').addEventListener('click',()=>addYN(state.sections.bonus));
+  el('#boAddCU').addEventListener('click',()=>addCU(state.sections.bonus));
+  el('#boAddGB').addEventListener('click',()=>addGB(state.sections.bonus));
 
-  // boot
-  normalizeBGBuilder();       // NEW: fix stored image paths from BG Admin
-  syncToggles(); paintAll();
-  if(state.lastUpdated) el('#stamp').textContent='Last publish @ '+new Date(state.lastUpdated).toLocaleString();
+  el('#pvAddOU').addEventListener('click',()=>addOU(state.sections.pvp));
+  el('#pvAddMR').addEventListener('click',()=>addMR(state.sections.pvp));
+  el('#pvAddYN').addEventListener('click',()=>addYN(state.sections.pvp));
+  el('#pvAddCU').addEventListener('click',()=>addCU(state.sections.pvp));
+
+  // ---------- boot ----------
+  syncToggles(); paintAll(); if(state.lastUpdated){ el('#stamp').textContent='Last publish @ '+new Date(state.lastUpdated).toLocaleTimeString(); }
 })();
 </script>
 </body>
