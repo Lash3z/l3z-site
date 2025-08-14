@@ -8,10 +8,7 @@
 :root{--bg:#060b0d;--panel:#0b1417;--ink:#eaf7ff;--muted:#9fd0d6;--line:rgba(0,255,255,.18);--teal:#00ffff;--gold:#ffb42d;--bad:#e25a6f;--ok:#12d48a}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-
-/* Hide content while admin check runs */
 html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
-
 .wrap{max-width:1400px;margin:0 auto;padding:16px 16px 64px}
 h1{margin:0 0 12px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
 .card{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
@@ -22,7 +19,6 @@ h1{margin:0 0 12px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
 .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cfffff}
 input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;color:#eaf7ff;padding:10px}
 .grid{display:grid;grid-template-columns:1fr;gap:16px}
-/* H2H rows */
 .h2hList{display:flex;flex-direction:column;gap:12px}
 .h2h{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .side{border:1px solid var(--line);border-radius:12px;background:#0c1519;padding:10px;display:grid;grid-template-columns:80px 1fr;gap:10px;align-items:center}
@@ -36,7 +32,6 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
 .badge{padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#081318;color:#bfe}
 .badge.lock{background:#231519;color:#ffc0cc;border-color:#7e2a3c}
 .sectionTitle{font-weight:900;margin-bottom:8px}
-/* markets */
 .mkts{display:flex;flex-direction:column;gap:12px}
 .mkt{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px}
 .mTop{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
@@ -53,7 +48,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
 </head>
 <body>
 
-<!-- ========= AdminGate v2 (cookie-first; local fallback) ========= -->
+<!-- ========= AdminGate v2 ========= -->
 <script>
 (function(){
   "use strict";
@@ -62,27 +57,16 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   const DASHBOARD   = "/index.html";
   const H = document.documentElement;
   H.setAttribute("data-admin","checking");
-
-  // Show lock screen
   function lock(){
     H.removeAttribute("data-admin");
-    const s = document.createElement("style");
-    s.textContent = ".lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}.lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75);box-shadow:0 0 18px rgba(0,255,255,.15)}.lockcard h1{margin:0 0 10px;color:#cfe}.lockcard a{color:#7ad7ff;text-decoration:underline}";
+    const s=document.createElement("style");
+    s.textContent=".lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}.lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75);box-shadow:0 0 18px rgba(0,255,255,.15)}.lockcard h1{margin:0 0 10px;color:#cfe}.lockcard a{color:#7ad7ff;text-decoration:underline}";
     document.head.appendChild(s);
-    document.body.innerHTML = '<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you already logged in, your session may have expired.</div><div style="margin-top:14px"><a href="'+DASHBOARD+'">Back to Dashboard</a></div></div></div>';
+    document.body.innerHTML='<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you already logged in, your session may have expired.</div><div style="margin-top:14px"><a href="'+DASHBOARD+'">Back to Dashboard</a></div></div></div>';
   }
-
-  // Server-side cookie is the source of truth
-  fetch(ADMIN_CHECK, { credentials:"include", cache:"no-store" })
-    .then(r => r.ok ? r.json() : null)
-    .then(j => {
-      if (j && j.admin) {
-        H.removeAttribute("data-admin"); // show page
-      } else {
-        lock();
-      }
-    })
-    .catch(lock);
+  fetch(ADMIN_CHECK,{credentials:"include",cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{
+    if(j&&j.admin){ H.removeAttribute("data-admin"); } else { lock(); }
+  }).catch(lock);
 })();
 </script>
 <!-- ========= /AdminGate v2 ========= -->
@@ -112,7 +96,6 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   </div>
 
   <div class="grid">
-    <!-- Battleground section -->
     <div id="secBG" class="card" style="display:none">
       <div class="head">
         <div class="sectionTitle">Battleground</div>
@@ -140,7 +123,6 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
       <div id="bgMkts" class="mkts"></div>
     </div>
 
-    <!-- Bonus Hunt section -->
     <div id="secBONUS" class="card" style="display:none">
       <div class="head">
         <div class="sectionTitle">Bonus Hunt</div>
@@ -159,7 +141,6 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
       <div id="boMkts" class="mkts"></div>
     </div>
 
-    <!-- PVP section -->
     <div id="secPVP" class="card" style="display:none">
       <div class="head">
         <div class="sectionTitle">PVP Predictions</div>
@@ -195,6 +176,49 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   // ---------- storage keys ----------
   const K_UNIFIED = 'sb:markets:unified';
   const K_BG_BUILDER = 'bg:builder:battleground';
+
+  // ---------- image resolver (title → asset path) ----------
+  const IMG_BASES=['assets/slot images/','../assets/slot images/','/assets/slot images/'];
+  const IMG_EXT=['png','webp','jpg','jpeg'];
+  let IMG_INDEX=null;
+  const IMG_CACHE=new Map();
+  function slug(s){ return String(s||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+  function imgExists(url){ return new Promise(res=>{ const i=new Image(); i.onload=()=>res(true); i.onerror=()=>res(false); i.src=encodeURI(url)+(url.includes('?')?'&':'?')+'v='+Date.now(); }); }
+  async function loadImgIndex(){
+    if(IMG_INDEX!==null) return IMG_INDEX;
+    for(const b of IMG_BASES){
+      try{ const r=await fetch(encodeURI(b+'index.json'),{cache:'no-store'});
+        if(r.ok){ const j=await r.json(); IMG_INDEX=Array.isArray(j)?j:(Array.isArray(j.images)?j.images:Object.values(j||{})); return IMG_INDEX; }
+      }catch(_){}
+    }
+    IMG_INDEX=[];
+    return IMG_INDEX;
+  }
+  async function resolveByTitle(title, provider){
+    const key=String(title||'').toUpperCase();
+    if(IMG_CACHE.has(key)) return IMG_CACHE.get(key);
+    await loadImgIndex();
+    const tSlug=slug(title||''), pSlug=slug(provider||'');
+    if(IMG_INDEX && IMG_INDEX.length){
+      const hits=IMG_INDEX.filter(e=> typeof e==='string' && e.toLowerCase().includes(tSlug) && (!pSlug || e.toLowerCase().includes(pSlug)));
+      for(const ent of hits){
+        const tries = (/^(?:\/|\.{1,2}\/|assets\/)/.test(ent)) ? [ent] : IMG_BASES.map(b=>b+ent);
+        for(const u of tries){ if(await imgExists(u)){ IMG_CACHE.set(key,u); return u; } }
+      }
+    }
+    const guesses=[];
+    for(const base of IMG_BASES){
+      IMG_EXT.forEach(ext=>guesses.push(`${base}${title}.${ext}`));
+      IMG_EXT.forEach(ext=>guesses.push(`${base}${(title||'').toLowerCase()}.${ext}`));
+      IMG_EXT.forEach(ext=>guesses.push(`${base}${tSlug}.${ext}`));
+      if(pSlug){
+        IMG_EXT.forEach(ext=>guesses.push(`${base}${pSlug}__${tSlug}.${ext}`));
+        IMG_EXT.forEach(ext=>guesses.push(`${base}${pSlug}/${tSlug}.${ext}`));
+      }
+    }
+    for(const u of guesses){ if(await imgExists(u)){ IMG_CACHE.set(key,u); return u; } }
+    IMG_CACHE.set(key,''); return '';
+  }
 
   // ---------- state ----------
   let state = sget(K_UNIFIED) || {
@@ -291,7 +315,6 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
       const addBtn = (m.type==='NUMERIC_GUESS') ? '' : '<div><button class="btn" data-act="addSel">+ Add Line</button></div>';
       box.innerHTML = top + extra + sels + addBtn;
 
-      // binds
       box.querySelector('[data-x="type"]').addEventListener('change',e=>{ sec.overall[mi].type=e.target.value; save(); paintMkts(section,mount); });
       box.querySelector('[data-x="label"]').addEventListener('change',e=>{ sec.overall[mi].label=e.target.value; save(); });
       box.querySelector('[data-x="status"]').addEventListener('change',e=>{ sec.overall[mi].status=(e.target.value||'OPEN').toLowerCase()==='locked'?'locked':'open'; save(); });
@@ -304,7 +327,6 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
       const prizeEl=box.querySelector('[data-x="prize"]'); if(prizeEl){ prizeEl.addEventListener('change',e=>{ sec.overall[mi].prize=+e.target.value||0; save(); }); }
       const finalEl=box.querySelector('[data-x="final"]'); if(finalEl){ finalEl.addEventListener('change',e=>{ sec.overall[mi].final=+e.target.value; save(); }); }
       const entriesEl=box.querySelector('[data-x="entries"]'); if(entriesEl){ entriesEl.textContent = getEntries(section, m.id).length; }
-      // selection label/odds wiring
       box.querySelectorAll('[data-x="slabel"]').forEach(n=> n.addEventListener('change',function(){ sec.overall[mi].selections[+this.dataset.sel].label=this.value; save(); }));
       box.querySelectorAll('[data-x="sodds"]').forEach(n=> n.addEventListener('change',function(){ sec.overall[mi].selections[+this.dataset.sel].odds=+this.value||1; save(); }));
       const delSelBtns = box.querySelectorAll('[data-act="sdel"]'); delSelBtns.forEach(b=> b.addEventListener('click',function(){ sec.overall[mi].selections.splice(+this.dataset.sel,1); save(); paintMkts(section,mount); }));
@@ -327,10 +349,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     state.sections.battleground.h2h.forEach(h=>{ m.selections.push({id:kid('SEL'),label:h.leftTitle+' 3–0',odds:3.0}); m.selections.push({id:kid('SEL'),label:h.rightTitle+' 3–0',odds:3.0}); });
     sec.overall.push(m); save(); paintAll();
   }
-  function addGB(sec){
-    sec.overall.push({id:kid('GB'),type:'NUMERIC_GUESS',label:'Guess the Final Balance',status:'open',start:0,min:0,max:1000,step:1,unit:'$',prize:0,final:null,winners:[]});
-    save(); paintAll();
-  }
+  function addGB(sec){ sec.overall.push({id:kid('GB'),type:'NUMERIC_GUESS',label:'Guess the Final Balance',status:'open',start:0,min:0,max:1000,step:1,unit:'$',prize:0,final:null,winners:[]}); save(); paintAll(); }
 
   // ---------- entries / settling ----------
   function entriesKey(section, marketId){ return 'sb:entries:'+section+':'+marketId; }
@@ -347,8 +366,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
       else if (diff === bestDiff){ winners.push(e); }
     });
     m.winners = winners.map(w => ({userId:w.userId||w.name||'anon', name:w.name||('User'+(w.userId||'')), guess:+w.guess, diff:Math.abs((+w.guess)-(+m.final))}));
-    save(); paintAll(); toast('Settled: '+m.winners.length+' winner'+(m.winners.length!==1?'s':''));
-  }
+    save(); paintAll(); toast('Settled: '+m.winners.length+' winner'+(m.winners.length!==1?'s':'')); }
   function awardBux(section, mi){
     const sec = state.sections[section]; const m = sec.overall[mi];
     if(!m.winners || !m.winners.length){ toast('Settle first', false); return; }
@@ -361,9 +379,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   async function importBG(){
     let used='';
     const prefer = sget(K_BG_BUILDER);
-    if(prefer && Array.isArray(prefer.matches) && prefer.matches.length){
-      used='local:'+K_BG_BUILDER; return acceptMatches(prefer.matches,used,true);
-    }
+    if(prefer && Array.isArray(prefer.matches) && prefer.matches.length){ used='local:'+K_BG_BUILDER; return acceptMatches(prefer.matches,used,true); }
     const scanKeys = ['BG_MATCHUPS','BATTLEGROUND_MATCHUPS','BATTLEGROUND_SELECTED','BG_SELECTED_GAMES','battleground:matches','battleground:admin:matches','bg:admin:matches','bg:matchups'];
     for(const k of scanKeys){
       const v=sget(k);
@@ -395,14 +411,13 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
       leftImg: mx.leftImg||mx.aImage||mx.imgA||mx.imageA||'',
       rightImg: mx.rightImg||mx.bImage||mx.imgB||mx.imageB||''
     }));
-    // persist into builder key so Build can pull it
     const builder = sget(K_BG_BUILDER)||{games:[],matches:[]};
     builder.matches=matches; sset(K_BG_BUILDER,builder);
     el('#dbgImport').textContent = used+' ('+matches.length+')';
     toast('Imported '+matches.length+' matchups',true);
   }
 
-  function buildH2H(){
+  async function buildH2H(){
     const builder = sget(K_BG_BUILDER);
     if(!builder || !Array.isArray(builder.matches) || !builder.matches.length){ toast('No matches to build',false); return; }
     const prev={}; (state.sections.battleground.h2h||[]).forEach(o=>prev[o.matchId]=o);
@@ -414,7 +429,20 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
       leftProv: mx.leftProv||'', rightProv: mx.rightProv||'',
       leftOdds: (prev[mx.id]?.leftOdds)||1.84, rightOdds: (prev[mx.id]?.rightOdds)||1.84
     }));
-    save(); paintH2H(); toast('H2H built');
+
+    // NEW: resolve missing images by title/provider, persist
+    let changed=false;
+    for(const h of state.sections.battleground.h2h){
+      if(!h.leftImg){
+        const u=await resolveByTitle(h.leftTitle,h.leftProv); if(u){ h.leftImg=u; changed=true; }
+      }
+      if(!h.rightImg){
+        const u=await resolveByTitle(h.rightTitle,h.rightProv); if(u){ h.rightImg=u; changed=true; }
+      }
+    }
+    if(changed) save();
+
+    paintH2H(); toast('H2H built');
   }
 
   // ---------- save/publish ----------
@@ -428,7 +456,6 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   el('#btnLockAll').addEventListener('click',()=>{ state.status='locked'; save(); syncToggles(); });
   el('#btnDelete').addEventListener('click',()=>{ if(confirm('Delete ALL markets?')){ state={status:'open',lastUpdated:0,sections:{battleground:{enabled:false,h2h:[],overall:[]},bonus:{enabled:false,overall:[]},pvp:{enabled:false,overall:[]}}}; save(); syncToggles(); paintAll(); } });
 
-  // add buttons
   el('#bgAddOU').addEventListener('click',()=>addOU(state.sections.battleground));
   el('#bgAddMR').addEventListener('click',()=>addMR(state.sections.battleground));
   el('#bgAddYN').addEventListener('click',()=>addYN(state.sections.battleground));
