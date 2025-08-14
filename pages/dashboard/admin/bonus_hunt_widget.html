@@ -93,6 +93,9 @@
   const fmtX = n => Number(n||0).toFixed(2)+'×';
   const esc = s => (s??'').toString().replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
+  // normalize any old "slot images/" paths to "slot_images/"
+  const fixPath = (u)=> typeof u==='string' ? u.replace(/slot images\//g,'slot_images/') : u;
+
   const MIN_ROWS=6, SPEED=22; // px/sec upward
   let offset=0, lastTs=0, paused=false, blockH=0;
 
@@ -113,7 +116,12 @@
       const bet = (r.bet!=null? +r.bet : +g.betSize)||0;
       const win = +r.win||0;
       const x = (r.x!=null)? +r.x : (bet>0? (win/bet) : 0);
-      return { title:(g.title||'').toString(), provider:(g.provider||'').toString(), img:g.image||g.imageUrl||'', bet, win, x };
+      return {
+        title:(g.title||'').toString(),
+        provider:(g.provider||'').toString(),
+        img: fixPath(g.image||g.imageUrl||''),
+        bet, win, x
+      };
     });
 
     const tBet=entries.reduce((a,e)=>a+e.bet,0);
@@ -204,7 +212,7 @@
     const hostH=rowsEl.parentElement.clientHeight;
 
     if(!paused && blockH>hostH && totalRows>=MIN_ROWS){
-      offset += SPEED*dt;
+      offset += 22*dt;  // SPEED
       if(offset >= blockH){ offset=0; }
       rowsEl.style.transform=`translateY(${-offset}px)`;
     }else{
