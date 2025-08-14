@@ -90,7 +90,7 @@
   const IMG_BASES=['assets/slot images/','../assets/slot images/','/assets/slot images/'];
   const IMG_EXT=['png','webp','jpg','jpeg']; // prefer PNG
   let IMG_INDEX=null;
-  const IMG_CACHE=new Map(); // key -> url or ''
+  const IMG_CACHE=new Map(); // key -> url or '' (negative cache)
 
   function slug(s){ return String(s||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
   function imgExists(url){
@@ -119,7 +119,8 @@
     if(IMG_CACHE.has(key)) return IMG_CACHE.get(key);
     await loadIndex();
     const tSlug=slug(title||''), pSlug=slug(provider||'');
-    // 1) index.json
+
+    // 1) index.json entries
     if(IMG_INDEX && IMG_INDEX.length){
       const hits=IMG_INDEX.filter(e=> typeof e==='string' && e.toLowerCase().includes(tSlug) && (!pSlug || e.toLowerCase().includes(pSlug)));
       for(const ent of hits){
@@ -267,59 +268,62 @@
     `;
     requestAnimationFrame(()=>cardEl.classList.add('show'));
 
-    const prevBtn = document.getElementById('goPrev');
-    const nextBtn = document.getElementById('goNext');
-    if(prevBtn) prevBtn.onclick = ()=> go(idx-1, true);
-    if(nextBtn) nextBtn.onclick = ()=> go(idx+1, true);
-
-    if(autoNext && mx.winnerId){
-      const jump = nextUnfinished(idx);
-      if(jump!==idx) setTimeout(()=>go(jump,true), 1500);
-    }
+    // nav
+    $('#goPrev')?.addEventListener('click',()=>step(-1));
+    $('#goNext')?.addEventListener('click',()=>step(+1));
   }
 
-  function go(i,animate){
-    const len = data.matches?.length||0;
+  function step(dir){
+    const len=data.matches?.length||0;
     if(!len) return;
-    if(i<0) i=len-1; else if(i>=len) i=0;
-    if(i===idx) return;
-    idx=i; saveIdx(idx);
-    if(animate){ cardEl.classList.remove('show'); setTimeout(render,160); }
-    else render();
+    idx = Math.max(0, Math.min(len-1, idx+dir));
+    saveIdx(idx);
+    render();
   }
 
-  async function tick(){
-    const now=readBuilder(); const h=hash(now);
-    if(h!==lastHash){
-      data=now;
-      if(idx >= (data.matches?.length||0)) idx=firstUnfinished();
-      lastHash=h;
-      await backfillImages();
+  // ===== Boot + live updates =====
+  render();
+  backfillImages(); // async resolve & persist
+
+  // auto-advance unfinished
+  if(autoNext){
+    if(!data.matches?.[idx] || data.matches[idx]?.winnerId){
+      idx = firstUnfinished();
+      saveIdx(idx);
       render();
     }
   }
 
-  window.addEventListener('storage', e=>{ if([BKEY,GKEY,MKEY].includes(e.key)) tick(); });
-  setInterval(tick, 800);
-
-  window.addEventListener('keydown', e=>{
-    if(e.key==='ArrowRight') go(idx+1,true);
-    else if(e.key==='ArrowLeft') go(idx-1,true);
-    else if(e.key==='Home') go(0,true);
-    else if(e.key==='End') go((data.matches?.length||1)-1,true);
-    else if(e.key.toLowerCase()==='u') go(firstUnfinished(),true);
+  // keyboard arrows
+  window.addEventListener('keydown',e=>{
+    if(e.key==='ArrowLeft') step(-1);
+    if(e.key==='ArrowRight') step(+1);
   });
 
-  (async ()=>{
-    data=readBuilder();
-    if(!Number.isFinite(startIndex)) {
-      if(!localStorage.getItem(IDXK)) idx=firstUnfinished();
+  // react to admin changes
+  window.addEventListener('storage',e=>{
+    if(!e.key) return;
+    if([BKEY,GKEY,MKEY].includes(e.key)){
+      const h=hash(sget(BKEY) || {games:sget(GKEY)||[],matches:sget(MKEY)||[]});
+      if(h!==lastHash){
+        data = readBuilder();
+        lastHash=h;
+        render();
+        backfillImages();
+      }
     }
-    saveIdx(idx);
-    lastHash=hash(data);
-    await backfillImages();
-    render();
-  })();
+  });
+
+  // gentle polling (in case same-tab updates occur)
+  setInterval(()=>{
+    const h=hash(sget(BKEY) || {games:sget(GKEY)||[],matches:sget(MKEY)||[]});
+    if(h!==lastHash){
+      data = readBuilder();
+      lastHash=h;
+      render();
+      backfillImages();
+    }
+  }, 2500);
 })();
 </script>
 </body>
