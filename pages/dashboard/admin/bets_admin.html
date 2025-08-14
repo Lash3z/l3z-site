@@ -158,7 +158,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
 (function(){
   "use strict";
 
-  // ---------- helpers ----------
+  // helpers
   const els=(s,r=document)=>Array.from(r.querySelectorAll(s));
   const el=(s,r=document)=>r.querySelector(s);
   function sget(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null;}catch{ return null; } }
@@ -167,40 +167,41 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   function kid(p){ return (p||'ID')+Math.random().toString(36).slice(2,10).toUpperCase(); }
   function toast(t,ok){ el('#msg').textContent=t; el('#msg').style.color = ok===false ? '#ff9aa7' : '#baffea'; setTimeout(()=>{ el('#msg').textContent=''; }, 2200); }
 
-  // ---------- ABSOLUTE ASSET PATH FIX (Bets Admin only) ----------
-  // Ensures any "assets/..." path is absolute from site root and fixes "slot images" vs "slot_images".
+  // ABSOLUTE ASSET PATH FIX (Bets Admin only)
   function assetPath(p){
     if(!p) return '';
     let s=String(p).trim();
-    s=s.replace(/slot[ _]images\//gi,'slot_images/');           // normalize folder name
-    if(s.startsWith('./')) s=s.slice(1);
-    // If someone saved full URL or already absolute, keep it.
-    if(/^https?:\/\//i.test(s) || s.startsWith('/')) return s;
-    // Most BG Admin saves "assets/slot_images/…"
-    if(s.startsWith('assets/')) return '/'+s;
-    // If something odd came like "pages/dashboard/admin/assets/…", strip prefix:
+    // normalize folder spelling/spacing
+    s=s.replace(/slot[ _]images\//gi,'slot_images/');
+    // strip page prefix if present
     s=s.replace(/^pages\/dashboard\/admin\//,'');
+    // keep http(s) or already-absolute
+    if(/^https?:\/\//i.test(s) || s.startsWith('/')) return s;
+    // ensure assets start from root
     if(s.startsWith('assets/')) return '/'+s;
-    return s; // fallback (won't 404 if already good)
+    return s;
   }
 
-  // ---------- keys ----------
+  // keys
   const K_UNIFIED='sb:markets:unified';
   const K_BG_BUILDER='bg:builder:battleground';
 
-  // ---------- title normalizer + resolvers ----------
+  // title normalizer + resolvers
   const normTitle=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
   function mapById(games){ const m=new Map(); (games||[]).forEach(g=>m.set(g.id,g)); return m; }
   function mapByTitle(games){ const m=new Map(); (games||[]).forEach(g=>m.set(normTitle(g.title),g)); return m; }
   function resolveSide(mxSideTitle, mxSideImg, mxSideId, byId, byTitle){
     const fromId = mxSideId && byId.get(mxSideId);
     const fromTitle = byTitle.get(normTitle(mxSideTitle||'')) || null;
-    const imgRaw = mxSideImg || (fromId&&(fromId.imageUrl||fromId.image)) || (fromTitle&&(fromTitle.imageUrl||fromTitle.image)) || '';
+    const imgRaw =
+      mxSideImg ||
+      (fromId && (fromId.imageUrl||fromId.image)) ||
+      (fromTitle && (fromTitle.imageUrl||fromTitle.image)) || '';
     const prov = (fromId&&fromId.provider) || (fromTitle&&fromTitle.provider) || '';
-    return {img:assetPath(imgRaw), prov};
+    return {img:assetPath(imgRaw),prov};
   }
 
-  // ---------- state ----------
+  // state
   let state = sget(K_UNIFIED) || {
     status:'open', lastUpdated:0,
     sections:{
@@ -210,7 +211,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     }
   };
 
-  // ---------- toggles ----------
+  // toggles
   function syncToggles(){
     el('#enBG').checked=!!state.sections.battleground.enabled;
     el('#enBONUS').checked=!!state.sections.bonus.enabled;
@@ -225,24 +226,21 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   el('#enBONUS').addEventListener('change',()=>{ state.sections.bonus.enabled=el('#enBONUS').checked; save(); syncToggles(); paintAll(); });
   el('#enPVP').addEventListener('change',()=>{ state.sections.pvp.enabled=el('#enPVP').checked; save(); syncToggles(); paintAll(); });
 
-  // ---------- paint ----------
+  // paint
   function paintAll(){ paintH2H(); paintMkts('battleground','#bgMkts'); paintMkts('bonus','#boMkts'); paintMkts('pvp','#pvMkts'); }
-
   function paintH2H(){
     const sec=state.sections.battleground, box=el('#bgH2H'); box.innerHTML='';
     if(!sec.h2h.length){ box.innerHTML='<div class="pill">No H2H yet. Import → Build/Refresh.</div>'; return; }
     sec.h2h.forEach((h,idx)=>{
-      const leftImg = assetPath(h.leftImg);
-      const rightImg= assetPath(h.rightImg);
-      const L='<div class="side"><div class="thumb">'+(leftImg?('<img src="'+esc(leftImg)+'" alt="">'):'')+'</div><div><div class="title">'+esc(h.leftTitle||'LEFT')+'</div><div class="prov">'+esc(h.leftProv||'')+'</div><div class="oddBox"><span class="small">Odds</span> <input data-k="l'+idx+'" type="number" step="0.01" value="'+esc(h.leftOdds||1.84)+'" style="width:110px"></div></div></div>';
-      const R='<div class="side"><div class="thumb">'+(rightImg?('<img src="'+esc(rightImg)+'" alt="">'):'')+'</div><div><div class="title">'+esc(h.rightTitle||'RIGHT')+'</div><div class="prov">'+esc(h.rightProv||'')+'</div><div class="oddBox"><span class="small">Odds</span> <input data-k="r'+idx+'" type="number" step="0.01" value="'+esc(h.rightOdds||1.84)+'" style="width:110px"></div></div></div>';
+      const LIMG=assetPath(h.leftImg); const RIMG=assetPath(h.rightImg);
+      const L='<div class="side"><div class="thumb">'+(LIMG?('<img src="'+esc(LIMG)+'" alt="">'):'')+'</div><div><div class="title">'+esc(h.leftTitle||'LEFT')+'</div><div class="prov">'+esc(h.leftProv||'')+'</div><div class="oddBox"><span class="small">Odds</span> <input data-k="l'+idx+'" type="number" step="0.01" value="'+esc(h.leftOdds||1.84)+'" style="width:110px"></div></div></div>';
+      const R='<div class="side"><div class="thumb">'+(RIMG?('<img src="'+esc(RIMG)+'" alt="">'):'')+'</div><div><div class="title">'+esc(h.rightTitle||'RIGHT')+'</div><div class="prov">'+esc(h.rightProv||'')+'</div><div class="oddBox"><span class="small">Odds</span> <input data-k="r'+idx+'" type="number" step="0.01" value="'+esc(h.rightOdds||1.84)+'" style="width:110px"></div></div></div>';
       const row=document.createElement('div'); row.className='h2h'; row.innerHTML=L+R;
       row.querySelector('[data-k="l'+idx+'"]').addEventListener('change',e=>{ sec.h2h[idx].leftOdds=+e.target.value||1; save(); });
       row.querySelector('[data-k="r'+idx+'"]').addEventListener('change',e=>{ sec.h2h[idx].rightOdds=+e.target.value||1; save(); });
       box.appendChild(row);
     });
   }
-
   function paintMkts(section, mount){
     const sec=state.sections[section]; const host=el(mount); host.innerHTML='';
     if(!sec.overall.length){ host.innerHTML='<div class="pill">No markets yet. Use the buttons above.</div>'; return; }
@@ -287,7 +285,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     });
   }
 
-  // ---------- creators ----------
+  // creators
   function addOU(sec){ sec.overall.push({id:kid('OU'),type:'OVER_UNDER',label:'Over / Under',status:'open',line:65.5,selections:[{id:kid('SEL'),label:'Over 65.5',odds:1.84},{id:kid('SEL'),label:'Under 65.5',odds:1.84}]}); save(); paintAll(); }
   function addMR(sec){ sec.overall.push({id:kid('MR'),type:'MULTI_RANGE',label:'Total Games Played',status:'open',selections:[{id:kid('SEL'),label:'48–55.5',odds:17},{id:kid('SEL'),label:'56–63.5',odds:3.4},{id:kid('SEL'),label:'64–71.5',odds:1.7},{id:kid('SEL'),label:'72–80',odds:4.25}]}); save(); paintAll(); }
   function addYN(sec){ sec.overall.push({id:kid('YN'),type:'YES_NO',label:'Yes / No',status:'open',selections:[{id:kid('SEL'),label:'Yes',odds:1.84},{id:kid('SEL'),label:'No',odds:1.84}]}); save(); paintAll(); }
@@ -300,7 +298,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   }
   function addGB(sec){ sec.overall.push({id:kid('GB'),type:'NUMERIC_GUESS',label:'Guess the Final Balance',status:'open',start:0,min:0,max:1000,step:1,unit:'$',prize:0,final:null,winners:[]}); save(); paintAll(); }
 
-  // ---------- entries / settling ----------
+  // entries / settling
   function entriesKey(section, marketId){ return 'sb:entries:'+section+':'+marketId; }
   function getEntries(section, marketId){ return sget(entriesKey(section, marketId)) || []; }
   function settleNumericGuess(section, mi){
@@ -321,7 +319,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     toast('Awards prepared ('+awards.length+')');
   }
 
-  // ---------- import from BG Admin ----------
+  // import from BG Admin — normalize image paths for Bets Admin
   async function importBG(){
     let used=''; const builder=sget(K_BG_BUILDER);
     if(builder && Array.isArray(builder.matches) && builder.matches.length){
@@ -339,6 +337,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   }
 
   function acceptMatches(arr, games, used, alreadyNorm){
+    // persist games alongside matches so Build step can resolve
     const b = sget(K_BG_BUILDER)||{games:[],matches:[]};
     b.games = Array.isArray(games) ? games : (b.games||[]);
     b.matches = (alreadyNorm ? arr : arr.map((mx,i)=>({
@@ -375,7 +374,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
         matchId: mx.id,
         leftId: mx.leftId||null, rightId: mx.rightId||null,
         leftTitle, rightTitle,
-        leftImg: L.img, rightImg: R.img,
+        leftImg: assetPath(L.img), rightImg: assetPath(R.img),
         leftProv: L.prov||'', rightProv: R.prov||'',
         leftOdds: (prev[mx.id]?.leftOdds)||1.84, rightOdds:(prev[mx.id]?.rightOdds)||1.84
       };
@@ -383,11 +382,11 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     save(); paintH2H(); toast('H2H built (images resolved)');
   }
 
-  // ---------- save/publish ----------
+  // save/publish
   function save(){ sset(K_UNIFIED,state); }
   function publish(){ state.lastUpdated=Date.now(); save(); el('#stamp').textContent='Last publish @ '+new Date(state.lastUpdated).toLocaleTimeString(); toast('Published to players'); }
 
-  // ---------- wire ----------
+  // wire
   el('#btnSave').addEventListener('click',()=>{ save(); toast('Saved'); });
   el('#btnPublish').addEventListener('click',publish);
   el('#btnOpenAll').addEventListener('click',()=>{ state.status='open'; save(); syncToggles(); });
@@ -413,7 +412,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   el('#pvAddYN').addEventListener('click',()=>addYN(state.sections.pvp));
   el('#pvAddCU').addEventListener('click',()=>addCU(state.sections.pvp));
 
-  // ---------- boot ----------
+  // boot
   syncToggles(); paintAll(); if(state.lastUpdated){ el('#stamp').textContent='Last publish @ '+new Date(state.lastUpdated).toLocaleTimeString(); }
 })();
 </script>
