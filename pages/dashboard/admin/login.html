@@ -5,42 +5,87 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Admin Login • LASH3Z</title>
   <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
+  <meta http-equiv="Cache-Control" content="no-store"/>
   <style>
-    body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:#0b1113;color:#eaf7ff;display:flex;align-items:center;justify-content:center;min-height:100vh}
+    body{margin:0;font-family:Segoe UI,system-ui,Arial,sans-serif;background:#0b1113;color:#eaf7ff;display:flex;align-items:center;justify-content:center;min-height:100vh}
     .card{background:rgba(0,0,0,.75);border:1px solid rgba(0,255,255,.2);border-radius:14px;padding:22px;width:320px;box-shadow:0 0 18px rgba(0,255,255,.15)}
     h1{font-size:18px;margin:0 0 12px;color:#00ffff}
     label{display:block;font-size:12px;opacity:.85;margin:10px 0 6px}
     input{width:100%;padding:10px;border-radius:10px;border:1px solid #1b1b1b;background:#061214;color:#eaf7ff}
-    button{margin-top:14px;width:100%;padding:10px;border-radius:10px;border:1px solid rgba(0,255,255,.25);background:#132026;color:#cfe;cursor:pointer}
-    button:hover{background:#173038}
-    .ok{color:#9effa4;margin-top:10px;display:none}
-    .err{color:#ff8080;margin-top:10px;display:none}
+    button{margin-top:14px;width:100%;padding:10px;border-radius:10px;border:1px solid rgba(0,255,255,.25);background:#103d30;border-color:#1fa37b;color:#cfe;cursor:pointer;font-weight:800}
+    button[disabled]{opacity:.6;cursor:not-allowed}
+    .msg{margin-top:10px;font-size:12px;min-height:16px}
+    .msg.bad{color:#ff9aa7}
+    .msg.ok{color:#9effa4}
   </style>
 </head>
 <body>
   <div class="card">
     <h1>Admin Login</h1>
-    <label>Username</label>
-    <input id="u" autocomplete="username">
-    <label>Password</label>
-    <input id="p" type="password" autocomplete="current-password">
+    <label for="u">Username</label>
+    <input id="u" autocomplete="username" />
+    <label for="p">Password</label>
+    <input id="p" type="password" autocomplete="current-password" />
     <button id="loginBtn">Sign in</button>
-    <div id="ok" class="ok">Logged in. You can close this tab.</div>
-    <div id="err" class="err">Bad credentials.</div>
+    <div id="m" class="msg"></div>
   </div>
+
   <script>
-    document.getElementById('loginBtn').addEventListener('click', async () => {
-      const user = document.getElementById('u').value.trim();
-      const pass = document.getElementById('p').value;
-      const res = await fetch('/api/admin/login.html', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ user, pass }),
-        credentials:'include'
-      });
-      document.getElementById('ok').style.display = res.ok ? 'block' : 'none';
-      document.getElementById('err').style.display = res.ok ? 'none'  : 'block';
-    });
+  (function(){
+    "use strict";
+    const $ = s => document.querySelector(s);
+    const btn = $("#loginBtn");
+    const msg = $("#m");
+    const NEXT = new URLSearchParams(location.search).get("next") || "/pages/dashboard/admin/admin_hub.html";
+
+    function setMsg(text, ok){
+      msg.textContent = text || "";
+      msg.className = "msg " + (ok ? "ok" : "bad");
+    }
+
+    async function doLogin(){
+      const user = ($("#u").value || "").trim();
+      const pass = $("#p").value || "";
+      if(!user || !pass){ setMsg("Enter both fields", false); return; }
+
+      btn.disabled = true; setMsg("Signing in…", true);
+      try{
+        const res = await fetch("/api/admin/gate/login", {
+          method: "POST",
+          credentials: "include",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({ username: user, password: pass })
+        });
+        const j = await res.json().catch(()=> ({}));
+        if(res.ok && j && j.ok){
+          // Optional UX-only cache so other pages can fade in fast (not security)
+          try{
+            localStorage.setItem("l3z:session", JSON.stringify({
+              user: (user||"ADMIN").toString().toUpperCase(),
+              isAdmin: true,
+              expiresAt: Date.now()+7*24*60*60*1000
+            }));
+            localStorage.setItem("admin:token", JSON.stringify({
+              by: user||"ADMIN",
+              ts: Date.now(),
+              expiresAt: Date.now()+12*60*60*1000
+            }));
+          }catch(_){}
+          setMsg("Logged in. Redirecting…", true);
+          location.href = NEXT;
+        }else{
+          setMsg("Wrong username or password", false);
+        }
+      }catch{
+        setMsg("Login failed (network)", false);
+      }finally{
+        btn.disabled = false;
+      }
+    }
+
+    btn.addEventListener("click", doLogin);
+    document.addEventListener("keydown", e => { if(e.key === "Enter") doLogin(); });
+  })();
   </script>
 </body>
 </html>
