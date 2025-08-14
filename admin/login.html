@@ -3,34 +3,163 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Admin Login � LASH3Z</title>
+  <title>Admin Login • LASH3Z</title>
   <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
-  <style>body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:#0b1113;color:#eaf7ff;display:flex;align-items:center;justify-content:center;min-height:100vh}.card{background:rgba(0,0,0,.75);border:1px solid rgba(0,255,255,.2);border-radius:14px;padding:22px;width:320px;box-shadow:0 0 18px rgba(0,255,255,.15)}h1{font-size:18px;margin:0 0 12px;color:#00ffff}label{display:block;font-size:12px;opacity:.85;margin:10px 0 6px}input{width:100%;padding:10px;border-radius:10px;border:1px solid #1b1b1b;background:#061214;color:#eaf7ff}button{margin-top:14px;width:100%;padding:10px;border-radius:10px;border:1px solid rgba(0,255,255,.25);background:#132026;color:#cfe;cursor:pointer}button:hover{background:#173038}.ok{color:#9effa4;margin-top:10px;display:none}.err{color:#ff8080;margin-top:10px;display:none}</style>
+  <style>
+    :root{ --glass:rgba(0,0,0,.75); --line:rgba(0,255,255,.2); --ink:#eaf7ff; --cyan:#00ffff; }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100vh;background:#0b1113;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+    .card{width:340px;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 0 18px rgba(0,255,255,.15)}
+    h1{font-size:18px;margin:0 0 12px;color:var(--cyan)}
+    label{display:block;font-size:12px;opacity:.9;margin:10px 0 6px}
+    input{width:100%;padding:10px;border-radius:10px;border:1px solid #1b1b1b;background:#061214;color:var(--ink)}
+    button{margin-top:14px;width:100%;padding:10px;border-radius:10px;border:1px solid rgba(0,255,255,.25);background:#132026;color:#cfe;cursor:pointer}
+    button:hover{background:#173038}
+    .row{display:flex;gap:10px;align-items:center;margin-top:10px}
+    .row a, .row button.secondary{flex:1;text-align:center;padding:10px;border-radius:10px;border:1px solid rgba(0,255,255,.25);background:#0f1b1f;color:#cfe;text-decoration:none;display:inline-block}
+    .ok{color:#9effa4;margin-top:10px;display:none}
+    .err{color:#ff8080;margin-top:10px;display:none}
+    .muted{opacity:.8;font-size:12px;margin-top:6px}
+  </style>
 </head>
 <body>
+<div class="wrap">
   <div class="card">
     <h1>Admin Login</h1>
-    <label>Username</label>
-    <input id="u" autocomplete="username">
-    <label>Password</label>
-    <input id="p" type="password" autocomplete="current-password">
-    <button id="loginBtn">Sign in</button>
-    <div id="ok" class="ok">Logged in. You can close this tab.</div>
-    <div id="err" class="err">Bad credentials.</div>
+
+    <form id="form" novalidate>
+      <label for="u">Username</label>
+      <input id="u" autocomplete="username" required>
+      <label for="p">Password</label>
+      <input id="p" type="password" autocomplete="current-password" required>
+      <button id="loginBtn" type="submit">Sign in</button>
+    </form>
+
+    <div id="ok" class="ok">Admin unlocked. Redirecting…</div>
+    <div id="err" class="err"></div>
+
+    <div class="row" id="afterActions" style="display:none">
+      <a id="toHub" href="/pages/dashboard/admin/admin_hub.html">Go to Admin Hub</a>
+      <button id="logoutBtn" class="secondary" type="button">Log out</button>
+    </div>
+
+    <div id="status" class="muted"></div>
   </div>
-  <script>
-    document.getElementById('loginBtn').addEventListener('click', async () => {
-      const user = document.getElementById('u').value.trim();
-      const pass = document.getElementById('p').value;
-      const res = await fetch('/api/admin/login', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ user, pass }),
-        credentials:'include'
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // Use injected API base if present (server injects window.API_BASE + /assets/api-base.js)
+  const API = (typeof window!=="undefined" && window.API_BASE) ? window.API_BASE : "";
+
+  const qs = new URLSearchParams(location.search);
+  const redirectTarget = qs.get("redirect") || "/pages/dashboard/admin/admin_hub.html";
+
+  const form  = document.getElementById("form");
+  const U     = document.getElementById("u");
+  const P     = document.getElementById("p");
+  const btn   = document.getElementById("loginBtn");
+  const okEl  = document.getElementById("ok");
+  const errEl = document.getElementById("err");
+  const stat  = document.getElementById("status");
+  const actions = document.getElementById("afterActions");
+  const toHub = document.getElementById("toHub");
+  const logoutBtn = document.getElementById("logoutBtn");
+
+  toHub.href = redirectTarget;
+
+  function showErr(msg){
+    errEl.textContent = msg || "Bad credentials.";
+    errEl.style.display = "block";
+    okEl.style.display = "none";
+  }
+  function showOk(msg){
+    okEl.textContent = msg || "Admin unlocked.";
+    okEl.style.display = "block";
+    errEl.style.display = "none";
+  }
+  function setBusy(b){
+    btn.disabled = b;
+    btn.textContent = b ? "Signing in…" : "Sign in";
+  }
+
+  async function checkStatus(autoRedirect=true){
+    try{
+      const r = await fetch(API + "/api/admin/gate/check", { credentials:"include" });
+      if(!r.ok) throw 0;
+      const j = await r.json();
+      if(j.admin){
+        const until = j.exp ? new Date(j.exp).toLocaleString() : "";
+        stat.textContent = "Admin is currently unlocked" + (until? " (until "+until+")":"") + ".";
+        actions.style.display = "";
+        if(autoRedirect) location.replace(redirectTarget);
+        return true;
+      }else{
+        stat.textContent = "Admin is locked. Sign in below using your admin username/password.";
+        actions.style.display = "none";
+        return false;
+      }
+    }catch{
+      stat.textContent = "Unable to check admin status. You can still try to sign in.";
+      actions.style.display = "none";
+      return false;
+    }
+  }
+
+  form.addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    const username = (U.value||"").trim();
+    const password = (P.value||"").trim();
+    if(username.length < 3 || password.length < 3){
+      return showErr("Please enter a valid username and password.");
+    }
+    setBusy(true);
+    try{
+      // IMPORTANT: endpoint + field names that your server actually expects
+      const res = await fetch(API + "/api/admin/gate/login", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        credentials:"include",
+        body: JSON.stringify({ username, password })
       });
-      document.getElementById('ok').style.display = res.ok ? 'block' : 'none';
-      document.getElementById('err').style.display = res.ok ? 'none'  : 'block';
-    });
-  </script>
+      const data = await res.json().catch(()=> ({}));
+      if(res.ok && data && data.ok){
+        showOk("Admin unlocked. Redirecting…");
+        // optional: remember username for convenience
+        try{ localStorage.setItem("lash3z_last_user", username.toUpperCase()); }catch{}
+        setTimeout(()=> location.replace(redirectTarget), 400);
+      }else{
+        const msg = (data && data.error) ? String(data.error) : "Bad credentials.";
+        showErr(msg === "bad_credentials" ? "Wrong username or password." : msg);
+      }
+    }catch(err){
+      showErr("Network error. Please try again.");
+    }finally{
+      setBusy(false);
+    }
+  });
+
+  logoutBtn.addEventListener("click", async ()=>{
+    try{
+      await fetch(API + "/api/admin/gate/logout", { method:"POST", credentials:"include" });
+    }catch{}
+    actions.style.display = "none";
+    showOk("Logged out. Admin locked.");
+    stat.textContent = "Admin is locked. Sign in below using your admin username/password.";
+  });
+
+  // Prefill last user if available
+  try{
+    const last = localStorage.getItem("lash3z_last_user");
+    if(last && !U.value) U.value = last;
+  }catch{}
+
+  // On load, if already unlocked, bounce to hub
+  checkStatus(true);
+})();
+</script>
 </body>
 </html>
