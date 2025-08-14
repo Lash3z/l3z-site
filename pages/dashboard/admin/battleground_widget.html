@@ -86,8 +86,8 @@
     document.documentElement.style.backgroundAttachment = 'fixed';
   }
 
-  // ===== Image resolver (title → /assets/slot images/xxxx.png) =====
-  const IMG_BASES=['assets/slot images/','../assets/slot images/','/assets/slot images/'];
+  // ===== Image resolver (title → /assets/slot_images/xxxx.png) =====
+  const IMG_BASES=['assets/slot_images/','../assets/slot_images/','/assets/slot_images/'];
   const IMG_EXT=['png','webp','jpg','jpeg']; // prefer PNG
   let IMG_INDEX=null;
   const IMG_CACHE=new Map(); // key -> url or ''
@@ -268,13 +268,11 @@
     `;
     requestAnimationFrame(()=>cardEl.classList.add('show'));
 
-    // click navigation
     const prevBtn = document.getElementById('goPrev');
     const nextBtn = document.getElementById('goNext');
     if(prevBtn) prevBtn.onclick = ()=> go(idx-1, true);
     if(nextBtn) nextBtn.onclick = ()=> go(idx+1, true);
 
-    // auto-jump to next unfinished when winner is set
     if(autoNext && mx.winnerId){
       const jump = nextUnfinished(idx);
       if(jump!==idx) setTimeout(()=>go(jump,true), 1500);
@@ -284,7 +282,6 @@
   function go(i,animate){
     const len = data.matches?.length||0;
     if(!len) return;
-    // wrap around
     if(i<0) i=len-1; else if(i>=len) i=0;
     if(i===idx) return;
     idx=i; saveIdx(idx);
@@ -296,7 +293,6 @@
     const now=readBuilder(); const h=hash(now);
     if(h!==lastHash){
       data=now;
-      // on change, try to backfill missing images, then render
       await backfillImages();
       if(idx >= (data.matches?.length||0)) idx=firstUnfinished();
       lastHash=h;
@@ -304,11 +300,9 @@
     }
   }
 
-  // Live updates
   window.addEventListener('storage', e=>{ if([BKEY,GKEY,MKEY].includes(e.key)) tick(); });
   setInterval(tick, 800);
 
-  // Keyboard nav
   window.addEventListener('keydown', e=>{
     if(e.key==='ArrowRight') go(idx+1,true);
     else if(e.key==='ArrowLeft') go(idx-1,true);
@@ -317,9 +311,8 @@
     else if(e.key.toLowerCase()==='u') go(firstUnfinished(),true);
   });
 
-  // init
   data=readBuilder();
-  backfillImages().then(()=>{ /* ensure first render after possible image fill */ });
+  backfillImages();
   if(!Number.isFinite(startIndex)) {
     if(!localStorage.getItem(IDXK)) idx=firstUnfinished();
   }
