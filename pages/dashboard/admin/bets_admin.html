@@ -3,544 +3,445 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Bets Admin — Unified (Simple)</title>
+<title>Bets Admin — Unified (Simple: BG / Bonus / PVP)</title>
 <style>
-  :root{
-    --bg:#0b0f14;--panel:#11161d;--ink:#e9f1ff;--line:rgba(0,255,255,.18);
-    --accent:#16e1ff;--gold:#ffcc66;--red:#ff7a7a;--muted:#9fb1c7;
-  }
-  *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial,sans-serif}
-  h2,h3{margin:0 0 8px}
-  .wrap{max-width:1200px;margin:0 auto;padding:14px}
-  .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-  .btn{border:1px solid var(--line);background:#0e151b;color:var(--ink);padding:8px 12px;border-radius:10px;cursor:pointer}
-  .btn.primary{background:linear-gradient(180deg,#20e0ff,#00b9e8);color:#00121b;border:0;font-weight:800}
-  .btn.warn{background:#1a1010;border-color:#492626;color:#ffdfe1}
-  .btn.danger{background:#220f0f;color:#ffcaca;border-color:#3b1717}
-  .panel{background:linear-gradient(180deg,#0f141a,#0c1116);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:12px}
-  .grid{display:grid;gap:12px}
-  .row{display:flex;gap:8px;align-items:center}
-  input[type="number"],input[type="text"],select,textarea{
-    background:#0e141a;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:8px 10px
-  }
-  .small{font-size:12px;color:var(--muted)}
-  .list{max-height:480px;overflow:auto;border:1px dashed var(--line);border-radius:12px;padding:8px}
-  .card{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:8px;background:#0e141a}
-  .pill{padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:#0a1116;color:#9feaff;font-size:12px}
-  .right{margin-left:auto}
-  .soft{color:#9fb1c7}
-  .odd{width:80px}
-  .line{width:120px}
-  .w100{width:100%}
-  .title{font-weight:900;color:#ffdb8b}
-  .good{color:#9ff5c9}
-  .bad{color:#ffb5be}
-  .hr{height:1px;background:var(--line);margin:10px 0}
-  .hint{padding:8px 10px;border-left:3px solid #224b55;background:#0d171c;border-radius:8px;color:#cfe8ff}
-  details{border:1px solid var(--line);border-radius:14px;padding:8px;margin:12px 0;background:#0e1416}
-  details>summary{cursor:pointer;list-style:none;font-weight:900;color:#ffdb8b}
-  details>summary::-webkit-details-marker{display:none}
+:root{--bg:#060b0d;--panel:#0b1417;--ink:#eaf7ff;--muted:#9fd0d6;--line:rgba(0,255,255,.18);--teal:#00ffff;--gold:#ffb42d;--bad:#e25a6f;--ok:#12d48a}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+
+/* Hide content while admin check runs */
+html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
+
+.wrap{max-width:1400px;margin:0 auto;padding:16px 16px 64px}
+h1{margin:0 0 12px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
+.card{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#0f1720;color:#eaf7ff;font-weight:800;cursor:pointer}
+.btn.ok{background:#103d30;border-color:#1fa37b}
+.btn.danger{background:#2b1116;border-color:#7e2a3c}
+.pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cfffff}
+input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;color:#eaf7ff;padding:10px}
+.grid{display:grid;grid-template-columns:1fr;gap:16px}
+/* H2H rows */
+.h2hList{display:flex;flex-direction:column;gap:12px}
+.h2h{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.side{border:1px solid var(--line);border-radius:12px;background:#0c1519;padding:10px;display:grid;grid-template-columns:80px 1fr;gap:10px;align-items:center}
+.thumb{width:80px;height:108px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#000}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.title{font-weight:900}
+.prov{font-size:12px;color:#9fd0d6}
+.oddBox{margin-top:8px}
+.small{font-size:12px;color:#9fd0d6}
+.head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.badge{padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#081318;color:#bfe}
+.badge.lock{background:#231519;color:#ffc0cc;border-color:#7e2a3c}
+.sectionTitle{font-weight:900;margin-bottom:8px}
+/* markets */
+.mkts{display:flex;flex-direction:column;gap:12px}
+.mkt{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px}
+.mTop{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.selRow{display:grid;grid-template-columns:1fr 110px auto;gap:8px;margin:6px 0}
+.lineRow{display:flex;align-items:center;gap:8px;margin:4px 0}
+.del{border:1px solid var(--line);border-radius:10px;background:#2b1116;color:#ffd0d6;padding:8px 10px;cursor:pointer}
+.kv{display:flex;gap:8px;align-items:center}
+.kv b{color:var(--muted)}
+.hr{height:1px;background:var(--line);margin:10px 0}
+.toggleRow{display:flex;gap:12px;align-items:center}
+.toggleRow label{display:flex;gap:6px;align-items:center}
+.subtle{font-size:12px;color:var(--muted)}
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <!-- Global actions -->
-  <div class="bar">
-    <button class="btn primary" id="btnPublish">Publish to Players</button>
-    <button class="btn" id="btnOpenAll">Open All</button>
-    <button class="btn warn" id="btnLockAll">Lock All</button>
-    <button class="btn danger" id="btnDeleteAll">Delete All</button>
-    <span class="right small">Last publish: <span id="lastPub" class="soft">never</span></span>
+<!-- ========= AdminGate v2 (must be first in <body>) ========= -->
+<script>
+(function(){
+  "use strict";
+  const SESSION_KEY = "l3z:session";
+  const ADMIN_TOKEN = "admin:token";     // set by /pages/dashboard/admin/admin_login.html
+  const ADMIN_LOGIN = "/pages/dashboard/admin/admin_login.html";
+  const DASHBOARD  = "/index.html";      // where the “Dashboard” link should point
+  const MAX_AGE_MS = 12*60*60*1000;      // token lifetime (12h)
+
+  const H = document.documentElement;
+  H.setAttribute("data-admin","checking");
+
+  function sget(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null;}catch{ return null; } }
+  function isFresh(exp){ return typeof exp==="number" && Date.now()<exp; }
+
+  function ok(u){ H.removeAttribute("data-admin"); return true; }
+
+  function lock(){
+    H.removeAttribute("data-admin");
+    const s = document.createElement("style");
+    s.textContent = ".lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}.lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75);box-shadow:0 0 18px rgba(0,255,255,.15)}.lockcard h1{margin:0 0 10px;color:#cfe}.lockcard a{color:#7ad7ff;text-decoration:underline}";
+    document.head.appendChild(s);
+    document.body.innerHTML = '<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">Signed in elsewhere? Your unlock may have expired — it lasts for about 12 hours.</div><div style="margin-top:14px"><a href="'+DASHBOARD+'">Back to Dashboard</a></div></div></div>';
+    return false;
+  }
+
+  // 1) Local quick check
+  const sess = sget(SESSION_KEY);
+  const tok  = sget(ADMIN_TOKEN);
+  if (sess && sess.user && tok && isFresh(tok.expiresAt)) { ok(sess.user); return; }
+
+  // 2) Fallback to server session (optional)
+  fetch("/api/auth/session",{credentials:"include",cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{
+    const isAdmin = !!(j && (j.isAdmin || j.role==="admin" || j.admin===true));
+    if (isAdmin){
+      // mint/refresh a local token so subsequent pages open instantly
+      const u = (j.username || j.user || j.name || "").toString().toUpperCase() || "ADMIN";
+      localStorage.setItem(SESSION_KEY, JSON.stringify({user:u,isAdmin:true,expiresAt:Date.now()+7*24*60*60*1000}));
+      localStorage.setItem(ADMIN_TOKEN, JSON.stringify({by:u,ts:Date.now(),expiresAt:Date.now()+MAX_AGE_MS}));
+      ok(u);
+    }else{
+      lock();
+    }
+  }).catch(()=>lock());
+})();
+</script>
+<!-- ========= /AdminGate v2 ========= -->
+
+<div class="wrap">
+  <h1>Bets Admin — Unified (Simple)</h1>
+
+  <div class="card row" style="justify-content:space-between">
+    <div class="row">
+      <button id="btnSave" class="btn">Save</button>
+      <button id="btnPublish" class="btn ok">Publish to Players</button>
+      <button id="btnOpenAll" class="btn">Open All</button>
+      <button id="btnLockAll" class="btn">Lock All</button>
+      <button id="btnDelete" class="btn danger">Delete All</button>
+    </div>
+    <div class="row">
+      <span id="stamp" class="pill">Not published</span>
+      <span id="msg" class="pill">Ready</span>
+    </div>
   </div>
 
-  <!-- ========= Battleground ========= -->
-  <details open>
-    <summary>Battleground <span class="pill" id="bgState">OPEN</span></summary>
-    <div class="panel" style="margin-top:8px">
+  <div class="card toggleRow">
+    <label><input id="enBG" type="checkbox"> <b>Battleground</b></label>
+    <label><input id="enBONUS" type="checkbox"> <b>Bonus Hunt</b></label>
+    <label><input id="enPVP" type="checkbox"> <b>PVP Predictions</b></label>
+    <span class="subtle">Toggle sections on/off. Each section lets you add markets and lines. No gimmicks.</span>
+  </div>
 
-      <div class="bar">
-        <button class="btn" id="bgRefresh">Refresh from Builder</button>
-        <button class="btn" id="bgBuild">Build/Refresh H2H</button>
-        <button class="btn warn" id="bgToggle">Toggle OPEN/LOCKED</button>
+  <div class="grid">
+    <!-- Battleground section -->
+    <div id="secBG" class="card" style="display:none">
+      <div class="head">
+        <div class="sectionTitle">Battleground</div>
+        <div class="badge" id="statusBG">OPEN</div>
       </div>
-
-      <div class="card" style="flex-direction:column;align-items:stretch">
-        <div class="row" style="justify-content:space-between">
-          <div class="title">Matchups & Odds</div>
-          <div class="small">Source: <code>bg:admin:matches</code> • Total: <span id="bgMCount">0</span></div>
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div class="row">
+          <button class="btn" id="bgAddOU">+ Over/Under</button>
+          <button class="btn" id="bgAddMR">+ Multi-Range</button>
+          <button class="btn" id="bgAddYN">+ Yes/No</button>
+          <button class="btn" id="bgAddCU">+ Custom</button>
+          <button class="btn" id="bgAddCS">+ Which Matchup Clean Sweep?</button>
         </div>
-        <div id="bgMatches" class="list"></div>
-        <div class="hint">Set **odds only**. Scores are read from the builder and the **winner is computed automatically**.</div>
+        <div class="row">
+          <button class="btn" id="bgImport">Import Matchups</button>
+          <button class="btn" id="bgBuild">Build/Refresh H2H</button>
+        </div>
       </div>
-
       <div class="hr"></div>
-
-      <h3>Overall Markets</h3>
-      <div class="hint" id="bgOUHint" style="display:none"></div>
-
-      <div class="card">
-        <div class="title" style="min-width:140px">OVER / UNDER</div>
-        <label>Line <input id="bgOuLine" type="number" step="0.5" class="line"/></label>
-        <label class="row">Over odds <input id="bgOuOver" type="number" step="0.01" class="odd"/></label>
-        <label class="row">Under odds <input id="bgOuUnder" type="number" step="0.01" class="odd"/></label>
-        <select id="bgOuStatus"><option value="open">OPEN</option><option value="locked">LOCKED</option></select>
-        <button class="btn right" id="bgSaveOU">Save</button>
-      </div>
-
-      <div class="card" style="flex-direction:column;align-items:stretch">
-        <div class="row" style="justify-content:space-between">
-          <div class="title">Total Games Played — Multi Range</div>
-          <div class="row">
-            <label class="row">Status
-              <select id="bgMrStatus"><option value="open">OPEN</option><option value="locked">LOCKED</option></select>
-            </label>
-            <button class="btn" id="bgAutoRanges">Auto ranges</button>
-            <button class="btn" id="bgSaveMR">Save</button>
-          </div>
-        </div>
-        <div id="bgRanges" class="grid" style="grid-template-columns:1fr 1fr 1fr;margin-top:10px"></div>
-        <div class="small soft" style="margin-top:8px">“Auto ranges” proposes four buckets around the expected total games.</div>
-      </div>
-
-      <div class="grid" style="grid-template-columns:1fr 1fr 1fr">
-        <div class="card">
-          <div class="title">Expected per match</div>
-          <div class="small soft">Driving OU + ranges.</div>
-          <div class="row" style="margin-top:6px">
-            <input id="bgPerMatch" type="number" class="line" step="1" value="1"/>
-          </div>
-        </div>
-        <div class="card">
-          <div class="title">Computed totals</div>
-          <div class="small">Matchups: <span id="bgCM" class="good">0</span></div>
-          <div class="small">Expected total games: <span id="bgCT" class="good">0</span></div>
-        </div>
-        <div class="card">
-          <div class="title">Section state</div>
-          <div class="small">Battleground: <span id="bgSecState" class="soft">OPEN</span></div>
-        </div>
-      </div>
-
+      <div class="sectionTitle">Head-to-Head</div>
+      <div id="bgH2H" class="h2hList"></div>
+      <div class="kv"><b>Debug:</b> Last Import → <span id="dbgImport">none</span></div>
+      <div class="hr"></div>
+      <div class="sectionTitle">Overall Markets</div>
+      <div id="bgMkts" class="mkts"></div>
     </div>
-  </details>
 
-  <!-- ========= Bonus Hunt ========= -->
-  <details>
-    <summary>Bonus Hunt <span class="pill" id="bhState">OPEN</span></summary>
-    <div class="panel" style="margin-top:8px">
-      <div class="bar">
-        <button class="btn" id="bhSeed6">Enable 6 fixed markets</button>
-        <button class="btn" id="bhSaveOdds">Save fixed odds</button>
-        <button class="btn warn" id="bhToggle">Toggle OPEN/LOCKED</button>
+    <!-- Bonus Hunt section -->
+    <div id="secBONUS" class="card" style="display:none">
+      <div class="head">
+        <div class="sectionTitle">Bonus Hunt</div>
+        <div class="badge" id="statusBONUS">OPEN</div>
       </div>
-
-      <div class="card" style="flex-direction:column;align-items:stretch">
-        <div class="title">Fixed markets (TEXT_GUESS)</div>
-        <div class="small soft">Players type or click a slot name. Odds apply per-market.</div>
-        <div id="bhFixedWrap" class="grid" style="grid-template-columns:1fr 1fr;margin-top:8px"></div>
-      </div>
-
-      <div class="grid" style="grid-template-columns:1fr 1fr">
-        <div class="card" style="flex-direction:column;align-items:stretch">
-          <div class="title">Import slot list → Draft</div>
-          <div class="small soft">Paste lines like: <i>Slot Name | Provider</i></div>
-          <textarea id="bhPaste" placeholder="Big Bass Bonanza | Pragmatic&#10;Crystal Robot | Hacksaw" style="width:100%;min-height:140px;resize:vertical"></textarea>
-          <div class="row">
-            <button class="btn" id="bhParse">Parse to Draft</button>
-            <span class="small">Draft count: <span id="bhDraftCount">0</span></span>
-          </div>
-        </div>
-        <div class="card" style="flex-direction:column;align-items:stretch">
-          <div class="title">Draft → Live</div>
-          <div class="small soft">Publish for player chips/search on the Bonus Hunt tab.</div>
-          <div class="row" style="margin-top:6px">
-            <button class="btn primary" id="bhPublishList">Publish Draft to Live</button>
-            <span class="small">Live count: <span id="bhLiveCount">0</span></span>
-          </div>
-          <div class="hint" style="margin-top:8px">Player page reads <code>bh:live</code> (or falls back to <code>bh:draft</code>).</div>
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div class="row">
+          <button class="btn" id="boAddOU">+ Over/Under</button>
+          <button class="btn" id="boAddMR">+ Multi-Range</button>
+          <button class="btn" id="boAddYN">+ Yes/No</button>
+          <button class="btn" id="boAddCU">+ Custom</button>
+          <button class="btn" id="boAddGB">+ Guess the Balance</button>
         </div>
       </div>
+      <div class="hr"></div>
+      <div id="boMkts" class="mkts"></div>
     </div>
-  </details>
 
-  <!-- ========= PVP ========= -->
-  <details>
-    <summary>PVP <span class="pill" id="pvpState">OPEN</span></summary>
-    <div class="panel" style="margin-top:8px">
-      <div class="bar">
-        <button class="btn" id="pvpSeedFighters">Seed Fighters</button>
-        <button class="btn" id="pvpBuild">Build/Refresh H2H</button>
-        <button class="btn warn" id="pvpToggle">Toggle OPEN/LOCKED</button>
+    <!-- PVP section -->
+    <div id="secPVP" class="card" style="display:none">
+      <div class="head">
+        <div class="sectionTitle">PVP Predictions</div>
+        <div class="badge" id="statusPVP">OPEN</div>
       </div>
-      <div class="grid" style="grid-template-columns:1fr 1fr">
-        <div>
-          <h3>Fighters</h3>
-          <div class="small soft">Click two → “Add Match”.</div>
-          <div class="row" style="margin:6px 0 10px">
-            <input id="pvpNew" class="w100" placeholder="Add fighter name"/>
-            <button class="btn" id="pvpAddF">Add</button>
-            <button class="btn" id="pvpAddPair">+ Add Match (pair selected)</button>
-          </div>
-          <div id="pvpFList" class="list"></div>
-        </div>
-        <div>
-          <div class="row" style="justify-content:space-between">
-            <h3>Matchups</h3>
-            <div class="small">Total: <span id="pvpMCount">0</span></div>
-          </div>
-          <div id="pvpMatches" class="list"></div>
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div class="row">
+          <button class="btn" id="pvAddOU">+ Over/Under</button>
+          <button class="btn" id="pvAddMR">+ Multi-Range</button>
+          <button class="btn" id="pvAddYN">+ Yes/No</button>
+          <button class="btn" id="pvAddCU">+ Custom</button>
         </div>
       </div>
+      <div class="hr"></div>
+      <div id="pvMkts" class="mkts"></div>
     </div>
-  </details>
-
+  </div>
 </div>
 
 <script>
 (function(){
   "use strict";
 
-  // ===== storage keys =====
-  const K_UNIFIED="sb:markets:unified";
-  const K_LAST_PUB="sb:lastPublishTs";
+  // ---------- helpers ----------
+  const els = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
+  const el  = (sel,root=document)=>root.querySelector(sel);
+  function sget(k){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch(_){ return null; } }
+  function sset(k,v){ localStorage.setItem(k,JSON.stringify(v)); }
+  function esc(s){ s=String(s==null?'':s); return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;'); }
+  function kid(p){ return (p||'ID')+Math.random().toString(36).slice(2,10).toUpperCase(); }
+  function toast(t,ok){ el('#msg').textContent=t; el('#msg').style.color = ok===false ? '#ff9aa7' : '#baffea'; setTimeout(()=>{ el('#msg').textContent=''; }, 2200); }
 
-  // battleground admin (builder) store — single source of truth for H2H + scores
-  const K_BG_MATCHES="bg:admin:matches";
+  // ---------- storage keys ----------
+  const K_UNIFIED = 'sb:markets:unified';
+  const K_BG_BUILDER = 'bg:builder:battleground';
 
-  // bonus hunt lists
-  const K_BH_DRAFT="bh:draft";
-  const K_BH_LIVE="bh:live";
-
-  // pvp scratch
-  const K_PVP_F="pvp:fighters";
-  const K_PVP_MATCHES="pvp:admin:matches";
-  const K_PVP_SELECTED="pvp:selected";
-
-  // helpers
-  const $=(q,r)=> (r||document).querySelector(q);
-  const $all=(q,r)=> Array.from((r||document).querySelectorAll(q));
-  const sget=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}};
-  const sset=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
-  const clamp2=x=> Math.max(1,Math.round(Number(x||1.84)*100)/100);
-
-  let unified = sget(K_UNIFIED) || {
-    sections:{
-      battleground:{status:"open",overall:[],h2h:[]},
-      bonus:{status:"open",overall:[]},
-      pvp:{status:"open",overall:[],h2h:[]}
+  // ---------- state ----------
+  let state = sget(K_UNIFIED) || {
+    status: 'open', lastUpdated: 0,
+    sections: {
+      battleground: { enabled:false, h2h:[], overall:[] },
+      bonus:        { enabled:false, overall:[] },
+      pvp:          { enabled:false, overall:[] }
     }
   };
 
-  // GLOBAL
-  function paintGlobal(){
-    $("#lastPub").textContent = sget(K_LAST_PUB)? new Date(sget(K_LAST_PUB)).toLocaleString() : "never";
-  }
-  $("#btnPublish").addEventListener("click", ()=>{
-    // always rebuild H2H from builder matches before publishing
-    buildBattlegroundH2H();
-    sset(K_UNIFIED,unified);
-    sset(K_LAST_PUB,Date.now());
-    paintGlobal();
-    alert("Published to players.");
-  });
-  $("#btnOpenAll").addEventListener("click", ()=>{
-    Object.values(unified.sections).forEach(sec=>{
-      (sec.overall||[]).forEach(m=> m.status="open");
-      (sec.h2h||[]).forEach(m=> m.status="open");
-      sec.status="open";
-    });
-    sset(K_UNIFIED,unified); paintAllStates();
-  });
-  $("#btnLockAll").addEventListener("click", ()=>{
-    Object.values(unified.sections).forEach(sec=>{
-      (sec.overall||[]).forEach(m=> m.status="locked");
-      (sec.h2h||[]).forEach(m=> m.status="locked");
-      sec.status="locked";
-    });
-    sset(K_UNIFIED,unified); paintAllStates();
-  });
-  $("#btnDeleteAll").addEventListener("click", ()=>{
-    if(!confirm("Delete ALL markets across all sections?")) return;
-    Object.values(unified.sections).forEach(sec=>{sec.overall=[];sec.h2h=[];});
-    sset(K_UNIFIED,unified); paintAllStates();
-  });
-  function paintAllStates(){
-    const bg=unified.sections.battleground||{};
-    $("#bgState").textContent=(bg.status||"open").toUpperCase();
-    $("#bgSecState").textContent=(bg.status||"open").toUpperCase();
-    $("#bhState").textContent=(unified.sections.bonus.status||"open").toUpperCase();
-    $("#pvpState").textContent=(unified.sections.pvp.status||"open").toUpperCase();
+  // ---------- init toggles ----------
+  function syncToggles(){
+    el('#enBG').checked = !!state.sections.battleground.enabled;
+    el('#enBONUS').checked = !!state.sections.bonus.enabled;
+    el('#enPVP').checked = !!state.sections.pvp.enabled;
+    el('#secBG').style.display = state.sections.battleground.enabled ? '' : 'none';
+    el('#secBONUS').style.display = state.sections.bonus.enabled ? '' : 'none';
+    el('#secPVP').style.display = state.sections.pvp.enabled ? '' : 'none';
+    el('#statusBG').textContent = (state.status||'open').toUpperCase();
+    el('#statusBONUS').textContent = (state.status||'open').toUpperCase();
+    el('#statusPVP').textContent = (state.status||'open').toUpperCase();
   }
 
-  // ===== Battleground (auto from builder)
-  const bg=()=> (unified.sections.battleground ||= {status:"open",overall:[],h2h:[]});
-  const bgMatches=()=> sget(K_BG_MATCHES)||[];
+  el('#enBG').addEventListener('change',()=>{ state.sections.battleground.enabled = el('#enBG').checked; save(); syncToggles(); paintAll(); });
+  el('#enBONUS').addEventListener('change',()=>{ state.sections.bonus.enabled = el('#enBONUS').checked; save(); syncToggles(); paintAll(); });
+  el('#enPVP').addEventListener('change',()=>{ state.sections.pvp.enabled = el('#enPVP').checked; save(); syncToggles(); paintAll(); });
 
-  function winnerFrom(m){
-    const a = Number(m.scoreA); const b = Number(m.scoreB);
-    if(Number.isFinite(a) && Number.isFinite(b)){
-      if(a>b) return "A";
-      if(b>a) return "B";
-      return "DRAW";
-    }
-    return null;
-  }
+  // ---------- painting ----------
+  function paintAll(){ paintH2H(); paintMkts('battleground', '#bgMkts'); paintMkts('bonus', '#boMkts'); paintMkts('pvp', '#pvMkts'); }
 
-  function paintBGMatches(){
-    const ms = bgMatches();
-    const box=$("#bgMatches"); box.innerHTML="";
-    $("#bgMCount").textContent = ms.length;
-
-    ms.forEach((m,i)=>{
-      const w = winnerFrom(m);
-      const row=document.createElement("div"); row.className="card"; row.style.flexDirection="column";
-      row.innerHTML = `
-        <div class="row" style="justify-content:space-between;width:100%">
-          <div class="row" style="gap:8px">
-            <div class="pill">${i+1}</div>
-            <div><strong>${m.a}</strong> <span class="soft">vs</span> <strong>${m.b}</strong></div>
-          </div>
-          <div class="row">
-            <div class="pill">Score: ${Number(m.scoreA ?? 0)}–${Number(m.scoreB ?? 0)}</div>
-            <div class="pill ${w==="A"||w==="B"?"good":""}">${w? ("Winner: "+(w==="A"?m.a:w==="B"?m.b:"DRAW")) : "Winner: —"}</div>
-          </div>
-        </div>
-        <div class="row" style="gap:12px;margin-top:6px">
-          <label>A odds <input data-a class="odd" type="number" step="0.01" value="${m.oddsA??1.84}"/></label>
-          <label>B odds <input data-b class="odd" type="number" step="0.01" value="${m.oddsB??1.84}"/></label>
-          <button class="btn" data-save>Save odds</button>
-        </div>`;
-      row.querySelector("[data-save]").addEventListener("click",()=>{
-        const cur = bgMatches();
-        cur[i].oddsA = clamp2(row.querySelector("[data-a]").value);
-        cur[i].oddsB = clamp2(row.querySelector("[data-b]").value);
-        sset(K_BG_MATCHES, cur);
-        alert("Saved.");
-      });
+  function paintH2H(){
+    const sec = state.sections.battleground;
+    const box = el('#bgH2H');
+    box.innerHTML = '';
+    if(!sec.h2h.length){ box.innerHTML = '<div class="pill">No H2H yet. Import → Build/Refresh.</div>'; return; }
+    sec.h2h.forEach((h,idx)=>{
+      const L='<div class="side">'+
+                '<div class="thumb">'+(h.leftImg?('<img src="'+esc(h.leftImg)+'" alt="">'):'')+'</div>'+
+                '<div>'+ '<div class="title">'+esc(h.leftTitle||'LEFT')+'</div>'+ '<div class="prov">'+esc(h.leftProv||'')+'</div>'+ '<div class="oddBox"><span class="small">Odds</span> <input data-k="l'+idx+'" type="number" step="0.01" value="'+esc(h.leftOdds||1.84)+'" style="width:110px"></div>' + '</div>'+
+              '</div>';
+      const R='<div class="side">'+
+                '<div class="thumb">'+(h.rightImg?('<img src="'+esc(h.rightImg)+'" alt="">'):'')+'</div>'+
+                '<div>'+ '<div class="title">'+esc(h.rightTitle||'RIGHT')+'</div>'+ '<div class="prov">'+esc(h.rightProv||'')+'</div>'+ '<div class="oddBox"><span class="small">Odds</span> <input data-k="r'+idx+'" type="number" step="0.01" value="'+esc(h.rightOdds||1.84)+'" style="width:110px"></div>' + '</div>'+
+              '</div>';
+      const row=document.createElement('div'); row.className='h2h'; row.innerHTML = L+R;
+      row.querySelector('[data-k="l'+idx+'"]').addEventListener('change',e=>{ sec.h2h[idx].leftOdds=+e.target.value||1; save(); });
+      row.querySelector('[data-k="r'+idx+'"]').addEventListener('change',e=>{ sec.h2h[idx].rightOdds=+e.target.value||1; save(); });
       box.appendChild(row);
     });
-
-    recalcExpectations();
   }
 
-  function recalcExpectations(){
-    const per=Number($("#bgPerMatch").value||1);
-    const ms=bgMatches().length;
-    const total=ms*per;
-    $("#bgCM").textContent=ms;
-    $("#bgCT").textContent=total;
-    const line=$("#bgOuLine");
-    if(!line.value) line.value = per===1 ? (ms-0.5) : (total-0.5);
-    const hint=$("#bgOUHint"); hint.style.display=""; hint.textContent = `Expected total = ${ms} × ${per} = ${total}. Proposed OU line ${line.value}.`;
-  }
+  function paintMkts(section, mount){
+    const sec = state.sections[section];
+    const host = el(mount); host.innerHTML='';
+    if(!sec.overall.length){ host.innerHTML = '<div class="pill">No markets yet. Use the buttons above.</div>'; return; }
+    sec.overall.forEach((m,mi)=>{
+      const box=document.createElement('div'); box.className='mkt';
+      const top='<div class="mTop">'+
+                  '<select data-x="type">'+
+                    '<option '+(m.type==='OVER_UNDER'?'selected':'')+'>OVER_UNDER</option>'+
+                    '<option '+(m.type==='MULTI_RANGE'?'selected':'')+'>MULTI_RANGE</option>'+
+                    '<option '+(m.type==='YES_NO'?'selected':'')+'>YES_NO</option>'+
+                    '<option '+(m.type==='CUSTOM'?'selected':'')+'>CUSTOM</option>'+
+                    '<option '+(m.type==='NUMERIC_GUESS'?'selected':'')+'>NUMERIC_GUESS</option>'+
+                  '</select>'+
+                  '<input data-x="label" placeholder="Market label" value="'+esc(m.label||'')+'" style="min-width:260px">'+
+                  '<select data-x="status"><option '+(m.status!=='locked'?'selected':'')+'>OPEN</option><option '+(m.status==='locked'?'selected':'')+'>LOCKED</option></select>'+
+                  '<button class="del" data-act="del">Delete</button>'+
+                '</div>';
+      const extraOU = (m.type==='OVER_UNDER') ? ('<div class="lineRow"><span class="pill">LINE</span> <input data-x="line" type="number" step="0.01" value="'+(m.line!=null?m.line:'')+'" style="width:140px"></div>') : '';
+      const extraNG = (m.type==='NUMERIC_GUESS') ? (
+        '<div class="lineRow">'+
+          '<span class="pill">Start</span><input data-x="start" type="number" step="0.01" value="'+(m.start!=null?m.start:'')+'" style="width:120px">'+
+          '<span class="pill">Min</span><input data-x="min" type="number" step="0.01" value="'+(m.min!=null?m.min:'')+'" style="width:110px">'+
+          '<span class="pill">Max</span><input data-x="max" type="number" step="0.01" value="'+(m.max!=null?m.max:'')+'" style="width:110px">'+
+          '<span class="pill">Step</span><input data-x="step" type="number" step="0.01" value="'+(m.step!=null?m.step:1)+'" style="width:90px">'+
+          '<span class="pill">Unit</span><input data-x="unit" placeholder="$" value="'+(m.unit||'$')+'" style="width:70px">'+
+          '<span class="pill">Prize</span><input data-x="prize" type="number" step="1" value="'+(m.prize||0)+'" style="width:90px">'+
+        '</div>'+
+        '<div class="lineRow">'+
+          '<span class="pill">Final</span><input data-x="final" type="number" step="0.01" value="'+(m.final!=null?m.final:'')+'" style="width:120px">'+
+          '<button class="btn" data-act="settleNG">Auto-Settle</button>'+
+          '<button class="btn" data-act="award">Award BUX</button>'+
+          '<span class="small">Entries: <b data-x="entries">'+(getEntries(section, m.id).length)+'</b> &nbsp; Winners: <b>'+(m.winners?m.winners.length:0)+'</b></span>'+
+        '</div>'
+      ) : '';
+      const extra = extraOU + extraNG;
+      const sels = (m.selections||[]).map((s,si)=> '<div class="selRow">'+
+            '<input data-sel="'+si+'" data-x="slabel" placeholder="Selection" value="'+esc(s.label||'')+'">'+
+            '<input data-sel="'+si+'" data-x="sodds" type="number" step="0.01" value="'+esc(s.odds||1.84)+'">'+
+            '<button class="del" data-act="sdel" data-sel="'+si+'">×</button>'+ '</div>' ).join('');
+      const addBtn = (m.type==='NUMERIC_GUESS') ? '' : '<div><button class="btn" data-act="addSel">+ Add Line</button></div>';
+      box.innerHTML = top + extra + sels + addBtn;
 
-  function propRanges(){
-    const per=Number($("#bgPerMatch").value||1), ms=bgMatches().length, base=ms*per;
-    return [
-      {label:`${Math.max(0,Math.floor(base-2))}–${Math.floor(base-1)}.5`,odds:1.70},
-      {label:`${Math.floor(base-1)}–${Math.floor(base)}.5`,odds:1.40},
-      {label:`${Math.floor(base)}–${Math.floor(base+1)}.5`,odds:2.25},
-      {label:`${Math.floor(base+1)}+`,odds:3.14},
-    ];
-  }
+      // binds
+      box.querySelector('[data-x="type"]').addEventListener('change',e=>{ sec.overall[mi].type=e.target.value; save(); paintMkts(section,mount); });
+      box.querySelector('[data-x="label"]').addEventListener('change',e=>{ sec.overall[mi].label=e.target.value; save(); });
+      box.querySelector('[data-x="status"]').addEventListener('change',e=>{ sec.overall[mi].status=(e.target.value||'OPEN').toLowerCase()==='locked'?'locked':'open'; save(); });
+      var lineEl=box.querySelector('[data-x="line"]'); if(lineEl){ lineEl.addEventListener('change',e=>{ const v=+e.target.value; sec.overall[mi].line=v; if(sec.overall[mi].selections?.length>=2){ sec.overall[mi].selections[0].label='Over '+v; sec.overall[mi].selections[1].label='Under '+v; } save(); paintMkts(section,mount); }); }
+      var startEl=box.querySelector('[data-x="start"]'); if(startEl){ startEl.addEventListener('change',e=>{ sec.overall[mi].start=+e.target.value||0; save(); }); }
+      var minEl=box.querySelector('[data-x="min"]'); if(minEl){ minEl.addEventListener('change',e=>{ sec.overall[mi].min=+e.target.value||0; save(); }); }
+      var maxEl=box.querySelector('[data-x="max"]'); if(maxEl){ maxEl.addEventListener('change',e=>{ sec.overall[mi].max=+e.target.value||0; save(); }); }
+      var stepEl=box.querySelector('[data-x="step"]'); if(stepEl){ stepEl.addEventListener('change',e=>{ sec.overall[mi].step=+e.target.value||1; save(); }); }
+      var unitEl=box.querySelector('[data-x="unit"]'); if(unitEl){ unitEl.addEventListener('change',e=>{ sec.overall[mi].unit=e.target.value||'$'; save(); }); }
+      var prizeEl=box.querySelector('[data-x="prize"]'); if(prizeEl){ prizeEl.addEventListener('change',e=>{ sec.overall[mi].prize=+e.target.value||0; save(); }); }
+      var finalEl=box.querySelector('[data-x="final"]'); if(finalEl){ finalEl.addEventListener('change',e=>{ sec.overall[mi].final=+e.target.value; save(); }); }
+      var entriesEl=box.querySelector('[data-x="entries"]'); if(entriesEl){ entriesEl.textContent = getEntries(section, m.id).length; }
+      // selection label/odds wiring
+      box.querySelectorAll('[data-x="slabel"]').forEach(n=> n.addEventListener('change',function(){ sec.overall[mi].selections[+this.dataset.sel].label=this.value; save(); }));
+      box.querySelectorAll('[data-x="sodds"]').forEach(n=> n.addEventListener('change',function(){ sec.overall[mi].selections[+this.dataset.sel].odds=+this.value||1; save(); }));
+      const delSelBtns = box.querySelectorAll('[data-act="sdel"]'); delSelBtns.forEach(b=> b.addEventListener('click',function(){ sec.overall[mi].selections.splice(+this.dataset.sel,1); save(); paintMkts(section,mount); }));
+      const addSelBtn = box.querySelector('[data-act="addSel"]'); if(addSelBtn){ addSelBtn.addEventListener('click',()=>{ sec.overall[mi].selections.push({id:kid('SEL'),label:'',odds:1.84}); save(); paintMkts(section,mount); }); }
+      const settleBtn = box.querySelector('[data-act="settleNG"]'); if(settleBtn){ settleBtn.addEventListener('click',()=>{ settleNumericGuess(section, mi); }); }
+      const awardBtn = box.querySelector('[data-act="award"]'); if(awardBtn){ awardBtn.addEventListener('click',()=>{ awardBux(section, mi); }); }
 
-  function paintRangeEditor(ranges){
-    const wrap=$("#bgRanges"); wrap.innerHTML="";
-    ranges.forEach(r=>{
-      const row=document.createElement("div"); row.className="card";
-      row.innerHTML=`<label>Range <input class="line" type="text" value="${r.label}"/></label>
-                     <label>Odds <input class="odd" type="number" step="0.01" value="${r.odds||1.84}"/></label>
-                     <button class="btn danger" data-x>✕</button>`;
-      row.querySelector("[data-x]").addEventListener("click",()=>row.remove());
-      wrap.appendChild(row);
+      host.appendChild(box);
     });
-    const add=document.createElement("button"); add.className="btn"; add.textContent="+ Add Line";
-    add.addEventListener("click",()=>{
-      const r=document.createElement("div"); r.className="card";
-      r.innerHTML=`<label>Range <input class="line" type="text" placeholder="26–27.5"/></label>
-                   <label>Odds <input class="odd" type="number" step="0.01" value="1.84"/></label>
-                   <button class="btn danger" data-x>✕</button>`;
-      r.querySelector("[data-x]").addEventListener("click",()=>r.remove());
-      $("#bgRanges").appendChild(r);
-    });
-    wrap.appendChild(add);
   }
 
-  function loadOverallToUI(){
-    const sec=bg();
-    const ou=(sec.overall||[]).find(m=>m.type==="OVER_UNDER");
-    if(ou){
-      $("#bgOuLine").value=ou.line??"";
-      $("#bgOuOver").value=ou.selections?.[0]?.odds??1.84;
-      $("#bgOuUnder").value=ou.selections?.[1]?.odds??1.84;
-      $("#bgOuStatus").value=ou.status||"open";
+  // ---------- quick creators per section ----------
+  function addOU(sec){ sec.overall.push({id:kid('OU'),type:'OVER_UNDER',label:'Over / Under',status:'open',line:65.5,selections:[{id:kid('SEL'),label:'Over 65.5',odds:1.84},{id:kid('SEL'),label:'Under 65.5',odds:1.84}]}); save(); paintAll(); }
+  function addMR(sec){ sec.overall.push({id:kid('MR'),type:'MULTI_RANGE',label:'Total Games Played',status:'open',selections:[{id:kid('SEL'),label:'48–55.5',odds:17},{id:kid('SEL'),label:'56–63.5',odds:3.4},{id:kid('SEL'),label:'64–71.5',odds:1.7},{id:kid('SEL'),label:'72–80',odds:4.25}]}); save(); paintAll(); }
+  function addYN(sec){ sec.overall.push({id:kid('YN'),type:'YES_NO',label:'Yes / No',status:'open',selections:[{id:kid('SEL'),label:'Yes',odds:1.84},{id:kid('SEL'),label:'No',odds:1.84}]}); save(); paintAll(); }
+  function addCU(sec){ sec.overall.push({id:kid('CU'),type:'CUSTOM',label:'Custom Market',status:'open',selections:[]}); save(); paintAll(); }
+  function addCS(sec){
+    if(!state.sections.battleground.h2h.length){ toast('Build H2H first',false); return; }
+    const m={id:kid('CS'),type:'CUSTOM',label:'Which matchup clean sweep?',status:'open',selections:[]};
+    state.sections.battleground.h2h.forEach(h=>{ m.selections.push({id:kid('SEL'),label:h.leftTitle+' 3–0',odds:3.0}); m.selections.push({id:kid('SEL'),label:h.rightTitle+' 3–0',odds:3.0}); });
+    sec.overall.push(m); save(); paintAll();
+  }
+  function addGB(sec){ // Guess the Balance — numeric guess with auto-settle
+    sec.overall.push({id:kid('GB'),type:'NUMERIC_GUESS',label:'Guess the Final Balance',status:'open',start:0,min:0,max:1000,step:1,unit:'$',prize:0,final:null,winners:[]});
+    save(); paintAll(); }
+
+  // ---------- entries / settling ----------
+  function entriesKey(section, marketId){ return 'sb:entries:'+section+':'+marketId; }
+  function getEntries(section, marketId){ return sget(entriesKey(section, marketId)) || []; }
+  function settleNumericGuess(section, mi){
+    const sec = state.sections[section]; const m = sec.overall[mi];
+    const entries = getEntries(section, m.id);
+    if(!entries.length){ toast('No entries to settle', false); return; }
+    if(m.final==null || isNaN(m.final)){ toast('Enter final balance first', false); return; }
+    let bestDiff = Infinity; let winners = [];
+    entries.forEach(e=>{
+      const diff = Math.abs((+e.guess) - (+m.final));
+      if (diff < bestDiff){ bestDiff = diff; winners = [e]; }
+      else if (diff === bestDiff){ winners.push(e); }
+    });
+    m.winners = winners.map(w => ({userId:w.userId||w.name||'anon', name:w.name||('User'+(w.userId||'')), guess:+w.guess, diff:Math.abs((+w.guess)-(+m.final))}));
+    save(); paintAll(); toast('Settled: '+m.winners.length+' winner'+(m.winners.length!==1?'s':''));
+  }
+  function awardBux(section, mi){
+    const sec = state.sections[section]; const m = sec.overall[mi];
+    if(!m.winners || !m.winners.length){ toast('Settle first', false); return; }
+    const awards = m.winners.map(w=>({userId:w.userId, name:w.name, amount:m.prize||0, marketId:m.id, label:m.label}));
+    const key = 'bux:awards:'+section+':'+m.id; sset(key, awards);
+    toast('Awards prepared ('+awards.length+')');
+  }
+
+  // ---------- import from Battleground Admin ----------
+  async function importBG(){
+    let used='';
+    const prefer = sget(K_BG_BUILDER);
+    if(prefer && Array.isArray(prefer.matches) && prefer.matches.length){ used='local:'+K_BG_BUILDER; return acceptMatches(prefer.matches,used,true); }
+    const scanKeys = ['BG_MATCHUPS','BATTLEGROUND_MATCHUPS','BATTLEGROUND_SELECTED','BG_SELECTED_GAMES','battleground:matches','battleground:admin:matches','bg:admin:matches','bg:matchups'];
+    for(const k of scanKeys){
+      const v=sget(k); if(Array.isArray(v) && v.length){ used='local:'+k; const norm=v.map((m,i)=>({id:m.id||m.matchId||('M'+i),leftId:m.leftId||m.AId||m.aId||m.left?.id||m.A?.id||null,rightId:m.rightId||m.BId||m.bId||m.right?.id||m.B?.id||null,leftTitle:m.leftTitle||m.aName||m.A||m.left?.title||m.left?.name||'LEFT',rightTitle:m.rightTitle||m.bName||m.B||m.right?.title||m.right?.name||'RIGHT',leftImg:m.leftImg||m.aImage||m.imgA||m.imageA||m.left?.image||m.left?.img||'',rightImg:m.rightImg||m.bImage||m.imgB||m.imageB||m.right?.image||m.right?.img||''})); return acceptMatches(norm,used,true); }
     }
-    const mr=(sec.overall||[]).find(m=>m.type==="MULTI_RANGE");
-    if(mr){
-      $("#bgMrStatus").value=mr.status||"open";
-      const ranges=(mr.selections||[]).map(s=>({label:s.label||s.range||"",odds:s.odds||1.84}));
-      if(ranges.length) paintRangeEditor(ranges);
+    for(const url of ['/api/battleground/matchups','/api/bg/matchups']){
+      try{ const r=await fetch(url,{cache:'no-store'}); if(r.ok){ const arr=await r.json(); if(Array.isArray(arr) && arr.length){ used='api:'+url; return acceptMatches(arr,used,false); } } }catch(_){ }
     }
+    el('#dbgImport').textContent='none'; toast('No matchups found (Admin/local/API empty)',false);
   }
 
-  function saveOU(){
-    const sec=bg(); const idx=(sec.overall||[]).findIndex(m=>m.type==="OVER_UNDER");
-    const line=Number($("#bgOuLine").value||0);
-    const m={id:"OU_BG",type:"OVER_UNDER",label:"Over / Under",status:$("#bgOuStatus").value,line,
-      selections:[{label:`Over ${line}`,odds:clamp2($("#bgOuOver").value)},{label:`Under ${line}`,odds:clamp2($("#bgOuUnder").value)}]};
-    if(idx<0) (sec.overall||=[]).push(m); else sec.overall[idx]=m; sset(K_UNIFIED,unified);
-  }
-  function saveMR(){
-    const sec=bg(); const idx=(sec.overall||[]).findIndex(m=>m.type==="MULTI_RANGE"); const sels=[];
-    $all("#bgRanges .card").forEach(row=>{
-      const range=row.querySelector("input[type=text]").value.trim();
-      const odds=clamp2(row.querySelector("input[type=number]").value);
-      if(range) sels.push({label:range,odds});
-    });
-    if(!sels.length) return alert("Add at least one range.");
-    const m={id:"MR_BG",type:"MULTI_RANGE",label:"Total Games Played",status:$("#bgMrStatus").value,selections:sels};
-    if(idx<0) (sec.overall||=[]).push(m); else sec.overall[idx]=m; sset(K_UNIFIED,unified);
+  function acceptMatches(arr, used, alreadyNorm){
+    const matches = arr.map((mx,i)=> alreadyNorm ? mx : ({ id: mx.id||mx.matchId||('M'+i), leftId: mx.leftId||mx.AId||mx.aId||null, rightId: mx.rightId||mx.BId||mx.bId||null, leftTitle: mx.leftTitle||mx.aName||mx.A||'LEFT', rightTitle: mx.rightTitle||mx.bName||mx.B||'RIGHT', leftImg: mx.leftImg||mx.aImage||mx.imgA||mx.imageA||'', rightImg: mx.rightImg||mx.bImage||mx.imgB||mx.imageB||'' }));
+    const bg = state.sections.battleground; bg.h2h = (bg.h2h||[]); // keep current odds when possible
+    const prev={}; bg.h2h.forEach(o=>prev[o.matchId]=o);
+    // keep only in builder key too so other pages can see
+    const builder = sget(K_BG_BUILDER)||{games:[],matches:[]}; builder.matches=matches; sset(K_BG_BUILDER,builder);
+    el('#dbgImport').textContent = used+' ('+matches.length+')'; toast('Imported '+matches.length+' matchups',true);
   }
 
-  // Build H2H for players directly from builder matches + stored odds
-  function buildBattlegroundH2H(){
-    const ms = bgMatches();
-    const h2h = ms.map((m,i)=>({
-      id:`BG_H2H_${i+1}`,
-      type:"CUSTOM",
-      label:`${m.a} vs ${m.b}`,
-      status:(bg().status||"open"),
-      selections:[
-        {label:m.a,odds:clamp2(m.oddsA||1.84)},
-        {label:m.b,odds:clamp2(m.oddsB||1.84)}
-      ],
-      // optional live/result metadata for dashboards
-      live:{a:Number(m.scoreA||0), b:Number(m.scoreB||0)},
-      winner: winnerFrom(m) // "A" | "B" | "DRAW" | null
+  function buildH2H(){
+    const builder = sget(K_BG_BUILDER);
+    if(!builder || !Array.isArray(builder.matches) || !builder.matches.length){ toast('No matches to build',false); return; }
+    const prev={}; (state.sections.battleground.h2h||[]).forEach(o=>prev[o.matchId]=o);
+    state.sections.battleground.h2h = builder.matches.map(mx=>({
+      matchId: mx.id,
+      leftId: mx.leftId||null, rightId: mx.rightId||null,
+      leftTitle: mx.leftTitle||'LEFT', rightTitle: mx.rightTitle||'RIGHT',
+      leftImg: mx.leftImg||'', rightImg: mx.rightImg||'',
+      leftProv: mx.leftProv||'', rightProv: mx.rightProv||'',
+      leftOdds: (prev[mx.id]?.leftOdds)||1.84, rightOdds: (prev[mx.id]?.rightOdds)||1.84
     }));
-    bg().h2h = h2h;
-    sset(K_UNIFIED, unified);
+    save(); paintH2H(); toast('H2H built');
   }
 
-  // events
-  $("#bgRefresh").addEventListener("click", ()=> paintBGMatches());
-  $("#bgBuild").addEventListener("click", ()=>{ buildBattlegroundH2H(); alert("Battleground H2H built from builder matches."); });
-  $("#bgPerMatch").addEventListener("input",recalcExpectations);
-  $("#bgAutoRanges").addEventListener("click",()=>paintRangeEditor(propRanges()));
-  $("#bgSaveOU").addEventListener("click",saveOU);
-  $("#bgSaveMR").addEventListener("click",saveMR);
-  $("#bgToggle").addEventListener("click",()=>{ bg().status=bg().status==="open"?"locked":"open"; sset(K_UNIFIED,unified); paintAllStates(); });
+  // ---------- save/publish ----------
+  function save(){ sset(K_UNIFIED,state); }
+  function publish(){ state.lastUpdated=Date.now(); save(); el('#stamp').textContent='Last publish @ '+new Date(state.lastUpdated).toLocaleTimeString(); toast('Published to players'); }
 
-  // keep in sync if builder updates scores in another tab
-  window.addEventListener("storage",(e)=>{
-    if(e.key===K_BG_MATCHES){ paintBGMatches(); buildBattlegroundH2H(); }
-  });
+  // ---------- wire buttons ----------
+  el('#btnSave').addEventListener('click',()=>{ save(); toast('Saved'); });
+  el('#btnPublish').addEventListener('click',publish);
+  el('#btnOpenAll').addEventListener('click',()=>{ state.status='open'; save(); syncToggles(); });
+  el('#btnLockAll').addEventListener('click',()=>{ state.status='locked'; save(); syncToggles(); });
+  el('#btnDelete').addEventListener('click',()=>{ if(confirm('Delete ALL markets?')){ state={status:'open',lastUpdated:0,sections:{battleground:{enabled:false,h2h:[],overall:[]},bonus:{enabled:false,overall:[]},pvp:{enabled:false,overall:[]}}}; save(); syncToggles(); paintAll(); } });
 
-  // init BG
-  $("#bgState").textContent=(bg().status||"open").toUpperCase();
-  $("#bgSecState").textContent=(bg().status||"open").toUpperCase();
-  paintBGMatches(); loadOverallToUI(); if(!$("#bgRanges").children.length) paintRangeEditor(propRanges()); recalcExpectations();
+  // add buttons
+  el('#bgAddOU').addEventListener('click',()=>addOU(state.sections.battleground));
+  el('#bgAddMR').addEventListener('click',()=>addMR(state.sections.battleground));
+  el('#bgAddYN').addEventListener('click',()=>addYN(state.sections.battleground));
+  el('#bgAddCU').addEventListener('click',()=>addCU(state.sections.battleground));
+  el('#bgAddCS').addEventListener('click',()=>addCS(state.sections.battleground));
+  el('#bgImport').addEventListener('click',importBG);
+  el('#bgBuild').addEventListener('click',buildH2H);
 
-  // ===== Bonus Hunt (unchanged)
-  const bh=()=> (unified.sections.bonus ||= {status:"open",overall:[]});
-  function bhFixedDefs(){ return [
-    {id:"BH_FIRST", label:"First Bonus Triggered", fixedOdds:1.84},
-    {id:"BH_LAST",  label:"Last Bonus Triggered",  fixedOdds:1.84},
-    {id:"BH_BIG",   label:"Biggest Win (slot)",    fixedOdds:2.25},
-    {id:"BH_SMALL", label:"Smallest Win (slot)",   fixedOdds:3.10},
-    {id:"BH_MOST",  label:"Most Bonuses (slot)",   fixedOdds:2.50},
-    {id:"BH_HOT",   label:"Hot Slot (stream pick)",fixedOdds:2.00},
-  ];}
-  function bhSeedSix(){
-    const sec=bh(); const ds=bhFixedDefs();
-    ds.forEach(d=>{
-      const i=(sec.overall||[]).findIndex(m=>m.id===d.id);
-      const m={id:d.id,type:"TEXT_GUESS",label:d.label,status:"open",fixedOdds:d.fixedOdds};
-      if(i<0) sec.overall.push(m); else sec.overall[i]=m;
-    });
-    sset(K_UNIFIED,unified); bhPaintFixed();
-  }
-  function bhPaintFixed(){
-    const wrap=$("#bhFixedWrap"); wrap.innerHTML="";
-    const sec=bh(); const ds=bhFixedDefs();
-    ds.forEach(d=>{
-      const m=(sec.overall||[]).find(x=>x.id===d.id) || {fixedOdds:d.fixedOdds,status:"open"};
-      const row=document.createElement("div"); row.className="card";
-      row.innerHTML=`<div class="w100">${d.label}</div>
-        <label>Odds <input class="odd" data-id="${d.id}" type="number" step="0.01" value="${m.fixedOdds??d.fixedOdds}"/></label>
-        <select data-s="${d.id}"><option value="open"${(m.status||"open")==="open"?" selected":""}>OPEN</option><option value="locked"${(m.status||"open")==="locked"?" selected":""}>LOCKED</option></select>`;
-      wrap.appendChild(row);
-    });
-  }
-  function bhSaveOdds(){
-    const sec=bh();
-    bhFixedDefs().forEach(d=>{
-      const i=(sec.overall||[]).findIndex(m=>m.id===d.id);
-      if(i>=0){
-        const odd=clamp2($(`[data-id="${d.id}"]`).value); const st=$(`[data-s="${d.id}"]`).value;
-        sec.overall[i].fixedOdds=odd; sec.overall[i].status=st;
-      }
-    });
-    sset(K_UNIFIED,unified);
-  }
-  function bhParsePaste(){
-    const txt=$("#bhPaste").value||""; const lines=txt.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
-    const entries=[]; lines.forEach(line=>{ const m=line.split("|"); const name=(m[0]||"").trim(); const provider=(m[1]||"").trim(); if(name) entries.push({slot:name,provider}); });
-    sset(K_BH_DRAFT,{entries,ts:Date.now()}); $("#bhDraftCount").textContent=entries.length;
-  }
-  function bhRefreshCounts(){
-    $("#bhDraftCount").textContent = (sget(K_BH_DRAFT)?.entries||[]).length;
-    $("#bhLiveCount").textContent  = (sget(K_BH_LIVE)?.entries||[]).length;
-  }
-  $("#bhSeed6").addEventListener("click",()=>{ bhSeedSix(); alert("Six fixed Bonus Hunt markets enabled."); });
-  $("#bhSaveOdds").addEventListener("click",bhSaveOdds);
-  $("#bhToggle").addEventListener("click",()=>{ bh().status=bh().status==="open"?"locked":"open"; sset(K_UNIFIED,unified); paintAllStates(); });
-  $("#bhParse").addEventListener("click",bhParsePaste);
-  $("#bhPublishList").addEventListener("click",()=>{ const d=sget(K_BH_DRAFT)||{entries:[]}; sset(K_BH_LIVE,d); bhRefreshCounts(); alert("Published slot list to Live."); });
-  $("#bhState").textContent=(bh().status||"open").toUpperCase(); bhPaintFixed(); bhRefreshCounts();
+  el('#boAddOU').addEventListener('click',()=>addOU(state.sections.bonus));
+  el('#boAddMR').addEventListener('click',()=>addMR(state.sections.bonus));
+  el('#boAddYN').addEventListener('click',()=>addYN(state.sections.bonus));
+  el('#boAddCU').addEventListener('click',()=>addCU(state.sections.bonus));
+  el('#boAddGB').addEventListener('click',()=>addGB(state.sections.bonus));
 
-  // ===== PVP (unchanged from your last build)
-  const pvp=()=> (unified.sections.pvp ||= {status:"open",overall:[],h2h:[]});
-  const pvpF=()=> sget(K_PVP_F)||[];
-  const pvpSel=()=> new Set(sget(K_PVP_SELECTED)||[]);
-  const pvpMatches=()=> sget(K_PVP_MATCHES)||[];
-  function pvpPaintF(){
-    const list=$("#pvpFList"); list.innerHTML=""; const sel=pvpSel();
-    pvpF().forEach(n=>{
-      const row=document.createElement("div"); row.className="card"; row.style.cursor="pointer";
-      const picked=sel.has(n);
-      row.innerHTML=`<div class="w100">${n}</div><div class="pill ${picked?"good":""}">${picked?"Selected":"Select"}</div>`;
-      row.addEventListener("click",()=>{ const c=pvpSel(); if(c.has(n)) c.delete(n); else c.add(n); sset(K_PVP_SELECTED,[...c]); pvpPaintF(); });
-      list.appendChild(row);
-    });
-  }
-  function pvpPaintMatches(){
-    const ms=pvpMatches(); $("#pvpMatches").innerHTML=""; $("#pvpMCount").textContent=ms.length;
-    const list=$("#pvpMatches");
-    ms.forEach((m,i)=>{
-      const row=document.createElement("div"); row.className="card"; row.style.flexDirection="column";
-      row.innerHTML=`<div class="row" style="justify-content:space-between;width:100%">
-        <div class="row"><div class="pill">${i+1}</div><div><strong>${m.a}</strong> <span class="soft">vs</span> <strong>${m.b}</strong></div></div>
-        <button class="btn danger" data-del>Delete</button></div>
-        <div class="row" style="gap:12px;margin-top:6px">
-          <label>A odds <input data-a class="odd" type="number" step="0.01" value="${m.oddsA??1.84}"/></label>
-          <label>B odds <input data-b class="odd" type="number" step="0.01" value="${m.oddsB??1.84}"/></label>
-          <button class="btn" data-save>Save</button></div>`;
-      row.querySelector("[data-save]").addEventListener("click",()=>{ const cur=pvpMatches(); cur[i].oddsA=clamp2(row.querySelector("[data-a]").value); cur[i].oddsB=clamp2(row.querySelector("[data-b]").value); sset(K_PVP_MATCHES,cur); });
-      row.querySelector("[data-del]").addEventListener("click",()=>{ const cur=pvpMatches(); cur.splice(i,1); sset(K_PVP_MATCHES,cur); pvpPaintMatches();});
-      list.appendChild(row);
-    });
-  }
-  $("#pvpSeedFighters").addEventListener("click",()=>{ if(!pvpF().length) sset(K_PVP_F,["LASH3Z","PLAYER_2","PLAYER_3","PLAYER_4"]); pvpPaintF(); });
-  $("#pvpAddF").addEventListener("click",()=>{ const n=$("#pvpNew").value.trim(); if(!n) return; const cur=pvpF(); if(!cur.includes(n)) cur.push(n); sset(K_PVP_F,cur); $("#pvpNew").value=""; pvpPaintF(); });
-  $("#pvpAddPair").addEventListener("click",()=>{ const sel=[...pvpSel()]; if(sel.length<2) return alert("Select two fighters."); const cur=pvpMatches(); cur.push({a:sel[0],b:sel[1],oddsA:1.84,oddsB:1.84}); sset(K_PVP_MATCHES,cur); sset(K_PVP_SELECTED,[]); pvpPaintF(); pvpPaintMatches(); });
-  $("#pvpBuild").addEventListener("click",()=>{ const h2h=pvpMatches().map((m,i)=>({id:`PVP_${i+1}`,type:"CUSTOM",label:`${m.a} vs ${m.b}`,status:"open",selections:[{label:m.a,odds:clamp2(m.oddsA||1.84)},{label:m.b,odds:clamp2(m.oddsB||1.84)}]})); pvp().h2h=h2h; sset(K_UNIFIED,unified); alert("PVP H2H built."); });
-  $("#pvpToggle").addEventListener("click",()=>{ pvp().status=pvp().status==="open"?"locked":"open"; sset(K_UNIFIED,unified); paintAllStates(); });
-  $("#pvpState").textContent=(pvp().status||"open").toUpperCase(); pvpPaintF(); pvpPaintMatches();
+  el('#pvAddOU').addEventListener('click',()=>addOU(state.sections.pvp));
+  el('#pvAddMR').addEventListener('click',()=>addMR(state.sections.pvp));
+  el('#pvAddYN').addEventListener('click',()=>addYN(state.sections.pvp));
+  el('#pvAddCU').addEventListener('click',()=>addCU(state.sections.pvp));
 
-  // finish
-  paintGlobal(); paintAllStates();
+  // ---------- boot ----------
+  syncToggles(); paintAll(); if(state.lastUpdated){ el('#stamp').textContent='Last publish @ '+new Date(state.lastUpdated).toLocaleTimeString(); }
 })();
 </script>
 </body>
