@@ -305,9 +305,13 @@
     const user=($("#vipUser").value||"").trim().toUpperCase();
     if(!user){ $("#vipBal").textContent="—"; return; }
     try{
-      let j=null; try{ j=await jget("/api/wallet/"+encodeURIComponent(user)); }catch{}
-      if(!j){ try{ j=await jget("/api/wallet/balance?user="+encodeURIComponent(user)); }catch{} }
-      if(!j){ try{ j=await jget("/api/wallet/me?viewer="+encodeURIComponent(user)); }catch{} }
+      let j=null;
+      try { 
+        j = await jget("/api/wallet/balance?user="+encodeURIComponent(user));
+      } catch {}
+      if(!j){
+        try { j = await jget("/api/wallet/me?viewer="+encodeURIComponent(user)); } catch {}
+      }
       $("#vipBal").textContent = j ? ("LBX "+Number(j?.balance||j?.wallet?.balance||0).toFixed(0)) : "(no balance endpoint)";
     }catch{ $("#vipBal").textContent="(error)"; }
   }
