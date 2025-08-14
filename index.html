@@ -88,13 +88,17 @@
       .digit{font-size:38px}
       .sep{width:22px; font-size:36px}
     }
+    /* small pill used for admin status text */
+    .pill-status{display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
+      background:#0f151a; border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:8px; color:#cfe; }
+    .pill-status.ok{ color:#9ff1c7; border-color:rgba(0,255,200,.35);}
   </style>
 
   <!-- Make API base available; helper fetch -->
   <script>window.API_BASE="";</script>
   <script src="/assets/api-base.js" defer></script>
 
-  <!-- (Optional) raffle shim to prevent 404 — safe to leave blank/placeholder -->
+  <!-- (Optional) raffle shim -->
   <script src="/assets/l3z_raffle.es5.js" defer></script>
 
   <!-- TOP BAR ICON CONFIG -->
@@ -113,11 +117,12 @@
     };
   </script>
 
-  <!-- Home-only UI wiring (NO redirects anywhere) -->
+  <!-- Home-only wiring + Admin status -->
   <script>
     (function(){
       "use strict";
       const $ = (s,r)=> (r||document).querySelector(s);
+      const API = (typeof window!=="undefined" && window.API_BASE) ? window.API_BASE : "";
 
       function sanitizeName(x){
         if (!x) return "";
@@ -127,7 +132,7 @@
 
       async function setUser(){
         try{
-          const r = await fetch("/api/wallet/me",{credentials:"include",cache:"no-store"});
+          const r = await fetch(API + "/api/wallet/me",{credentials:"include",cache:"no-store"});
           if (r.ok){
             const j = await r.json();
             const fromApi = j?.username || j?.user || j?.name || j?.displayName || "";
@@ -168,8 +173,49 @@
           </a>`).join('');
       }
 
-      // Important: NEVER redirect from the home page.
-      document.addEventListener("DOMContentLoaded", ()=>{ setUser(); wireMenu(); buildIconBar(); });
+      async function paintAdminStatus(){
+        const badge = $("#adminStatus");
+        const unlock = $("#adminUnlock");
+        const logout = $("#adminLogout");
+        try{
+          const r = await fetch(API + "/api/admin/gate/check", { credentials:"include" });
+          const j = await r.json();
+          if(j.admin){
+            badge.textContent = "Admin: UNLOCKED";
+            badge.classList.add("ok");
+            unlock.textContent = "Go to Admin Hub";
+            unlock.href = "/pages/dashboard/admin/admin_hub.html";
+            logout.style.display = "";
+          }else{
+            badge.textContent = "Admin: LOCKED";
+            badge.classList.remove("ok");
+            unlock.textContent = "Unlock Admin";
+            unlock.href = "/pages/dashboard/home/admin_login.html?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fadmin_hub.html";
+            logout.style.display = "none";
+          }
+        }catch{
+          badge.textContent = "Admin: Unknown (network error)";
+          badge.classList.remove("ok");
+          unlock.textContent = "Unlock Admin";
+          unlock.href = "/pages/dashboard/home/admin_login.html?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fadmin_hub.html";
+          logout.style.display = "none";
+        }
+      }
+
+      function wireAdminLogout(){
+        const logout = $("#adminLogout");
+        logout.addEventListener("click", async (e)=>{
+          e.preventDefault();
+          try{ await fetch(API + "/api/admin/gate/logout", { method:"POST", credentials:"include" }); }catch{}
+          paintAdminStatus();
+        });
+      }
+
+      // Home page must never redirect.
+      document.addEventListener("DOMContentLoaded", ()=>{
+        setUser(); wireMenu(); buildIconBar();
+        wireAdminLogout(); paintAdminStatus();
+      });
     })();
   </script>
 </head>
@@ -225,6 +271,16 @@
   <a class="navlink" href="/pages/dashboard/home/overlay.html"><img src="/assets/stats_icon.png" alt="Overlay">Stream Overlay</a>
 
   <h3>Administration</h3>
+
+  <!-- NEW: live status + unlock/lock actions -->
+  <div id="adminStatus" class="pill-status">Checking admin…</div>
+  <a id="adminUnlock" class="navlink" href="/pages/dashboard/home/admin_login.html?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fadmin_hub.html">
+    <img src="/assets/L3Z_logoMain.png" alt="Unlock">Unlock Admin
+  </a>
+  <a id="adminLogout" class="navlink" href="#" style="display:none">
+    <img src="/assets/L3Z_logoMain.png" alt="Lock">Lock Admin (Log out)
+  </a>
+
   <div class="navlink" style="justify-content:center;opacity:.8">Admin pages are server-locked</div>
   <a class="navlink" href="/pages/dashboard/admin/bets_admin.html"><img src="/assets/lash3zbux_pp.png" alt="Bets Admin">Bets Admin (Unified)</a>
   <a class="navlink" href="/pages/dashboard/admin/battleground_admin.html"><img src="/assets/lashes%20battleground.png" alt="BG Admin">Battleground Admin</a>
@@ -295,7 +351,7 @@
   </div>
 </div>
 
-<!-- Jackpot logic (safe to keep, no redirects) -->
+<!-- Jackpot logic -->
 <script src="/assets/js/jackpot.client.js" defer></script>
 </body>
 </html>
