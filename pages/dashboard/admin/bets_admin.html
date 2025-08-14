@@ -158,7 +158,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
 (function(){
   "use strict";
 
-  // helpers
+  // ---------- helpers ----------
   const els=(s,r=document)=>Array.from(r.querySelectorAll(s));
   const el=(s,r=document)=>r.querySelector(s);
   function sget(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null;}catch{ return null; } }
@@ -167,39 +167,78 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   function kid(p){ return (p||'ID')+Math.random().toString(36).slice(2,10).toUpperCase(); }
   function toast(t,ok){ el('#msg').textContent=t; el('#msg').style.color = ok===false ? '#ff9aa7' : '#baffea'; setTimeout(()=>{ el('#msg').textContent=''; }, 2200); }
 
-  // ABSOLUTE ASSET PATH FIX (Bets Admin only)
+  // ---------- image resolving core ----------
+  const IMG_EXT=['png','webp','jpg','jpeg'];
+  const IMG_BASES=[
+    'assets/slot_images/',
+    '../assets/slot_images/',
+    '../../assets/slot_images/',
+    '/assets/slot_images/'
+  ];
+  const IMG_CACHE=new Map();
+
+  const slug=s=>String(s||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  function imgExists(url){
+    return new Promise(res=>{
+      if(!url){ res(false); return; }
+      const i=new Image();
+      i.onload=()=>res(true);
+      i.onerror=()=>res(false);
+      i.src = encodeURI(url) + (url.includes('?')?'&':'?') + 'v=' + Date.now();
+    });
+  }
+
+  // Normalize obvious paths; if it looks like a bare filename/slug, park it under assets/slot_images
   function assetPath(p){
     if(!p) return '';
     let s=String(p).trim();
-    // normalize folder spelling/spacing
-    s=s.replace(/slot[ _]images\//gi,'slot_images/');
-    // strip page prefix if present
-    s=s.replace(/^pages\/dashboard\/admin\//,'');
-    // keep http(s) or already-absolute
     if(/^https?:\/\//i.test(s) || s.startsWith('/')) return s;
-    // ensure assets start from root
+    s=s.replace(/slot[ _]images\//gi,'slot_images/');
+    s=s.replace(/^pages\/dashboard\/admin\//,'');
     if(s.startsWith('assets/')) return '/'+s;
+
+    // bare "file.png" or "power-of-thor"
+    const hasSlash = s.includes('/');
+    const hasExt = /\.[a-z]{3,4}$/i.test(s);
+    if(!hasSlash){
+      if(hasExt) return '/assets/slot_images/'+s;
+      return '/assets/slot_images/'+slug(s)+'.png';
+    }
     return s;
   }
 
-  // keys
+  async function resolveSlotImage(title, provider, candidate){
+    const key = (title||'')+'\u0000'+(provider||'')+'\u0000'+(candidate||'');
+    if(IMG_CACHE.has(key)) return IMG_CACHE.get(key);
+    const t=slug(title), p=slug(provider);
+
+    // 1) candidate first (normalized)
+    const cand = assetPath(candidate||'');
+    if(await imgExists(cand)) { IMG_CACHE.set(key,cand); return cand; }
+
+    // 2) try common guesses
+    const guesses=[];
+    for(const b of IMG_BASES){
+      for(const ext of IMG_EXT){
+        guesses.push(`${b}${t}.${ext}`);
+        if(p){ guesses.push(`${b}${p}__${t}.${ext}`); guesses.push(`${b}${p}/${t}.${ext}`); }
+      }
+    }
+    for(const u of guesses){
+      if(await imgExists(u)){ IMG_CACHE.set(key,u); return u; }
+    }
+    IMG_CACHE.set(key,'');
+    return '';
+  }
+
+  // ---------- ABSOLUTE keys ----------
   const K_UNIFIED='sb:markets:unified';
   const K_BG_BUILDER='bg:builder:battleground';
 
-  // title normalizer + resolvers
+  // title → maps
   const normTitle=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
   function mapById(games){ const m=new Map(); (games||[]).forEach(g=>m.set(g.id,g)); return m; }
   function mapByTitle(games){ const m=new Map(); (games||[]).forEach(g=>m.set(normTitle(g.title),g)); return m; }
-  function resolveSide(mxSideTitle, mxSideImg, mxSideId, byId, byTitle){
-    const fromId = mxSideId && byId.get(mxSideId);
-    const fromTitle = byTitle.get(normTitle(mxSideTitle||'')) || null;
-    const imgRaw =
-      mxSideImg ||
-      (fromId && (fromId.imageUrl||fromId.image)) ||
-      (fromTitle && (fromTitle.imageUrl||fromTitle.image)) || '';
-    const prov = (fromId&&fromId.provider) || (fromTitle&&fromTitle.provider) || '';
-    return {img:assetPath(imgRaw),prov};
-  }
 
   // state
   let state = sget(K_UNIFIED) || {
@@ -251,7 +290,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
         '<input data-x="label" placeholder="Market label" value="'+esc(m.label||'')+'" style="min-width:260px">'+
         '<select data-x="status"><option '+(m.status!=='locked'?'selected':'')+'>OPEN</option><option '+(m.status==='locked'?'selected':'')+'>LOCKED</option></select>'+
         '<button class="del" data-act="del">Delete</button></div>';
-      const extraOU=(m.type==='OVER_UNDER')?('<div class="lineRow"><span class="pill">LINE</span> <input data-x="line" type="number" step="0.01" value="'+(m.line!=null?m.line:'')+'" style="width:140px"></div>'):'';
+      const extraOU=(m.type==='OVER_UNDER')?('<div class="lineRow"><span class="pill">LINE</span> <input data-x="line" type="number" step="0.01" value="'+(m.line!=null?m.line:'')+'" style="width:140px"></div>'):'';      
       const extraNG=(m.type==='NUMERIC_GUESS')?(
         '<div class="lineRow">'+
         '<span class="pill">Start</span><input data-x="start" type="number" step="0.01" value="'+(m.start??'')+'" style="width:120px">'+
@@ -263,21 +302,21 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
         '<div class="lineRow"><span class="pill">Final</span><input data-x="final" type="number" step="0.01" value="'+(m.final??'')+'" style="width:120px">'+
         '<button class="btn" data-act="settleNG">Auto-Settle</button><button class="btn" data-act="award">Award BUX</button>'+
         '<span class="small">Entries: <b data-x="entries">'+(getEntries(section,m.id).length)+'</b> &nbsp; Winners: <b>'+(m.winners?m.winners.length:0)+'</b></span></div>'
-      ):'';
+      ):'';      
       const sels=(m.selections||[]).map((s,si)=>'<div class="selRow"><input data-sel="'+si+'" data-x="slabel" placeholder="Selection" value="'+esc(s.label||'')+'"><input data-sel="'+si+'" data-x="sodds" type="number" step="0.01" value="'+esc(s.odds||1.84)+'"><button class="del" data-act="sdel" data-sel="'+si+'">×</button></div>').join('');
       const addBtn=(m.type==='NUMERIC_GUESS')?'':'<div><button class="btn" data-act="addSel">+ Add Line</button></div>';
       box.innerHTML=top+extraOU+extraNG+sels+addBtn;
 
-      box.querySelector('[data-x="type"]').addEventListener('change',e=>{ sec.overall[mi].type=e.target.value; save(); paintMkts(section,mount); });
-      box.querySelector('[data-x="label"]').addEventListener('change',e=>{ sec.overall[mi].label=e.target.value; save(); });
-      box.querySelector('[data-x="status"]').addEventListener('change',e=>{ sec.overall[mi].status=(e.target.value||'OPEN').toLowerCase()==='locked'?'locked':'open'; save(); });
-      const lineEl=box.querySelector('[data-x="line"]'); if(lineEl){ lineEl.addEventListener('change',e=>{ const v=+e.target.value; sec.overall[mi].line=v; if(sec.overall[mi].selections?.length>=2){ sec.overall[mi].selections[0].label='Over '+v; sec.overall[mi].selections[1].label='Under '+v; } save(); paintMkts(section,mount); }); }
-      const W=['start','min','max','step','unit','prize','final']; W.forEach(w=>{ const n=box.querySelector('[data-x="'+w+'"]'); if(n) n.addEventListener('change',e=>{ sec.overall[mi][w]= (w==='unit')? e.target.value : +e.target.value; save(); }); });
+      box.querySelector('[data-x="type"]').addEventListener('change',e=>{ state.sections[section].overall[mi].type=e.target.value; save(); paintMkts(section,mount); });
+      box.querySelector('[data-x="label"]').addEventListener('change',e=>{ state.sections[section].overall[mi].label=e.target.value; save(); });
+      box.querySelector('[data-x="status"]').addEventListener('change',e=>{ state.sections[section].overall[mi].status=(e.target.value||'OPEN').toLowerCase()==='locked'?'locked':'open'; save(); });
+      const lineEl=box.querySelector('[data-x="line"]'); if(lineEl){ lineEl.addEventListener('change',e=>{ const v=+e.target.value; state.sections[section].overall[mi].line=v; const S=state.sections[section].overall[mi].selections; if(S?.length>=2){ S[0].label='Over '+v; S[1].label='Under '+v; } save(); paintMkts(section,mount); }); }
+      const W=['start','min','max','step','unit','prize','final']; W.forEach(w=>{ const n=box.querySelector('[data-x="'+w+'"]'); if(n) n.addEventListener('change',e=>{ state.sections[section].overall[mi][w]= (w==='unit')? e.target.value : +e.target.value; save(); }); });
       const ent=box.querySelector('[data-x="entries"]'); if(ent){ ent.textContent=getEntries(section,m.id).length; }
-      box.querySelectorAll('[data-x="slabel"]').forEach(n=> n.addEventListener('change',function(){ sec.overall[mi].selections[+this.dataset.sel].label=this.value; save(); }));
-      box.querySelectorAll('[data-x="sodds"]').forEach(n=> n.addEventListener('change',function(){ sec.overall[mi].selections[+this.dataset.sel].odds=+this.value||1; save(); }));
-      box.querySelectorAll('[data-act="sdel"]').forEach(b=> b.addEventListener('click',function(){ sec.overall[mi].selections.splice(+this.dataset.sel,1); save(); paintMkts(section,mount); }));
-      const addSelBtn=box.querySelector('[data-act="addSel"]'); if(addSelBtn){ addSelBtn.addEventListener('click',()=>{ sec.overall[mi].selections.push({id:kid('SEL'),label:'',odds:1.84}); save(); paintMkts(section,mount); }); }
+      box.querySelectorAll('[data-x="slabel"]').forEach(n=> n.addEventListener('change',function(){ state.sections[section].overall[mi].selections[+this.dataset.sel].label=this.value; save(); }));
+      box.querySelectorAll('[data-x="sodds"]').forEach(n=> n.addEventListener('change',function(){ state.sections[section].overall[mi].selections[+this.dataset.sel].odds=+this.value||1; save(); }));
+      box.querySelectorAll('[data-act="sdel"]').forEach(b=> b.addEventListener('click',function(){ state.sections[section].overall[mi].selections.splice(+this.dataset.sel,1); save(); paintMkts(section,mount); }));
+      const addSelBtn=box.querySelector('[data-act="addSel"]'); if(addSelBtn){ addSelBtn.addEventListener('click',()=>{ state.sections[section].overall[mi].selections.push({id:kid('SEL'),label:'',odds:1.84}); save(); paintMkts(section,mount); }); }
       const settleBtn=box.querySelector('[data-act="settleNG"]'); if(settleBtn){ settleBtn.addEventListener('click',()=>{ settleNumericGuess(section, mi); }); }
       const awardBtn=box.querySelector('[data-act="award"]'); if(awardBtn){ awardBtn.addEventListener('click',()=>{ awardBux(section, mi); }); }
 
@@ -309,7 +348,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     let best=Infinity, winners=[];
     entries.forEach(e=>{ const d=Math.abs((+e.guess)-(+m.final)); if(d<best){best=d; winners=[e];} else if(d===best){ winners.push(e); } });
     m.winners = winners.map(w=>({userId:w.userId||w.name||'anon', name:w.name||('User'+(w.userId||'')), guess:+w.guess, diff:Math.abs((+w.guess)-(+m.final))}));
-    save(); paintAll(); toast('Settled: '+m.winners.length+' winner'+(m.winners.length!==1?'s':''));
+    save(); paintAll(); toast('Settled: '+m.winners.length+' winner'+(m.winners.length!==1?'s':'')); 
   }
   function awardBux(section, mi){
     const sec=state.sections[section], m=sec.overall[mi];
@@ -319,66 +358,83 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     toast('Awards prepared ('+awards.length+')');
   }
 
-  // import from BG Admin — normalize image paths for Bets Admin
+  // --------- Import & Build (now image-safe) ----------
   async function importBG(){
     let used=''; const builder=sget(K_BG_BUILDER);
     if(builder && Array.isArray(builder.matches) && builder.matches.length){
       used='local:'+K_BG_BUILDER;
-      return acceptMatches(builder.matches, builder.games||[], used, true);
+      await acceptMatches(builder.matches, builder.games||[], used, true);
+      return;
     }
     const scan=['BG_MATCHUPS','BATTLEGROUND_MATCHUPS','BATTLEGROUND_SELECTED','BG_SELECTED_GAMES','battleground:matches','battleground:admin:matches','bg:admin:matches','bg:matchups'];
     for(const k of scan){
-      const v=sget(k); if(Array.isArray(v) && v.length){ used='local:'+k; return acceptMatches(v, (builder?.games)||[], used, false); }
+      const v=sget(k); if(Array.isArray(v) && v.length){ used='local:'+k; await acceptMatches(v, (builder?.games)||[], used, false); return; }
     }
     for(const url of ['/api/battleground/matchups','/api/bg/matchups']){
-      try{ const r=await fetch(url,{cache:"no-store"}); if(r.ok){ const arr=await r.json(); if(Array.isArray(arr)&&arr.length){ used='api:'+url; return acceptMatches(arr, (builder?.games)||[], used, false); } } }catch(_){}
+      try{ const r=await fetch(url,{cache:"no-store"}); if(r.ok){ const arr=await r.json(); if(Array.isArray(arr)&&arr.length){ used='api:'+url; await acceptMatches(arr, (builder?.games)||[], used, false); return; } } }catch(_){}
     }
     el('#dbgImport').textContent='none'; toast('No matchups found (Admin/local/API empty)',false);
   }
 
-  function acceptMatches(arr, games, used, alreadyNorm){
-    // persist games alongside matches so Build step can resolve
+  async function acceptMatches(arr, games, used, alreadyNorm){
     const b = sget(K_BG_BUILDER)||{games:[],matches:[]};
     b.games = Array.isArray(games) ? games : (b.games||[]);
-    b.matches = (alreadyNorm ? arr : arr.map((mx,i)=>({
-      id: mx.id||mx.matchId||('M'+i),
-      leftId: mx.leftId||mx.AId||mx.aId||mx.left?.id||null,
-      rightId: mx.rightId||mx.BId||mx.bId||mx.right?.id||null,
-      leftTitle: mx.leftTitle||mx.aName||mx.A||mx.left?.title||'LEFT',
-      rightTitle: mx.rightTitle||mx.bName||mx.B||mx.right?.title||'RIGHT',
-      leftImg: assetPath(mx.leftImg||mx.aImage||mx.imgA||mx.imageA||mx.left?.img||''),
-      rightImg: assetPath(mx.rightImg||mx.bImage||mx.imgB||mx.imageB||mx.right?.img||'')
-    })));
+    const byId = mapById(b.games);
+    const normalize = async (mx,i)=>{
+      const leftTitle  = mx.leftTitle || mx.aName || mx.A || mx.left?.title || (byId.get(mx.leftId||mx.AId)?.title) || 'LEFT';
+      const rightTitle = mx.rightTitle|| mx.bName || mx.B || mx.right?.title|| (byId.get(mx.rightId||mx.BId)?.title)|| 'RIGHT';
+      const leftProv   = mx.leftProv || byId.get(mx.leftId||mx.AId)?.provider || '';
+      const rightProv  = mx.rightProv|| byId.get(mx.rightId||mx.BId)?.provider|| '';
+      const lCand = assetPath(mx.leftImg||mx.aImage||mx.imgA||mx.imageA||mx.left?.img||'');
+      const rCand = assetPath(mx.rightImg||mx.bImage||mx.imgB||mx.imageB||mx.right?.img||'');
+      const leftImg  = alreadyNorm ? lCand : await resolveSlotImage(leftTitle, leftProv, lCand);
+      const rightImg = alreadyNorm ? rCand : await resolveSlotImage(rightTitle, rightProv, rCand);
+      return {
+        id: mx.id||mx.matchId||('M'+i),
+        leftId: mx.leftId||mx.AId||mx.aId||mx.left?.id||null,
+        rightId: mx.rightId||mx.BId||mx.bId||mx.right?.id||null,
+        leftTitle, rightTitle,
+        leftImg, rightImg
+      };
+    };
+    b.matches = await Promise.all(arr.map(normalize));
     sset(K_BG_BUILDER, b);
     el('#dbgImport').textContent = used+' ('+b.matches.length+')';
     toast('Imported '+b.matches.length+' matchups',true);
   }
 
-  function buildH2H(){
+  // Build H2H list and also persist repaired image URLs back to builder so other pages use them too
+  async function buildH2H(){
     const builder=sget(K_BG_BUILDER);
     if(!builder || !Array.isArray(builder.matches) || !builder.matches.length){ toast('No matches to build',false); return; }
 
     const byId=mapById(builder.games||[]);
-    const byTitle=mapByTitle(builder.games||[]);
-
     const prev={}; (state.sections.battleground.h2h||[]).forEach(o=>prev[o.matchId]=o);
 
-    state.sections.battleground.h2h = builder.matches.map(mx=>{
+    let changed=false;
+    state.sections.battleground.h2h = await Promise.all(builder.matches.map(async mx=>{
       const leftTitle = mx.leftTitle || (byId.get(mx.leftId)?.title) || 'LEFT';
       const rightTitle = mx.rightTitle || (byId.get(mx.rightId)?.title) || 'RIGHT';
+      const leftProv = byId.get(mx.leftId)?.provider || '';
+      const rightProv = byId.get(mx.rightId)?.provider || '';
 
-      const L=resolveSide(leftTitle, mx.leftImg, mx.leftId, byId, byTitle);
-      const R=resolveSide(rightTitle, mx.rightImg, mx.rightId, byId, byTitle);
+      const leftImg = await resolveSlotImage(leftTitle, leftProv, mx.leftImg);
+      const rightImg = await resolveSlotImage(rightTitle, rightProv, mx.rightImg);
+
+      if(mx.leftImg !== leftImg){ mx.leftImg = leftImg; changed=true; }
+      if(mx.rightImg !== rightImg){ mx.rightImg = rightImg; changed=true; }
 
       return {
         matchId: mx.id,
         leftId: mx.leftId||null, rightId: mx.rightId||null,
         leftTitle, rightTitle,
-        leftImg: assetPath(L.img), rightImg: assetPath(R.img),
-        leftProv: L.prov||'', rightProv: R.prov||'',
+        leftImg, rightImg,
+        leftProv, rightProv,
         leftOdds: (prev[mx.id]?.leftOdds)||1.84, rightOdds:(prev[mx.id]?.rightOdds)||1.84
       };
-    });
+    }));
+
+    if(changed){ sset(K_BG_BUILDER, builder); }
     save(); paintH2H(); toast('H2H built (images resolved)');
   }
 
@@ -398,8 +454,8 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   el('#bgAddYN').addEventListener('click',()=>addYN(state.sections.battleground));
   el('#bgAddCU').addEventListener('click',()=>addCU(state.sections.battleground));
   el('#bgAddCS').addEventListener('click',()=>addCS(state.sections.battleground));
-  el('#bgImport').addEventListener('click',importBG);
-  el('#bgBuild').addEventListener('click',buildH2H);
+  el'#bgImport').addEventListener('click',importBG);
+  el('#bgBuild').addEventListener('click',()=>buildH2H());
 
   el('#boAddOU').addEventListener('click',()=>addOU(state.sections.bonus));
   el('#boAddMR').addEventListener('click',()=>addMR(state.sections.bonus));
@@ -412,8 +468,28 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   el('#pvAddYN').addEventListener('click',()=>addYN(state.sections.pvp));
   el('#pvAddCU').addEventListener('click',()=>addCU(state.sections.pvp));
 
-  // boot
-  syncToggles(); paintAll(); if(state.lastUpdated){ el('#stamp').textContent='Last publish @ '+new Date(state.lastUpdated).toLocaleTimeString(); }
+  // boot: clean up any bad builder paths so all other pages see fixed URLs
+  (async function boot(){
+    syncToggles(); paintAll(); if(state.lastUpdated){ el('#stamp').textContent='Last publish @ '+new Date(state.lastUpdated).toLocaleTimeString(); }
+
+    const builder=sget(K_BG_BUILDER);
+    if(builder?.matches?.length){
+      const byId=mapById(builder.games||[]);
+      let changed=false;
+      for(const mx of builder.matches){
+        const lt=mx.leftTitle || byId.get(mx.leftId)?.title || '';
+        const rt=mx.rightTitle|| byId.get(mx.rightId)?.title|| '';
+        const lp=byId.get(mx.leftId)?.provider || '';
+        const rp=byId.get(mx.rightId)?.provider|| '';
+        const li = await resolveSlotImage(lt, lp, mx.leftImg);
+        const ri = await resolveSlotImage(rt, rp, mx.rightImg);
+        if(li && mx.leftImg!==li){ mx.leftImg=li; changed=true; }
+        if(ri && mx.rightImg!==ri){ mx.rightImg=ri; changed=true; }
+      }
+      if(changed){ sset(K_BG_BUILDER,builder); }
+    }
+  })();
+
 })();
 </script>
 </body>
