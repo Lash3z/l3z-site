@@ -1,12 +1,11 @@
-// server.js — fixed & hardened (minimal patch to stop ENOENT & keep login working)
+// server.js — Render-safe boot + login intact
 import fs from "fs/promises";
 import path from "path";
 import express from "express";
 import cookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
-import crypto from "crypto";
 import { fileURLToPath } from "url";
-import { MongoClient, ObjectId } from "mongodb";
+import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -30,24 +29,19 @@ const JACKPOT_BASE_AUD     = Number(process.env.JACKPOT_BASE_AUD || 150);
 const JACKPOT_PER_SUB_AUD  = Number(process.env.JACKPOT_PER_SUB_AUD || 2.5);
 const JACKPOT_SUBS_CAP_AUD = Number(process.env.JACKPOT_SUBS_CAP_AUD || 100);
 
-const SIGNUP_BONUS     = parseInt(process.env.SIGNUP_BONUS || "50", 10);
-const WALLET_CURRENCY  = process.env.WALLET_CURRENCY || "L3Z";
-
 // ----- Paths
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 
-// allow override so Render can point to the right folder
+// Allow override from env; otherwise ./public next to server.js
 const PUBLIC_DIR = process.env.PUBLIC_DIR
   ? path.resolve(process.env.PUBLIC_DIR)
   : path.join(__dirname, "public");
-
 const UP_DIR = path.join(__dirname, "uploads");
 
-// Ensure dirs exist
 await fs.mkdir(UP_DIR, { recursive: true });
 
-// Pre-check for SPA index to avoid ENOENT spam
+// Pre-check for SPA index so we don't crash on sendFile
 let HAS_INDEX_HTML = false;
 try {
   await fs.access(path.join(PUBLIC_DIR, "index.html"));
@@ -56,11 +50,11 @@ try {
   console.warn(`[Server] No index.html at ${path.join(PUBLIC_DIR, "index.html")} — SPA fallback disabled.`);
 }
 
-// ----- DB (optional)
+// ----- DB (optional, with fast timeout so the app still boots)
 let db = null;
 if (MONGO_URI) {
   try {
-    const client = new MongoClient(MONGO_URI);
+    const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 8000 });
     await client.connect();
     db = client.db(MONGO_DB);
     console.log(`[DB] Connected to MongoDB: ${MONGO_DB}`);
@@ -84,12 +78,11 @@ const memoryStore = {
 // ----- App
 const app = express();
 app.disable("x-powered-by");
-app.set("trust proxy", 1); // important when behind a proxy (https + secure cookies)
-
+app.set("trust proxy", 1);
 app.use(express.json());
 app.use(cookieParser());
 
-// ----- CORS only for /api
+// CORS only for /api
 app.use("/api", (req, res, next) => {
   const origin = req.headers.origin;
   if (origin) {
@@ -103,7 +96,7 @@ app.use("/api", (req, res, next) => {
   next();
 });
 
-// ----- JWT helpers
+// JWT helpers
 function generateAdminToken(username) {
   return jwt.sign({ username }, JWT_SECRET, { expiresIn: "2h" });
 }
@@ -119,17 +112,16 @@ function verifyAdminToken(req, res, next) {
   }
 }
 
-// ----- Admin auth
+// Admin auth
 app.post(["/api/admin/gate/login", "/api/admin/login"], (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) return res.status(400).json({ error: "Missing credentials" });
-
   if (username.toLowerCase() === ADMIN_USER && password === ADMIN_PASS) {
     const token = generateAdminToken(username);
     res.cookie("admin_token", token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: NODE_ENV === "production", // true on HTTPS
+      secure: NODE_ENV === "production",
       maxAge: 1000 * 60 * 60 * 2,
       path: "/",
     });
@@ -137,22 +129,31 @@ app.post(["/api/admin/gate/login", "/api/admin/login"], (req, res) => {
   }
   return res.status(401).json({ error: "Invalid credentials" });
 });
-
 app.post(["/api/admin/gate/logout", "/api/admin/logout"], (req, res) => {
   res.clearCookie("admin_token", { path: "/" });
   res.json({ success: true });
 });
-
 app.get(["/api/admin/gate/check", "/api/admin/me"], verifyAdminToken, (req, res) => {
   res.json({ success: true, username: req.adminUser });
 });
 
-// ----- Health check
+// Health + up endpoints (Render will hit these fine)
 app.get("/api/health", (req, res) => {
   res.json({ ok: true, env: NODE_ENV, db: !!db, time: new Date().toISOString() });
 });
+app.get("/", (req, res) => {
+  // If SPA present, let the fallback serve it; else show a simple up message
+  if (HAS_INDEX_HTML) return res.redirect(302, "/app");
+  res
+    .status(200)
+    .send("L3Z server is up. No SPA installed here. Set PUBLIC_DIR or add public/index.html.");
+});
+app.get("/app", (req, res, next) => {
+  if (!HAS_INDEX_HTML) return res.status(404).send("No SPA found.");
+  res.sendFile(path.join(PUBLIC_DIR, "index.html"), (err) => err && next(err));
+});
 
-// ----- Jackpot
+// APIs (unchanged behavior)
 app.get("/api/jackpot", async (req, res) => {
   if (db) {
     const settings = await db.collection("settings").findOne({ key: "jackpot" });
@@ -160,8 +161,6 @@ app.get("/api/jackpot", async (req, res) => {
   }
   return res.json(memoryStore.jackpot);
 });
-
-// ----- Giveaways
 app.get("/api/giveaways", async (req, res) => {
   if (db) {
     const list = await db.collection("giveaways").find().toArray();
@@ -169,8 +168,6 @@ app.get("/api/giveaways", async (req, res) => {
   }
   return res.json(memoryStore.giveaways);
 });
-
-// ----- Prize claim
 app.post("/api/prizes/claim", async (req, res) => {
   const { prizeId, user } = req.body || {};
   if (!prizeId || !user) return res.status(400).json({ error: "Missing data" });
@@ -180,7 +177,7 @@ app.post("/api/prizes/claim", async (req, res) => {
   res.json({ success: true });
 });
 
-// ----- Static (will 404 safely if folder doesn’t exist)
+// Static files (safe if folder missing)
 app.use(express.static(PUBLIC_DIR, {
   setHeaders(res, filePath) {
     if (/\.(png|jpe?g|gif|webp|svg|woff2?|mp3|mp4)$/i.test(filePath)) {
@@ -191,27 +188,20 @@ app.use(express.static(PUBLIC_DIR, {
   }
 }));
 
-// ----- SPA fallback — only if index.html exists
+// SPA fallback only when present
 app.get("*", (req, res, next) => {
-  if (!HAS_INDEX_HTML) {
-    // Don’t throw — return a simple message so your service stays up
-    return res
-      .status(200)
-      .send("SPA not installed on this service. Set PUBLIC_DIR to your web folder or add index.html.");
-  }
-  res.sendFile(path.join(PUBLIC_DIR, "index.html"), (err) => {
-    if (err) next(err);
-  });
+  if (!HAS_INDEX_HTML) return res.status(404).send("Not found.");
+  res.sendFile(path.join(PUBLIC_DIR, "index.html"), (err) => err && next(err));
 });
 
-// ----- Error handler (last)
+// Error handler
 app.use((err, req, res, next) => {
   console.error("[ERROR]", err?.stack || err);
   if (req.path.startsWith("/api")) return res.status(500).json({ error: "Server error" });
   res.status(500).send("Server error");
 });
 
-// ----- Start
+// Start
 app.listen(PORT, HOST, () => {
   console.log(`[Server] http://${HOST}:${PORT} (${NODE_ENV})  PUBLIC_DIR=${PUBLIC_DIR}`);
 });
