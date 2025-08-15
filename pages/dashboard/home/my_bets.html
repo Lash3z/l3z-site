@@ -1,463 +1,272 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Player Betting Slip — Lash3zBux</title>
-  <style>
-    :root{
-      --bg:#0b0e13;--panel:#12151c;--ink:#e8ecf3;--soft:#aeb7c6;--line:rgba(0,255,255,.18);
-      --gold:#f0a320;--muted:#7d8596;--danger:#e85c6b;--ok:#12d48a;
-      --card:#0f1319;--chip:#1a202b;--chipLine:rgba(240,163,32,.35);
-    }
-    *{box-sizing:border-box}
-    html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,Arial,sans-serif}
-    a{color:inherit;text-decoration:none}
-    html[data-auth="checking"] body{opacity:0;transition:opacity .12s ease}
-
-    .wrap{max-width:1400px;margin:0 auto;padding:14px}
-    .top{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:12px}
-    .tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .tab{padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;cursor:pointer;font-weight:700;color:#ffd78a}
-    .tab.active{background:linear-gradient(180deg,#181d26,#141923);border-color:rgba(255,187,0,.35);box-shadow:0 10px 18px rgba(0,0,0,.35) inset,0 0 0 1px rgba(255,187,0,.08)}
-
-    .layout{display:grid;grid-template-columns:1fr 380px;gap:16px}
-    @media (max-width:1100px){.layout{grid-template-columns:1fr}}
-
-    .panel{background:linear-gradient(180deg,#0e1319,#0b1016);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
-    .sectionTitle{padding:14px 16px;border-bottom:1px solid var(--line);font-weight:900;color:#ffd589}
-    .markets{display:flex;flex-direction:column;gap:12px;padding:12px}
-
-    .mkt{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-    .mHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px}
-    .mLabel{display:flex;gap:10px;align-items:center;font-weight:800}
-    .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0a1016;color:#ffd589;font-size:12px}
-
-    .options{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 8px 12px}
-    .opt{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#10151d;border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
-    .opt.active{outline:2px solid rgba(240,163,32,.6);box-shadow:0 0 0 3px rgba(240,163,32,.15)}
-    .odd{font-weight:900;color:#ffd78a}
-
-    .numBox,.textBox{padding:12px;border-top:1px dashed var(--line);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-    .numBox input,.textBox input{background:#0f141b;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--ink)}
-
-    .chips{display:flex;flex-wrap:wrap;gap:8px}
-    .chip{background:var(--chip);border:1px solid var(--chipLine);border-radius:999px;padding:8px 12px;cursor:pointer}
-    .chip.active{background:#2b3545;border-color:rgba(240,163,32,.8)}
-
-    /* Slip */
-    .slip{position:sticky;top:10px;display:flex;flex-direction:column;height:calc(100dvh - 24px)}
-    .slipHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px}
-    .slipTabs{display:flex;gap:12px;padding:0 16px 10px}
-    .slipTab{font-weight:800;border-bottom:2px solid transparent;padding:6px 2px;cursor:pointer;color:#ffd589}
-    .slipTab.active{border-bottom-color:var(--gold)}
-    .slipBody{flex:1;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
-    .ticket{border:1px solid var(--line);border-radius:10px;background:#0f151c;padding:10px 12px}
-    .tTop{display:flex;justify-content:space-between;gap:10px}
-    .tMeta{font-size:12px;color:#7d8596}
-    .trash{cursor:pointer;color:#ffb5be}
-    .totals{border-top:1px solid var(--line);padding:12px 16px;display:grid;gap:8px}
-    .row{display:flex;justify-content:space-between;align-items:center}
-    .amt{display:flex;gap:8px;align-items:center}
-    .amt input{width:120px;background:#0f141b;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--ink)}
-    .btn{border:none;border-radius:12px;padding:12px 16px;font-weight:900;cursor:pointer;background:linear-gradient(180deg,#f2b64a,#d49a2e);color:#1a1204;box-shadow:inset 0 -2px 0 #9a6a13,0 8px 24px rgba(0,0,0,.35)}
-    .btn:disabled{opacity:.5;cursor:not-allowed}
-    .ghost{display:flex;align-items:center;gap:8px;color:#7d8596;font-size:12px}
-    .note{padding:8px 12px;color:#c7d0e4;font-size:12px;border-left:3px solid #2d3648;background:#0f151d;border-radius:8px;margin:6px 12px}
-    .msg{font-size:12px}
-    .msg.ok{color:#9ff1c7}
-    .msg.err{color:#ffb5be}
-  </style>
-
-  <!-- Session + wallet bridge (same model as Profile) -->
-  <script>
-  (function(){
-    "use strict";
-    const LOGIN="/pages/dashboard/home/login.html";
-    const up=s=>String(s||"").trim().toUpperCase();
-    const now=()=>Date.now();
-    const sget=k=>{try{return JSON.parse(localStorage.getItem(k)||"null");}catch{return null;}};
-    const sset=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
-
-    document.documentElement.setAttribute("data-auth","checking");
-    const sess=sget("l3z:session");
-    const USER=up(sess?.user || localStorage.getItem("auth:username") || localStorage.getItem("lash3z_last_user") || "");
-    if(!USER){
-      const back=encodeURIComponent(location.pathname+location.search+location.hash);
-      location.replace(`${LOGIN}?redirect=${back}`); throw 0;
-    }
-    localStorage.setItem("user:username", USER);
-    localStorage.setItem("lash3z_last_user", USER);
-
-    const WKEY=u=>`lbx:wallet:${up(u)}`;
-    const LKEY=u=>`lbx:ledger:${up(u)}`;
-
-    function ensureWallet(u){
-      let w=sget(WKEY(u));
-      if(!w){
-        w={balance:50,created:now(),lastDaily:0};
-        sset(WKEY(u),w);
-        sset(LKEY(u),[{ts:now(),delta:+50,reason:"WELCOME_BONUS",balance:50}]);
-      }
-      return w;
-    }
-    function getWallet(){ return sget(WKEY(USER)) || ensureWallet(USER); }
-    function putWallet(w){ sset(WKEY(USER), w); }
-    function balance(){ return Number(getWallet().balance||0); }
-
-    function paintHeader(){
-      const who=document.getElementById('who'); if(who) who.textContent=`Welcome, ${USER}`;
-      const b=document.getElementById('bal');
-      if(b) b.textContent='🪙 '+(balance()||0).toLocaleString(undefined,{maximumFractionDigits:0})+' BUX';
-    }
-
-    ensureWallet(USER);
-    document.addEventListener("DOMContentLoaded",()=>{ paintHeader(); document.documentElement.removeAttribute("data-auth"); });
-    window.addEventListener("storage",(e)=>{ if(!e.key) return; if(e.key===WKEY(USER)||e.key===LKEY(USER)) paintHeader(); });
-
-    // Expose for the page logic
-    window.__L3Z__={USER,WKEY,LKEY,ensureWallet,getWallet,putWallet,balance,sget,sset,now};
-  })();
-  </script>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Battleground — Prediction Form</title>
+<style>
+  :root{
+    --ink:#eaf7ff; --muted:#8fbfc4; --teal:#00ffff; --gold:#ffb42d;
+    --bg:#050a0c; --panel:rgba(5,10,12,.78); --line:rgba(0,255,255,.16);
+    --ok:#12f3d6; --danger:#ff5a73;
+  }
+  html,body{margin:0;height:100%;background:#000 url("/assets/media/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  .wrap{max-width:1100px;margin:24px auto;padding:16px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,rgba(5,10,12,.70),rgba(5,10,12,.78));box-shadow:0 8px 30px rgba(0,0,0,.45)}
+  .topbar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+  h1{margin:0;font-size:22px;letter-spacing:.02em;text-shadow:0 0 12px rgba(0,255,255,.35)}
+  .pill{padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:#0b1f21;color:#cfffff;font-weight:800}
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .controls input{background:#061417;border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:8px 10px;outline:none}
+  .hint{color:var(--muted);font-size:12px}
+  .match{display:grid;grid-template-columns:1fr 52px 60px 52px 1fr;gap:14px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:rgba(0,0,0,.35)}
+  .match + .match{margin-top:12px}
+  .desc{min-width:0}
+  .name{font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .prov{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .thumb{width:52px;height:68px;border:1px solid var(--line);border-radius:8px;background:#000;overflow:hidden}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .vs{font-weight:900;text-align:center;opacity:.9;display:flex;flex-direction:column;gap:6px;align-items:center}
+  .badge{font-size:11px;padding:2px 6px;border:1px solid var(--line);border-radius:999px;background:#0b1f21;color:#9ff8ff}
+  .pick-left{grid-column:1 / span 2}.pick-right{grid-column:4 / span 2}
+  .pick{display:grid;gap:10px;align-items:center}
+  .pick-left .pick{grid-template-columns:1fr 52px}
+  .pick-right .pick{grid-template-columns:52px 1fr}
+  .pick-left .desc{text-align:right}
+  .pick-right .desc{text-align:left}
+  .card{border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:8px;transition:.15s all}
+  .card.active{outline:2px solid var(--ok);box-shadow:0 0 0 3px rgba(18,243,214,.15) inset}
+  .card.locked{opacity:.5;pointer-events:none}
+  .section{margin-top:18px}
+  .scoreGrid{display:grid;grid-template-columns:1fr 52px 60px 52px 1fr;gap:14px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:rgba(0,0,0,.35)}
+  .scoreTitle{grid-column:1 / -1;font-weight:900;margin-bottom:4px}
+  .scoreInput{display:flex;gap:8px;align-items:center}
+  .scoreInput input{width:70px;text-align:center;font-weight:900;background:#061417;border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:8px}
+  .lblL{justify-self:end}.lblR{justify-self:start}.colon{font-weight:900;text-align:center;opacity:.85}
+  .hintRow{grid-column:1 / -1;color:var(--muted);font-size:12px;margin-top:4px}
+  .err{color:var(--danger);font-size:12px;margin-top:4px}
+  .submitbar{display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-top:16px}
+  button{background:#0b1f21;border:1px solid var(--line);color:#fff;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}
+  button.primary{background:linear-gradient(180deg,#0ef,#12f3d6);-webkit-background-clip:text;background-clip:text;color:transparent;border-color:var(--ok)}
+  button[disabled]{opacity:.4;cursor:not-allowed}
+  .toast{position:fixed;right:16px;bottom:16px;background:#0b1f21;border:1px solid var(--line);border-radius:8px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:.2s all}
+  .toast.on{opacity:1;transform:translateY(0)}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="top">
-      <div class="tabs">
-        <div class="tab active" data-tab="battleground">Battleground</div>
-        <div class="tab" data-tab="bonus">Bonus Hunt</div>
-        <div class="tab" data-tab="pvp">PVP</div>
-      </div>
-      <div class="pill" id="who">Welcome, —</div>
-      <div class="pill" id="bal">🪙 0 BUX</div>
-    </div>
+<div class="wrap">
+  <div class="topbar"><h1>Battleground — Prediction Form</h1><div class="pill" id="evtInfo">—</div></div>
+  <div class="controls">
+    <label>Player&nbsp;Name <input id="user" placeholder="USERNAME"/></label>
+    <span class="hint">Pick LEFT or RIGHT for each matchup. Bonus: predict the exact final score.</span>
+  </div>
+  <div id="list"></div>
 
-    <div class="layout">
-      <!-- LEFT: Markets -->
-      <div class="panel">
-        <div class="sectionTitle" id="sectionLabel">Battleground — Custom Markets</div>
-        <div id="markets" class="markets"></div>
-        <div id="hint" class="note" style="display:none"></div>
-      </div>
-
-      <!-- RIGHT: Slip -->
-      <div class="panel slip">
-        <div class="slipHead">
-          <div style="font-weight:900;color:#ffd589">Picks <span id="slipCount" class="pill">0</span></div>
-          <div class="trash" id="clearSlip" title="Clear">🗑</div>
-        </div>
-        <div class="slipTabs">
-          <div class="slipTab active" data-mode="single">Single</div>
-          <div class="slipTab" data-mode="multi">Multi</div>
-        </div>
-        <div id="slipBody" class="slipBody"></div>
-        <div class="totals">
-          <div class="row"><div>Bet Amount</div><div class="amt"><input id="stake" type="number" min="1" max="100" step="1" value="10"/><span>BUX</span></div></div>
-          <div class="row"><div>Estimated Winnings</div><div id="payout">0 BUX</div></div>
-          <div id="warn" class="msg"></div>
-          <button id="submit" class="btn" disabled>Place Bet</button>
-          <div class="row" style="justify-content:space-between">
-            <div class="ghost"><label><input id="ghost" type="checkbox"/> Ghost Mode</label></div>
-            <div class="ghost">Max 100 BUX per bet.</div>
-          </div>
-        </div>
-      </div>
+  <div class="section">
+    <div class="scoreGrid">
+      <div class="scoreTitle">Final Score</div>
+      <div class="lblL"><span id="leftLbl">Left</span></div>
+      <div class="scoreInput" style="grid-column:2"><input id="scoreL" type="number" min="0" step="1" value="0"/></div>
+      <div class="colon">:</div>
+      <div class="scoreInput" style="grid-column:4"><input id="scoreR" type="number" min="0" step="1" value="0"/></div>
+      <div class="lblR"><span id="rightLbl">Right</span></div>
+      <div class="hintRow" id="scoreHint">Must add up to 3 (e.g., 2–1 or 3–0).</div>
     </div>
+    <div class="err" id="scoreErr"></div>
   </div>
 
+  <div class="submitbar">
+    <button id="clearBtn">Clear</button>
+    <button id="submitBtn" class="primary" disabled>Submit Predictions</button>
+  </div>
+</div>
+<div class="toast" id="toast">Saved.</div>
+
 <script>
-(function(){
+(() => {
   "use strict";
-  // ===== Helpers =====
-  const $=(q,r)=> (r||document).querySelector(q);
-  const $$=(q,r)=> Array.from((r||document).querySelectorAll(q));
-  const esc=s=>String(s??'').replace(/[&<>\"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
-  const kid=(p='ID')=> p+Math.random().toString(36).slice(2,10).toUpperCase();
-  const bux=n=> (Number(n)||0).toLocaleString(undefined,{maximumFractionDigits:0})+' BUX';
+  const K_PUBLISHED='sb:markets:battleground';
+  const K_BUILDER='bg:builder:battleground';
+  const K_BETS='lash3z_bets';                // legacy per-match entries (kept)
+  const MYBETS_KEY = u => 'sb:mybets:'+u;    // compact “My Bets” feed
 
-  // ===== Shared keys / session objects from bridge =====
-  const { USER, sget, sset, now, balance, getWallet, putWallet, LKEY } = window.__L3Z__;
+  const $=s=>document.querySelector(s);
+  const listEl=$('#list'), userEl=$('#user'), evtInfoEl=$('#evtInfo');
+  const scoreLEl=$('#scoreL'), scoreREl=$('#scoreR'), scoreErrEl=$('#scoreErr');
+  const leftLblEl=$('#leftLbl'), rightLblEl=$('#rightLbl'), scoreHintEl=$('#scoreHint');
+  const submitBtn=$('#submitBtn'), clearBtn=$('#clearBtn'), toast=$('.toast');
 
-  // ===== Keys =====
-  const K_UNIFIED='sb:markets:unified';
-  const K_BH_LIVE='bh:live';
-  const K_BH_DRAFT='bh:draft';
-  const K_SUBS='sb:submitted:'+USER;     // submissions tied to logged-in user
+  let eventId='battleground:'+new Date().toISOString().slice(0,10);
+  let eventTitle='BATTLEGROUND';
+  let matchups=[]; let picks=new Map();
+  let leftSeriesName='Left', rightSeriesName='Right';
+  let seriesTotal=3;
 
-  // ===== State =====
-  let submitted = sget(K_SUBS) || {};    // marketId -> {leg, at, section}
-  let unified = sget(K_UNIFIED) || {sections:{battleground:{overall:[]},bonus:{overall:[]},pvp:{overall:[]}}};
-  let activeTab='battleground';
-  let slipMode='single';
-  let slip=[]; // {marketId, type, odds, ...}
-  let bhFilter = {providers:[], q:''};
+  const read=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch{return null}};
+  const esc=s=>(s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
-  // ===== Wire UI =====
-  $$('.tab').forEach(t=> t.addEventListener('click',()=> setTab(t.dataset.tab)));
-  $$('.slipTab').forEach(t=> t.addEventListener('click',()=>{ slipMode=t.dataset.mode; updateSlipUI(); }));
-  $('#clearSlip')?.addEventListener('click',()=>{ slip=[]; updateSlipUI(); });
-  $('#stake')?.addEventListener('input', updateTotals);
-  $('#submit')?.addEventListener('click', submitBet);
-
-  setTab(activeTab);
-  refreshBux();
-
-  // ===== Tabs =====
-  function setTab(tab){
-    activeTab=tab;
-    $$('.tab').forEach(x=> x.classList.toggle('active', x.dataset.tab===tab));
-    $('#sectionLabel').textContent=(tab==='battleground'?'Battleground':tab==='bonus'?'Bonus Hunt':'PVP')+' — Custom Markets';
-    paintMarkets();
+  function normalizeFromPublished(o){
+    if(!o||typeof o!=='object') return null;
+    const m=Array.isArray(o.h2h)?o.h2h:[];
+    return {
+      source:'published',
+      lastUpdated:Number(o.lastUpdated||o.ts||0)||0,
+      eventId:o.eventId||eventId,
+      title:o.title||eventTitle,
+      matchups:m.map((x,i)=>({
+        id:x.id||('M'+(i+1)),
+        left:{title:x.left?.title||x.leftTitle||'LEFT', provider:x.left?.provider||x.leftProv||'', img:x.left?.img||x.leftImg||''},
+        right:{title:x.right?.title||x.rightTitle||'RIGHT', provider:x.right?.provider||x.rightProv||'', img:x.right?.img||x.rightImg||''},
+        status:(x.status||'OPEN').toUpperCase()
+      })),
+      seriesTotal:Number(o.seriesTotal||o.bestOf||3)
+    };
   }
-
-  // ===== Bonus Hunt slot list =====
-  const readBH=()=> sget(K_BH_LIVE) || sget(K_BH_DRAFT);
-  function bhSlotList(){
-    const src=readBH(); const arr=[];
-    if(src && Array.isArray(src.entries)){
-      src.entries.forEach(e=>{
-        const name = e.slot || e.name || e.game || ''; if(!name) return;
-        const prov = e.provider || e.gameProvider || e.vendor || '';
-        arr.push({name, provider:prov});
-      });
-    }
-    const seen={}, res=[]; arr.forEach(x=>{ if(!seen[x.name]){ seen[x.name]=1; res.push(x); }});
-    return res;
-  }
-
-  // ===== Painting =====
-  function paintMarkets(){
-    const host=$('#markets'); host.innerHTML='';
-    const sec=(unified.sections[activeTab]||{overall:[]});
-    const mkts=sec.overall||[];
-
-    if(activeTab==='bonus'){
-      const hint=$('#hint'); const need=mkts.length===0;
-      hint.style.display= need? '' : 'none';
-      if(need){ hint.textContent='Bonus Hunt markets are not prefilled yet. Open Admin and enable Bonus Hunt so the fixed markets appear.'; }
-    }
-    mkts.forEach(m=> host.appendChild(marketCard(m)));
-  }
-
-  const isLocked=m=> String(m.status||'open').toLowerCase()==='locked';
-  const isSubmitted=marketId=> !!submitted[marketId];
-  const saveSubmitted=()=> sset(K_SUBS, submitted);
-
-  function marketCard(m){
-    const card=document.createElement('div'); card.className='mkt';
-    const locked=isLocked(m); const already=isSubmitted(m.id);
-
-    const head=document.createElement('div'); head.className='mHead';
-    head.innerHTML='<div class="mLabel">'+(locked?'🔒 ':'📦 ')+'<span>'+esc(m.label||m.type)+'</span></div>'
-                  +'<div class="pill">'+esc((m.status||'open').toUpperCase())+'</div>';
-    card.appendChild(head);
-
-    if(already){
-      const bar=document.createElement('div'); bar.className='numBox';
-      bar.innerHTML='<span class="pill">Submitted ✓</span>'+(locked?'':' <button class="chip" data-act="undo">Undo</button>');
-      if(!locked){ bar.querySelector('[data-act="undo"]')?.addEventListener('click',()=>undoSubmit(m.id)); }
-      card.appendChild(bar);
-    }
-
-    if(['OVER_UNDER','YES_NO','MULTI_RANGE','CUSTOM'].includes(m.type)){
-      const box=document.createElement('div'); box.className='options';
-      (m.selections||[]).forEach((s,idx)=>{
-        const o=document.createElement('div'); o.className='opt'; o.dataset.idx=idx;
-        if(locked||already) o.style.pointerEvents='none';
-        o.classList.toggle('active', slip.some(x=> x.marketId===m.id && x.selIdx==idx));
-        o.innerHTML='<div>'+esc(s.label||'Option')+'</div><div class="odd">'+Number(s.odds||1).toFixed(2)+'×</div>';
-        o.addEventListener('click',()=> togglePick(m,{ idx, label:s.label, odds:Number(s.odds||1) }, o));
-        box.appendChild(o);
-      });
-      card.appendChild(box);
-    }
-
-    if(m.type==='NUMERIC_GUESS'){
-      const nb=document.createElement('div'); nb.className='numBox';
-      nb.innerHTML='<span class="pill">Enter your guess</span><input type="number" step="0.01" placeholder="0" style="width:180px" '+(locked||already?'disabled':'')+' />'
-                  +'<button class="chip" type="button" '+(locked||already?'disabled':'')+'>Add to Slip</button>';
-      const input=nb.querySelector('input'); const btn=nb.querySelector('button');
-      btn?.addEventListener('click',()=>{ const v=input?.value.trim(); if(!v) return; addToSlip(m,{type:'guess',guess:Number(v)}); if(input) input.value=''; });
-      card.appendChild(nb);
-    }
-
-    if(m.type==='TEXT_GUESS'){
-      const list = activeTab==='bonus' ? bhSlotList() : [];
-      const box=document.createElement('div'); box.className='textBox';
-      if(list.length){
-        const provs=[]; list.forEach(x=>{ if(x.provider && !provs.includes(x.provider)) provs.push(x.provider); });
-        const filterBar=document.createElement('div'); filterBar.className='chips';
-        const allBtn=document.createElement('div'); allBtn.className='chip active'; allBtn.textContent='All';
-        filterBar.appendChild(allBtn);
-        provs.forEach(p=>{
-          const b=document.createElement('div'); b.className='chip'; b.textContent=p;
-          b.addEventListener('click',()=>{ $$('.chip',filterBar).forEach(x=>x.classList.remove('active')); b.classList.add('active'); bhFilter.providers=[p]; renderChips(); });
-          filterBar.appendChild(b);
-        });
-        const q=document.createElement('input'); q.placeholder='Search slot'; q.style.minWidth='200px';
-        q.addEventListener('input',()=>{ bhFilter.q=q.value.toLowerCase(); renderChips(); });
-        filterBar.appendChild(q);
-        box.appendChild(filterBar);
-
-        const wrap=document.createElement('div'); wrap.className='chips'; box.appendChild(wrap);
-        if(locked||already) wrap.style.pointerEvents='none';
-
-        function renderChips(){
-          wrap.innerHTML='';
-          const filtered=list.filter(x=>{
-            const passProv=!bhFilter.providers.length || (x.provider && bhFilter.providers.includes(x.provider));
-            const passQ=!bhFilter.q || x.name.toLowerCase().includes(bhFilter.q);
-            return passProv && passQ;
-          });
-          filtered.forEach(o=>{
-            const c=document.createElement('div'); c.className='chip'; c.textContent=o.name;
-            c.addEventListener('click',()=>{ $$('.chip',wrap).forEach(x=>x.classList.remove('active')); c.classList.add('active'); addToSlip(m,{type:'text',guess:o.name}); });
-            wrap.appendChild(c);
-          });
-        }
-        allBtn.addEventListener('click',()=>{ bhFilter.providers=[]; $$('.chip',filterBar).forEach(x=>x.classList.remove('active')); allBtn.classList.add('active'); renderChips(); });
-        renderChips();
-      }else{
-        box.innerHTML='<span class="pill">Your pick</span><input placeholder="Type the slot name" style="min-width:240px" '+(locked||already?'disabled':'')+' />'
-                     +'<button class="chip" type="button" '+(locked||already?'disabled':'')+'>Add</button>';
-        const ti=box.querySelector('input'), tb=box.querySelector('button');
-        tb?.addEventListener('click',()=>{ const v=ti?.value.trim(); if(!v) return; addToSlip(m,{type:'text',guess:v}); if(ti) ti.value=''; });
-      }
-      card.appendChild(box);
-    }
-
-    return card;
-  }
-
-  // ===== BUX & messages =====
-  function refreshBux(){
-    const b=document.getElementById('bal');
-    if(b) b.textContent='🪙 '+(balance()||0).toLocaleString(undefined,{maximumFractionDigits:0})+' BUX';
-  }
-  function setMsg(text, ok){
-    const w=$('#warn'); if(!w) return;
-    w.textContent=text||''; w.className='msg'+(text?(ok?' ok':' err'):'');
-  }
-
-  // ===== Picks =====
-  function addToSlip(m, payload){
-    if(isLocked(m) || isSubmitted(m.id)) return;
-    const item={ id:kid('T'), section:activeTab, marketId:m.id, label:m.label||m.type, mtype:m.type };
-    if(payload.type==='selection'){ item.type='selection'; item.selIdx=payload.idx; item.selLabel=payload.label; item.odds=Number(payload.odds||1); }
-    if(payload.type==='guess'){ item.type='guess'; item.guess=payload.guess; item.odds=Number(m.fixedOdds||1.84); }
-    if(payload.type==='text'){ item.type='text'; item.guess=String(payload.guess); item.odds=Number(m.fixedOdds||1.84); }
-    if(slipMode==='single'){ slip = slip.filter(x=> x.marketId!==item.marketId); }
-    slip.push(item); updateSlipUI();
-  }
-
-  function togglePick(m, sel, node){
-    if(isLocked(m) || isSubmitted(m.id)) return;
-    const i=slip.findIndex(x=> x.marketId===m.id && x.type==='selection' && x.selIdx===sel.idx);
-    if(i>=0){ slip.splice(i,1); node?.classList.remove('active'); }
-    else{ addToSlip(m,{type:'selection',idx:sel.idx,label:sel.label,odds:sel.odds}); node?.classList.add('active'); }
-    updateSlipUI();
-  }
-
-  function undoSubmit(marketId){
-    if(!submitted[marketId]) return;
-    delete submitted[marketId]; saveSubmitted();
-    paintMarkets(); updateSlipUI(); refreshBux();
-    setMsg('Submission undone.', true);
-  }
-
-  function updateSlipUI(){
-    const body=$('#slipBody'); body.innerHTML='';
-    $('#slipCount').textContent=slip.length;
-    if(!slip.length){ body.innerHTML='<div class="note">Your selections will appear here.</div>'; }
-    slip.forEach((t,i)=>{
-      const row=document.createElement('div'); row.className='ticket';
-      const subtitle = t.type==='selection' ? esc(t.selLabel||'') : (t.type==='guess' ? ('Guess: '+esc(t.guess)) : ('Pick: '+esc(t.guess)));
-      row.innerHTML='<div class="tTop"><div><div style="font-weight:800">'+esc(t.label)+'</div><div class="tMeta">'+subtitle+'</div></div>'
-                   +'<div class="trash" data-i="'+i+'">✖</div></div>'
-                   +(t.odds?'<div class="tMeta" style="margin-top:6px">Odds ~ '+Number(t.odds).toFixed(2)+'×</div>':'');
-      row.querySelector('.trash')?.addEventListener('click',()=>{ slip.splice(i,1); updateSlipUI(); });
-      body.appendChild(row);
+  function normalizeFromBuilder(o){
+    if(!o||typeof o!=='object') return null;
+    const gById=new Map((o.games||[]).map(g=>[g.id,g]));
+    const ms=Array.isArray(o.matches)?o.matches:[];
+    const M=ms.map((m,i)=>{
+      const L=gById.get(m.leftId||m.leftGameId)||{};
+      const R=gById.get(m.rightId||m.rightGameId)||{};
+      return {
+        id:m.id||('M'+(i+1)),
+        left:{ title:L.title||L.name||m.leftTitle||'LEFT', provider:L.provider||m.leftProv||'', img:L.imageUrl||L.image||m.leftImg||'' },
+        right:{ title:R.title||R.name||m.rightTitle||'RIGHT', provider:R.provider||m.rightProv||'', img:R.imageUrl||R.image||m.rightImg||'' },
+        status:(m.status||'OPEN').toUpperCase()
+      };
     });
-
-    // Multi disabled if any leg lacks odds
-    const multiTab=$$('.slipTab').find(x=> x.dataset.mode==='multi');
-    const hasNoOdds=slip.some(x=> !x.odds);
-    if(hasNoOdds && slipMode==='multi') slipMode='single';
-    if(multiTab){ multiTab.style.opacity=hasNoOdds?.4:1; multiTab.style.pointerEvents=hasNoOdds?'none':'auto'; }
-
-    updateTotals();
+    return { source:'builder', lastUpdated:Number(o.lastUpdated||0)||0, eventId:o.eventId||eventId, title:o.title||eventTitle, matchups:M, seriesTotal:Number(o.seriesTotal||o.bestOf||3) };
+  }
+  function chooseDataset(){
+    const pub=normalizeFromPublished(read(K_PUBLISHED));
+    const bld=normalizeFromBuilder(read(K_BUILDER));
+    const pc=pub?.matchups?.length||0, bc=bld?.matchups?.length||0;
+    if(bld && bc && bc>=pc) return bld;
+    if(pub && pc) return pub;
+    return bld || pub || {source:'none',eventId,title:eventTitle,matchups:[],seriesTotal:3,lastUpdated:0};
   }
 
-  function updateTotals(){
-    const stakeEl=$('#stake');
-    const stake = Number(stakeEl?.value||0) || 0;
-    const bal = balance();
-
-    let est=0;
-    if(slipMode==='single'){ est = slip.reduce((a,x)=> a + (stake * (x.odds||1)), 0); }
-    else{ est = stake * slip.reduce((p,x)=> p*(x.odds||1), 1); }
-    $('#payout').textContent=bux(est);
-
-    const totalStake = (slipMode==='single') ? stake * slip.length : stake;
-
-    let warn='';
-    if(!slip.length) warn='Add at least one selection.';
-    else if(!(stake>0)) warn='Enter your bet amount.';
-    else if(totalStake>100) warn='Max 100 BUX per bet submission.';
-    else if(totalStake>bal) warn='Insufficient balance ('+bux(bal)+').';
-
-    setMsg(warn||'', !warn);
-    const btn=$('#submit'); if(btn) btn.disabled=!!warn;
-  }
-
-  function pushLedger(delta, reason){
-    const ledgerKey = LKEY(USER);
-    const list = sget(ledgerKey) || [];
-    const w = getWallet(); w.balance = Number(w.balance||0) + Number(delta||0); putWallet(w);
-    list.push({ ts: now(), delta: Number(delta||0), reason: String(reason||'ADJUSTMENT'), balance: w.balance });
-    sset(ledgerKey, list.slice(-200));
-    refreshBux();
-  }
-
-  function submitBet(){
-    const stakeEl=$('#stake');
-    const stake = Number(stakeEl?.value||0) || 0;
-    const totalStake = (slipMode==='single') ? stake * slip.length : stake;
-    const bal=balance();
-    if(!(slip.length && stake>0 && totalStake<=100 && totalStake<=bal)){ updateTotals(); return; }
-
-    const at=Date.now();
-    // mark submitted per market
-    slip.forEach(leg=>{ if(!submitted[leg.marketId]) submitted[leg.marketId]={leg, at, section:leg.section}; });
-    saveSubmitted();
-
-    // tickets
-    let tickets=[];
-    if(slipMode==='single'){
-      tickets = slip.map(leg=> ({ id:kid('TK'), user:USER, at, mode:'single', stake:stake, leg, odds:(leg.odds||1) }));
-    }else{
-      const prod = slip.reduce((p,x)=> p*(x.odds||1), 1);
-      tickets = [{ id:kid('TK'), user:USER, at, mode:'multi', stake:stake, legs:[...slip], odds:prod }];
+  function loadData(){
+    const norm=chooseDataset();
+    eventId=norm.eventId||eventId;
+    eventTitle=(norm.title||'BATTLEGROUND').toString().toUpperCase();
+    matchups=[...(norm.matchups||[])];
+    seriesTotal=Number(norm.seriesTotal||3)||3;
+    const when = norm.lastUpdated ? (' @ '+new Date(norm.lastUpdated).toLocaleString()) : '';
+    evtInfoEl.textContent=`${eventTitle} — ${eventId}  [${norm.source.toUpperCase()}${when}]`;
+    if(matchups.length){
+      leftSeriesName=matchups[0].left?.title||'Left';
+      rightSeriesName=matchups[0].right?.title||'Right';
+      leftLblEl.textContent=leftSeriesName;
+      rightLblEl.textContent=rightSeriesName;
     }
-    const storeKey='sb:tickets';
-    const store=sget(storeKey)||[]; tickets.forEach(t=>store.push(t)); sset(storeKey,store);
-
-    // deduct wallet + write ledger
-    pushLedger(-totalStake, 'BET_STAKE');
-
-    // reset UI
-    slip=[]; updateSlipUI(); paintMarkets(); if(stakeEl) stakeEl.value=10; updateTotals();
-    setMsg('Bet placed for '+bux(totalStake)+'!', true);
+    scoreLEl.max=seriesTotal; scoreREl.max=seriesTotal;
+    scoreHintEl.textContent=`Must add up to ${seriesTotal} (e.g., ${seriesTotal-1}–1 or ${seriesTotal}–0).`;
   }
 
-  // optional smoke tests (?test=1)
-  if(location.search.includes('test=1')){
-    try{
-      slip=[{odds:2,label:'A',type:'YES_NO',marketId:'A'},{odds:3,label:'B',type:'YES_NO',marketId:'B'}];
-      slipMode='single'; const stakeEl=$('#stake'); if(stakeEl) stakeEl.value=10; updateTotals();
-      console.assert($('#payout').textContent==='50 BUX','calc ok'); slip=[]; updateSlipUI();
-    }catch(e){ console.warn('tests failed', e); }
+  function render(){
+    const html=matchups.map(m=>`
+      <div class="match" data-id="${esc(m.id)}">
+        <div class="pick-left">
+          <div class="card pick ${picks.get(m.id)==='left'?'active':''} ${m.status!=='OPEN'?'locked':''}" data-pick="left">
+            <div class="desc"><div class="name">${esc(m.left.title||'—')}</div><div class="prov">${esc(m.left.provider||'')}</div></div>
+            <div class="thumb">${m.left.img?`<img src="${esc(m.left.img)}" alt="">`:''}</div>
+          </div>
+        </div>
+        <div class="vs">VS <span class="badge">${m.status}</span></div>
+        <div class="pick-right">
+          <div class="card pick ${picks.get(m.id)==='right'?'active':''} ${m.status!=='OPEN'?'locked':''}" data-pick="right">
+            <div class="thumb">${m.right.img?`<img src="${esc(m.right.img)}" alt="">`:''}</div>
+            <div class="desc"><div class="name">${esc(m.right.title||'—')}</div><div class="prov">${esc(m.right.provider||'')}</div></div>
+          </div>
+        </div>
+      </div>`).join('');
+    $('#list').innerHTML=html||`<div class="hint">No published matchups yet. Hit “Push → Prediction + Live + Bets” in BG Admin.</div>`;
+    $('#list').querySelectorAll('.match').forEach(row=>{
+      const id=row.getAttribute('data-id');
+      row.querySelectorAll('.card.pick').forEach(card=>{
+        card.addEventListener('click',()=>{
+          if(card.classList.contains('locked'))return;
+          picks.set(id,card.getAttribute('data-pick'));
+          row.querySelectorAll('.card.pick').forEach(c=>c.classList.remove('active'));
+          card.classList.add('active');
+          validate();
+        });
+      });
+    });
+    validate();
   }
+
+  function validate(){
+    const uname=(userEl.value||'').trim().toUpperCase();
+    const allPicked=matchups.length && matchups.every(m=>['left','right'].includes(picks.get(m.id)));
+    const sl=Number(scoreLEl.value||0), sr=Number(scoreREl.value||0);
+    const sumOk=(sl+sr)===seriesTotal;
+    const within=sl>=0 && sr>=0 && sl<=seriesTotal && sr<=seriesTotal;
+    scoreErrEl.textContent=(sumOk&&within)?'':`Final score must add up to ${seriesTotal}.`;
+    submitBtn.disabled=!(uname && allPicked && sumOk && within);
+  }
+
+  // legacy per-match write (kept, no UI change)
+  function upsertBets(records){
+    const now=Date.now();
+    const existing=(()=>{try{return JSON.parse(localStorage.getItem(K_BETS)||'[]')}catch{return []}})();
+    const uname=(userEl.value||'').trim().toUpperCase();
+    const filtered=existing.filter(r=>!(r.mode==='battleground' && r.user===uname && r.eventId===eventId && (r.type==='prediction'||r.type==='series_score')));
+    const next=filtered.concat(records.map(r=>({ts:now,...r})));
+    localStorage.setItem(K_BETS,JSON.stringify(next));
+  }
+
+  // NEW: minimal “My Bets” record for display
+  function writeMyBets(){
+    const uname=(userEl.value||'').trim().toUpperCase();
+    const sl=Number(scoreLEl.value||0), sr=Number(scoreREl.value||0);
+    const rec={
+      ts: Date.now(),
+      user: uname,
+      eventId,
+      eventTitle,
+      picks: matchups.map(m=>{
+        const side=picks.get(m.id);
+        const pickName = side==='left' ? (m.left.title||'LEFT') : (m.right.title||'RIGHT');
+        return { matchId:m.id, left:m.left.title||'LEFT', right:m.right.title||'RIGHT', pick:side, pickName };
+      }),
+      final: { leftName:leftSeriesName, rightName:rightSeriesName, left:sl, right:sr, total:seriesTotal }
+    };
+    const k=MYBETS_KEY(uname);
+    let arr=[]; try{ arr=JSON.parse(localStorage.getItem(k)||'[]')||[]; }catch{}
+    arr.push(rec);
+    localStorage.setItem(k, JSON.stringify(arr.slice(-20)));
+  }
+
+  function submit(){
+    const uname=(userEl.value||'').trim().toUpperCase();
+    const recs=[];
+    matchups.forEach(m=>{
+      const pick=picks.get(m.id);
+      const pickName=pick==='left'?(m.left.title||'LEFT'):(m.right.title||'RIGHT');
+      recs.push({mode:'battleground',type:'prediction',user:uname,eventId,matchId:m.id,pick,pickName});
+    });
+    const sl=Number(scoreLEl.value||0), sr=Number(scoreREl.value||0);
+    recs.push({mode:'battleground',type:'series_score',user:uname,eventId,leftName:leftSeriesName,rightName:rightSeriesName,left:sl,right:sr,total:seriesTotal});
+    upsertBets(recs);     // keep legacy feed
+    writeMyBets();        // new compact feed
+    toast.textContent=`Saved ${recs.length-1} picks + final score for ${uname}.`;
+    toast.classList.add('on'); setTimeout(()=>toast.classList.remove('on'),1400);
+  }
+
+  function clearAll(){ picks.clear(); scoreLEl.value=0; scoreREl.value=0; render(); }
+
+  // init
+  userEl.value=(localStorage.getItem('lash3z_last_user')||'').toUpperCase();
+  userEl.addEventListener('input',()=>{localStorage.setItem('lash3z_last_user',(userEl.value||'').toUpperCase()); validate();});
+  scoreLEl.addEventListener('input',validate);
+  scoreREl.addEventListener('input',validate);
+  submitBtn.addEventListener('click',submit);
+  clearBtn.addEventListener('click',clearAll);
+
+  loadData(); render();
+  window.addEventListener('storage',e=>{ if([K_PUBLISHED,K_BUILDER].includes(e.key)){ loadData(); render(); } });
 })();
 </script>
 </body>
