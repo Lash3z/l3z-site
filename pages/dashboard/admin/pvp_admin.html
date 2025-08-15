@@ -17,7 +17,7 @@
     html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
     h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
     h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
-    .wrap{max-width:1200px;margin:0 auto;padding:0 14px 40px}
+    .wrap{max-width:1200px;margin:0 auto;padding:0 14px 44px}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .panel{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
     .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cfffff}
@@ -32,11 +32,24 @@
     .badge{padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#081318;color:#bfe}
     .right{margin-left:auto}
     .hint{color:var(--muted);font-size:12px}
-    .seed{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:6px 10px}
-    input{border:1px solid var(--line);border-radius:10px;background:#0e151a;color:#eaf7ff;padding:8px}
-    select{border:1px solid var(--line);border-radius:10px;background:#0e151a;color:#eaf7ff;padding:8px}
-    .tag{padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:#0f1e22;font-size:12px}
-    .list{display:flex;flex-direction:column;gap:8px}
+
+    .chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--line);
+      border-radius:999px;background:#0c1418;color:#dff;margin:4px 6px 0 0;font-weight:700}
+    .chip small{opacity:.75;font-weight:600}
+    .chip .x{margin-left:6px;cursor:pointer;opacity:.75}
+    .chip .x:hover{opacity:1}
+
+    input,select{background:#0b1316;border:1px solid var(--line);color:#eaf7ff;padding:10px;border-radius:10px}
+    input::placeholder{color:#9fd0d6aa}
+
+    /* lock screen */
+    .lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff}
+    .lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75);box-shadow:0 0 18px rgba(0,255,255,.15)}
+    .lockcard h1{margin:0 0 10px;color:#cfe}
+    .lockcard a{color:#7ad7ff}
+    .msg{margin-left:8px;color:#cfe;opacity:.85}
+    .success{color:#9ff1c7}
+    .error{color:#ff9ba8}
   </style>
 </head>
 <body>
@@ -49,78 +62,85 @@
     </div>
   </div>
 
-  <!-- Player Entries -->
+  <!-- ===== Player entries ===== -->
   <div class="panel">
     <div class="row" style="align-items:center">
       <h2 style="margin-right:10px">Player Entries</h2>
       <span id="entCount" class="badge">—</span>
       <span class="right"></span>
-      <button id="entRefresh" class="btn ok">Refresh</button>
-      <button id="takeApproved" class="btn">Take Approved → Seeding</button>
+      <button id="entRefresh" class="btn">Refresh</button>
+      <button id="takeApproved" class="btn ok">Take Approved → Seeding</button>
     </div>
     <div class="hint" style="margin:6px 0 10px">
-      From <code>/api/pvp/entries</code>. Approve/reject; you can also delete an entry.
+      Loaded from <code>/api/pvp/entries</code>. Approve or reject; you can also delete an entry.
     </div>
-    <div style="max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:10px">
-      <table class="tbl" id="entTbl">
+    <div style="max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:10px">
+      <table class="tbl" id="entTbl" aria-label="PVP entries">
         <thead>
-          <tr><th>When</th><th>User</th><th>Side</th><th>Game</th><th>Status</th><th>Actions</th></tr>
+        <tr>
+          <th>When</th><th>User</th><th>Side</th><th>Game</th><th>Status</th><th style="width:280px">Actions</th>
+        </tr>
         </thead>
         <tbody><tr><td colspan="6" class="hint">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
 
-  <!-- Seeding -->
+  <!-- ===== Seeding and build ===== -->
   <div class="panel">
     <div class="row" style="align-items:center">
       <h2 style="margin-right:10px">Seeding (EAST vs WEST)</h2>
-      <span class="tag">Bracket size</span>
-      <select id="sizeSel">
-        <option value="16">16 (8 per side)</option>
-        <option value="32">32 (16 per side)</option>
-      </select>
-      <button id="autoSeedBtn" class="btn ok">Auto-Seed & Build Bracket</button>
-      <button id="clearSeedsBtn" class="btn warn">Clear Seeding</button>
-      <span id="seedInfo" class="pill">—</span>
+      <span class="hint">Add entrants and auto-build a bracket.</span>
+      <span class="right"></span>
+      <label>Bracket Size&nbsp;
+        <select id="seedSize">
+          <option value="16">16</option>
+          <option value="32">32</option>
+        </select>
+      </label>
+      <label>Fallback:&nbsp;
+        <select id="fallbackSrc">
+          <option value="both">Super + Mega</option>
+          <option value="super">Super Hunt only</option>
+          <option value="mega">Mega Hunt only</option>
+        </select>
+      </label>
+      <button id="autoSeed" class="btn ok">Auto-Seed & Build Bracket</button>
+      <button id="clearSeeding" class="btn warn">Clear Seeding</button>
+      <span id="seedMsg" class="msg"></span>
     </div>
 
-    <div class="row">
-      <!-- EAST -->
-      <div style="flex:1 1 480px">
-        <div class="row"><h3 style="margin:6px 0">EAST Seed</h3></div>
-        <div class="row" style="gap:8px;margin-bottom:8px">
-          <input id="eastUser" placeholder="USERNAME (caps)" style="flex:1 1 220px"/>
-          <input id="eastGame" placeholder="GAME (optional)" style="flex:1 1 220px"/>
+    <div class="row" style="align-items:flex-start;margin-top:8px">
+      <div style="flex:1 1 520px">
+        <h3 style="margin:10px 0 8px">EAST Seed</h3>
+        <div class="row">
+          <input id="eastUser" placeholder="USERNAME (caps)" style="flex:1 1 260px">
+          <input id="eastGame" placeholder="GAME (optional)" style="flex:2 1 320px">
           <button id="eastAdd" class="btn">Add</button>
         </div>
-        <div id="eastList" class="list"></div>
+        <div id="eastList" style="margin-top:8px"></div>
       </div>
 
-      <!-- WEST -->
-      <div style="flex:1 1 480px">
-        <div class="row"><h3 style="margin:6px 0">WEST Seed</h3></div>
-        <div class="row" style="gap:8px;margin-bottom:8px">
-          <input id="westUser" placeholder="USERNAME (caps)" style="flex:1 1 220px"/>
-          <input id="westGame" placeholder="GAME (optional)" style="flex:1 1 220px"/>
+      <div style="flex:1 1 520px">
+        <h3 style="margin:10px 0 8px">WEST Seed</h3>
+        <div class="row">
+          <input id="westUser" placeholder="USERNAME (caps)" style="flex:1 1 260px">
+          <input id="westGame" placeholder="GAME (optional)" style="flex:2 1 320px">
           <button id="westAdd" class="btn">Add</button>
         </div>
-        <div id="westList" class="list"></div>
+        <div id="westList" style="margin-top:8px"></div>
       </div>
     </div>
   </div>
 
-  <!-- Publish -->
+  <!-- ===== Publish ===== -->
   <div class="panel">
     <div class="row" style="align-items:center">
       <h2 style="margin-right:10px">Publish Bracket → Live</h2>
-      <span class="hint">
-        Writes to <code>localStorage</code> (<code>pv:builder:pvp</code> and legacy <code>pvp:builder</code>)
-        and to <code>/api/pvp/bracket</code>.
-      </span>
+      <span class="hint">Writes to localStorage (<code>pv:builder:pvp</code> and legacy <code>pvp:builder</code>) and tries <code>POST /api/pvp/bracket</code>.</span>
       <span class="right"></span>
-      <button id="publishBtn" class="btn ok">Publish</button>
-      <span id="pubMsg" class="pill">Bracket built locally. Click Publish to push to server.</span>
+      <button id="publish" class="btn ok">Publish</button>
+      <span id="pubMsg" class="msg"></span>
     </div>
   </div>
 </div>
@@ -131,11 +151,34 @@
   const $=(s,r=document)=>r.querySelector(s);
   const API="";
 
+  /* ====== YOUR HUNT LISTS (EDIT / EXTEND AS NEEDED) ======
+     Preferred format is an array of PAIRS:
+       [ [{title:'GAME A', provider:'X', imageUrl:'/assets/a.png'}, {title:'GAME B'}], ... ]
+     You can also supply a flat list; it will be paired in order.
+  */
+  window.SUPER_HUNT = window.SUPER_HUNT || [
+    [{title:"SUGAR RUSH"},{title:"BIGGER BASS BLIZZARD"}],
+    [{title:"DOG HOUSE MULTIHOLD"},{title:"SWEET POWERNUDGE"}],
+    [{title:"BLOOD & SHADOWS"},{title:"GATES OF OLYMPUS"}],
+    [{title:"MAGIC PIGGY"},{title:"MUERTE MULTIPLIER"}]
+  ];
+  window.MEGA_HUNT = window.MEGA_HUNT || [
+    [{title:"TOMB OF MADNESS"},{title:"BOOK OF DEAD"}],
+    [{title:"BUSHIDO WAYS"},{title:"WANTED DEAD OR A WILD"}],
+    [{title:"BIG BAMBOO"},{title:"FURY OF ODIN"}],
+    [{title:"BIGGER BASS BONANZA"},{title:"FAT RABBIT"}]
+  ];
+
   // ---- Admin cookie gate ----
-  const H=document.documentElement; H.setAttribute("data-admin","checking");
+  const H=document.documentElement;
+  H.setAttribute("data-admin","checking");
   function lock(){
     H.removeAttribute("data-admin");
-    document.body.innerHTML='<div style="min-height:100vh;display:grid;place-items:center"><div class="panel"><h2>Administration Locked</h2><div>You must unlock admin on the <a href="/pages/dashboard/home/admin_login.html?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fpvp_admin.html">Admin Login</a> first.</div><div style="margin-top:8px"><a class="btn" href="/index.html">Back to Dashboard</a></div></div></div>';
+    const wrap=document.createElement("div");
+    wrap.className="lockwrap";
+    wrap.innerHTML = '<div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="/pages/dashboard/home/admin_login.html?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fpvp_admin.html">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you already logged in, your session may have expired.</div><div style="margin-top:14px"><a class="btn" href="/index.html">Back to Dashboard</a></div></div>';
+    document.body.innerHTML="";
+    document.body.appendChild(wrap);
   }
   fetch(API+"/api/admin/gate/check",{credentials:"include",cache:"no-store"})
     .then(r=>r.ok?r.json():null)
@@ -143,227 +186,271 @@
     .catch(lock);
 
   // ---------- State ----------
-  let entries = [];
-  let east = [];  // [{name, game}]
-  let west = [];
-  let size = 16;  // 16 or 32
+  let entries = [];         // server entries
+  let eastSeed = [];        // [{user, game}]
+  let westSeed = [];
+  const rand = n=>Math.floor(Math.random()*n);
+  const up = s => String(s||"").trim().toUpperCase();
+  const esc = s => String(s||"").replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const uniq = arr => Array.from(new Map(arr.map(x=>[x.user,x])).values());
 
-  // ---------- Helpers ----------
-  const up = s => (s||"").toString().trim().toUpperCase();
-  const esc = s => String(s==null?"":s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
-  const when = ts => (ts? new Date(ts).toLocaleString() : "—");
-
-  function paintEntries(){
-    const tb = $("#entTbl tbody");
-    $("#entCount").textContent = entries.length;
-    if(!entries.length){ tb.innerHTML = '<tr><td colspan="6" class="hint">No entries.</td></tr>'; return; }
-    tb.innerHTML = entries.map(e=>{
-      const id = e._id || e.username;
-      const status = (e.status||"pending").toLowerCase();
-      return `<tr data-id="${esc(id)}">
-        <td>${esc(when(e.ts))}</td>
-        <td><b>${esc(e.username||"")}</b></td>
-        <td>${esc(e.side||"")}</td>
-        <td>${esc(e.game||"—")}</td>
-        <td><span class="badge">${esc(status)}</span></td>
-        <td>
-          <button class="btn ok" data-act="approve">Approve</button>
-          <button class="btn warn" data-act="reject">Reject</button>
-          <button class="btn bad" data-act="delete">Delete</button>
-        </td>
-      </tr>`;
-    }).join("");
-
-    tb.querySelectorAll("button[data-act]").forEach(btn=>{
-      btn.addEventListener("click", async ()=>{
-        const tr = btn.closest("tr"); const id = tr.getAttribute("data-id");
-        const act = btn.getAttribute("data-act"); btn.disabled = true;
+  // ---------- Entries UI ----------
+  async function loadEntries(){
+    const tb=$("#entTbl tbody");
+    tb.innerHTML = `<tr><td colspan="6" class="hint">Loading…</td></tr>`;
+    try{
+      const r=await fetch(API+"/api/pvp/entries",{credentials:"include",cache:"no-store"});
+      if(!r.ok) throw 0;
+      const a=await r.json();
+      entries = Array.isArray(a.entries)? a.entries : [];
+      $("#entCount").textContent = entries.length;
+      if(!entries.length){ tb.innerHTML = `<tr><td colspan="6" class="hint">No entries yet.</td></tr>`; return; }
+      entries.sort((a,b)=> new Date(b.ts||0)-new Date(a.ts||0));
+      tb.innerHTML = entries.map(e=>{
+        const id = e._id || e.username || "";
+        const when = e.ts ? new Date(e.ts).toLocaleString() : "—";
+        const status = (e.status||"pending").toLowerCase();
+        return `<tr data-id="${esc(id)}" data-user="${esc(up(e.username||""))}">
+          <td>${esc(when)}</td>
+          <td><b>${esc(up(e.username||""))}</b></td>
+          <td>${esc(up(e.side||""))}</td>
+          <td>${esc(e.game||"—")}</td>
+          <td><span class="badge">${esc(status)}</span></td>
+          <td>
+            <button class="btn ok"   data-act="approve">Approve</button>
+            <button class="btn warn" data-act="reject">Reject</button>
+            <button class="btn bad"  data-act="delete">Delete</button>
+          </td>
+        </tr>`;
+      }).join("");
+      wireEntryButtons();
+    }catch{
+      tb.innerHTML = `<tr><td colspan="6" class="hint">Failed to load entries.</td></tr>`;
+      $("#entCount").textContent = "—";
+    }
+  }
+  function wireEntryButtons(){
+    $("#entTbl").querySelectorAll("button[data-act]").forEach(b=>{
+      b.addEventListener("click", async ()=>{
+        const tr=b.closest("tr");
+        if(!tr) return;
+        const id = tr.getAttribute("data-id");
+        const act = b.getAttribute("data-act");
+        b.disabled = true;
         try{
-          if(act==="approve"||act==="reject"){
+          if(act==="approve" || act==="reject"){
             const status = act==="approve" ? "approved" : "rejected";
-            const r = await fetch(API+`/api/pvp/entries/${encodeURIComponent(id)}/status`,{
-              method:"POST", credentials:"include",
+            const r=await fetch(API+`/api/pvp/entries/${encodeURIComponent(id)}/status`,{
+              method:"POST",credentials:"include",
               headers:{"Content-Type":"application/json"},
               body:JSON.stringify({status})
             });
             if(!r.ok) throw 0;
-          }else{
-            const r = await fetch(API+`/api/pvp/entries/${encodeURIComponent(id)}`,{
-              method:"DELETE", credentials:"include"
-            });
+          }else if(act==="delete"){
+            const r=await fetch(API+`/api/pvp/entries/${encodeURIComponent(id)}`,{method:"DELETE",credentials:"include"});
             if(!r.ok) throw 0;
           }
           await loadEntries();
-        }catch{ alert("Action failed"); }
-        finally{ btn.disabled=false; }
+        }catch{
+          alert("Action failed."); b.disabled=false;
+        }
       });
     });
   }
 
-  async function loadEntries(){
-    try{
-      const r = await fetch(API+"/api/pvp/entries",{credentials:"include",cache:"no-store"});
-      const j = await r.json();
-      entries = Array.isArray(j.entries)? j.entries : [];
-    }catch{ entries = []; }
-    paintEntries();
-  }
-
+  // ---------- Seeding UI ----------
   function paintSeeds(){
-    const eBox = $("#eastList"), wBox=$("#westList");
-    eBox.innerHTML = east.map((s,i)=>seedRow("EAST",i,s)).join("") || `<div class="hint">None yet.</div>`;
-    wBox.innerHTML = west.map((s,i)=>seedRow("WEST",i,s)).join("") || `<div class="hint">None yet.</div>`;
-
-    eBox.querySelectorAll("button[data-rem]").forEach(b=>{
-      b.addEventListener("click", ()=>{ const i=+b.getAttribute("data-rem"); east.splice(i,1); paintSeeds(); });
-    });
-    wBox.querySelectorAll("button[data-rem]").forEach(b=>{
-      b.addEventListener("click", ()=>{ const i=+b.getAttribute("data-rem"); west.splice(i,1); paintSeeds(); });
-    });
-
-    const perSide = size/2;
-    $("#seedInfo").textContent = `Seeds: EAST ${east.length}/${perSide} • WEST ${west.length}/${perSide}`;
+    const east = $("#eastList"), west=$("#westList");
+    east.innerHTML = eastSeed.map((s,i)=> chipHtml("E",i,s)).join("") || `<div class="hint">No East seeds.</div>`;
+    west.innerHTML = westSeed.map((s,i)=> chipHtml("W",i,s)).join("") || `<div class="hint">No West seeds.</div>`;
+    east.querySelectorAll(".x").forEach(x=> x.addEventListener("click", ()=>{ const i=+x.dataset.i; eastSeed.splice(i,1); paintSeeds(); }));
+    west.querySelectorAll(".x").forEach(x=> x.addEventListener("click", ()=>{ const i=+x.dataset.i; westSeed.splice(i,1); paintSeeds(); }));
   }
-
-  function seedRow(side,i,s){
-    return `<div class="seed"><span class="tag">${i+1}.</span> <b>${esc(s.name)}</b> <span class="tag">${esc(side)}</span> <span class="pill">${esc(s.game||"TBD")}</span> <button class="btn bad" data-rem="${i}">Remove</button></div>`;
+  function chipHtml(side,i,s){
+    const label = `${i+1}. ${esc(s.user)}${s.game?(" ("+esc(s.game)+")"):""}`;
+    return `<span class="chip">${label}<span class="x" role="button" aria-label="remove" data-i="${i}">✕</span></span>`;
   }
-
-  function autoSeedFromApproved(){
-    const perSide = size/2;
-    const approved = entries.filter(e=>String(e.status).toLowerCase()==="approved");
-    const eApproved = approved.filter(e=>String(e.side).toUpperCase()==="EAST");
-    const wApproved = approved.filter(e=>String(e.side).toUpperCase()==="WEST");
-
-    east = eApproved.slice(0,perSide).map(x=>({name:up(x.username||""), game:up(x.game||"")}));
-    west = wApproved.slice(0,perSide).map(x=>({name:up(x.username||""), game:up(x.game||"")}));
-
-    // If one side short, fill from the other pool ignoring side
-    const pool = approved.map(x=>({name:up(x.username||""), game:up(x.game||"")}));
-    while(east.length < perSide && pool.length){ east.push(pool.shift()); }
-    while(west.length < perSide && pool.length){ west.push(pool.shift()); }
-
-    paintSeeds();
-  }
-
   function addSeed(which){
-    const name = up($(which==="EAST"?"#eastUser":"#westUser").value);
-    const game = up($(which==="EAST"?"#eastGame":"#westGame").value);
-    if(!name) return;
-    (which==="EAST"?east:west).push({name, game});
-    $(which==="EAST"?"#eastUser":"#westUser").value="";
-    $(which==="EAST"?"#eastGame":"#westGame").value="";
+    const u = up($("#"+which+"User").value);
+    const g = $("#"+which+"Game").value.trim();
+    if(!u) return;
+    const list = which==="east"? eastSeed : westSeed;
+    if(list.find(x=>x.user===u)) return; // no duplicates
+    list.push({user:u, game:g});
+    $("#"+which+"User").value="";
+    $("#"+which+"Game").value="";
     paintSeeds();
   }
 
-  // Build a simple “builder” object that Unified Live can list (match rows).
-  function buildBracketObject(){
-    const perSide = size/2;
-    const E = east.slice(0,perSide), W = west.slice(0,perSide);
-
-    // Games catalog so matches can reference an id
-    let gid = 0;
-    function mkGameFromSeed(s){
-      gid++;
-      return { id:`G${gid}`, title:s.game||"TBD", provider:"", imageUrl:"" };
-    }
-
-    const games = [];
-    const leftIds = E.map(s=>{ const g=mkGameFromSeed(s); games.push(g); return g.id; });
-    const rightIds= W.map(s=>{ const g=mkGameFromSeed(s); games.push(g); return g.id; });
-
-    // Create round-1 matches for East and West separately (paired sequentially)
-    function pair(ids, side){
-      const out=[];
-      for(let i=0;i<ids.length;i+=2){
-        const L = ids[i], R = ids[i+1];
-        if(!R){ // odd count → bye (single advances)
-          out.push({ leftId:L, rightId:null, leftTitle:side+" #"+(i+1), rightTitle:"BYE", leftScore:0, rightScore:0, side });
-        }else{
-          out.push({ leftId:L, rightId:R, leftTitle:side+" #"+(i+1), rightTitle:side+" #"+(i+2), leftScore:0, rightScore:0, side });
-        }
-      }
-      return out;
-    }
-
-    const eastMatches = pair(leftIds, "EAST");
-    const westMatches = pair(rightIds, "WEST");
-
-    // Publish a combined “matches” list; Unified Live will just list these rows.
-    const matches = [...eastMatches, ...westMatches];
-
-    const builder = {
-      kind: "pvp",
-      title: "PVP — East vs West",
-      eventId: "pvp:"+new Date().toISOString().slice(0,10),
-      size,
-      lastUpdated: Date.now(),
-      games,
-      matches
+  // Take Approved → Seeding
+  function takeApproved(){
+    const approved = entries.filter(e=>(e.status||"").toLowerCase()==="approved");
+    const byUser = new Map(); // unique by username
+    approved.forEach(e=>{
+      const u = up(e.username||"");
+      if(!u) return;
+      byUser.set(u, {user:u, game: (e.game||"").trim(), side: up(e.side||"")});
+    });
+    const uniqArr = Array.from(byUser.values());
+    // Fill east/west from sides; preserve existing seeds too
+    const eastNew = uniqArr.filter(x=>x.side==="EAST").map(x=>({user:x.user, game:x.game}));
+    const westNew = uniqArr.filter(x=>x.side==="WEST").map(x=>({user:x.user, game:x.game}));
+    // merge without duplicates
+    const merge = (dst, src) => {
+      const have = new Set(dst.map(x=>x.user));
+      src.forEach(x=>{ if(!have.has(x.user)) dst.push({user:x.user, game:x.game}); });
     };
+    merge(eastSeed, eastNew);
+    merge(westSeed, westNew);
+    paintSeeds();
+  }
 
-    // Local storage (for your current unified live)
+  // ---------- Auto-seed & Build ----------
+  function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=rand(i+1); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+  function normalizePairs(list){
+    // Accept pairs OR flat list; return array of [A,B] objects with {title,provider,imageUrl}
+    if(!Array.isArray(list)) return [];
+    if(list.length && Array.isArray(list[0])) {
+      return list.map(pair=>[toGame(pair[0]), toGame(pair[1])].filter(Boolean)).filter(p=>p.length===2);
+    }
+    // flat -> pair sequentially
+    const flat=list.map(toGame).filter(Boolean);
+    const pairs=[];
+    for(let i=0;i+1<flat.length;i+=2) pairs.push([flat[i], flat[i+1]]);
+    return pairs;
+  }
+  function toGame(x){
+    if(!x) return null;
+    if(typeof x==="string") return {title:x};
+    const o = {title:x.title||"", provider:x.provider||"", imageUrl:x.imageUrl||x.image||""};
+    return o.title ? o : null;
+  }
+  function autoSeedAndBuild(){
+    $("#seedMsg").textContent="";
+    const size = Math.max(16, Math.min(32, +($("#seedSize").value||16)));
+    const slots = size/2; // per side
+    // Start from unique seeds
+    const east = uniq(eastSeed.slice());
+    const west = uniq(westSeed.slice());
+    shuffle(east); shuffle(west);
+
+    const fallbackMode = $("#fallbackSrc").value; // both|super|mega
+    const superPairs = normalizePairs(window.SUPER_HUNT||[]);
+    const megaPairs  = normalizePairs(window.MEGA_HUNT||[]);
+    const poolPairs = (fallbackMode==="both") ? shuffle(superPairs.concat(megaPairs))
+                     : (fallbackMode==="super") ? shuffle(superPairs)
+                     : shuffle(megaPairs);
+
+    // Helper to create AUTO user with game
+    const rndTag = ()=>"AUTO_"+Math.random().toString(36).slice(2,8).toUpperCase();
+    function addAuto(side, gameTitle){
+      const rec = {user: rndTag(), game: gameTitle||""};
+      (side==="EAST"?east:west).push(rec);
+    }
+
+    // Fill from pairs until sides have 'slots' entries
+    let pairIdx=0;
+    while((east.length<slots || west.length<slots) && pairIdx<poolPairs.length){
+      const [gL,gR]=poolPairs[pairIdx++];
+      if(east.length<slots) addAuto("EAST", gL.title);
+      if(west.length<slots) addAuto("WEST", gR.title);
+    }
+    // If still short, pad with generic autos
+    while(east.length<slots) addAuto("EAST","");
+    while(west.length<slots) addAuto("WEST","");
+
+    // Trim extras
+    east.length = Math.min(east.length, slots);
+    west.length = Math.min(west.length, slots);
+
+    // Build bracket → games + matches for Unified Live
+    const builder = makeBuilderFromSeeds(east, west);
+    // Store temporarily (not published yet)
+    window.__PVP_BUILDER = builder;
+    $("#seedMsg").textContent = `Bracket built locally (${size} players). Click Publish to push to Live.`;
+    $("#seedMsg").className = "msg success";
+    // Also refresh chips with normalized/trimmed lists
+    eastSeed = east; westSeed = west; paintSeeds();
+  }
+
+  function makeBuilderFromSeeds(east, west){
+    // Create games array — one per participant entry (use requested game if present)
+    const games=[]; const gameId = ()=>"G"+Math.random().toString(36).slice(2,8);
+    function addGameFrom(entry){
+      const id=gameId();
+      const title = entry.game && entry.game.trim() ? entry.game.trim().toUpperCase() : entry.user;
+      const prov=""; const img="";
+      games.push({id, title, provider:prov, imageUrl:img});
+      return id;
+    }
+    const matches=[];
+    const count = Math.min(east.length, west.length);
+    for(let i=0;i<count;i++){
+      const L=east[i], R=west[i];
+      const leftId  = addGameFrom(L);
+      const rightId = addGameFrom(R);
+      matches.push({
+        leftId, rightId,
+        leftTitle: L.user,   // show username on live row title, provider shows from game obj
+        rightTitle: R.user,
+        leftScore: 0, rightScore: 0
+      });
+    }
+    return {
+      title: "PVP — East vs West",
+      eventId: "PVP:"+new Date().toISOString().slice(0,10),
+      games, matches, lastUpdated: Date.now()
+    };
+  }
+
+  // ---------- Publish ----------
+  async function publish(){
+    const b = window.__PVP_BUILDER || makeBuilderFromSeeds(eastSeed, westSeed);
+    if(!b || !b.matches || !b.matches.length){
+      $("#pubMsg").textContent="Nothing to publish — build a bracket first.";
+      $("#pubMsg").className="msg error";
+      return;
+    }
     try{
-      localStorage.setItem("pv:builder:pvp", JSON.stringify(builder));
-      localStorage.setItem("pvp:builder", JSON.stringify(builder)); // legacy
+      // localStorage (current + legacy)
+      localStorage.setItem("pv:builder:pvp", JSON.stringify(b));
+      localStorage.setItem("pvp:builder", JSON.stringify(b));
+    }catch{}
+    // Try POST (ok if 404)
+    try{
+      await fetch(API+"/api/pvp/bracket",{
+        method:"POST",credentials:"include",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(b)
+      });
     }catch{}
 
-    return builder;
+    $("#pubMsg").textContent="Published to Live. Open Unified Live → PVP tab.";
+    $("#pubMsg").className="msg success";
   }
 
-  async function publish(){
-    const builder = buildBracketObject();
-    $("#pubMsg").textContent = "Publishing…";
-    try{
-      const r = await fetch(API+"/api/pvp/bracket",{
-        method:"PUT", credentials:"include",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ bracket: builder })
-      });
-      if(!r.ok) throw 0;
-      $("#pubMsg").textContent = "Published ✓";
-    }catch{
-      $("#pubMsg").textContent = "Publish failed.";
-    }
-  }
-
-  // ---------- Boot ----------
+  // ---------- Wire & Boot ----------
   function boot(){
-    // load entries
+    // entries
+    $("#entRefresh").addEventListener("click", loadEntries);
+    $("#takeApproved").addEventListener("click", takeApproved);
     loadEntries();
 
-    // wire entries controls
-    $("#entRefresh").addEventListener("click", loadEntries);
-    $("#takeApproved").addEventListener("click", ()=>{
-      // mark approved quickly in UI (quality-of-life)
-      entries.forEach(e=>{ if(String(e.status).toLowerCase()==="approved"){
-        const s = String(e.side).toUpperCase()==="WEST" ? west : east;
-        if(!s.find(x=>x.name===up(e.username))) s.push({name:up(e.username), game:up(e.game||"")});
-      }});
-      paintSeeds();
-    });
-
-    // seed controls
-    $("#autoSeedBtn").addEventListener("click", ()=>{ autoSeedFromApproved(); buildBracketObject(); $("#pubMsg").textContent="Bracket built locally. Click Publish to push to server."; });
-    $("#clearSeedsBtn").addEventListener("click", ()=>{ east=[]; west=[]; paintSeeds(); });
-
-    $("#eastAdd").addEventListener("click", ()=>addSeed("EAST"));
-    $("#westAdd").addEventListener("click", ()=>addSeed("WEST"));
-
-    $("#sizeSel").addEventListener("change", (e)=>{ size = Number(e.target.value)||16; paintSeeds(); });
+    // seeds
+    $("#eastAdd").addEventListener("click", ()=>addSeed("east"));
+    $("#westAdd").addEventListener("click", ()=>addSeed("west"));
+    $("#autoSeed").addEventListener("click", autoSeedAndBuild);
+    $("#clearSeeding").addEventListener("click", ()=>{ eastSeed=[]; westSeed=[]; paintSeeds(); $("#seedMsg").textContent=""; });
+    paintSeeds();
 
     // publish
-    $("#publishBtn").addEventListener("click", publish);
+    $("#publish").addEventListener("click", publish);
 
     // logout
     $("#adminLogout").addEventListener("click", async ()=>{
       try{ await fetch("/api/admin/gate/logout",{method:"POST",credentials:"include"}); }catch{}
       location.href="/index.html";
     });
-
-    // defaults
-    size = Number($("#sizeSel").value)||16;
-    paintSeeds();
   }
 })();
 </script>
