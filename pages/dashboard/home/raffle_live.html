@@ -61,11 +61,11 @@
 
   const up=s=>(s||"").toString().trim().toUpperCase();
   const esc=s=>(s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
-  const toast=t=>{ toastEl.textContent=t; toastEl.classList.add("on"); setTimeout(()=>toastEl.classList.remove("on"),1400); };
+  const toast=t=>{ toastEl.textContent=t; toastEl.classList.add("on"); setTimeout(()=>toastEl.classList.remove("on"),1600); };
 
-  async function jget(u){ const r=await fetch(u,{credentials:"include",cache:"no-store"}); if(!r.ok) throw r; return r.json(); }
-  async function jpost(u,b){ const r=await fetch(u,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})}); if(!r.ok) throw r; return r.json(); }
-  async function jput(u,b){ const r=await fetch(u,{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})}); if(!r.ok) throw r; return r.json(); }
+  async function jget(u){ const r=await fetch(u,{credentials:"include",cache:"no-store"}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+  async function jpost(u,b){ const r=await fetch(u,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+  async function jput(u,b){ const r=await fetch(u,{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
 
   /* ------------------------------
      Load list of raffles (multi -> single fallback)
@@ -77,7 +77,7 @@
     }catch{}
     try{
       const pub = await jget("/api/raffles/public");
-      if (pub && pub.active){
+      if (pub && (pub.active || pub.id)){
         renderList([{ id: pub.id, title: pub.title, open: !!pub.open, winner: pub.winner||null }]);
         return;
       }
@@ -102,12 +102,6 @@
 
   function cardHTML(r){
     const openTxt = r.open ? "Open" : "Closed";
-    const winnerBlock = `
-      <div class="row" style="margin-top:8px">
-        <span class="pill">Winner:</span>
-        <span class="pill" id="win-${esc(r.id)}">${r.winner?.user ? esc(r.winner.user) : "—"}</span>
-        <span class="muted" id="winTs-${esc(r.id)}">${r.winner?.ts ? new Date(r.winner.ts).toLocaleString() : ""}</span>
-      </div>`;
     return `
       <div class="card" id="card-${esc(r.id)}">
         <div class="row" style="justify-content:space-between">
@@ -121,27 +115,30 @@
           <button class="btn" data-list="${esc(r.id)}">Refresh list</button>
         </div>
         <div class="list" id="list-${esc(r.id)}" style="margin-top:8px"></div>
-        ${winnerBlock}
+        <div class="row" style="margin-top:8px">
+          <span class="pill">Winner:</span>
+          <span class="pill" id="win-${esc(r.id)}">—</span>
+          <span class="muted" id="winTs-${esc(r.id)}"></span>
+        </div>
       </div>`;
   }
 
+  /* ------------------------------
+     Entries + Winner
+     ------------------------------ */
   async function loadEntries(r, quiet=false){
     const id = r.id;
     const listEl = $(`#list-${cssq(id)}`), cntEl = $(`#cnt-${cssq(id)}`), meEl = $(`#me-${cssq(id)}`);
     try{
-      let data=null;
-      try { data = await jget(`/api/raffles/${encodeURIComponent(id)}/entries`); }
-      catch {
-        await jput("/api/raffles/current", { id });
-        data = await jget("/api/raffles/entries");
-      }
+      // PRIMARY: your existing working route
+      let data = await jget(`/api/raffles/${encodeURIComponent(id)}/entries`);
       const arr = Array.isArray(data.entries)? data.entries : [];
       cntEl.textContent = arr.length;
       listEl.innerHTML = arr.map(e=>`<span class="pill">${esc(e.user)}</span>`).join("") || `<span class="muted">No entries yet.</span>`;
       const me = arr.some(e => up(e.user)===up(USER));
       meEl.textContent = me ? "You're in!" : "Not entered";
     }catch(e){
-      if(!quiet) toast("Failed to load entries");
+      if(!quiet) toast("Entries failed: "+String(e.message||e));
       listEl.innerHTML = `<span class="muted">Entries unavailable.</span>`;
     }
   }
@@ -150,10 +147,11 @@
     const id = r.id;
     const winEl = $(`#win-${cssq(id)}`), tsEl = $(`#winTs-${cssq(id)}`);
     try{
-      // Try explicit winner endpoint; else public includes winner for the current one
       let w=null;
-      try { w = await jget(`/api/raffles/${encodeURIComponent(id)}/winner`); }
+      // Try explicit winner endpoint
+      try { const jw = await jget(`/api/raffles/${encodeURIComponent(id)}/winner`); w = jw?.winner||null; }
       catch {
+        // fallback: if server exposes current with winner
         await jput("/api/raffles/current", { id });
         const pub = await jget("/api/raffles/public");
         w = pub?.winner || null;
@@ -165,30 +163,49 @@
         winEl.textContent = "—";
         tsEl.textContent = "";
       }
-    }catch{
-      if(!quiet) toast("Failed to load winner");
+    }catch(e){
+      if(!quiet) toast("Winner failed: "+String(e.message||e));
     }
   }
 
+  /* ------------------------------
+     Enter a raffle (fixed: legacy-first)
+     ------------------------------ */
   async function enterRaffle(r){
     const id = r.id;
     const btn = document.querySelector(`[data-enter="${cssq(id)}"]`);
     const meEl = $(`#me-${cssq(id)}`);
+    btn.disabled = true;
     try{
-      btn.disabled = true;
-      try { await jpost(`/api/raffles/${encodeURIComponent(id)}/enter`, { user: USER }); }
-      catch { await jput("/api/raffles/current", { id }); await jpost("/api/raffles/enter", { user: USER }); }
+      // 1) Use your existing working route
+      await jpost(`/api/raffles/${encodeURIComponent(id)}/entries`, { user: USER });
+
       meEl.textContent = "You're in!";
       toast("Entry submitted");
       loadEntries(r, true);
-    }catch{
-      btn.disabled = false;
-      toast("Failed to submit entry");
+    }catch(e1){
+      // 2) Fallbacks only if needed
+      try{
+        await jpost(`/api/raffles/${encodeURIComponent(id)}/enter`, { user: USER });
+        meEl.textContent = "You're in!";
+        toast("Entry submitted");
+        loadEntries(r, true);
+      }catch(e2){
+        try{
+          await jput("/api/raffles/current", { id });
+          await jpost("/api/raffles/enter", { user: USER });
+          meEl.textContent = "You're in!";
+          toast("Entry submitted");
+          loadEntries(r, true);
+        }catch(e3){
+          btn.disabled = false;
+          toast("Submit failed: " + [e1?.message||"", e2?.message||"", e3?.message||""].filter(Boolean).join(" | "));
+        }
+      }
     }
   }
 
   loadRaffles();
-  // poll: keep entries + winner fresh
   setInterval(loadRaffles, 6000);
 })();
 </script>
