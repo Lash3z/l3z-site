@@ -43,7 +43,7 @@
 </head>
 <body>
 
-<!-- ===== AdminGate ===== -->
+<!-- Admin cookie gate (unchanged) -->
 <script>
 (function(){
   "use strict";
@@ -52,27 +52,20 @@
   const DASHBOARD   = "/index.html";
   const H = document.documentElement;
   H.setAttribute("data-admin","checking");
-
   function lock(){
     H.removeAttribute("data-admin");
     const s=document.createElement("style");
     s.textContent=".lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}.lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75);box-shadow:0 0 18px rgba(0,255,255,.15)}.lockcard h1{margin:0 0 10px;color:#cfe}.lockcard a{color:#7ad7ff;text-decoration:underline}";
     document.head.appendChild(s);
-    document.body.innerHTML = '<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you already logged in, your session may have expired.</div><div style="margin-top:14px"><a href="'+DASHBOARD+'">Back to Dashboard</a></div></div></div>';
+    document.body.innerHTML='<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you already logged in, your session may have expired.</div><div style="margin-top:14px"><a href="'+DASHBOARD+'">Back to Dashboard</a></div></div></div>';
   }
-
-  fetch(ADMIN_CHECK, { credentials:"include", cache:"no-store" })
-    .then(r => r.ok ? r.json() : null)
-    .then(j => { if (j && j.admin) H.removeAttribute("data-admin"); else lock(); })
-    .catch(lock);
+  fetch(ADMIN_CHECK,{credentials:"include",cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{ if(j&&j.admin) H.removeAttribute("data-admin"); else lock(); }).catch(lock);
 })();
 </script>
-<!-- ===== /AdminGate ===== -->
 
 <div class="wrap">
   <h1>Admin Hub</h1>
 
-  <!-- Local gate just toggles visibility -->
   <div id="gate" class="gate">
     <div class="row">
       <span class="pill">Unlock Admin Panels (local)</span>
@@ -81,13 +74,13 @@
       <button id="gate-unlock" class="ok">Unlock</button>
       <button id="gate-lock" class="danger">Lock</button>
       <span id="gate-status" class="pill">Locked</span>
-      <span class="hint">This only shows/hides panels here; API still needs the server cookie.</span>
+      <span class="hint">Shows/hides locally; API still needs the server cookie.</span>
     </div>
   </div>
 
   <div id="grid" class="grid" style="display:none">
 
-    <!-- RAFFLES MANAGER -->
+    <!-- RAFFLES MANAGER (same as previous version) -->
     <div class="panel full">
       <h2>Raffles Manager</h2>
       <div class="row">
@@ -97,18 +90,14 @@
         <button id="rfDeleteAll" class="danger">Delete ALL raffles</button>
         <span id="rfMsg" class="pill">Ready</span>
       </div>
-
       <div class="hr"></div>
       <div class="mini">Open raffles appear first. Click one to manage entries, draw, or clear.</div>
       <div style="max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:8px">
         <table class="tbl" id="rfTbl">
-          <thead>
-            <tr><th>RID</th><th>Title</th><th>Status</th><th>Winner</th><th>Created</th><th>Actions</th></tr>
-          </thead>
+          <thead><tr><th>RID</th><th>Title</th><th>Status</th><th>Winner</th><th>Created</th><th>Actions</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
-
       <div class="hr"></div>
       <div id="rfDetail" style="display:none">
         <div class="row">
@@ -132,6 +121,33 @@
       </div>
     </div>
 
+    <!-- NEW: Prize Claims -->
+    <div class="panel full">
+      <h2>Prize Claims</h2>
+      <div class="row">
+        <button id="pcRefresh" class="ok">Refresh</button>
+        <select id="pcFilter">
+          <option value="pending" selected>Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+          <option value="all">All</option>
+        </select>
+        <span id="pcMsg" class="pill">Ready</span>
+      </div>
+      <div class="hr"></div>
+      <div style="max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:10px">
+        <table class="tbl" id="pcTbl">
+          <thead>
+            <tr>
+              <th>ID</th><th>User</th><th>Raffle</th><th>Affiliate</th>
+              <th>Asset</th><th>Chain</th><th>Wallet</th><th>Created</th><th>Status</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- VIP Wallet -->
     <div class="panel">
       <h2>VIP — Wallet Adjust</h2>
@@ -144,10 +160,7 @@
         <span id="vipMsg" class="pill">Ready</span>
       </div>
       <div class="hr"></div>
-      <div class="row">
-        <button id="vipCheck">Check Balance</button>
-        <span id="vipBal" class="badge">—</span>
-      </div>
+      <div class="row"><button id="vipCheck">Check Balance</button><span id="vipBal" class="badge">—</span></div>
       <div class="hint">Prefers <code>/api/wallet/adjust</code>; falls back to signed credit if needed.</div>
     </div>
 
@@ -164,7 +177,7 @@
       </div>
     </div>
 
-    <!-- Events + Rules + Jackpot -->
+    <!-- Events + Rules + Jackpot (unchanged) -->
     <div class="panel full">
       <div class="row" style="align-items:flex-end">
         <h2 style="margin-right:12px">Live Events • Rules • Jackpot</h2>
@@ -211,11 +224,9 @@
         <span class="hint">Clears local point keys for that user. Wallet LBX untouched.</span>
       </div>
       <div class="hr"></div>
-      <div class="row"><button id="dzResetAll" class="danger">Reset ALL Points (Everyone)</button>
-        <span class="hint">Wipes all players’ local point keys. Wallets unaffected.</span></div>
+      <div class="row"><button id="dzResetAll" class="danger">Reset ALL Points (Everyone)</button><span class="hint">Wipes all players’ local point keys. Wallets unaffected.</span></div>
       <div class="hr"></div>
-      <div class="row"><button id="dzResetLeaderboard" class="ok">Reset Leaderboard (No Points)</button>
-        <span id="dzMsg" class="pill">Ready</span></div>
+      <div class="row"><button id="dzResetLeaderboard" class="ok">Reset Leaderboard (No Points)</button><span id="dzMsg" class="pill">Ready</span></div>
     </div>
 
   </div>
@@ -229,7 +240,7 @@
   const $=(s,r=document)=>r.querySelector(s);
   const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
   const up=s=>(s||"").trim().toUpperCase();
-  const toast=(t)=>{ const b=$("#toast"); if(!b) return; b.textContent=t; b.classList.add("on"); setTimeout(()=>b.classList.remove("on"),1400); };
+  const toast=t=>{ const b=$("#toast"); b.textContent=t; b.classList.add("on"); setTimeout(()=>b.classList.remove("on"),1400); };
 
   // local unlock
   const unlocked=()=> localStorage.getItem("l3z:admin:unlocked")==="1";
@@ -244,29 +255,25 @@
     async del(u){ const r=await fetch(u,{method:"DELETE",credentials:"include"}); if(!r.ok) throw new Error(r.status); return r.json(); }
   };
 
-  /* ---------------- Raffles Manager ---------------- */
-  let currentRID = null;
-
+  /* ---------- RAFFLES (same as before) ---------- */
+  let currentRID=null;
   async function rfList(){
     try{
-      const jn = await j.get("/api/raffles");
+      const a = await j.get("/api/raffles");
       const tb=$("#rfTbl tbody");
-      tb.innerHTML = (jn.raffles||[]).map(r=>`
+      tb.innerHTML = (a.raffles||[]).map(r=>`
         <tr data-rid="${r.rid}">
-          <td><b>${r.rid}</b></td>
-          <td>${r.title||""}</td>
-          <td>${r.open?"OPEN":"CLOSED"}</td>
-          <td>${r.winner||"—"}</td>
-          <td>${new Date(r.createdAt||Date.now()).toLocaleString()}</td>
+          <td><b>${r.rid}</b></td><td>${r.title||""}</td><td>${r.open?"OPEN":"CLOSED"}</td>
+          <td>${r.winner||"—"}</td><td>${new Date(r.createdAt||Date.now()).toLocaleString()}</td>
           <td>
-            <button data-act="open"   class="ok" ${r.open?"disabled":""}>Open</button>
-            <button data-act="close"  class="warn" ${!r.open?"disabled":""}>Close</button>
+            <button data-act="open" class="ok" ${r.open?"disabled":""}>Open</button>
+            <button data-act="close" class="warn" ${!r.open?"disabled":""}>Close</button>
             <button data-act="manage">Manage</button>
           </td>
         </tr>`).join("") || `<tr><td colspan="6" class="mini">No raffles yet.</td></tr>`;
       tb.querySelectorAll("button[data-act]").forEach(btn=>{
         btn.addEventListener("click", async ()=>{
-          const rid = btn.closest("tr").getAttribute("data-rid");
+          const rid=btn.closest("tr").getAttribute("data-rid");
           if(btn.dataset.act==="manage"){ loadDetail(rid); return; }
           if(btn.dataset.act==="open"){ await j.put(`/api/raffles/${encodeURIComponent(rid)}/open`,{open:true}); toast("Opened"); rfList(); if(currentRID===rid) loadDetail(rid); }
           if(btn.dataset.act==="close"){ await j.put(`/api/raffles/${encodeURIComponent(rid)}/open`,{open:false}); toast("Closed"); rfList(); if(currentRID===rid) loadDetail(rid); }
@@ -274,44 +281,87 @@
       });
     }catch{ $("#rfMsg").textContent="Load failed"; }
   }
-
   async function rfCreate(){
     const rid=up($("#rfId").value||""); const title=($("#rfTitle").value||"").trim();
     if(!rid||!title) return toast("Enter RID and Title");
     try{ await j.post("/api/raffles",{rid,title}); $("#rfId").value=""; $("#rfTitle").value=""; toast("Raffle created"); rfList(); }
-    catch(e){ toast("Create failed"); }
+    catch{ toast("Create failed"); }
   }
-
   async function rfDeleteAll(){
     if(!confirm("Delete ALL raffles (including entries)?")) return;
     try{ await j.del("/api/raffles"); toast("All raffles deleted"); $("#rfDetail").style.display="none"; currentRID=null; rfList(); }
     catch{ toast("Delete failed"); }
   }
-
   async function loadDetail(rid){
     try{
-      const jn = await j.get(`/api/raffles/${encodeURIComponent(rid)}/entries`);
-      currentRID = jn.rid;
+      const a = await j.get(`/api/raffles/${encodeURIComponent(rid)}/entries`);
+      currentRID = a.rid;
       $("#rfDetail").style.display="";
-      $("#dRid").textContent = "RID: "+jn.rid;
-      $("#dTitle").textContent = "Title: "+jn.title;
-      $("#dStatus").textContent= "Status: "+(jn.open?"OPEN":"CLOSED");
-      $("#dOpen").disabled  = jn.open;
-      $("#dClose").disabled = !jn.open;
-      $("#rfEntries tbody").innerHTML = (jn.entries||[]).map((e,i)=>`<tr><td>${i+1}</td><td>${e.user||""}</td><td>${new Date(e.ts||Date.now()).toLocaleString()}</td></tr>`).join("") || `<tr><td colspan="3" class="mini">No entries yet.</td></tr>`;
-      $("#dMsg").textContent = jn.winner ? ("Winner: "+jn.winner) : "—";
+      $("#dRid").textContent="RID: "+a.rid; $("#dTitle").textContent="Title: "+a.title;
+      $("#dStatus").textContent="Status: "+(a.open?"OPEN":"CLOSED");
+      $("#dOpen").disabled=a.open; $("#dClose").disabled=!a.open;
+      $("#rfEntries tbody").innerHTML = (a.entries||[]).map((e,i)=>`<tr><td>${i+1}</td><td>${e.user||""}</td><td>${new Date(e.ts||Date.now()).toLocaleString()}</td></tr>`).join("") || `<tr><td colspan="3" class="mini">No entries yet.</td></tr>`;
+      $("#dMsg").textContent = a.winner ? ("Winner: "+a.winner) : "—";
     }catch{ toast("Load failed"); }
   }
-
   $("#rfCreate").addEventListener("click", rfCreate);
   $("#rfDeleteAll").addEventListener("click", rfDeleteAll);
   $("#dOpen").addEventListener("click", async ()=>{ if(!currentRID) return; await j.put(`/api/raffles/${encodeURIComponent(currentRID)}/open`,{open:true}); toast("Opened"); loadDetail(currentRID); rfList(); });
   $("#dClose").addEventListener("click", async ()=>{ if(!currentRID) return; await j.put(`/api/raffles/${encodeURIComponent(currentRID)}/open`,{open:false}); toast("Closed"); loadDetail(currentRID); rfList(); });
-  $("#dClear").addEventListener("click", async ()=>{ if(!currentRID) return; if(!confirm("Clear entries and reopen?")) return;
-    await j.del(`/api/raffles/${encodeURIComponent(currentRID)}/entries`); toast("Cleared"); loadDetail(currentRID); rfList(); });
+  $("#dClear").addEventListener("click", async ()=>{ if(!currentRID) return; if(!confirm("Clear entries and reopen?")) return; await j.del(`/api/raffles/${encodeURIComponent(currentRID)}/entries`); toast("Cleared"); loadDetail(currentRID); rfList(); });
   $("#dDraw").addEventListener("click", async ()=>{ if(!currentRID) return; const r=await j.post(`/api/raffles/${encodeURIComponent(currentRID)}/draw`); toast("Winner: "+r.winner); loadDetail(currentRID); rfList(); });
 
-  /* ---------------- VIP wallet (unchanged logic from your previous hub) ---------------- */
+  /* ---------- Prize Claims ---------- */
+  async function pcRefresh(){
+    const filter=$("#pcFilter").value;
+    try{
+      const a = await j.get(`/api/prize-claims?status=${encodeURIComponent(filter)}`);
+      const tb=$("#pcTbl tbody");
+      tb.innerHTML = (a.claims||[]).map(c=>{
+        const short = c.walletAddr ? (c.walletAddr.slice(0,6)+"…"+c.walletAddr.slice(-6)) : "—";
+        return `<tr data-id="${c._id}">
+          <td>${c._id}</td>
+          <td>${c.user}</td>
+          <td>${c.raffleRid||"—"}</td>
+          <td>${c.affiliate||"—"}</td>
+          <td>${c.asset||"—"}</td>
+          <td>${c.chain||"—"}</td>
+          <td title="${c.walletAddr||""}">${short}</td>
+          <td>${new Date(c.createdAt||Date.now()).toLocaleString()}</td>
+          <td>${c.status}</td>
+          <td>
+            <button data-act="view">View</button>
+            <button data-act="approve" class="ok">Approve</button>
+            <button data-act="reject" class="danger">Reject</button>
+          </td>
+        </tr>`;
+      }).join("") || `<tr><td colspan="10" class="mini">No claims.</td></tr>`;
+
+      tb.querySelectorAll("button[data-act]").forEach(btn=>{
+        btn.addEventListener("click", async ()=>{
+          const id = btn.closest("tr").getAttribute("data-id");
+          if(btn.dataset.act==="view"){
+            // fetch to know if screenshot exists; open in new tab if so
+            const a = await j.get(`/api/prize-claims/${encodeURIComponent(id)}`);
+            if(a?.claim?.screenshot){
+              window.open(`/api/prize-claims/${encodeURIComponent(id)}/image`, "_blank");
+            }else{
+              toast("No screenshot attached");
+            }
+            return;
+          }
+          const status = btn.dataset.act==="approve" ? "approved" : "rejected";
+          await j.post(`/api/prize-claims/${encodeURIComponent(id)}/status`, { status });
+          toast("Marked "+status);
+          pcRefresh();
+        });
+      });
+    }catch{ $("#pcMsg").textContent="Load failed"; }
+  }
+  $("#pcRefresh").addEventListener("click", pcRefresh);
+  $("#pcFilter").addEventListener("change", pcRefresh);
+
+  /* ---------- VIP wallet / Deposits / Rules / Jackpot / Danger Zone (unchanged) ---------- */
   async function vipAdjust(sign){
     const user=($("#vipUser").value||"").trim().toUpperCase();
     const amt=Number($("#vipAmt").value||0);
@@ -328,8 +378,7 @@
     const user=($("#vipUser").value||"").trim().toUpperCase();
     if(!user){ $("#vipBal").textContent="—"; return; }
     try{
-      let a=null;
-      try { a = await j.get("/api/wallet/balance?user="+encodeURIComponent(user)); } catch {}
+      let a=null; try { a = await j.get("/api/wallet/balance?user="+encodeURIComponent(user)); } catch {}
       if(!a){ try { a = await j.get("/api/wallet/me?viewer="+encodeURIComponent(user)); } catch {} }
       $("#vipBal").textContent = a ? ("LBX "+Number(a?.balance||a?.wallet?.balance||0).toFixed(0)) : "(no endpoint)";
     }catch{ $("#vipBal").textContent="(error)"; }
@@ -338,25 +387,19 @@
   $("#vipDebit").addEventListener("click",()=>vipAdjust(-1));
   $("#vipCheck").addEventListener("click",vipCheck);
 
-  /* ---------------- Deposits (unchanged fallback) ---------------- */
   async function depRefresh(){
     const tb=$("#depTbl tbody");
     tb.innerHTML = `<tr><td colspan="6" class="mini">Loading…</td></tr>`;
     try{
       const r=await fetch("/api/deposits/pending",{credentials:"include",cache:"no-store"});
       if(!r.ok){ tb.innerHTML=`<tr><td colspan="6" class="mini">No backend (/api/deposits/pending not found)</td></tr>`; return; }
-      const jn=await r.json();
-      tb.innerHTML = (jn?.orders||[]).map(o=>`
+      const a=await r.json();
+      tb.innerHTML = (a?.orders||[]).map(o=>`
         <tr>
-          <td>${o.id||o._id||""}</td>
-          <td>${o.user||""}</td>
-          <td>${o.lbx||o.amount||""}</td>
-          <td>${o.method||""}</td>
-          <td>${new Date(o.created||o.ts||Date.now()).toLocaleString()}</td>
-          <td>
-            <button data-act="approve" data-id="${o.id||o._id}" class="ok">Approve</button>
-            <button data-act="reject" data-id="${o.id||o._id}" class="danger">Reject</button>
-          </td>
+          <td>${o.id||o._id||""}</td><td>${o.user||""}</td><td>${o.lbx||o.amount||""}</td>
+          <td>${o.method||""}</td><td>${new Date(o.created||o.ts||Date.now()).toLocaleString()}</td>
+          <td><button data-act="approve" data-id="${o.id||o._id}" class="ok">Approve</button>
+              <button data-act="reject"  data-id="${o.id||o._id}" class="danger">Reject</button></td>
         </tr>`).join("") || `<tr><td colspan="6" class="mini">No pending orders.</td></tr>`;
       tb.querySelectorAll("button[data-act]").forEach(btn=>{
         btn.addEventListener("click", async ()=>{
@@ -372,7 +415,6 @@
   }
   $("#depRefresh").addEventListener("click",depRefresh);
 
-  /* ---------------- Rules / Jackpot (same logic) ---------------- */
   async function loadRules(){ try{
     const a=await j.get("/api/events/rules"); const r=a.rules||{};
     $("#rSUBNEW").value = Number(r.lbx?.SUB_NEW ?? 10);
@@ -399,10 +441,8 @@
     $("#evtTbl tbody").innerHTML = (a.events||[]).map(ev=>`
       <tr>
         <td>${new Date(ev.ts||Date.now()).toLocaleString()}</td>
-        <td>${ev.type||""}</td>
-        <td>${ev.user||""}</td>
-        <td>${+ev.quantity||1}</td>
-        <td>${Array.isArray(ev.recipients)?ev.recipients.length:0}</td>
+        <td>${ev.type||""}</td><td>${ev.user||""}</td>
+        <td>${+ev.quantity||1}</td><td>${Array.isArray(ev.recipients)?ev.recipients.length:0}</td>
         <td>${ev.applied?"yes":"no"}</td>
       </tr>`).join("");
   }catch{} }
@@ -421,28 +461,15 @@
   }
   $("#jpApply").addEventListener("click",applyJackpot);
 
-  /* ---------------- Danger Zone (local-only caches) ---------------- */
   function setDZ(msg){ const el=$("#dzMsg"); if(el) el.textContent=msg; }
-  function clearLeaderboardCachesLocal(){
-    const toDel=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i)||""; if(k==="users:all" || k.startsWith("leaderboard:") || k.startsWith("rank:")) toDel.push(k); }
-    toDel.forEach(k=>localStorage.removeItem(k)); return toDel.length;
-  }
-  function clearAllPointsLocal(){
-    const prefixes = ["points:bonus:","points:tournament:","points:pvp:","points:lucky7:"];
-    const toDel=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i)||""; if(prefixes.some(p=>k.startsWith(p)) || /^(points:(bonus|tournament|pvp|lucky7):.*:updatedAt)$/.test(k)){ toDel.push(k); } }
-    toDel.forEach(k=>localStorage.removeItem(k)); return toDel.length;
-  }
-  function clearPlayerPointsLocal(user){
-    if(!user) return 0;
-    const keys=[`points:bonus:${user}`,`points:tournament:${user}`,`points:pvp:${user}`,`points:lucky7:${user}`,
-      `points:bonus:${user}:updatedAt`,`points:tournament:${user}:updatedAt`,`points:pvp:${user}:updatedAt`,`points:lucky7:${user}:updatedAt`];
-    let n=0; keys.forEach(k=>{ if(localStorage.getItem(k)!=null){ localStorage.removeItem(k); n++; } }); return n;
-  }
+  function clearLeaderboardCachesLocal(){ const toDel=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i)||""; if(k==="users:all" || k.startsWith("leaderboard:") || k.startsWith("rank:")) toDel.push(k); } toDel.forEach(k=>localStorage.removeItem(k)); return toDel.length; }
+  function clearAllPointsLocal(){ const prefixes=["points:bonus:","points:tournament:","points:pvp:","points:lucky7:"]; const toDel=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i)||""; if(prefixes.some(p=>k.startsWith(p)) || /^(points:(bonus|tournament|pvp|lucky7):.*:updatedAt)$/.test(k)){ toDel.push(k); } } toDel.forEach(k=>localStorage.removeItem(k)); return toDel.length; }
+  function clearPlayerPointsLocal(user){ if(!user) return 0; const keys=[`points:bonus:${user}`,`points:tournament:${user}`,`points:pvp:${user}`,`points:lucky7:${user}`,`points:bonus:${user}:updatedAt`,`points:tournament:${user}:updatedAt`,`points:pvp:${user}:updatedAt`,`points:lucky7:${user}:updatedAt`]; let n=0; keys.forEach(k=>{ if(localStorage.getItem(k)!=null){ localStorage.removeItem(k); n++; } }); return n; }
   $("#dzResetPlayer").addEventListener("click", ()=>{ const u=up($("#dzUser").value||""); if(!u) return setDZ("Enter username"); const n=clearPlayerPointsLocal(u); setDZ(`Player ${u}: cleared ${n} point keys`); });
   $("#dzResetAll").addEventListener("click", ()=>{ if(!confirm("Wipe ALL players’ local points?")) return; const n=clearAllPointsLocal(); setDZ(`All points cleared: ${n} keys`); });
   $("#dzResetLeaderboard").addEventListener("click", ()=>{ const n=clearLeaderboardCachesLocal(); setDZ(`Leaderboard caches cleared: ${n} keys`); });
 
-  function refreshAll(){ rfList(); loadRules(); loadEvents(); loadJackpot(); depRefresh(); }
+  function refreshAll(){ rfList(); pcRefresh(); loadRules(); loadEvents(); loadJackpot(); depRefresh(); }
   syncGate(); if(unlocked()) refreshAll();
 })();
 </script>
