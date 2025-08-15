@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Bets Admin — Unified (Simple: BG / Bonus / PVP)</title>
+<title>Bets Admin — Unified (Restored Presets)</title>
 <style>
 :root{--bg:#060b0d;--panel:#0b1417;--ink:#eaf7ff;--muted:#9fd0d6;--line:rgba(0,255,255,.18);--teal:#00ffff;--gold:#ffb42d;--bad:#e25a6f;--ok:#12d48a}
 *{box-sizing:border-box}
@@ -66,7 +66,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
 </script>
 
 <div class="wrap">
-  <h1>Bets Admin — Unified (Simple)</h1>
+  <h1>Bets Admin — Unified (with Bonus Hunt Presets)</h1>
 
   <div class="card row" style="justify-content:space-between">
     <div class="row">
@@ -86,7 +86,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     <label><input id="enBG" type="checkbox"> <b>Battleground</b></label>
     <label><input id="enBONUS" type="checkbox"> <b>Bonus Hunt</b></label>
     <label><input id="enPVP" type="checkbox"> <b>PVP Predictions</b></label>
-    <span class="subtle">Toggle sections on/off. Each section lets you add markets and lines.</span>
+    <span class="subtle">Bonus Hunt now auto-seeds Profit, 100x Wins, Highest Multiplier Game, and Ending Balance.</span>
   </div>
 
   <div class="grid">
@@ -129,6 +129,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
           <button class="btn" id="boAddYN">+ Yes/No</button>
           <button class="btn" id="boAddCU">+ Custom</button>
           <button class="btn" id="boAddGB">+ Guess the Balance</button>
+          <button class="btn" id="boSeed">↺ Re-Seed Presets</button>
         </div>
       </div>
       <div class="hr"></div>
@@ -169,12 +170,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
 
   // ---------- image resolving core ----------
   const IMG_EXT=['png','webp','jpg','jpeg'];
-  const IMG_BASES=[
-    'assets/slot_images/',
-    '../assets/slot_images/',
-    '../../assets/slot_images/',
-    '/assets/slot_images/'
-  ];
+  const IMG_BASES=['assets/slot_images/','../assets/slot_images/','../../assets/slot_images/','/assets/slot_images/'];
   const IMG_CACHE=new Map();
 
   const slug=s=>String(s||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
@@ -187,8 +183,6 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
       i.src = encodeURI(url) + (url.includes('?')?'&':'?') + 'v=' + Date.now();
     });
   }
-
-  // Normalize obvious paths; if it looks like a bare filename/slug, park it under assets/slot_images
   function assetPath(p){
     if(!p) return '';
     let s=String(p).trim();
@@ -196,8 +190,6 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     s=s.replace(/slot[ _]images\//gi,'slot_images/');
     s=s.replace(/^pages\/dashboard\/admin\//,'');
     if(s.startsWith('assets/')) return '/'+s;
-
-    // bare "file.png" or "power-of-thor"
     const hasSlash = s.includes('/');
     const hasExt = /\.[a-z]{3,4}$/i.test(s);
     if(!hasSlash){
@@ -206,17 +198,12 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     }
     return s;
   }
-
   async function resolveSlotImage(title, provider, candidate){
     const key = (title||'')+'\u0000'+(provider||'')+'\u0000'+(candidate||'');
     if(IMG_CACHE.has(key)) return IMG_CACHE.get(key);
     const t=slug(title), p=slug(provider);
-
-    // 1) candidate first (normalized)
     const cand = assetPath(candidate||'');
     if(await imgExists(cand)) { IMG_CACHE.set(key,cand); return cand; }
-
-    // 2) try common guesses
     const guesses=[];
     for(const b of IMG_BASES){
       for(const ext of IMG_EXT){
@@ -224,33 +211,39 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
         if(p){ guesses.push(`${b}${p}__${t}.${ext}`); guesses.push(`${b}${p}/${t}.${ext}`); }
       }
     }
-    for(const u of guesses){
-      if(await imgExists(u)){ IMG_CACHE.set(key,u); return u; }
-    }
-    IMG_CACHE.set(key,'');
-    return '';
+    for(const u of guesses){ if(await imgExists(u)){ IMG_CACHE.set(key,u); return u; } }
+    IMG_CACHE.set(key,''); return '';
   }
 
   // ---------- ABSOLUTE keys ----------
   const K_UNIFIED='sb:markets:unified';
   const K_BG_BUILDER='bg:builder:battleground';
 
-  // title → maps
+  // ---------- Hunt game lists (Super + Mega) ----------
+  const superGames = [
+    "2 Wild 2 Die","Bloodthirst","Book of Time","Bouncy Bombs","Chaos Crew","Cursed Seas","Densho","Dork Unit","Double Rainbow","Drop ‘Em","Duba Dice","F.R.I.E.S","Forest Fortune","Frank’s Farm","Fruit Duel","Hand of Anubis","Itero","King Carrot","Le Bandit","Le Bandit: Dusky Vengeance","Magic Piggy","Mayan Stackways","Miami Multiplier","Omnom","Outlaws Inc","Pug Life","RIP City","Rock Bottom","Rotten","Spirit of the Beast","Stack‘Em","Stormforged","The Bowery Boys","The Haunted Circus","The Rave","The Respinners","Time Spinners","Tilt ‘n’ Turn","Toshi Video Club","Undead Fortune","Wanted: Dead or a Wild","Warrior Ways","Wild Fishing Wild Ways","Wild Hogs"
+  ];
+  const megaGames = [
+    "Wild Wild Riches Megaways","Extra Juicy Megaways","Power of Thor Megaways","Lucky Fishing Megaways","Power of Merlin Megaways","Muertos Multiplier Megaways","Yum Yum Powerways","Raven Rising","Eastern Emeralds Megaways","Rocket Blast Megaways","Mammoth Gold Megaways","Merlins Revenge Megaways","Cherry Pop","Bounty Pop"
+  ];
+  function unique(arr){ return Array.from(new Set(arr.map(s=>String(s).trim()).filter(Boolean))); }
+  const ALL_HUNT_GAMES = unique([...megaGames, ...superGames]);
+
+  // ---------- title → maps ----------
   const normTitle=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
   function mapById(games){ const m=new Map(); (games||[]).forEach(g=>m.set(g.id,g)); return m; }
-  function mapByTitle(games){ const m=new Map(); (games||[]).forEach(g=>m.set(normTitle(g.title),g)); return m; }
 
-  // state
+  // ---------- state ----------
   let state = sget(K_UNIFIED) || {
     status:'open', lastUpdated:0,
     sections:{
       battleground:{enabled:false,h2h:[],overall:[]},
-      bonus:{enabled:false,overall:[]},
+      bonus:{enabled:true,overall:[]},
       pvp:{enabled:false,overall:[]}
     }
   };
 
-  // toggles
+  // ---------- toggles ----------
   function syncToggles(){
     el('#enBG').checked=!!state.sections.battleground.enabled;
     el('#enBONUS').checked=!!state.sections.bonus.enabled;
@@ -265,7 +258,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   el('#enBONUS').addEventListener('change',()=>{ state.sections.bonus.enabled=el('#enBONUS').checked; save(); syncToggles(); paintAll(); });
   el('#enPVP').addEventListener('change',()=>{ state.sections.pvp.enabled=el('#enPVP').checked; save(); syncToggles(); paintAll(); });
 
-  // paint
+  // ---------- paint ----------
   function paintAll(){ paintH2H(); paintMkts('battleground','#bgMkts'); paintMkts('bonus','#boMkts'); paintMkts('pvp','#pvMkts'); }
   function paintH2H(){
     const sec=state.sections.battleground, box=el('#bgH2H'); box.innerHTML='';
@@ -312,7 +305,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
       box.querySelector('[data-x="status"]').addEventListener('change',e=>{ state.sections[section].overall[mi].status=(e.target.value||'OPEN').toLowerCase()==='locked'?'locked':'open'; save(); });
       const lineEl=box.querySelector('[data-x="line"]'); if(lineEl){ lineEl.addEventListener('change',e=>{ const v=+e.target.value; state.sections[section].overall[mi].line=v; const S=state.sections[section].overall[mi].selections; if(S?.length>=2){ S[0].label='Over '+v; S[1].label='Under '+v; } save(); paintMkts(section,mount); }); }
       const W=['start','min','max','step','unit','prize','final']; W.forEach(w=>{ const n=box.querySelector('[data-x="'+w+'"]'); if(n) n.addEventListener('change',e=>{ state.sections[section].overall[mi][w]= (w==='unit')? e.target.value : +e.target.value; save(); }); });
-      const ent=box.querySelector('[data-x="entries"]'); if(ent){ ent.textContent=getEntries(section,m.id).length; }
+      const ent=box.querySelector('[data-x="entries"]'); if(ent){ ent.textContent=getEntries(section, m.id).length; }
       box.querySelectorAll('[data-x="slabel"]').forEach(n=> n.addEventListener('change',function(){ state.sections[section].overall[mi].selections[+this.dataset.sel].label=this.value; save(); }));
       box.querySelectorAll('[data-x="sodds"]').forEach(n=> n.addEventListener('change',function(){ state.sections[section].overall[mi].selections[+this.dataset.sel].odds=+this.value||1; save(); }));
       box.querySelectorAll('[data-act="sdel"]').forEach(b=> b.addEventListener('click',function(){ state.sections[section].overall[mi].selections.splice(+this.dataset.sel,1); save(); paintMkts(section,mount); }));
@@ -324,7 +317,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     });
   }
 
-  // creators
+  // ---------- creators ----------
   function addOU(sec){ sec.overall.push({id:kid('OU'),type:'OVER_UNDER',label:'Over / Under',status:'open',line:65.5,selections:[{id:kid('SEL'),label:'Over 65.5',odds:1.84},{id:kid('SEL'),label:'Under 65.5',odds:1.84}]}); save(); paintAll(); }
   function addMR(sec){ sec.overall.push({id:kid('MR'),type:'MULTI_RANGE',label:'Total Games Played',status:'open',selections:[{id:kid('SEL'),label:'48–55.5',odds:17},{id:kid('SEL'),label:'56–63.5',odds:3.4},{id:kid('SEL'),label:'64–71.5',odds:1.7},{id:kid('SEL'),label:'72–80',odds:4.25}]}); save(); paintAll(); }
   function addYN(sec){ sec.overall.push({id:kid('YN'),type:'YES_NO',label:'Yes / No',status:'open',selections:[{id:kid('SEL'),label:'Yes',odds:1.84},{id:kid('SEL'),label:'No',odds:1.84}]}); save(); paintAll(); }
@@ -337,7 +330,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   }
   function addGB(sec){ sec.overall.push({id:kid('GB'),type:'NUMERIC_GUESS',label:'Guess the Final Balance',status:'open',start:0,min:0,max:1000,step:1,unit:'$',prize:0,final:null,winners:[]}); save(); paintAll(); }
 
-  // entries / settling
+  // ---------- entries / settling ----------
   function entriesKey(section, marketId){ return 'sb:entries:'+section+':'+marketId; }
   function getEntries(section, marketId){ return sget(entriesKey(section, marketId)) || []; }
   function settleNumericGuess(section, mi){
@@ -358,7 +351,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     toast('Awards prepared ('+awards.length+')');
   }
 
-  // --------- Import & Build (now image-safe) ----------
+  // ---------- Import & Build (images safe) ----------
   async function importBG(){
     let used=''; const builder=sget(K_BG_BUILDER);
     if(builder && Array.isArray(builder.matches) && builder.matches.length){
@@ -375,7 +368,6 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     }
     el('#dbgImport').textContent='none'; toast('No matchups found (Admin/local/API empty)',false);
   }
-
   async function acceptMatches(arr, games, used, alreadyNorm){
     const b = sget(K_BG_BUILDER)||{games:[],matches:[]};
     b.games = Array.isArray(games) ? games : (b.games||[]);
@@ -402,8 +394,6 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     el('#dbgImport').textContent = used+' ('+b.matches.length+')';
     toast('Imported '+b.matches.length+' matchups',true);
   }
-
-  // Build H2H list and also persist repaired image URLs back to builder so other pages use them too
   async function buildH2H(){
     const builder=sget(K_BG_BUILDER);
     if(!builder || !Array.isArray(builder.matches) || !builder.matches.length){ toast('No matches to build',false); return; }
@@ -438,23 +428,23 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     save(); paintH2H(); toast('H2H built (images resolved)');
   }
 
-  // save/publish
+  // ---------- save/publish ----------
   function save(){ sset(K_UNIFIED,state); }
   function publish(){ state.lastUpdated=Date.now(); save(); el('#stamp').textContent='Last publish @ '+new Date(state.lastUpdated).toLocaleTimeString(); toast('Published to players'); }
 
-  // wire
+  // ---------- wire ----------
   el('#btnSave').addEventListener('click',()=>{ save(); toast('Saved'); });
   el('#btnPublish').addEventListener('click',publish);
   el('#btnOpenAll').addEventListener('click',()=>{ state.status='open'; save(); syncToggles(); });
   el('#btnLockAll').addEventListener('click',()=>{ state.status='locked'; save(); syncToggles(); });
-  el('#btnDelete').addEventListener('click',()=>{ if(confirm('Delete ALL markets?')){ state={status:'open',lastUpdated:0,sections:{battleground:{enabled:false,h2h:[],overall:[]},bonus:{enabled:false,overall:[]},pvp:{enabled:false,overall:[]}}}; save(); syncToggles(); paintAll(); } });
+  el('#btnDelete').addEventListener('click',()=>{ if(confirm('Delete ALL markets?')){ state={status:'open',lastUpdated:0,sections:{battleground:{enabled:false,h2h:[],overall:[]},bonus:{enabled:true,overall:[]},pvp:{enabled:false,overall:[]}}}; save(); syncToggles(); paintAll(); } });
 
   el('#bgAddOU').addEventListener('click',()=>addOU(state.sections.battleground));
   el('#bgAddMR').addEventListener('click',()=>addMR(state.sections.battleground));
   el('#bgAddYN').addEventListener('click',()=>addYN(state.sections.battleground));
   el('#bgAddCU').addEventListener('click',()=>addCU(state.sections.battleground));
   el('#bgAddCS').addEventListener('click',()=>addCS(state.sections.battleground));
-  el'#bgImport').addEventListener('click',importBG);
+  el('#bgImport').addEventListener('click',importBG);           /* <-- fixed */
   el('#bgBuild').addEventListener('click',()=>buildH2H());
 
   el('#boAddOU').addEventListener('click',()=>addOU(state.sections.bonus));
@@ -462,16 +452,78 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   el('#boAddYN').addEventListener('click',()=>addYN(state.sections.bonus));
   el('#boAddCU').addEventListener('click',()=>addCU(state.sections.bonus));
   el('#boAddGB').addEventListener('click',()=>addGB(state.sections.bonus));
+  el('#boSeed').addEventListener('click',()=>{ seedBonusPresets(true); paintAll(); toast('Presets re-seeded'); });
 
   el('#pvAddOU').addEventListener('click',()=>addOU(state.sections.pvp));
   el('#pvAddMR').addEventListener('click',()=>addMR(state.sections.pvp));
   el('#pvAddYN').addEventListener('click',()=>addYN(state.sections.pvp));
   el('#pvAddCU').addEventListener('click',()=>addCU(state.sections.pvp));
 
-  // boot: clean up any bad builder paths so all other pages see fixed URLs
-  (async function boot(){
-    syncToggles(); paintAll(); if(state.lastUpdated){ el('#stamp').textContent='Last publish @ '+new Date(state.lastUpdated).toLocaleTimeString(); }
+  // ---------- presets for BONUS HUNT ----------
+  function seedBonusPresets(force){
+    const sec=state.sections.bonus;
+    if(!force && sec.overall && sec.overall.length) return;
 
+    sec.overall = [];
+
+    // 1) Profit Achieved?
+    sec.overall.push({
+      id:kid('YN'),
+      type:'YES_NO',
+      label:'Will the hunt end in profit?',
+      status:'open',
+      selections:[{id:kid('SEL'),label:'Yes',odds:1.84},{id:kid('SEL'),label:'No',odds:1.84}]
+    });
+
+    // 2) How many 100x wins? (O/U)
+    const line100x = 2.5;
+    sec.overall.push({
+      id:kid('OU'),
+      type:'OVER_UNDER',
+      label:'How many 100x wins?',
+      status:'open',
+      line: line100x,
+      selections:[{id:kid('SEL'),label:'Over '+line100x,odds:1.84},{id:kid('SEL'),label:'Under '+line100x,odds:1.84}]
+    });
+
+    // 3) Which game will have the highest multiplier?
+    sec.overall.push({
+      id:kid('CU'),
+      type:'CUSTOM',
+      label:'Which game will have the highest multiplier?',
+      status:'open',
+      selections: ALL_HUNT_GAMES.map(g=>({id:kid('SEL'),label:g,odds:6.0}))
+    });
+
+    // 4) Guess the Ending Balance (numeric)
+    sec.overall.push({
+      id:kid('GB'),
+      type:'NUMERIC_GUESS',
+      label:'Guess the Final Balance',
+      status:'open',
+      start:0,min:0,max:5000,step:1,unit:'$',prize:0,final:null,winners:[]
+    });
+
+    save();
+  }
+
+  // ---------- boot ----------
+  (async function boot(){
+    // show sections and status
+    syncToggles();
+
+    // ensure Bonus Hunt enabled by default so you see presets
+    if(state.sections?.bonus && !state.sections.bonus.enabled){ state.sections.bonus.enabled=true; }
+
+    // seed presets if bonus empty
+    if(!state.sections.bonus.overall || !state.sections.bonus.overall.length){
+      seedBonusPresets(false);
+    }
+
+    paintAll();
+    if(state.lastUpdated){ el('#stamp').textContent='Last publish @ '+new Date(state.lastUpdated).toLocaleTimeString(); }
+
+    // clean up builder image URLs (so other pages get fixed paths)
     const builder=sget(K_BG_BUILDER);
     if(builder?.matches?.length){
       const byId=mapById(builder.games||[]);
@@ -480,7 +532,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
         const lt=mx.leftTitle || byId.get(mx.leftId)?.title || '';
         const rt=mx.rightTitle|| byId.get(mx.rightId)?.title|| '';
         const lp=byId.get(mx.leftId)?.provider || '';
-        const rp=byId.get(mx.rightId)?.provider|| '';
+        const rp=byId.get(mx.rightId)?.provider || '';
         const li = await resolveSlotImage(lt, lp, mx.leftImg);
         const ri = await resolveSlotImage(rt, rp, mx.rightImg);
         if(li && mx.leftImg!==li){ mx.leftImg=li; changed=true; }
