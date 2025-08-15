@@ -49,7 +49,7 @@
     </div>
   </div>
 
-  <!-- Entries panel (NEW: reads server, approves/rejects/deletes) -->
+  <!-- Entries panel -->
   <div class="panel">
     <div class="row" style="align-items:center">
       <h2 style="margin-right:10px">Player Entries</h2>
@@ -59,7 +59,7 @@
       <button id="entClearEmpty" class="btn warn" title="Remove entries with no username">Clear Empty</button>
     </div>
     <div class="hint" style="margin:6px 0 10px">
-      This table is populated from <code>/api/pvp/entries</code> (server). Approve or reject to mark status. Delete removes the entry.
+      Loaded from <code>/api/pvp/entries</code>. Use Approve / Reject / Delete to manage entries.
     </div>
     <div style="max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:10px">
       <table class="tbl" id="entTbl" aria-label="PVP entries">
@@ -80,11 +80,11 @@
     </div>
   </div>
 
-  <!-- Existing builder area (kept minimal as placeholder; your original builder can sit here unchanged) -->
+  <!-- Keep room for your existing builder UI, if any -->
   <div class="panel">
     <div class="row" style="align-items:center">
       <h2 style="margin-right:10px">Games • Matchups • Live</h2>
-      <span class="hint">Your existing PVP builder UI goes here (unchanged).</span>
+      <span class="hint">Your existing PVP builder UI can live here.</span>
     </div>
   </div>
 </div>
