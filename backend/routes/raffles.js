@@ -1,212 +1,170 @@
-// backend/routes/raffles.js — minimal raffle system with admin ops (ESM)
+// backend/routes/raffles.js
 import express from "express";
 import mongoose from "mongoose";
 
 const router = express.Router();
 const mongoUp = () => mongoose?.connection?.readyState === 1;
-const MEM_OK = String(process.env.ALLOW_MEMORY_FALLBACK || "true").toLowerCase() === "true";
-const up = s => (s||"").toString().trim().toUpperCase();
 
-/* ------------ Models ------------- */
-let Raffle, RaffleEntry, KV;
+/* ------------------------------
+   MODELS
+------------------------------ */
+let Raffle;
 try {
-  const raffleSchema = new mongoose.Schema({
-    id:      { type:String, unique:true, index:true },
-    title:   { type:String, default:"" },
-    open:    { type:Boolean, default:true },
-    created: { type:Date, default:()=>new Date() },
-    winner:  { user:{type:String, default:""}, ts:{type:Date} }
-  }, { versionKey:false, collection:"raffles" });
-  Raffle = mongoose.models.Raffle || mongoose.model("Raffle", raffleSchema);
-
-  const entrySchema = new mongoose.Schema({
-    rid:{ type:String, index:true },
-    user:{ type:String, index:true },
-    ts:{ type:Date, default:()=>new Date() },
-  }, { versionKey:false, collection:"raffle_entries" });
-  entrySchema.index({ rid:1, user:1 }, { unique:true });
-  RaffleEntry = mongoose.models.RaffleEntry || mongoose.model("RaffleEntry", entrySchema);
-
-  const kvSchema = new mongoose.Schema({
-    key:{type:String, unique:true}, value: mongoose.Schema.Types.Mixed,
-    ts:{type:Date, default:()=>new Date()}
-  }, { versionKey:false, collection:"app_config" });
-  KV = mongoose.models.KV || mongoose.model("KV", kvSchema);
+  const EntrySchema = new mongoose.Schema(
+    { user: { type: String, index: true }, ts: { type: Date, default: () => new Date() } },
+    { _id: false }
+  );
+  const RaffleSchema = new mongoose.Schema(
+    {
+      rid:   { type: String, unique: true, index: true },     // slug/id (e.g. "AUG15-MATESLOTS")
+      title: { type: String, required: true },                 // human title shown to players
+      open:  { type: Boolean, default: true },                 // accepting entries
+      entries: { type: [EntrySchema], default: [] },           // [{user, ts}]
+      winner: { type: String, default: "" },                   // winning username
+      drawnAt: { type: Date, default: null },
+      createdAt: { type: Date, default: () => new Date() }
+    },
+    { versionKey: false, collection: "raffles" }
+  );
+  Raffle = mongoose.models.Raffle || mongoose.model("Raffle", RaffleSchema);
 } catch {}
 
-/* --------- Memory fallback -------- */
-const mem = {
-  current: null,
-  raffles: new Map(),   // id -> {id,title,open,created,winner?}
-  entries: new Map(),   // rid -> [{user,ts}]
-};
-
-async function setCurrent(id){
-  if (mongoUp() && KV){ await KV.updateOne({key:"raffle_current_id"},{$set:{value:id,ts:new Date()}},{upsert:true}); }
-  else { mem.current = id; }
-}
-async function getCurrent(){
-  if (mongoUp() && KV){ const d = await KV.findOne({key:"raffle_current_id"}).lean(); return d?.value || null; }
-  return mem.current || null;
-}
-async function clearCurrent(){
-  if (mongoUp() && KV){ await KV.deleteOne({key:"raffle_current_id"}); }
-  mem.current = null;
-}
-async function ensureRaffle(id,title){
-  if (mongoUp() && Raffle){
-    await Raffle.updateOne({id},{ $setOnInsert:{id, title:title||id, open:true, created:new Date()} },{upsert:true});
-  } else {
-    if (!mem.raffles.has(id)) mem.raffles.set(id,{id, title:title||id, open:true, created:new Date(), winner:null});
-  }
-}
-async function getInfo(id){
-  if (mongoUp() && Raffle) return await Raffle.findOne({id}).lean();
-  return mem.raffles.get(id) || null;
+/* ------------------------------
+   ADMIN GUARD (reuse server cookie)
+------------------------------ */
+function adminGuard(req, res, next) {
+  // If server mounted this file under /api/raffles, you already have the cookie middleware.
+  // We accept that /api/admin/gate/check is the true gate; keep behavior same as your server's adminGuard.
+  const tok = req.cookies?.["adm_sess"];
+  if (!tok) return res.status(401).json({ ok: false, error: "admin_locked" });
+  next();
 }
 
-/* ========== ADMIN: create/open/current/list ========== */
-// POST /api/raffles/create { id, title? }
-router.post("/create", async (req,res)=>{
-  const id=(req.body?.id||"").trim(); if(!id) return res.status(400).json({ok:false,error:"bad_id"});
-  const title=(req.body?.title||id).trim();
-  await ensureRaffle(id,title);
-  await setCurrent(id);
-  if (mongoUp() && Raffle) await Raffle.updateOne({id},{ $set:{ open:true, winner:null } });
-  else { const r=mem.raffles.get(id); if(r){ r.open=true; r.winner=null; } }
-  res.json({ok:true,id,title});
-});
-
-// PUT /api/raffles/:id/open { open: boolean }
-router.put("/:id/open", async (req,res)=>{
-  const id=(req.params.id||"").trim(); const open=!!req.body?.open;
-  if(!id) return res.status(400).json({ok:false,error:"bad_id"});
-  if (mongoUp() && Raffle) await Raffle.updateOne({id},{ $set:{open} });
-  else { const r=mem.raffles.get(id)||{id,title:id}; r.open=open; mem.raffles.set(id,r); }
-  res.json({ok:true,id,open});
-});
-
-// PUT /api/raffles/current { id }
-router.put("/current", async (req,res)=>{
-  const id=(req.body?.id||"").trim(); if(!id) return res.status(400).json({ok:false,error:"bad_id"});
-  await setCurrent(id); res.json({ok:true,id});
-});
-
-// GET /api/raffles/list?open=0|1
-router.get("/list", async (req,res)=>{
-  const onlyOpen = String(req.query.open||"").trim()==="1";
-  if (mongoUp() && Raffle){
-    const rows = await Raffle.find(onlyOpen?{open:true}:{}, { _id:0 }).sort({created:-1}).lean();
-    return res.json(rows);
+/* ------------------------------
+   HELPERS
+------------------------------ */
+function up(s){ return String(s||"").trim().toUpperCase(); }
+function ensureMongo(res){
+  if (!mongoUp() || !Raffle) {
+    res.status(503).json({ ok:false, error:"DB_OFFLINE" });
+    return false;
   }
-  const arr = Array.from(mem.raffles.values()).sort((a,b)=>b.created - a.created);
-  res.json(onlyOpen?arr.filter(r=>r.open):arr);
+  return true;
+}
+
+/* ------------------------------
+   PUBLIC – list raffles (open first), winners
+------------------------------ */
+router.get("/", async (_req, res) => {
+  if (!ensureMongo(res)) return;
+  const rows = await Raffle.find({})
+    .sort({ open: -1, createdAt: -1 })
+    .select({ _id:0, rid:1, title:1, open:1, winner:1, drawnAt:1, createdAt:1 })
+    .lean();
+  res.json({ ok:true, raffles: rows });
 });
 
-// GET /api/raffles/public (current raffle, with winner if set)
-router.get("/public", async (_req,res)=>{
-  const id = await getCurrent();
-  if (!id) return res.json({ok:true,active:false});
-  const info = await getInfo(id);
-  res.json({ok:true,active:!!info,id,title:info?.title||id,open:!!info?.open,winner:info?.winner||null});
+router.get("/:rid/entries", async (req, res) => {
+  if (!ensureMongo(res)) return;
+  const rid = String(req.params.rid||"").trim();
+  if (!rid) return res.status(400).json({ ok:false, error:"bad_id" });
+  const rf = await Raffle.findOne({ rid }).lean();
+  if (!rf) return res.status(404).json({ ok:false, error:"not_found" });
+  res.json({ ok:true, rid: rf.rid, title: rf.title, open: rf.open, winner: rf.winner||"", entries: rf.entries||[] });
 });
 
-/* ========== ENTRIES (player) ========== */
-// GET /api/raffles/:id/entries
-router.get("/:id/entries", async (req,res)=>{
-  const rid=(req.params.id||"").trim(); if(!rid) return res.status(400).json({ok:false,error:"bad_id"});
-  if (mongoUp() && RaffleEntry){
-    const rows = await RaffleEntry.find({rid}).sort({ts:1}).lean();
-    return res.json({ok:true,entries:rows.map(r=>({user:r.user,ts:r.ts}))});
-  }
-  res.json({ok:true,entries:(mem.entries.get(rid)||[])});
+router.get("/winners/recent", async (_req, res) => {
+  if (!ensureMongo(res)) return;
+  const rows = await Raffle.find({ winner: { $ne: "" } })
+    .sort({ drawnAt: -1 })
+    .limit(20)
+    .select({ _id:0, rid:1, title:1, winner:1, drawnAt:1 })
+    .lean();
+  res.json({ ok:true, winners: rows });
 });
 
-// POST /api/raffles/:id/entries  { user }
-router.post("/:id/entries", async (req,res)=>{
-  const rid=(req.params.id||"").trim(); const user=up(req.body?.user||"");
-  if(!rid||!user) return res.status(400).json({ok:false,error:"bad_input"});
-  const info = await getInfo(rid); if(!info) return res.status(404).json({ok:false,error:"not_found"});
-  if(!info.open) return res.status(403).json({ok:false,error:"closed"});
+/* ------------------------------
+   PUBLIC – enter a raffle
+------------------------------ */
+router.post("/:rid/enter", async (req, res) => {
+  if (!ensureMongo(res)) return;
+  const rid   = String(req.params.rid||"").trim();
+  const uname = up(req.body?.username || req.body?.user);
+  if (!rid || !uname) return res.status(400).json({ ok:false, error:"bad_input" });
 
-  if (mongoUp() && RaffleEntry){
-    try{
-      await RaffleEntry.updateOne({rid,user},{ $setOnInsert:{rid,user}, $set:{ts:new Date()} },{upsert:true});
-      return res.json({ok:true, entry:{rid,user,ts:new Date()}});
-    }catch(e){ if(e?.code===11000) return res.json({ok:true,already:true}); return res.status(500).json({ok:false,error:e?.message||"db_error"}); }
-  }
-  if (!MEM_OK) return res.status(503).json({ok:false,reason:"DB_OFFLINE"});
-  const list = mem.entries.get(rid)||[];
-  if (!list.some(x=>x.user===user)) list.push({user,ts:new Date().toISOString()});
-  mem.entries.set(rid,list);
-  res.json({ok:true, entry:{rid,user,ts:new Date()}});
+  const rf = await Raffle.findOne({ rid });
+  if (!rf)   return res.status(404).json({ ok:false, error:"not_found" });
+  if (!rf.open) return res.status(400).json({ ok:false, error:"closed" });
+
+  // reject duplicate user
+  if (rf.entries.some(e => up(e.user) === uname)) return res.json({ ok:true, already:true });
+
+  rf.entries.push({ user: uname, ts:new Date() });
+  await rf.save();
+
+  res.json({ ok:true, rid: rf.rid, title: rf.title });
 });
 
-/* ========== WINNER (admin publishes; player reads) ========== */
-// POST /api/raffles/:id/draw  -> { winner }
-router.post("/:id/draw", async (req,res)=>{
-  const rid=(req.params.id||"").trim(); if(!rid) return res.status(400).json({ok:false,error:"bad_id"});
-  let entries=[];
-  if (mongoUp() && RaffleEntry) entries = await RaffleEntry.find({rid}).lean();
-  else entries = mem.entries.get(rid)||[];
-  if (!entries.length) return res.status(400).json({ok:false,error:"no_entries"});
+/* ------------------------------
+   ADMIN – create, open/close, draw, clear, delete-all
+------------------------------ */
+router.post("/", adminGuard, async (req, res) => {
+  if (!ensureMongo(res)) return;
+  const rid   = String(req.body?.rid||"").trim();
+  const title = String(req.body?.title||"").trim();
+  if (!rid || !title) return res.status(400).json({ ok:false, error:"bad_input" });
 
-  const pick = entries[Math.floor(Math.random()*entries.length)];
-  const win = { user: up(pick.user), ts: new Date() };
-  if (mongoUp() && Raffle) await Raffle.updateOne({id:rid},{ $set:{winner:win, open:false} });
-  else { const r=mem.raffles.get(rid)||{id:rid,title:rid}; r.winner=win; r.open=false; mem.raffles.set(rid,r); }
-  res.json({ok:true,winner:win});
+  const exists = await Raffle.findOne({ rid }).lean();
+  if (exists) return res.status(409).json({ ok:false, error:"exists" });
+
+  await Raffle.create({ rid, title, open:true, entries:[] });
+  res.json({ ok:true, rid, title, open:true });
 });
 
-// POST /api/raffles/:id/winner { user }  (manual publish)
-router.post("/:id/winner", async (req,res)=>{
-  const rid=(req.params.id||"").trim(); const user=up(req.body?.user||"");
-  if(!rid||!user) return res.status(400).json({ok:false,error:"bad_input"});
-  const win = { user, ts:new Date() };
-  if (mongoUp() && Raffle) await Raffle.updateOne({id:rid},{ $set:{winner:win, open:false} });
-  else { const r=mem.raffles.get(rid)||{id:rid,title:rid}; r.winner=win; r.open=false; mem.raffles.set(rid,r); }
-  res.json({ok:true,winner:win});
+router.put("/:rid/open", adminGuard, async (req, res) => {
+  if (!ensureMongo(res)) return;
+  const rid = String(req.params.rid||"").trim();
+  const open = Boolean(req.body?.open);
+  const rf = await Raffle.findOneAndUpdate({ rid }, { $set:{ open } }, { new:true });
+  if (!rf) return res.status(404).json({ ok:false, error:"not_found" });
+  res.json({ ok:true, rid: rf.rid, open: rf.open });
 });
 
-// GET /api/raffles/:id/winner -> { winner }
-router.get("/:id/winner", async (req,res)=>{
-  const rid=(req.params.id||"").trim(); if(!rid) return res.status(400).json({ok:false,error:"bad_id"});
-  const info = await getInfo(rid);
-  res.json({ok:true,winner:info?.winner||null});
+router.post("/:rid/draw", adminGuard, async (req, res) => {
+  if (!ensureMongo(res)) return;
+  const rid = String(req.params.rid||"").trim();
+  const rf = await Raffle.findOne({ rid });
+  if (!rf) return res.status(404).json({ ok:false, error:"not_found" });
+  if (!rf.entries?.length) return res.status(400).json({ ok:false, error:"no_entries" });
+
+  const idx = Math.floor(Math.random() * rf.entries.length);
+  const winner = up(rf.entries[idx].user);
+
+  rf.winner = winner;
+  rf.drawnAt = new Date();
+  rf.open = false;
+  await rf.save();
+
+  res.json({ ok:true, rid: rf.rid, title: rf.title, winner, drawnAt: rf.drawnAt });
 });
 
-/* ========== Destructive admin ops ========== */
-// DELETE /api/raffles/:id/entries  -> clear entries for a raffle
-router.delete("/:id/entries", async (req,res)=>{
-  const rid=(req.params.id||"").trim(); if(!rid) return res.status(400).json({ok:false,error:"bad_id"});
-  if (mongoUp() && RaffleEntry) await RaffleEntry.deleteMany({rid});
-  else mem.entries.delete(rid);
-  res.json({ok:true, cleared:true, rid});
+router.delete("/:rid/entries", adminGuard, async (req, res) => {
+  if (!ensureMongo(res)) return;
+  const rid = String(req.params.rid||"").trim();
+  const rf = await Raffle.findOne({ rid });
+  if (!rf) return res.status(404).json({ ok:false, error:"not_found" });
+  rf.entries = [];
+  rf.winner = "";
+  rf.drawnAt = null;
+  rf.open = true;
+  await rf.save();
+  res.json({ ok:true, rid, cleared:true });
 });
 
-// DELETE /api/raffles/:id  -> delete raffle + its entries
-router.delete("/:id", async (req,res)=>{
-  const rid=(req.params.id||"").trim(); if(!rid) return res.status(400).json({ok:false,error:"bad_id"});
-  if (mongoUp() && Raffle){
-    await Raffle.deleteOne({id:rid});
-    if (RaffleEntry) await RaffleEntry.deleteMany({rid});
-    const cur = await getCurrent(); if (cur === rid) await clearCurrent();
-  } else {
-    mem.raffles.delete(rid); mem.entries.delete(rid); if (mem.current === rid) mem.current = null;
-  }
-  res.json({ok:true, deleted:true, rid});
-});
-
-// DELETE /api/raffles  -> delete ALL raffles + ALL entries + clear current
-router.delete("/", async (_req,res)=>{
-  if (mongoUp() && Raffle){
-    await Raffle.deleteMany({});
-    if (RaffleEntry) await RaffleEntry.deleteMany({});
-    await clearCurrent();
-  } else {
-    mem.raffles.clear(); mem.entries.clear(); mem.current = null;
-  }
-  res.json({ok:true, nuked:true});
+router.delete("/", adminGuard, async (_req, res) => {
+  if (!ensureMongo(res)) return;
+  await Raffle.deleteMany({});
+  res.json({ ok:true, deletedAll:true });
 });
 
 export default router;
