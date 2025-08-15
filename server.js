@@ -1,4 +1,4 @@
-// server.js — Homepage-first routing, keeps working admin & APIs, JSON+form login
+// server.js — Homepage-first routing, admin resolvers, JSON+form login
 import fs from "fs";
 import path from "path";
 import express from "express";
@@ -41,15 +41,38 @@ const HOME_INDEX = (() => {
   return path.isAbsolute(val) ? val : path.join(PUBLIC_DIR, val);
 })();
 
-// Optional: admin login file (relative to PUBLIC_DIR unless absolute)
-const ADMIN_LOGIN_FILE = (() => {
-  const val = process.env.ADMIN_LOGIN_FILE || "pages/dashboard/home/admin_login.html";
-  return path.isAbsolute(val) ? val : path.join(PUBLIC_DIR, val);
-})();
-
 function existsSync(p) { try { fs.accessSync(p); return true; } catch { return false; } }
 const HAS_HOME = existsSync(HOME_INDEX);
-const HAS_ADMIN = existsSync(ADMIN_LOGIN_FILE);
+
+// Helper to resolve the first existing file from a list (relative to PUBLIC_DIR unless absolute)
+function resolveFirstExisting(candidates) {
+  for (const rel of candidates) {
+    const abs = path.isAbsolute(rel) ? rel : path.join(PUBLIC_DIR, rel);
+    if (existsSync(abs)) return abs;
+  }
+  return null;
+}
+
+// Admin file resolvers (cover the common paths in your repo)
+const ADMIN_LOGIN_CANDIDATES = [
+  process.env.ADMIN_LOGIN_FILE || "pages/dashboard/home/admin_login.html",
+  "pages/dashboard/home/login.html",
+  "pages/dashboard/admin/admin_login.html",
+  "admin_login.html",
+  "admin/index.html",
+  "admin.html",
+  "pages/admin/login.html",
+  "pages/dashboard/home/login_admin.html"
+];
+
+const ADMIN_HUB_CANDIDATES = [
+  process.env.ADMIN_HUB_FILE || "pages/dashboard/admin/admin_hub.html",
+  "admin/admin_hub.html",
+  "pages/admin/admin_hub.html"
+];
+
+const ADMIN_LOGIN_FILE = resolveFirstExisting(ADMIN_LOGIN_CANDIDATES);
+const ADMIN_HUB_FILE   = resolveFirstExisting(ADMIN_HUB_CANDIDATES);
 
 // ===== In-memory stores (keeps UI functional without DB)
 const memory = {
@@ -70,6 +93,14 @@ const memory = {
 const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
+
+// Tiny safety headers (no behavioral changes)
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer-when-downgrade");
+  res.setHeader("Permissions-Policy", "interest-cohort=()");
+  next();
+});
 
 // Body parsers: JSON *and* forms
 app.use(express.json({ limit: "2mb" }));
@@ -136,7 +167,9 @@ app.get("/api/health", (req, res) => {
     homeIndex: HOME_INDEX,
     hasHome: HAS_HOME,
     adminLoginFile: ADMIN_LOGIN_FILE,
-    hasAdminLogin: HAS_ADMIN,
+    hasAdminLogin: !!ADMIN_LOGIN_FILE,
+    adminHubFile: ADMIN_HUB_FILE,
+    hasAdminHub: !!ADMIN_HUB_FILE,
     db: !!globalThis.__dbReady
   });
 });
@@ -147,10 +180,24 @@ app.get("/", (req, res) => {
   res.status(200).send("Homepage not found: put index.html in PUBLIC_DIR or set HOME_INDEX/PUBLIC_DIR correctly.");
 });
 
-// ===== Optional admin shortcut (/admin -> the admin login page if present)
-app.get("/admin", (req, res) => {
-  if (HAS_ADMIN) return res.sendFile(ADMIN_LOGIN_FILE);
-  return res.redirect(302, "/");
+// ===== Friendly admin helpers (no redirect loops)
+// /admin/login resolves to whatever login page actually exists right now
+app.get("/admin/login", (req, res) => {
+  if (ADMIN_LOGIN_FILE) return res.sendFile(ADMIN_LOGIN_FILE);
+  // fallback to home with a hint
+  res.status(404).send("Admin login page not found (check ADMIN_LOGIN_FILE or your /pages/... path).");
+});
+
+// /admin/hub resolves to the Admin Hub file
+app.get("/admin/hub", (req, res) => {
+  if (ADMIN_HUB_FILE) return res.sendFile(ADMIN_HUB_FILE);
+  res.status(404).send("Admin hub page not found (check ADMIN_HUB_FILE or your /pages/... path).");
+});
+
+// Quick logout → home
+app.get("/logout", (req, res) => {
+  res.clearCookie("admin_token", { path: "/" });
+  res.redirect(302, "/");
 });
 
 // ===== Static files
@@ -228,7 +275,8 @@ app.use((err, req, res, next) => {
 // ===== Start (non-blocking DB connect)
 app.listen(PORT, HOST, () => {
   console.log(`[Server] http://${HOST}:${PORT} (${NODE_ENV}) PUBLIC_DIR=${PUBLIC_DIR}`);
-  console.log(`[Server] HOME_INDEX=${HOME_INDEX} hasHome=${HAS_HOME} | ADMIN_LOGIN_FILE=${ADMIN_LOGIN_FILE} hasAdmin=${HAS_ADMIN}`);
+  console.log(`[Server] HOME_INDEX=${HOME_INDEX} hasHome=${HAS_HOME}`);
+  console.log(`[Server] ADMIN_LOGIN_FILE=${ADMIN_LOGIN_FILE || "(none)"} | ADMIN_HUB_FILE=${ADMIN_HUB_FILE || "(none)"}`);
 });
 (async () => {
   if (!MONGO_URI) { if (!ALLOW_MEMORY_FALLBACK) console.warn("[DB] No MONGO_URI; memory mode."); return; }
