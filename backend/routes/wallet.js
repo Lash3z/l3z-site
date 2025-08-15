@@ -1,71 +1,123 @@
-// backend/routes/wallet.js — compatibility version (ESM)
-import { Router } from "express";
-import { getBalance, getLedger, credit, debit, adjust } from "../models/wallet/wallet.service.js";
+// backend/routes/wallet.js (ESM)
+import express from "express";
+import mongoose from "mongoose";
 
-const r = Router();
-const num = v => Number.isFinite(Number(v)) ? Number(v) : NaN;
-const str = (v, d="") => (typeof v === "string" && v.trim()) ? v.trim() : d;
+const router = express.Router();
+const mongoUp = () => mongoose?.connection?.readyState === 1;
+const ALLOW_MEMORY_FALLBACK = String(process.env.ALLOW_MEMORY_FALLBACK || "").toLowerCase() === "true";
 
-// GET /api/wallet/me?viewer=<username>
-r.get("/me", async (req, res) => {
-  const viewer = str(req.query.viewer) || str(req.headers["x-viewer-name"]);
-  if (!viewer) return res.status(400).json({ ok:false, error:"missing_viewer" });
-  const out = await getBalance(viewer.toLowerCase());
-  res.json({ ok:true, user: viewer, balance: out.balance });
+/* --- Model (safe-define) --- */
+let Wallet;
+try {
+  const schema = new mongoose.Schema(
+    {
+      username: { type: String, unique: true, index: true },
+      balance:  { type: Number, default: 0 },
+      updated:  { type: Date,   default: () => new Date() },
+    },
+    { versionKey: false, collection: "wallets" }
+  );
+  Wallet = mongoose.models.Wallet || mongoose.model("Wallet", schema);
+} catch {}
+
+/* --- Memory fallback for local-only dev --- */
+const mem = new Map(); // USER -> { balance, updated }
+
+/* --- helpers --- */
+const up = s => (s||"").toString().trim().toUpperCase();
+async function getOrCreate(username) {
+  const user = up(username);
+  if (!user) return null;
+
+  if (mongoUp() && Wallet) {
+    let doc = await Wallet.findOne({ username: user }).lean();
+    if (!doc) {
+      await Wallet.updateOne(
+        { username: user },
+        { $setOnInsert: { username: user, balance: 0, updated: new Date() } },
+        { upsert: true }
+      );
+      doc = await Wallet.findOne({ username: user }).lean();
+    }
+    return { username: doc.username, balance: Number(doc.balance||0), updated: doc.updated };
+  }
+
+  if (!ALLOW_MEMORY_FALLBACK) return null;
+  const cur = mem.get(user) || { balance: 0, updated: new Date() };
+  mem.set(user, cur);
+  return { username: user, balance: cur.balance, updated: cur.updated };
+}
+
+async function writeDelta(username, delta) {
+  const user = up(username);
+  const n = Number(delta||0);
+  if (!user || !Number.isFinite(n)) return null;
+
+  if (mongoUp() && Wallet) {
+    const doc = await Wallet.findOneAndUpdate(
+      { username: user },
+      { $inc: { balance: n }, $set: { updated: new Date() } },
+      { upsert: true, new: true }
+    ).lean();
+    return { username: doc.username, balance: Number(doc.balance||0), updated: doc.updated };
+  }
+
+  if (!ALLOW_MEMORY_FALLBACK) return null;
+  const cur = mem.get(user) || { balance: 0, updated: new Date() };
+  cur.balance = Number(cur.balance||0) + n;
+  cur.updated = new Date();
+  mem.set(user, cur);
+  return { username: user, balance: cur.balance, updated: cur.updated };
+}
+
+/* --- Routes --- */
+
+// GET /api/wallet/balance?user=LASH3Z
+router.get("/balance", async (req, res) => {
+  const user = up(req.query.user || "");
+  if (!user) return res.status(400).json({ ok:false, error:"bad_user" });
+
+  const rec = await getOrCreate(user);
+  if (!rec) return res.status(503).json({ ok:false, error:"store_offline" });
+
+  res.setHeader("X-Store", mongoUp() ? "mongo" : (ALLOW_MEMORY_FALLBACK ? "memory" : "offline"));
+  res.json({ ok:true, username: rec.username, balance: Number(rec.balance||0), updated: rec.updated });
 });
 
-// GET /api/wallet/credit?username=&amount=&reason=
-r.get("/credit", async (req, res) => {
-  const username = str(req.query.username);
-  const amount = num(req.query.amount);
-  const reason = str(req.query.reason, "credit");
-  if (!username || !Number.isFinite(amount) || amount <= 0) return res.status(400).json({ ok:false, error:"bad_input" });
-  const out = await credit(username.toLowerCase(), amount, reason);
-  res.json(out);
+// POST /api/wallet/adjust  { username, delta, reason }
+router.post("/adjust", async (req, res) => {
+  const user = up(req.body?.username || "");
+  const delta = Number(req.body?.delta || 0);
+  if (!user || !Number.isFinite(delta) || !delta) return res.status(400).json({ ok:false, error:"bad_input" });
+
+  const rec = await writeDelta(user, delta);
+  if (!rec) return res.status(503).json({ ok:false, error:"store_offline" });
+
+  res.setHeader("X-Store", mongoUp() ? "mongo" : (ALLOW_MEMORY_FALLBACK ? "memory" : "offline"));
+  res.json({ ok:true, username: rec.username, balance: Number(rec.balance||0), updated: rec.updated });
 });
 
-// POST /api/wallet/credit { username, amount, reason? }
-r.post("/credit", async (req, res) => {
-  const username = str(req.body?.username);
-  const amount = num(req.body?.amount);
-  const reason = str(req.body?.reason, "credit");
-  if (!username || !Number.isFinite(amount) || amount <= 0) return res.status(400).json({ ok:false, error:"bad_input" });
-  const out = await credit(username.toLowerCase(), amount, reason);
-  res.json(out);
+// POST /api/wallet/credit { username, amount, reason }  (legacy fallback)
+router.post("/credit", async (req, res) => {
+  const user = up(req.body?.username || "");
+  const amt = Number(req.body?.amount || 0);
+  if (!user || !Number.isFinite(amt) || !amt) return res.status(400).json({ ok:false, error:"bad_input" });
+
+  const rec = await writeDelta(user, amt);
+  if (!rec) return res.status(503).json({ ok:false, error:"store_offline" });
+
+  res.setHeader("X-Store", mongoUp() ? "mongo" : (ALLOW_MEMORY_FALLBACK ? "memory" : "offline"));
+  res.json({ ok:true, username: rec.username, balance: Number(rec.balance||0), updated: rec.updated });
 });
 
-// POST /api/wallet/adjust { username, delta, reason? }
-r.post("/adjust", async (req, res) => {
-  const username = str(req.body?.username);
-  const delta = num(req.body?.delta);
-  const reason = str(req.body?.reason, "adjust");
-  if (!username || !Number.isFinite(delta) || delta === 0) return res.status(400).json({ ok:false, error:"bad_input" });
-  const out = await adjust(username.toLowerCase(), delta, reason);
-  res.json(out);
+// GET /api/wallet/me?viewer=LASH3Z   (for player HUD convenience)
+router.get("/me", async (req,res) => {
+  const viewer = up(req.query.viewer || "");
+  if (!viewer) return res.status(400).json({ ok:false, error:"bad_user" });
+  const rec = await getOrCreate(viewer);
+  if (!rec) return res.status(503).json({ ok:false, error:"store_offline" });
+  res.setHeader("X-Store", mongoUp() ? "mongo" : (ALLOW_MEMORY_FALLBACK ? "memory" : "offline"));
+  res.json({ ok:true, wallet: { username: rec.username, balance: Number(rec.balance||0), updated: rec.updated } });
 });
 
-// POST /api/wallet/me/spend { amount, reason? } (viewer via header or ?viewer=)
-r.post("/me/spend", async (req, res) => {
-  const viewer = str(req.query.viewer) || str(req.headers["x-viewer-name"]);
-  const amount = num(req.body?.amount);
-  const reason = str(req.body?.reason, "spend");
-  if (!viewer || !Number.isFinite(amount) || amount <= 0) return res.status(400).json({ ok:false, error:"bad_input" });
-  const out = await debit(viewer.toLowerCase(), amount, reason);
-  res.json(out);
-});
-
-// GET /api/wallet/ledger/:username?limit=50
-r.get("/ledger/:username", async (req, res) => {
-  const limit = Number.isFinite(Number(req.query.limit)) ? Number(req.query.limit) : 50;
-  const out = await getLedger(req.params.username.toLowerCase(), limit);
-  res.json(out);
-});
-
-// KEEP THIS LAST so it doesn't catch the routes above
-// GET /api/wallet/:username
-r.get("/:username", async (req, res) => {
-  const out = await getBalance(req.params.username.toLowerCase());
-  res.json(out);
-});
-
-export default r;
+export default router;
