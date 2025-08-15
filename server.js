@@ -1,6 +1,5 @@
-// server.js — Render-safe, no top-level await, admin gate OK
+// server.js — Render-safe, accepts JSON *and* form posts, admin gate OK
 import fs from "fs";
-import fsp from "fs/promises";
 import path from "path";
 import express from "express";
 import cookieParser from "cookie-parser";
@@ -30,30 +29,16 @@ const ALLOW_MEMORY_FALLBACK = (process.env.ALLOW_MEMORY_FALLBACK || "true") === 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 
-// IMPORTANT: by default we serve files from the same folder as server.js
-// Set PUBLIC_DIR to override (must contain index.html).
+// Serve static from the folder that holds your site; default to same dir as server.js.
+// Override with PUBLIC_DIR if you serve from /public, /dist, etc.
 const PUBLIC_DIR = process.env.PUBLIC_DIR
   ? path.resolve(process.env.PUBLIC_DIR)
   : __dirname;
 
-const UP_DIR = path.join(__dirname, "uploads");
-
-// utilities
-function ensureDirSync(dir) {
-  try { fs.mkdirSync(dir, { recursive: true }); } catch (_) {}
-}
-function fileExistsSync(p) {
-  try { fs.accessSync(p); return true; } catch { return false; }
-}
-
-// ensure uploads exists
-ensureDirSync(UP_DIR);
-
-// detect SPA
 const INDEX_PATH = path.join(PUBLIC_DIR, "index.html");
-let HAS_INDEX_HTML = fileExistsSync(INDEX_PATH);
+const HAS_INDEX_HTML = (() => { try { fs.accessSync(INDEX_PATH); return true; } catch { return false; } })();
 
-// ===== In-memory stores (so admin UI never crashes)
+// ===== In-memory stores (keeps UI functional without DB)
 const memory = {
   jackpot: { amount: 0, month: new Date().toISOString().slice(0,7), perSubAUD: 2.5 },
   rules: {
@@ -62,20 +47,24 @@ const memory = {
     jackpotPerSubAUD: 2.50, jackpotCurrency: "AUD", depositContributesJackpot: false
   },
   events: [],
-  wallets: {},    // { USERNAME: { balance } }
-  raffles: [],    // { rid,title,open,createdAt,winner,entries:[{user,ts}] }
-  claims: [],     // { _id,user,status,... }
-  deposits: []    // pending orders
+  wallets: {},
+  raffles: [],
+  claims: [],
+  deposits: []
 };
 
 // ===== App
 const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
+
+// Body parsers: JSON *and* forms (this fixes your 400)
 app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: false }));  // <-- important
+
 app.use(cookieParser());
 
-// CORS for /api
+// CORS only for /api
 app.use("/api", (req, res, next) => {
   const origin = req.headers.origin;
   if (origin) { res.setHeader("Access-Control-Allow-Origin", origin); res.setHeader("Vary", "Origin"); }
@@ -88,7 +77,7 @@ app.use("/api", (req, res, next) => {
 
 // ===== JWT helpers
 function generateAdminToken(username) {
-  return jwt.sign({ username }, JWT_SECRET, { expiresIn: "2h" });
+  return jwt.sign({ username }, JWT_SECRET, { expiresIn: "12h" }); // 12h to match your UI note
 }
 function verifyAdminToken(req, res, next) {
   const token = req.cookies?.admin_token;
@@ -97,19 +86,28 @@ function verifyAdminToken(req, res, next) {
   catch { return res.status(401).json({ error: "Unauthorized" }); }
 }
 
-// ===== Admin auth (returns admin:true so your gate unlocks)
+// ===== Admin auth (accepts JSON or form fields)
 app.post(["/api/admin/gate/login", "/api/admin/login"], (req, res) => {
-  const { username, password } = req.body || {};
+  // Normalize possible field names coming from forms or code
+  const body = req.body || {};
+  const username = (body.username || body.user || body.email || "").toString().trim();
+  const password = (body.password || body.pass || body.pwd || "").toString();
+
   if (!username || !password) return res.status(400).json({ error: "Missing credentials" });
+
   if (username.toLowerCase() === ADMIN_USER && password === ADMIN_PASS) {
     res.cookie("admin_token", generateAdminToken(username.toLowerCase()), {
-      httpOnly: true, sameSite: "lax", secure: NODE_ENV === "production",
-      maxAge: 1000 * 60 * 60 * 2, path: "/"
+      httpOnly: true,
+      sameSite: "lax",
+      secure: NODE_ENV === "production",
+      maxAge: 1000 * 60 * 60 * 12, // 12h
+      path: "/",
     });
     return res.json({ success: true, admin: true, username: username.toLowerCase() });
   }
   return res.status(401).json({ error: "Invalid credentials" });
 });
+
 app.post(["/api/admin/gate/logout", "/api/admin/logout"], (req, res) => {
   res.clearCookie("admin_token", { path: "/" });
   res.json({ success: true });
@@ -120,22 +118,14 @@ app.get(["/api/admin/gate/check", "/api/admin/me"], verifyAdminToken, (req, res)
 
 // ===== Health + root
 app.get("/api/health", (req, res) => {
-  res.json({
-    ok: true, env: NODE_ENV, port: PORT, publicDir: PUBLIC_DIR,
-    hasIndex: HAS_INDEX_HTML, db: !!globalThis.__dbReady
-  });
+  res.json({ ok: true, env: NODE_ENV, port: PORT, publicDir: PUBLIC_DIR, hasIndex: HAS_INDEX_HTML, db: !!globalThis.__dbReady });
 });
-
-// Serve index at root if present; else plain message (prevents 502 immediately)
 app.get("/", (req, res, next) => {
-  if (HAS_INDEX_HTML) {
-    return res.sendFile(INDEX_PATH, err => err && next(err));
-  }
+  if (HAS_INDEX_HTML) return res.sendFile(INDEX_PATH, err => err && next(err));
   res.status(200).send("L3Z server is up. No SPA found. Set PUBLIC_DIR or place index.html next to server.js.");
 });
 
-// ===== Minimal APIs your admin UI calls
-// Jackpot
+// ===== Minimal APIs (unchanged behavior so your admin UI doesn’t error)
 app.get("/api/jackpot", (req, res) => {
   res.json({ amount: Number(memory.jackpot.amount || 0), month: memory.jackpot.month, perSubAUD: memory.jackpot.perSubAUD });
 });
@@ -146,18 +136,10 @@ app.post("/api/jackpot/adjust", verifyAdminToken, (req, res) => {
   res.json({ success: true, amount: memory.jackpot.amount });
 });
 
-// Rules / events
 app.get("/api/events/rules", verifyAdminToken, (req, res) => res.json({ rules: memory.rules }));
-app.put("/api/events/rules", verifyAdminToken, (req, res) => {
-  memory.rules = { ...memory.rules, ...(req.body || {}) };
-  res.json({ success: true, rules: memory.rules });
-});
-app.get("/api/events/recent", verifyAdminToken, (req, res) => {
-  const limit = Math.max(1, Math.min(500, Number(req.query.limit || 200)));
-  res.json({ events: memory.events.slice(0, limit) });
-});
+app.put("/api/events/rules", verifyAdminToken, (req, res) => { memory.rules = { ...memory.rules, ...(req.body || {}) }; res.json({ success: true, rules: memory.rules }); });
+app.get("/api/events/recent", verifyAdminToken, (req, res) => { const limit = Math.max(1, Math.min(500, Number(req.query.limit || 200))); res.json({ events: memory.events.slice(0, limit) }); });
 
-// Wallet
 app.post("/api/wallet/adjust", verifyAdminToken, (req, res) => {
   const u = String(req.body?.username || "").toUpperCase(); const delta = Number(req.body?.delta || 0);
   if (!u) return res.status(400).json({ error: "username required" });
@@ -170,55 +152,27 @@ app.post("/api/wallet/credit", verifyAdminToken, (req, res) => {
   const w = memory.wallets[u] || { balance: 0 }; w.balance = Number(w.balance) + amount; memory.wallets[u] = w;
   res.json({ success: true, wallet: w });
 });
-app.get("/api/wallet/balance", verifyAdminToken, (req, res) => {
-  const u = String(req.query.user || "").toUpperCase();
-  const w = memory.wallets[u] || { balance: 0 };
-  res.json({ balance: Number(w.balance || 0) });
-});
-app.get("/api/wallet/me", verifyAdminToken, (req, res) => {
-  const u = String(req.query.viewer || req.adminUser || "").toUpperCase();
-  const w = memory.wallets[u] || { balance: 0 };
-  res.json({ wallet: { balance: Number(w.balance || 0) } });
-});
+app.get("/api/wallet/balance", verifyAdminToken, (req, res) => { const u = String(req.query.user || "").toUpperCase(); const w = memory.wallets[u] || { balance: 0 }; res.json({ balance: Number(w.balance || 0) }); });
+app.get("/api/wallet/me", verifyAdminToken, (req, res) => { const u = String(req.query.viewer || req.adminUser || "").toUpperCase(); const w = memory.wallets[u] || { balance: 0 }; res.json({ wallet: { balance: Number(w.balance || 0) } }); });
 
-// Deposits (mock)
 app.get("/api/deposits/pending", verifyAdminToken, (req, res) => res.json({ orders: memory.deposits }));
-app.post("/api/deposits/:id/approve", verifyAdminToken, (req, res) => {
-  const id = String(req.params.id); memory.deposits = memory.deposits.filter(o => String(o.id||o._id) !== id); res.json({ success: true });
-});
-app.post("/api/deposits/:id/reject", verifyAdminToken, (req, res) => {
-  const id = String(req.params.id); memory.deposits = memory.deposits.filter(o => String(o.id||o._id) !== id); res.json({ success: true });
-});
+app.post("/api/deposits/:id/approve", verifyAdminToken, (req, res) => { const id = String(req.params.id); memory.deposits = memory.deposits.filter(o => String(o.id||o._id) !== id); res.json({ success: true }); });
+app.post("/api/deposits/:id/reject", verifyAdminToken, (req, res) => { const id = String(req.params.id); memory.deposits = memory.deposits.filter(o => String(o.id||o._id) !== id); res.json({ success: true }); });
 
-// Raffles (minimal)
-app.get("/api/raffles", verifyAdminToken, (req, res) => {
-  res.json({ raffles: memory.raffles.map(r => ({ rid:r.rid, title:r.title, open:r.open, winner:r.winner||null, createdAt:r.createdAt })) });
-});
+app.get("/api/raffles", verifyAdminToken, (req, res) => { res.json({ raffles: memory.raffles.map(r => ({ rid:r.rid, title:r.title, open:r.open, winner:r.winner||null, createdAt:r.createdAt })) }); });
 app.post("/api/raffles", verifyAdminToken, (req, res) => {
-  const { rid, title } = req.body || {};
-  if (!rid || !title) return res.status(400).json({ error:"rid and title required" });
+  const rid = String(req.body?.rid || "").trim().toUpperCase();
+  const title = String(req.body?.title || "").trim();
+  if (!rid || !title) return res.status(400).json({ error: "rid and title required" });
   if (memory.raffles.find(r => r.rid === rid)) return res.status(409).json({ error: "RID exists" });
   memory.raffles.unshift({ rid, title, open:true, createdAt: Date.now(), entries: [], winner:null });
   res.json({ success: true });
 });
 app.delete("/api/raffles", verifyAdminToken, (req, res) => { memory.raffles = []; res.json({ success:true }); });
-app.put("/api/raffles/:rid/open", verifyAdminToken, (req, res) => {
-  const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" });
-  r.open = !!(req.body?.open); res.json({ success:true });
-});
-app.get("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => {
-  const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" });
-  res.json({ rid:r.rid, title:r.title, open:r.open, winner:r.winner||null, entries:r.entries||[] });
-});
-app.delete("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => {
-  const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" });
-  r.entries = []; r.open = true; r.winner = null; res.json({ success:true });
-});
-app.post("/api/raffles/:rid/draw", verifyAdminToken, (req, res) => {
-  const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" });
-  const pool = r.entries || []; r.winner = pool.length ? pool[Math.floor(Math.random()*pool.length)].user : null;
-  res.json({ success:true, winner:r.winner });
-});
+app.put("/api/raffles/:rid/open", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); r.open = !!(req.body?.open); res.json({ success:true }); });
+app.get("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); res.json({ rid:r.rid, title:r.title, open:r.open, winner:r.winner||null, entries:r.entries||[] }); });
+app.delete("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); r.entries = []; r.open = true; r.winner = null; res.json({ success:true }); });
+app.post("/api/raffles/:rid/draw", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); const pool = r.entries || []; r.winner = pool.length ? pool[Math.floor(Math.random()*pool.length)].user : null; res.json({ success:true, winner:r.winner }); });
 
 // Static files
 app.use(express.static(PUBLIC_DIR, {
@@ -241,16 +195,10 @@ app.use((err, req, res, next) => {
   res.status(500).send("Server error");
 });
 
-// Start (no async DB blocking)
-const server = app.listen(PORT, HOST, () => {
+// Start (non-blocking DB connect)
+app.listen(PORT, HOST, () => {
   console.log(`[Server] http://${HOST}:${PORT} (${NODE_ENV}) PUBLIC_DIR=${PUBLIC_DIR} hasIndex=${HAS_INDEX_HTML}`);
 });
-
-// Make sure unexpected errors don’t kill the process silently
-process.on("uncaughtException", (e) => console.error("[uncaughtException]", e));
-process.on("unhandledRejection", (e) => console.error("[unhandledRejection]", e));
-
-// Connect to Mongo in the background (non-blocking)
 (async () => {
   if (!MONGO_URI) { if (!ALLOW_MEMORY_FALLBACK) console.warn("[DB] No MONGO_URI; memory mode."); return; }
   try {
@@ -261,7 +209,7 @@ process.on("unhandledRejection", (e) => console.error("[unhandledRejection]", e)
     console.log(`[DB] Connected to MongoDB: ${MONGO_DB}`);
   } catch (err) {
     console.error("[DB] Mongo connection failed:", err?.message || err);
-    if (!ALLOW_MEMORY_FALLBACK) { console.error("[DB] Shutting down due to ALLOW_MEMORY_FALLBACK=false"); process.exit(1); }
+    if (!ALLOW_MEMORY_FALLBACK) { console.error("[DB] ALLOW_MEMORY_FALLBACK=false — exiting"); process.exit(1); }
     console.warn("[DB] Continuing in memory mode.");
   }
 })();
