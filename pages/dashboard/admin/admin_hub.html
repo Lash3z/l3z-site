@@ -6,7 +6,9 @@
 <meta http-equiv="Cache-Control" content="no-store"/>
 <title>L3Z — Admin Hub</title>
 <style>
-  :root{ --bg:#060b0d; --panel:#0b1417; --ink:#eaf7ff; --muted:#9fd0d6; --line:rgba(0,255,255,.18); --teal:#00ffff; --gold:#ffb42d; --ink2:#cfffff; }
+  :root{ --bg:#060b0d; --panel:#0b1417; --ink:#eaf7ff; --muted:#9fd0d6;
+         --line:rgba(0,255,255,.18); --teal:#00ffff; --gold:#ffb42d;
+         --ok:#12d48a; --bad:#e25a6f; --ink2:#cfffff; }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
   html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
@@ -20,75 +22,202 @@
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:var(--ink2)}
   input,select,textarea{border-radius:10px;border:1px solid var(--line);background:#0c1519;color:var(--ink);padding:8px}
-  table{width:100%;border-collapse:separate;border-spacing:0}
-  .tbl th,.tbl td{border-bottom:1px solid rgba(255,255,255,.06);padding:8px;text-align:left;font-size:13px}
-  .tbl th{color:var(--muted)}
+  textarea{width:100%;min-height:80px}
   button{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:#0f1720;color:var(--ink);font-weight:800;cursor:pointer}
   button.ok{background:#103d30;border-color:#1fa37b}
   button.danger{background:#2b1116;border-color:#7e2a3c}
   button.warn{background:#231b0f;border-color:#8c6926}
   button[disabled]{opacity:.5;cursor:not-allowed}
   .hr{height:1px;background:var(--line);margin:10px 0}
-  .toast{position:fixed;right:16px;bottom:16px;background:#0b1f21;border:1px solid var(--line);border-radius:10px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:.2s}
+  .tbl{width:100%;border-collapse:separate;border-spacing:0;overflow:auto}
+  .tbl th,.tbl td{border-bottom:1px solid rgba(255,255,255,.06);padding:8px;text-align:left;font-size:13px}
+  .tbl th{color:var(--muted)}
+  .right{margin-left:auto}
+  .hint{color:var(--muted);font-size:12px}
+  .mini{font-size:12px;color:var(--muted)}
+  .badge{padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#081318;color:#bfe}
+  .toast{position:fixed;right:16px;bottom:16px;background:#0b1f21;border:1px solid var(--line);border-radius:10px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:.2s all;pointer-events:none}
   .toast.on{opacity:1;transform:translateY(0)}
   @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
 
-<!-- Admin gate (server cookie required) -->
+<!-- ===== AdminGate ===== -->
 <script>
 (function(){
-  const ADMIN_CHECK="/api/admin/gate/check";
-  const ADMIN_LOGIN="/pages/dashboard/admin/admin_login.html";
-  const DASHBOARD="/index.html";
-  const H=document.documentElement; H.setAttribute("data-admin","checking");
+  "use strict";
+  const ADMIN_CHECK = "/api/admin/gate/check";
+  const ADMIN_LOGIN = "/pages/dashboard/admin/admin_login.html";
+  const DASHBOARD   = "/index.html";
+  const H = document.documentElement;
+  H.setAttribute("data-admin","checking");
+
   function lock(){
     H.removeAttribute("data-admin");
     const s=document.createElement("style");
-    s.textContent=".lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}.lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75)}";
+    s.textContent=".lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}.lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75);box-shadow:0 0 18px rgba(0,255,255,.15)}.lockcard h1{margin:0 0 10px;color:#cfe}.lockcard a{color:#7ad7ff;text-decoration:underline}";
     document.head.appendChild(s);
-    document.body.innerHTML='<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'">Admin Login</a>.</div><div style="margin-top:14px"><a href="'+DASHBOARD+'">Back to Dashboard</a></div></div></div>';
+    document.body.innerHTML = '<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you already logged in, your session may have expired.</div><div style="margin-top:14px"><a href="'+DASHBOARD+'">Back to Dashboard</a></div></div></div>';
   }
-  fetch(ADMIN_CHECK,{credentials:"include",cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{ if(j&&j.admin) H.removeAttribute("data-admin"); else lock(); }).catch(lock);
+
+  fetch(ADMIN_CHECK, { credentials:"include", cache:"no-store" })
+    .then(r => r.ok ? r.json() : null)
+    .then(j => { if (j && j.admin) H.removeAttribute("data-admin"); else lock(); })
+    .catch(lock);
 })();
 </script>
+<!-- ===== /AdminGate ===== -->
 
 <div class="wrap">
   <h1>Admin Hub</h1>
 
-  <div class="panel">
-    <h2>Raffles</h2>
+  <!-- Local gate just toggles visibility -->
+  <div id="gate" class="gate">
+    <div class="row">
+      <span class="pill">Unlock Admin Panels (local)</span>
+      <input id="gate-u" placeholder="Username" style="width:160px" autocomplete="username">
+      <input id="gate-p" placeholder="Password" type="password" style="width:160px" autocomplete="current-password">
+      <button id="gate-unlock" class="ok">Unlock</button>
+      <button id="gate-lock" class="danger">Lock</button>
+      <span id="gate-status" class="pill">Locked</span>
+      <span class="hint">This only shows/hides panels here; API still needs the server cookie.</span>
+    </div>
+  </div>
 
-    <div class="row" style="margin-bottom:6px">
-      <input id="raffleId" placeholder="RAFFLE NAME / ID" style="width:240px">
-      <button id="rfDeploy" class="ok">Deploy</button>
-      <button id="rfUseCur">Set Current</button>
-      <button id="rfOpen" class="ok">Open</button>
-      <button id="rfClose" class="danger">Close</button>
-      <button id="raffleRefresh">Refresh</button>
-      <span id="raffleMsg" class="pill">Ready</span>
+  <div id="grid" class="grid" style="display:none">
+
+    <!-- RAFFLES MANAGER -->
+    <div class="panel full">
+      <h2>Raffles Manager</h2>
+      <div class="row">
+        <input id="rfId"    placeholder="RID (slug)" style="width:180px;text-transform:uppercase">
+        <input id="rfTitle" placeholder="Title for players" style="width:320px">
+        <button id="rfCreate" class="ok">Create</button>
+        <button id="rfDeleteAll" class="danger">Delete ALL raffles</button>
+        <span id="rfMsg" class="pill">Ready</span>
+      </div>
+
+      <div class="hr"></div>
+      <div class="mini">Open raffles appear first. Click one to manage entries, draw, or clear.</div>
+      <div style="max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:8px">
+        <table class="tbl" id="rfTbl">
+          <thead>
+            <tr><th>RID</th><th>Title</th><th>Status</th><th>Winner</th><th>Created</th><th>Actions</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="hr"></div>
+      <div id="rfDetail" style="display:none">
+        <div class="row">
+          <span class="pill" id="dRid">RID: —</span>
+          <span class="pill" id="dTitle">Title: —</span>
+          <span class="pill" id="dStatus">Status: —</span>
+          <button id="dOpen"  class="ok">Open</button>
+          <button id="dClose" class="warn">Close</button>
+          <button id="dClear" class="danger">Clear Entries</button>
+          <button id="dDraw"  class="ok">Draw Winner</button>
+          <span id="dMsg" class="pill">—</span>
+        </div>
+        <div class="hr"></div>
+        <div class="mini">Entries</div>
+        <div style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px">
+          <table class="tbl" id="rfEntries">
+            <thead><tr><th>#</th><th>User</th><th>Time</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
-    <div class="row" style="margin-bottom:6px">
-      <button id="raffleDrawPub">Draw & Publish</button>
-      <input id="rfManualUser" placeholder="MANUAL WINNER (optional)" style="width:220px;text-transform:uppercase">
-      <button id="rfPublish">Publish Winner</button>
+    <!-- VIP Wallet -->
+    <div class="panel">
+      <h2>VIP — Wallet Adjust</h2>
+      <div class="row">
+        <input id="vipUser" placeholder="USERNAME" style="width:160px;text-transform:uppercase">
+        <input id="vipAmt" type="number" step="1" placeholder="Amount LBX" style="width:140px">
+        <input id="vipReason" placeholder="Reason (VIP, prize, fix…)" style="width:220px">
+        <button id="vipCredit" class="ok">Credit</button>
+        <button id="vipDebit" class="danger">Debit</button>
+        <span id="vipMsg" class="pill">Ready</span>
+      </div>
+      <div class="hr"></div>
+      <div class="row">
+        <button id="vipCheck">Check Balance</button>
+        <span id="vipBal" class="badge">—</span>
+      </div>
+      <div class="hint">Prefers <code>/api/wallet/adjust</code>; falls back to signed credit if needed.</div>
     </div>
 
-    <div class="row" style="margin-top:6px">
-      <button id="rfClearEntries" class="warn">Clear Entries (raffle)</button>
-      <button id="rfDeleteOne" class="danger">Delete This Raffle</button>
-      <button id="rfDeleteAll" class="danger">DELETE ALL Raffles & Entries</button>
+    <!-- Deposits -->
+    <div class="panel">
+      <h2>LBX Deposits (Orders)</h2>
+      <div class="row"><button id="depRefresh">Refresh Pending</button><span id="depMsg" class="pill">Ready</span></div>
+      <div class="hr"></div>
+      <div style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px">
+        <table class="tbl" id="depTbl">
+          <thead><tr><th>ID</th><th>User</th><th>LBX</th><th>Method</th><th>Created</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
 
-    <div class="hr"></div>
-    <div style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px">
-      <table class="tbl" id="raffleTbl">
-        <thead><tr><th>#</th><th>User</th><th>Time</th></tr></thead>
-        <tbody></tbody>
-      </table>
+    <!-- Events + Rules + Jackpot -->
+    <div class="panel full">
+      <div class="row" style="align-items:flex-end">
+        <h2 style="margin-right:12px">Live Events • Rules • Jackpot</h2>
+        <span id="jackpotBadge" class="badge">Jackpot: —</span>
+        <span id="jackpotMonth" class="badge">Month: —</span>
+        <span class="right mini">AUD • configurable per sub/resub/gift</span>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="evtRefresh">Refresh Events</button>
+        <span class="pill">Rules</span>
+        <label>SUB_NEW LBX <input id="rSUBNEW" type="number" step="1" style="width:80px"></label>
+        <label>SUB_RENEW LBX <input id="rSUBRENEW" type="number" step="1" style="width:80px"></label>
+        <label>GIFT (gifter/each) <input id="rGIFTG" type="number" step="1" style="width:80px"></label>
+        <label>GIFT (recipient) <input id="rGIFTR" type="number" step="1" style="width:80px"></label>
+        <label>Cap / 24h <input id="rCAP" type="number" step="1" style="width:90px"></label>
+        <label>$ / sub (AUD) <input id="rAUD" type="number" step="0.01" style="width:100px"></label>
+        <button id="rulesSave" class="ok">Save Rules</button>
+        <span id="rulesMsg" class="pill">Ready</span>
+
+        <span class="right"></span>
+        <label>Adjust Jackpot (AUD) <input id="jpDelta" type="number" step="0.01" style="width:120px"></label>
+        <input id="jpReason" placeholder="Reason" style="width:240px">
+        <button id="jpApply" class="ok">Apply</button>
+      </div>
+
+      <div class="hr"></div>
+      <div class="mini">Recent Events</div>
+      <div style="max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:10px">
+        <table class="tbl" id="evtTbl">
+          <thead><tr><th>Time</th><th>Type</th><th>User</th><th>Qty</th><th>Recipients</th><th>Applied</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
+
+    <!-- Danger Zone -->
+    <div class="panel full">
+      <h2>Danger Zone</h2>
+      <div class="row" style="align-items:center">
+        <label>Player Username
+          <input id="dzUser" placeholder="e.g. LASH3Z" style="width:160px;text-transform:uppercase">
+        </label>
+        <button id="dzResetPlayer" class="warn">Reset Player Points</button>
+        <span class="hint">Clears local point keys for that user. Wallet LBX untouched.</span>
+      </div>
+      <div class="hr"></div>
+      <div class="row"><button id="dzResetAll" class="danger">Reset ALL Points (Everyone)</button>
+        <span class="hint">Wipes all players’ local point keys. Wallets unaffected.</span></div>
+      <div class="hr"></div>
+      <div class="row"><button id="dzResetLeaderboard" class="ok">Reset Leaderboard (No Points)</button>
+        <span id="dzMsg" class="pill">Ready</span></div>
+    </div>
+
   </div>
 </div>
 
@@ -97,61 +226,224 @@
 <script>
 (function(){
   "use strict";
-  const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
-  const toast=t=>{ const b=$("#toast"); b.textContent=t; b.classList.add("on"); setTimeout(()=>b.classList.remove("on"),1400); };
-  async function jget(u){ const r=await fetch(u,{credentials:"include",cache:"no-store"}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
-  async function jpost(u,b){ const r=await fetch(u,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
-  async function jput(u,b){ const r=await fetch(u,{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+  const $=(s,r=document)=>r.querySelector(s);
+  const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const up=s=>(s||"").trim().toUpperCase();
+  const toast=(t)=>{ const b=$("#toast"); if(!b) return; b.textContent=t; b.classList.add("on"); setTimeout(()=>b.classList.remove("on"),1400); };
 
-  async function raffleRefresh(){
-    const id=($("#raffleId").value||"").trim(); if(!id){ $("#raffleMsg").textContent="Enter raffle id"; return; }
+  // local unlock
+  const unlocked=()=> localStorage.getItem("l3z:admin:unlocked")==="1";
+  function syncGate(){ $("#gate-status").textContent = unlocked() ? "Unlocked" : "Locked"; $("#grid").style.display = unlocked() ? "" : "none"; }
+  $("#gate-unlock").addEventListener("click", ()=>{ if($("#gate-u").value && $("#gate-p").value){ localStorage.setItem("l3z:admin:unlocked","1"); syncGate(); toast("Panels unlocked"); refreshAll(); } else toast("Enter credentials"); });
+  $("#gate-lock").addEventListener("click", ()=>{ localStorage.removeItem("l3z:admin:unlocked"); syncGate(); });
+
+  const j = {
+    async get(u){ const r=await fetch(u,{credentials:"include",cache:"no-store"}); if(!r.ok) throw new Error(r.status); return r.json(); },
+    async post(u,b){ const r=await fetch(u,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})}); if(!r.ok) throw new Error(r.status); return r.json(); },
+    async put(u,b){ const r=await fetch(u,{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})}); if(!r.ok) throw new Error(r.status); return r.json(); },
+    async del(u){ const r=await fetch(u,{method:"DELETE",credentials:"include"}); if(!r.ok) throw new Error(r.status); return r.json(); }
+  };
+
+  /* ---------------- Raffles Manager ---------------- */
+  let currentRID = null;
+
+  async function rfList(){
     try{
-      const res=await jget("/api/raffles/"+encodeURIComponent(id)+"/entries");
-      const tb=$("#raffleTbl tbody");
-      tb.innerHTML=(res.entries||[]).map((e,i)=>`<tr><td>${i+1}</td><td>${e.user||""}</td><td>${new Date(e.ts).toLocaleString()}</td></tr>`).join("")
-        || `<tr><td colspan="3" class="muted">No entries yet.</td></tr>`;
-      $("#raffleMsg").textContent="Loaded "+(res.entries||[]).length;
-    }catch{ $("#raffleMsg").textContent="Error loading"; }
+      const jn = await j.get("/api/raffles");
+      const tb=$("#rfTbl tbody");
+      tb.innerHTML = (jn.raffles||[]).map(r=>`
+        <tr data-rid="${r.rid}">
+          <td><b>${r.rid}</b></td>
+          <td>${r.title||""}</td>
+          <td>${r.open?"OPEN":"CLOSED"}</td>
+          <td>${r.winner||"—"}</td>
+          <td>${new Date(r.createdAt||Date.now()).toLocaleString()}</td>
+          <td>
+            <button data-act="open"   class="ok" ${r.open?"disabled":""}>Open</button>
+            <button data-act="close"  class="warn" ${!r.open?"disabled":""}>Close</button>
+            <button data-act="manage">Manage</button>
+          </td>
+        </tr>`).join("") || `<tr><td colspan="6" class="mini">No raffles yet.</td></tr>`;
+      tb.querySelectorAll("button[data-act]").forEach(btn=>{
+        btn.addEventListener("click", async ()=>{
+          const rid = btn.closest("tr").getAttribute("data-rid");
+          if(btn.dataset.act==="manage"){ loadDetail(rid); return; }
+          if(btn.dataset.act==="open"){ await j.put(`/api/raffles/${encodeURIComponent(rid)}/open`,{open:true}); toast("Opened"); rfList(); if(currentRID===rid) loadDetail(rid); }
+          if(btn.dataset.act==="close"){ await j.put(`/api/raffles/${encodeURIComponent(rid)}/open`,{open:false}); toast("Closed"); rfList(); if(currentRID===rid) loadDetail(rid); }
+        });
+      });
+    }catch{ $("#rfMsg").textContent="Load failed"; }
   }
 
-  async function rfDeploy(){
-    const id=($("#raffleId").value||"").trim(); if(!id) return toast("Enter raffle id");
-    try{ const j=await jpost("/api/raffles/create",{id,title:id}); toast("Deployed "+j.id); $("#raffleMsg").textContent="Deployed"; raffleRefresh(); }
-    catch{ toast("Deploy failed"); }
+  async function rfCreate(){
+    const rid=up($("#rfId").value||""); const title=($("#rfTitle").value||"").trim();
+    if(!rid||!title) return toast("Enter RID and Title");
+    try{ await j.post("/api/raffles",{rid,title}); $("#rfId").value=""; $("#rfTitle").value=""; toast("Raffle created"); rfList(); }
+    catch(e){ toast("Create failed"); }
   }
-  async function rfUseCur(){ const id=($("#raffleId").value||"").trim(); if(!id) return toast("Enter raffle id"); try{ await jput("/api/raffles/current",{id}); toast("Current set"); $("#raffleMsg").textContent="Current set"; }catch{ toast("Set current failed"); } }
-  async function rfOpen(v){ const id=($("#raffleId").value||"").trim(); if(!id) return toast("Enter raffle id"); try{ await jput(`/api/raffles/${encodeURIComponent(id)}/open`,{open:!!v}); toast(v?"Opened":"Closed"); $("#raffleMsg").textContent=v?"Open":"Closed"; }catch{ toast("Open/Close failed"); } }
-  async function raffleDrawPublish(){ const id=($("#raffleId").value||"").trim(); if(!id) return toast("Enter raffle id"); try{ const j=await jpost(`/api/raffles/${encodeURIComponent(id)}/draw`,{}); toast(`Winner: ${j?.winner?.user||'—'}`); $("#raffleMsg").textContent="Winner published"; raffleRefresh(); }catch{ toast("Draw failed"); } }
-  async function rafflePublishManual(){ const id=($("#raffleId").value||"").trim(); const user=($("#rfManualUser").value||"").trim().toUpperCase(); if(!id||!user) return toast("Enter RAFFLE ID and WINNER"); try{ const j=await jpost(`/api/raffles/${encodeURIComponent(id)}/winner`,{user}); toast(`Published: ${j?.winner?.user||user}`); $("#rfManualUser").value=""; $("#raffleMsg").textContent="Winner published"; raffleRefresh(); }catch{ toast("Publish failed"); } }
 
-  async function rfClearEntries(){
-    const id=($("#raffleId").value||"").trim(); if(!id) return toast("Enter raffle id");
-    if(!confirm(`Clear ALL entries for ${id}?`)) return;
-    try{ await fetch(`/api/raffles/${encodeURIComponent(id)}/entries`,{method:"DELETE",credentials:"include"}); toast("Entries cleared"); $("#raffleMsg").textContent="Entries cleared"; raffleRefresh(); }
-    catch{ toast("Clear failed"); }
-  }
-  async function rfDeleteOne(){
-    const id=($("#raffleId").value||"").trim(); if(!id) return toast("Enter raffle id");
-    if(!confirm(`DELETE raffle ${id} and its entries?`)) return;
-    try{ await fetch(`/api/raffles/${encodeURIComponent(id)}`,{method:"DELETE",credentials:"include"}); toast("Raffle deleted"); $("#raffleMsg").textContent="Raffle deleted"; $("#raffleId").value=""; $("#raffleTbl tbody").innerHTML=""; }
+  async function rfDeleteAll(){
+    if(!confirm("Delete ALL raffles (including entries)?")) return;
+    try{ await j.del("/api/raffles"); toast("All raffles deleted"); $("#rfDetail").style.display="none"; currentRID=null; rfList(); }
     catch{ toast("Delete failed"); }
   }
-  async function rfDeleteAll(){
-    if(!confirm("DELETE ALL raffles + entries?")) return;
-    try{ await fetch("/api/raffles",{method:"DELETE",credentials:"include"}); toast("All raffles deleted"); $("#raffleMsg").textContent="All deleted"; $("#raffleTbl tbody").innerHTML=""; $("#raffleId").value=""; }
-    catch{ toast("Delete-all failed"); }
+
+  async function loadDetail(rid){
+    try{
+      const jn = await j.get(`/api/raffles/${encodeURIComponent(rid)}/entries`);
+      currentRID = jn.rid;
+      $("#rfDetail").style.display="";
+      $("#dRid").textContent = "RID: "+jn.rid;
+      $("#dTitle").textContent = "Title: "+jn.title;
+      $("#dStatus").textContent= "Status: "+(jn.open?"OPEN":"CLOSED");
+      $("#dOpen").disabled  = jn.open;
+      $("#dClose").disabled = !jn.open;
+      $("#rfEntries tbody").innerHTML = (jn.entries||[]).map((e,i)=>`<tr><td>${i+1}</td><td>${e.user||""}</td><td>${new Date(e.ts||Date.now()).toLocaleString()}</td></tr>`).join("") || `<tr><td colspan="3" class="mini">No entries yet.</td></tr>`;
+      $("#dMsg").textContent = jn.winner ? ("Winner: "+jn.winner) : "—";
+    }catch{ toast("Load failed"); }
   }
 
-  $("#raffleRefresh").addEventListener("click",raffleRefresh);
-  $("#rfDeploy").addEventListener("click",rfDeploy);
-  $("#rfUseCur").addEventListener("click",rfUseCur);
-  $("#rfOpen").addEventListener("click",()=>rfOpen(true));
-  $("#rfClose").addEventListener("click",()=>rfOpen(false));
-  $("#raffleDrawPub").addEventListener("click",raffleDrawPublish);
-  $("#rfPublish").addEventListener("click",rafflePublishManual);
-  $("#rfClearEntries").addEventListener("click",rfClearEntries);
-  $("#rfDeleteOne").addEventListener("click",rfDeleteOne);
-  $("#rfDeleteAll").addEventListener("click",rfDeleteAll);
+  $("#rfCreate").addEventListener("click", rfCreate);
+  $("#rfDeleteAll").addEventListener("click", rfDeleteAll);
+  $("#dOpen").addEventListener("click", async ()=>{ if(!currentRID) return; await j.put(`/api/raffles/${encodeURIComponent(currentRID)}/open`,{open:true}); toast("Opened"); loadDetail(currentRID); rfList(); });
+  $("#dClose").addEventListener("click", async ()=>{ if(!currentRID) return; await j.put(`/api/raffles/${encodeURIComponent(currentRID)}/open`,{open:false}); toast("Closed"); loadDetail(currentRID); rfList(); });
+  $("#dClear").addEventListener("click", async ()=>{ if(!currentRID) return; if(!confirm("Clear entries and reopen?")) return;
+    await j.del(`/api/raffles/${encodeURIComponent(currentRID)}/entries`); toast("Cleared"); loadDetail(currentRID); rfList(); });
+  $("#dDraw").addEventListener("click", async ()=>{ if(!currentRID) return; const r=await j.post(`/api/raffles/${encodeURIComponent(currentRID)}/draw`); toast("Winner: "+r.winner); loadDetail(currentRID); rfList(); });
+
+  /* ---------------- VIP wallet (unchanged logic from your previous hub) ---------------- */
+  async function vipAdjust(sign){
+    const user=($("#vipUser").value||"").trim().toUpperCase();
+    const amt=Number($("#vipAmt").value||0);
+    const reason=($("#vipReason").value||"ADMIN").trim();
+    if(!user||!(amt>0)) return toast("Enter USER and positive AMOUNT");
+    try{
+      let ok=false;
+      try{ const r=await fetch("/api/wallet/adjust",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:user,delta:sign<0?-amt:amt,reason})}); ok=r.ok; }catch{}
+      if(!ok) await j.post("/api/wallet/credit",{username:user,amount:sign<0?-amt:amt,reason});
+      toast("Wallet updated"); vipCheck();
+    }catch{ toast("Wallet update failed"); }
+  }
+  async function vipCheck(){
+    const user=($("#vipUser").value||"").trim().toUpperCase();
+    if(!user){ $("#vipBal").textContent="—"; return; }
+    try{
+      let a=null;
+      try { a = await j.get("/api/wallet/balance?user="+encodeURIComponent(user)); } catch {}
+      if(!a){ try { a = await j.get("/api/wallet/me?viewer="+encodeURIComponent(user)); } catch {} }
+      $("#vipBal").textContent = a ? ("LBX "+Number(a?.balance||a?.wallet?.balance||0).toFixed(0)) : "(no endpoint)";
+    }catch{ $("#vipBal").textContent="(error)"; }
+  }
+  $("#vipCredit").addEventListener("click",()=>vipAdjust(+1));
+  $("#vipDebit").addEventListener("click",()=>vipAdjust(-1));
+  $("#vipCheck").addEventListener("click",vipCheck);
+
+  /* ---------------- Deposits (unchanged fallback) ---------------- */
+  async function depRefresh(){
+    const tb=$("#depTbl tbody");
+    tb.innerHTML = `<tr><td colspan="6" class="mini">Loading…</td></tr>`;
+    try{
+      const r=await fetch("/api/deposits/pending",{credentials:"include",cache:"no-store"});
+      if(!r.ok){ tb.innerHTML=`<tr><td colspan="6" class="mini">No backend (/api/deposits/pending not found)</td></tr>`; return; }
+      const jn=await r.json();
+      tb.innerHTML = (jn?.orders||[]).map(o=>`
+        <tr>
+          <td>${o.id||o._id||""}</td>
+          <td>${o.user||""}</td>
+          <td>${o.lbx||o.amount||""}</td>
+          <td>${o.method||""}</td>
+          <td>${new Date(o.created||o.ts||Date.now()).toLocaleString()}</td>
+          <td>
+            <button data-act="approve" data-id="${o.id||o._id}" class="ok">Approve</button>
+            <button data-act="reject" data-id="${o.id||o._id}" class="danger">Reject</button>
+          </td>
+        </tr>`).join("") || `<tr><td colspan="6" class="mini">No pending orders.</td></tr>`;
+      tb.querySelectorAll("button[data-act]").forEach(btn=>{
+        btn.addEventListener("click", async ()=>{
+          const id=btn.getAttribute("data-id"), act=btn.getAttribute("data-act");
+          try{
+            const url = act==="approve" ? "/api/deposits/"+encodeURIComponent(id)+"/approve" : "/api/deposits/"+encodeURIComponent(id)+"/reject";
+            const r=await fetch(url,{method:"POST",credentials:"include"}); if(!r.ok) throw 0;
+            toast("Order "+act); depRefresh();
+          }catch{ toast("Order action failed"); }
+        });
+      });
+    }catch{ tb.innerHTML=`<tr><td colspan="6" class="mini">Error loading deposits</td></tr>`; }
+  }
+  $("#depRefresh").addEventListener("click",depRefresh);
+
+  /* ---------------- Rules / Jackpot (same logic) ---------------- */
+  async function loadRules(){ try{
+    const a=await j.get("/api/events/rules"); const r=a.rules||{};
+    $("#rSUBNEW").value = Number(r.lbx?.SUB_NEW ?? 10);
+    $("#rSUBRENEW").value = Number(r.lbx?.SUB_RENEW ?? 5);
+    $("#rGIFTG").value = Number(r.lbx?.SUB_GIFT_GIFTER_PER ?? 2);
+    $("#rGIFTR").value = Number(r.lbx?.SUB_GIFT_RECIPIENT ?? 3);
+    $("#rCAP").value    = Number(r.caps?.eventLBXPerUserPerDay ?? 100);
+    $("#rAUD").value    = Number(r.jackpotPerSubAUD ?? 2.50).toFixed(2);
+  }catch{} }
+  async function saveRules(){
+    const body = {
+      lbx:{ SUB_NEW:+($("#rSUBNEW").value||0), SUB_RENEW:+($("#rSUBRENEW").value||0),
+            SUB_GIFT_GIFTER_PER:+($("#rGIFTG").value||0), SUB_GIFT_RECIPIENT:+($("#rGIFTR").value||0) },
+      caps:{ eventLBXPerUserPerDay:+($("#rCAP").value||0) },
+      jackpotPerSubAUD:+($("#rAUD").value||0), jackpotCurrency:"AUD", depositContributesJackpot:false
+    };
+    try{ await j.put("/api/events/rules", body); $("#rulesMsg").textContent="Saved"; toast("Rules saved"); loadJackpot(); }
+    catch{ $("#rulesMsg").textContent="Save failed"; }
+  }
+  $("#rulesSave").addEventListener("click",saveRules);
+
+  async function loadEvents(){ try{
+    const a=await j.get("/api/events/recent?limit=200");
+    $("#evtTbl tbody").innerHTML = (a.events||[]).map(ev=>`
+      <tr>
+        <td>${new Date(ev.ts||Date.now()).toLocaleString()}</td>
+        <td>${ev.type||""}</td>
+        <td>${ev.user||""}</td>
+        <td>${+ev.quantity||1}</td>
+        <td>${Array.isArray(ev.recipients)?ev.recipients.length:0}</td>
+        <td>${ev.applied?"yes":"no"}</td>
+      </tr>`).join("");
+  }catch{} }
+  $("#evtRefresh").addEventListener("click",loadEvents);
+
+  async function loadJackpot(){ try{
+    const a=await j.get("/api/jackpot"); const amt = Number(a.amount ?? a.pot ?? 0).toFixed(2);
+    $("#jackpotBadge").textContent = "Jackpot: A$ "+amt;
+    $("#jackpotMonth").textContent = "Month: "+(a.month||"—");
+  }catch{ $("#jackpotBadge").textContent="Jackpot: —"; } }
+  async function applyJackpot(){
+    const delta=+($("#jpDelta").value||0); const reason=($("#jpReason").value||"ADJUST").trim();
+    if(!delta) return toast("Enter amount");
+    try{ await j.post("/api/jackpot/adjust",{delta,reason}); $("#jpDelta").value=""; $("#jpReason").value=""; toast("Jackpot adjusted"); loadJackpot(); }
+    catch{ toast("Adjust failed"); }
+  }
+  $("#jpApply").addEventListener("click",applyJackpot);
+
+  /* ---------------- Danger Zone (local-only caches) ---------------- */
+  function setDZ(msg){ const el=$("#dzMsg"); if(el) el.textContent=msg; }
+  function clearLeaderboardCachesLocal(){
+    const toDel=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i)||""; if(k==="users:all" || k.startsWith("leaderboard:") || k.startsWith("rank:")) toDel.push(k); }
+    toDel.forEach(k=>localStorage.removeItem(k)); return toDel.length;
+  }
+  function clearAllPointsLocal(){
+    const prefixes = ["points:bonus:","points:tournament:","points:pvp:","points:lucky7:"];
+    const toDel=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i)||""; if(prefixes.some(p=>k.startsWith(p)) || /^(points:(bonus|tournament|pvp|lucky7):.*:updatedAt)$/.test(k)){ toDel.push(k); } }
+    toDel.forEach(k=>localStorage.removeItem(k)); return toDel.length;
+  }
+  function clearPlayerPointsLocal(user){
+    if(!user) return 0;
+    const keys=[`points:bonus:${user}`,`points:tournament:${user}`,`points:pvp:${user}`,`points:lucky7:${user}`,
+      `points:bonus:${user}:updatedAt`,`points:tournament:${user}:updatedAt`,`points:pvp:${user}:updatedAt`,`points:lucky7:${user}:updatedAt`];
+    let n=0; keys.forEach(k=>{ if(localStorage.getItem(k)!=null){ localStorage.removeItem(k); n++; } }); return n;
+  }
+  $("#dzResetPlayer").addEventListener("click", ()=>{ const u=up($("#dzUser").value||""); if(!u) return setDZ("Enter username"); const n=clearPlayerPointsLocal(u); setDZ(`Player ${u}: cleared ${n} point keys`); });
+  $("#dzResetAll").addEventListener("click", ()=>{ if(!confirm("Wipe ALL players’ local points?")) return; const n=clearAllPointsLocal(); setDZ(`All points cleared: ${n} keys`); });
+  $("#dzResetLeaderboard").addEventListener("click", ()=>{ const n=clearLeaderboardCachesLocal(); setDZ(`Leaderboard caches cleared: ${n} keys`); });
+
+  function refreshAll(){ rfList(); loadRules(); loadEvents(); loadJackpot(); depRefresh(); }
+  syncGate(); if(unlocked()) refreshAll();
 })();
 </script>
 </body>
