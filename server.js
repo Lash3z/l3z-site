@@ -1,4 +1,4 @@
-// server.js — single clean ESM entry (Render-friendly, conditional routes)
+// server.js — L3Z unified backend (ESM, Node 18+)
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
@@ -26,8 +26,8 @@ const PUBLIC_API_BASE = process.env.PUBLIC_API_BASE || "";
 /* ------------------------------------
  * Core middleware
  * ------------------------------------ */
-app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "5mb" })); // allow base64 screenshots in prize-claims
+app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 app.use(cookieParser());
 app.use(compression());
 
@@ -41,9 +41,11 @@ const ALLOW = new Set([
 ]);
 app.use(cors({
   origin(origin, cb) {
+    // allow same-origin/no-origin (curl), allowlist, and Render previews
     if (!origin) return cb(null, true);
     if (ALLOW.has(origin)) return cb(null, true);
     if (/\.onrender\.com$/i.test(new URL(origin).hostname)) return cb(null, true);
+    // loosen during dev to avoid CORS hair-pulling
     return cb(null, true);
   },
   credentials: true,
@@ -61,7 +63,6 @@ function redact(u) {
   try { const url = new URL(u); if (url.password) url.password = "***"; return url.toString(); }
   catch { return u ? u.replace(/\/\/[^@]*@/, "//***@") : ""; }
 }
-
 const { key: MONGO_KEY, uri: MONGO_URI_RAW } = pickMongoUri();
 const MONGO_DB = process.env.MONGO_DB || "";
 const ALLOW_MEMORY_FALLBACK = String(process.env.ALLOW_MEMORY_FALLBACK || "").toLowerCase() === "true";
@@ -91,7 +92,7 @@ app.get("/api/_debug/mongo", (_req, res) => {
 /* ------------------------------------
  * Models
  * ------------------------------------ */
-let SlotwheelEntry, RaffleEntry, ConfigKV;
+let SlotwheelEntry, RaffleEntry, ConfigKV, PrizeClaim;
 try {
   const slotwheelSchema = new mongoose.Schema(
     { gid: { type: String, index: true }, user: { type: String, index: true }, ts: { type: Date, default: () => new Date() } },
@@ -112,6 +113,22 @@ try {
     { versionKey: false, collection: "app_config" }
   );
   ConfigKV = mongoose.models.ConfigKV || mongoose.model("ConfigKV", configSchema);
+
+  const prizeClaimSchema = new mongoose.Schema(
+    {
+      username: { type: String, index: true },
+      affiliate: String,
+      walletAddress: String,
+      casinoUsername: String,
+      screenshot: String, // base64 or URL
+      status: { type: String, default: "pending", index: true }, // pending|approved|rejected
+      adminNote: String,
+      createdAt: { type: Date, default: () => new Date() },
+      updatedAt: { type: Date, default: () => new Date() }
+    },
+    { versionKey: false, collection: "prize_claims" }
+  );
+  PrizeClaim = mongoose.models.PrizeClaim || mongoose.model("PrizeClaim", prizeClaimSchema);
 } catch {}
 
 /* ------------------------------------
@@ -222,11 +239,13 @@ async function rolloverIfNeeded(state){
   }
   return state;
 }
+// Public
 app.get("/api/jackpot", async (_req,res)=>{
   const st = await rolloverIfNeeded(await loadJackpot());
   res.json({ ok:true, currency:"AUD", month: st.month, base: JACKPOT_BASE_AUD, subsCap: SUBS_CAP_AUD,
     amount: Number(computeAmountAUD(st).toFixed(2)), nextResetTs: melNextMonthStartTs() });
 });
+// Admin adjust
 app.post("/api/jackpot/add-subs", adminGuard, async (req,res)=>{
   const count = Math.max(0, Math.floor(Number(req.body?.count||0)));
   const st = await rolloverIfNeeded(await loadJackpot());
@@ -258,9 +277,10 @@ app.post("/api/jackpot/reset", adminGuard, async (_req,res)=>{
 
 /* ------------------------------------
  * Giveaway "current" — players don’t need an ID
+ * + Raffles admin: clear entries, set/get winner
  * ------------------------------------ */
 const DEFAULT_GIVEAWAY_ID = process.env.DEFAULT_GIVEAWAY_ID || "GLOBAL";
-const memSlot = { slotwheel: new Map() };
+const memSlot = { slotwheel: new Map(), raffles: new Map() }; // memory fallback
 
 async function getCurrentGiveawayId() {
   if (!mongoUp() || !ConfigKV) return DEFAULT_GIVEAWAY_ID;
@@ -276,7 +296,27 @@ async function setCurrentGiveawayId(id) {
   );
   return true;
 }
+async function setWinner(id, user) {
+  if (!mongoUp() || !ConfigKV) {
+    const m = memSlot; if (!m.winners) m.winners = new Map(); m.winners.set(String(id), { user, ts: new Date().toISOString() }); return true;
+  }
+  await ConfigKV.updateOne(
+    { key: `winner:${String(id)}` },
+    { $set: { value: { user: String(user), ts: new Date() }, ts: new Date() } },
+    { upsert: true }
+  );
+  return true;
+}
+async function getWinner(id) {
+  if (!mongoUp() || !ConfigKV) {
+    const v = memSlot?.winners?.get(String(id));
+    return v || null;
+  }
+  const doc = await ConfigKV.findOne({ key: `winner:${String(id)}` }).lean();
+  return doc?.value || null;
+}
 
+// current giveaway id
 app.get("/api/giveaways/current", async (_req, res) => {
   const id = await getCurrentGiveawayId();
   res.json({ ok: true, id });
@@ -294,7 +334,8 @@ app.get("/api/giveaways/entries", async (_req, res) => {
   if (mongoUp() && SlotwheelEntry) {
     const rows = await SlotwheelEntry.find({ gid }).sort({ ts: 1 }).lean();
     res.setHeader("X-Store", "mongo");
-    return res.json({ ok: true, id: gid, entries: rows.map(r => ({ user: r.user, ts: r.ts })) });
+    const winner = await getWinner(gid);
+    return res.json({ ok: true, id: gid, entries: rows.map(r => ({ user: r.user, ts: r.ts })), winner });
   }
   if (!ALLOW_MEMORY_FALLBACK) {
     res.setHeader("X-Store", "offline");
@@ -302,7 +343,8 @@ app.get("/api/giveaways/entries", async (_req, res) => {
   }
   const arr = Array.from(memSlot.slotwheel.get(gid) || []);
   res.setHeader("X-Store", "memory");
-  return res.json({ ok: true, id: gid, entries: arr });
+  const winner = await getWinner(gid);
+  return res.json({ ok: true, id: gid, entries: arr, winner });
 });
 
 // enter CURRENT
@@ -338,6 +380,155 @@ app.post("/api/giveaways/enter", async (req, res) => {
   return res.json({ ok: true, id: gid });
 });
 
+// Raffles (explicit id) — admin tools
+app.get("/api/raffles/:id/entries", async (req, res) => {
+  const rid = String(req.params.id || "").trim();
+  if (!rid) return res.status(400).json({ ok: false, error: "bad_id" });
+  if (mongoUp() && RaffleEntry) {
+    const rows = await RaffleEntry.find({ rid }).sort({ ts: 1 }).lean();
+    const winner = await getWinner(rid);
+    return res.json({ ok: true, entries: rows.map(r => ({ user: r.user, ts: r.ts })), winner });
+  }
+  const arr = Array.from(memSlot.raffles.get(rid) || []);
+  const winner = await getWinner(rid);
+  return res.json({ ok: true, entries: arr, winner });
+});
+app.post("/api/raffles/:id/entries", async (req, res) => {
+  const rid = String(req.params.id || "").trim();
+  const user = String((req.body?.user || "").toUpperCase());
+  if (!rid || !user) return res.status(400).json({ ok: false, error: "bad_input" });
+
+  if (mongoUp() && RaffleEntry) {
+    try {
+      await RaffleEntry.updateOne(
+        { rid, user },
+        { $setOnInsert: { rid, user }, $set: { ts: new Date() } },
+        { upsert: true }
+      );
+      return res.json({ ok: true });
+    } catch (e) {
+      if (e?.code === 11000) return res.json({ ok: true, already: true });
+      return res.status(500).json({ ok: false, error: e?.message || "db_error" });
+    }
+  }
+  const arr = memSlot.raffles.get(rid) || [];
+  if (!arr.some(e => e.user === user)) arr.push({ user, ts: new Date().toISOString() });
+  memSlot.raffles.set(rid, arr);
+  return res.json({ ok: true });
+});
+
+// Admin: clear entries for one raffle
+app.delete("/api/raffles/:id/entries", adminGuard, async (req, res) => {
+  const rid = String(req.params.id || "").trim();
+  if (!rid) return res.status(400).json({ ok: false, error: "bad_id" });
+  if (mongoUp() && RaffleEntry) {
+    await RaffleEntry.deleteMany({ rid });
+  } else {
+    memSlot.raffles.delete(rid);
+  }
+  // also clear winner marker
+  if (mongoUp() && ConfigKV) {
+    await ConfigKV.deleteOne({ key: `winner:${rid}` });
+  } else if (memSlot.winners) {
+    memSlot.winners.delete(rid);
+  }
+  res.json({ ok: true, cleared: rid });
+});
+
+// Admin: clear ALL raffles + winners (danger)
+app.delete("/api/raffles", adminGuard, async (_req, res) => {
+  if (mongoUp() && RaffleEntry) {
+    await RaffleEntry.deleteMany({});
+  } else {
+    memSlot.raffles.clear();
+  }
+  if (mongoUp() && ConfigKV) {
+    await ConfigKV.deleteMany({ key: /^winner:/ });
+  } else if (memSlot.winners) {
+    memSlot.winners.clear();
+  }
+  res.json({ ok: true, cleared: "all" });
+});
+
+// Admin: set winner for raffle id (body: { id, user })
+app.post("/api/raffles/winner", adminGuard, async (req, res) => {
+  const id = String(req.body?.id || "").trim();
+  const user = String((req.body?.user || "").toUpperCase());
+  if (!id || !user) return res.status(400).json({ ok: false, error: "bad_input" });
+  await setWinner(id, user);
+  res.json({ ok: true, id, user });
+});
+
+// Public: get winner for raffle id
+app.get("/api/raffles/:id/winner", async (req, res) => {
+  const id = String(req.params.id || "").trim();
+  const w = await getWinner(id);
+  res.json({ ok: true, id, winner: w || null });
+});
+
+/* ------------------------------------
+ * Prize Claims
+ * ------------------------------------ */
+// Player submits claim
+app.post("/api/prize-claims", async (req, res) => {
+  const body = req.body || {};
+  const username = String((body.username || "").toUpperCase()).trim();
+  const affiliate = String(body.affiliate || "").trim();
+  const walletAddress = String(body.walletAddress || "").trim();
+  const casinoUsername = String(body.casinoUsername || "").trim();
+  const screenshot = String(body.screenshot || ""); // base64 or url
+
+  if (!username || !walletAddress) {
+    return res.status(400).json({ ok: false, error: "bad_input" });
+  }
+
+  if (mongoUp() && PrizeClaim) {
+    const doc = await PrizeClaim.create({ username, affiliate, walletAddress, casinoUsername, screenshot });
+    return res.json({ ok: true, id: String(doc._id) });
+  }
+
+  if (!ALLOW_MEMORY_FALLBACK) return res.status(503).json({ ok: false, reason: "DB_OFFLINE" });
+
+  // memory fallback
+  if (!memSlot.claims) memSlot.claims = [];
+  const id = "CLAIM-" + Math.random().toString(36).slice(2,10).toUpperCase();
+  memSlot.claims.push({ id, username, affiliate, walletAddress, casinoUsername, screenshot, status: "pending", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+  res.json({ ok: true, id });
+});
+
+// Admin list claims (optional status filter)
+app.get("/api/prize-claims", adminGuard, async (req, res) => {
+  const status = String(req.query.status || "").trim(); // pending/approved/rejected/"" = all
+  if (mongoUp() && PrizeClaim) {
+    const q = status ? { status } : {};
+    const rows = await PrizeClaim.find(q).sort({ createdAt: -1 }).lean();
+    return res.json({ ok: true, claims: rows });
+  }
+  const arr = (memSlot.claims || []);
+  return res.json({ ok: true, claims: status ? arr.filter(c => c.status === status) : arr });
+});
+
+// Admin update claim status
+app.post("/api/prize-claims/:id/status", adminGuard, async (req, res) => {
+  const id = String(req.params.id || "").trim();
+  const status = String(req.body?.status || "").trim(); // approved|rejected|pending
+  const adminNote = String(req.body?.adminNote || "").trim();
+  if (!id || !["approved","rejected","pending"].includes(status)) {
+    return res.status(400).json({ ok: false, error: "bad_input" });
+  }
+
+  if (mongoUp() && PrizeClaim) {
+    const doc = await PrizeClaim.findByIdAndUpdate(id, { $set: { status, adminNote, updatedAt: new Date() } }, { new: true });
+    if (!doc) return res.status(404).json({ ok: false, error: "not_found" });
+    return res.json({ ok: true, claim: doc });
+  }
+  const arr = (memSlot.claims || []);
+  const idx = arr.findIndex(c => c.id === id);
+  if (idx < 0) return res.status(404).json({ ok: false, error: "not_found" });
+  arr[idx] = { ...arr[idx], status, adminNote, updatedAt: new Date().toISOString() };
+  res.json({ ok: true, claim: arr[idx] });
+});
+
 /* ------------------------------------
  * API routes (conditionally mounted)
  * ------------------------------------ */
@@ -355,16 +546,14 @@ async function mountIfExists(relPath, mountPath, label){
   }
 }
 
-// Mount known routers if present
-await mountIfExists("./backend/routes/admin.js",        "/api/admin",       "admin");
+// Mount known routers if present (kept for back-compat)
+await mountIfExists("./backend/routes/admin.js",        "/api/admin2",      "admin2");
 await mountIfExists("./backend/routes/vipAwards.js",    "/api/vip-awards",  "vipAwards");
 await mountIfExists("./backend/routes/battleground.js", "/api/battleground","battleground");
 await mountIfExists("./backend/routes/pvp.js",          "/api/pvp",         "pvp");
 await mountIfExists("./backend/routes/lbx.js",          "/api",             "lbx");
-await mountIfExists("./backend/routes/raffles.js",      "/api/raffles",     "raffles");
+await mountIfExists("./backend/routes/raffles.js",      "/api/raffles2",    "raffles2");
 await mountIfExists("./backend/routes/wallet.js",       "/api/wallet",      "wallet");
-// >>> NEW: mount Prize Claims API <<<
-await mountIfExists("./backend/routes/prizeClaims.js",  "/api/prize-claims","prizeClaims");
 
 // Back-compat (old endpoints still work)
 app.get("/api/giveaways/slotwheel/:id/entries", async (req, res) => {
@@ -409,6 +598,11 @@ app.post("/api/giveaways/slotwheel/:id/entries", async (req, res) => {
 });
 
 /* ------------------------------------
+ * Health
+ * ------------------------------------ */
+app.get("/healthz", (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
+
+/* ------------------------------------
  * Static files + injector + guards
  * ------------------------------------ */
 const ROOT_DIR = __dirname;
@@ -417,16 +611,19 @@ const pagesDir  = path.resolve(__dirname, "pages");
 const adminDir  = path.resolve(__dirname, "admin");
 const indexHtml = path.resolve(__dirname, "index.html");
 
+// 🔐 Guard BOTH admin paths BEFORE any HTML/static handling
 app.use("/pages/dashboard/admin", adminGuard);
 app.use("/admin", adminGuard);
 
+// HTML injector (adds API_BASE + api-base.js into every HTML)
 async function sendInjectedHtml(filePath, res, next) {
   try {
     let html = await fs.readFile(filePath, "utf8");
     const already = html.includes("/assets/api-base.js") || html.includes("window.API_BASE");
     if (!already) {
-      const inject = `\n<script>window.API_BASE=${JSON.stringify(PUBLIC_API_BASE)};</script>\n` +
-                     `<script src="/assets/api-base.js"></script>\n`;
+      const inject =
+        `\n<script>window.API_BASE=${JSON.stringify(PUBLIC_API_BASE)};</script>\n` +
+        `<script src="/assets/api-base.js"></script>\n`;
       if (/<\/head>/i.test(html)) html = html.replace(/<\/head>/i, inject + "</head>");
       else if (/<\/body>/i.test(html)) html = html.replace(/<\/body>/i, inject + "</body>");
       else html = inject + html;
@@ -435,12 +632,16 @@ async function sendInjectedHtml(filePath, res, next) {
   } catch (err) { next(err); }
 }
 
+// Serve "/" and "/index.html" with injection
 app.get(["/","/index.html"], (req,res,next) => { sendInjectedHtml(indexHtml, res, next); });
+
+// Serve any other .html file with injection
 app.get(/.*\.html$/i, async (req,res,next) => {
   const file = path.join(ROOT_DIR, req.path);
   sendInjectedHtml(file, res, err => { if (err) next(); });
 });
 
+// Static
 app.use(
   express.static(ROOT_DIR, {
     index: false, extensions: ["html"],
@@ -455,24 +656,46 @@ app.use("/assets", express.static(assetsDir, { fallthrough: true }));
 app.use("/pages",  express.static(pagesDir,  { fallthrough: true }));
 app.use("/admin",  express.static(adminDir,  { fallthrough: true }));
 
+// Redirect old path to root
 app.get(
   ["/pages/dashboard/home", "/pages/dashboard/home/", "/pages/dashboard/home/index.html"],
   (_req, res) => res.redirect(302, "/index.html")
 );
-app.get("/health.html", (_req, res) => res.sendFile(path.resolve(__dirname, "health.html")));
-app.get("/favicon.ico", (_req, res) => { res.sendFile(path.resolve(__dirname, "assets", "L3Z_logoMain.png")); });
 
-app.use((req, res) => {
-  if (req.path.startsWith("/api/")) return res.status(404).json({ ok: false, error: "not_found" });
-  res.status(404).type("html").send(
-    `<!doctype html><meta charset="utf-8"><title>404</title>
-     <style>body{background:#0b0f10;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif;padding:32px}</style>
-     <h1>Not Found</h1><p>The path <code>${req.originalUrl}</code> doesn’t exist.</p>
-     <p><a href="/index.html">Back to Home</a></p>`
-  );
+// Health HTML
+app.get("/health.html", (_req, res) => res.sendFile(path.resolve(__dirname, "health.html")));
+
+// Favicon
+app.get("/favicon.ico", (_req, res) => {
+  res.sendFile(path.resolve(__dirname, "assets", "L3Z_logoMain.png"));
 });
 
+/* ------------------------------------
+ * 404 handler (HTML for pages, JSON for API)
+ * ------------------------------------ */
+app.use((req, res) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({ ok: false, error: "not_found" });
+  }
+  res
+    .status(404)
+    .type("html")
+    .send(
+      `<!doctype html><meta charset="utf-8">
+       <title>404</title>
+       <style>body{background:#0b0f10;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif;padding:32px}</style>
+       <h1>Not Found</h1>
+       <p>The path <code>${req.originalUrl}</code> doesn’t exist.</p>
+       <p><a href="/index.html">Back to Home</a></p>`
+    );
+});
+
+/* ------------------------------------
+ * Boot
+ * ------------------------------------ */
 process.on("unhandledRejection", e => console.error("[unhandledRejection]", e));
 process.on("uncaughtException", e => console.error("[uncaughtException]", e));
 
-app.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
