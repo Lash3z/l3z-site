@@ -3,105 +3,51 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Raffle Live</title>
+<title>Raffles — L3Z</title>
 <style>
-  :root{ --bg:#0b0f10; --ink:#eaf7ff; --muted:#9bc; --panel:#0f1416; --ring:rgba(0,255,255,.22); --gold:#ffb42d; }
+  :root{ --bg:#0b0f10; --ink:#eaf7ff; --muted:#9bc; --ring:rgba(0,255,255,.22); --gold:#ffb42d; --ok:#00ffff; }
   *,*:before,*:after{box-sizing:border-box}
   html,body{margin:0;background:#000 url("/assets/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
   .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:12px;background:rgba(0,0,0,.7);border-bottom:1px solid var(--ring)}
-  .title{font-weight:900;letter-spacing:.4px;color:var(--gold);text-shadow:0 0 14px rgba(255,180,45,.35)}
-  .grow{flex:1}
-  .lbx-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:14px;border:1px solid rgba(0,255,255,.18);
-    background:#0b1f21;color:#cfffff;font-weight:800;font-size:12px;box-shadow:0 0 12px rgba(0,255,255,.10)}
-  .lbx-dot{width:8px;height:8px;border-radius:50%;background:#ffb42d;box-shadow:0 0 8px #ffb42d66}
+  .title{font-weight:900;letter-spacing:.4px;color:var(--gold)}
   .wrap{max-width:1000px;margin:18px auto;padding:0 12px}
-  .card{background:linear-gradient(180deg,#0f1416,#0a1113);border:1px solid var(--ring);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:16px}
-  .muted{color:var(--muted);font-size:13px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width: 900px){ .grid{grid-template-columns:1fr} }
+  .card{background:linear-gradient(180deg,#0f1416,#0a1113);border:1px solid var(--ring);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:14px}
   .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .pill{padding:6px 10px;border-radius:999px;border:1px solid var(--ring);background:#0b1f21;color:#cfffff;font-weight:800}
-  input,button{height:42px;border-radius:10px;border:1px solid var(--ring);background:#0a1719;color:var(--ink);padding:8px 12px;outline:none}
-  button{cursor:pointer;font-weight:800}
-  button.primary{background:linear-gradient(180deg,#0ef,#00dfc6);-webkit-background-clip:text;background-clip:text;color:transparent;border-color:#0ef}
-  button[disabled]{opacity:.55;cursor:not-allowed}
-  .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  .list{display:flex;flex-wrap:wrap;gap:8px}
-  .entry{padding:6px 10px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:#0a1518;font-size:12px}
-  .big{font-size:24px;font-weight:900;margin:0}
-  .center{display:flex;justify-content:center;align-items:center}
+  .btn{height:40px;border-radius:10px;border:1px solid var(--ring);background:#0a1719;color:var(--ink);padding:8px 12px;font-weight:800;cursor:pointer}
+  .btn.ok{border-color:#0ef;background:linear-gradient(180deg,#0ef,#00dfc6);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .muted{color:var(--muted);font-size:13px}
+  .list{display:flex;flex-wrap:wrap;gap:6px}
   .toast{position:fixed;right:16px;bottom:16px;background:#0b1f21;border:1px solid var(--ring);border-radius:10px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:.18s}
   .toast.on{opacity:1;transform:translateY(0)}
-  html[data-auth="checking"] body { opacity: 0; transition: opacity .12s ease; }
 </style>
 
-<!-- AUTH GATE -->
 <script>
+/* ---- Very light auth gate (same pattern as your other pages) ---- */
 (function(){
-  "use strict";
-  const LOGIN="/pages/dashboard/home/login.html";
-  const SESSION_KEY="l3z:session", PROFILE_KEY="l3z:user", UNAME_KEY="user:username", LAST_KEY="lash3z_last_user";
-  const WALLET = u=>`lbx:wallet:${(u||'').toUpperCase()}`, LEDGER=u=>`lbx:ledger:${(u||'').toUpperCase()}`;
-  const now=()=>Date.now(); const up=s=>(s||"").toString().trim().toUpperCase();
+  const now=()=>Date.now(), up=s=>(s||"").toString().trim().toUpperCase();
   function sget(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch{ return null; } }
-  function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
-  function ensureWallet(u){ let w=sget(WALLET(u)); if(!w){ w={balance:50,created:now(),lastDaily:0}; sset(WALLET(u),w);
-    sset(LEDGER(u),[{ts:now(),delta:+50,reason:'WELCOME_BONUS',balance:50}]); } return w; }
-  function badgeUpdate(u){ const w=ensureWallet(u); const t=document.getElementById('lbxAmt'); if(t) t.textContent=(+w.balance||0).toFixed(2); }
-  function redirectToLogin(){ const back=encodeURIComponent(location.pathname+location.search+location.hash);
-    location.replace(`${LOGIN}?redirect=${back}`); }
-
-  document.documentElement.setAttribute("data-auth","checking");
-  const sess=sget(SESSION_KEY);
-  if(!sess || !sess.user || Number(sess.expiresAt)<=now()){ redirectToLogin(); throw new Error("no session"); }
-  const USER=up(sess.user);
-  localStorage.setItem(UNAME_KEY,USER); localStorage.setItem(LAST_KEY,USER); sset(PROFILE_KEY,{username:USER});
-  window.__L3Z_USER__=USER; window.__L3Z_BALANCE__=()=>ensureWallet(USER).balance;
-
-  window.addEventListener("DOMContentLoaded",()=>{
-    const u = USER;
-    const nameEl = document.getElementById("welcomeName"); if(nameEl) nameEl.textContent = u;
-    badgeUpdate(u);
-    const ins = new Set([document.getElementById('user'), ...document.querySelectorAll('[name="user"],[data-fill-user]')].filter(Boolean));
-    ins.forEach(n=>{ if(!n.value) n.value=u; });
-    document.documentElement.removeAttribute("data-auth");
-  });
+  const sess = sget("l3z:session");
+  if(!sess || !sess.user || Number(sess.expiresAt)<=now()){
+    const back=encodeURIComponent(location.pathname+location.search+location.hash);
+    location.replace(`/pages/dashboard/home/login.html?redirect=${back}`);
+  } else {
+    window.__L3Z_USER__ = up(sess.user);
+  }
 })();
 </script>
 </head>
 <body>
   <div class="topbar">
-    <div class="title">Raffle — Live</div>
-    <div class="grow"></div>
-    <div class="pill">Welcome, <span id="welcomeName">PLAYER</span></div>
-    <div class="lbx-badge" id="lbxBadge"><span class="lbx-dot"></span><span id="lbxAmt">0</span><span class="muted">LBX</span></div>
+    <div class="title">Raffles</div>
+    <div style="margin-left:auto" class="pill">Welcome, <span id="welcome">PLAYER</span></div>
   </div>
 
   <div class="wrap">
-    <div class="card">
-      <div class="row" style="justify-content:space-between">
-        <div class="muted">Raffle ID: <span id="rid">—</span></div>
-        <div class="muted">Total Entries: <b id="count">0</b></div>
-      </div>
-
-      <div class="cols" style="margin-top:12px">
-        <div>
-          <h3 class="big">Participants</h3>
-          <div id="list" class="list"></div>
-        </div>
-        <div class="center">
-          <div style="text-align:center">
-            <p class="muted">You can join this raffle once.</p>
-            <div class="row" style="justify-content:center">
-              <input id="user" placeholder="USERNAME" readonly style="width:220px"/>
-              <button id="joinBtn" class="primary">Join Raffle</button>
-            </div>
-            <div class="row" style="justify-content:center;margin-top:8px">
-              <span id="status" class="pill">Checking…</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
+    <div id="info" class="muted" style="margin-bottom:10px">Loading raffles…</div>
+    <div id="raffleGrid" class="grid"></div>
   </div>
 
   <div id="toast" class="toast">Saved.</div>
@@ -109,70 +55,138 @@
 <script>
 (function(){
   "use strict";
-  const $=s=>document.querySelector(s);
+  const USER = window.__L3Z_USER__;
+  const $=s=>document.querySelector(s), grid=$("#raffleGrid"), info=$("#info"), toastEl=$("#toast");
+  $("#welcome").textContent = USER;
+
+  const up=s=>(s||"").toString().trim().toUpperCase();
   const esc=s=>(s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
-  const up=s=>(s||'').toString().trim().toUpperCase();
+  const toast=t=>{ toastEl.textContent=t; toastEl.classList.add("on"); setTimeout(()=>toastEl.classList.remove("on"),1400); };
 
-  // Raffle identity: ?id=... else daily default
-  const qp=new URLSearchParams(location.search);
-  const RID = qp.get("id") || ("raffle:"+new Date().toISOString().slice(0,10));
+  async function jget(u){ const r=await fetch(u,{credentials:"include",cache:"no-store"}); if(!r.ok) throw r; return r.json(); }
+  async function jpost(u,b){ const r=await fetch(u,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})}); if(!r.ok) throw r; return r.json(); }
+  async function jput(u,b){ const r=await fetch(u,{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})}); if(!r.ok) throw r; return r.json(); }
 
-  const userEl=$("#user"), joinBtn=$("#joinBtn"), statusEl=$("#status"), countEl=$("#count"), listEl=$("#list"), ridEl=$("#rid");
-  const toast=$("#toast");
-  ridEl.textContent = RID;
+  /* ------------------------------
+     Load list of available raffles
+     ------------------------------ */
+  async function loadRaffles(){
+    // Try multi-list endpoint first
+    try{
+      const list = await jget("/api/raffles/list?open=1"); // expected: [{id,title,open,created}, ...]
+      if (Array.isArray(list) && list.length){
+        renderList(list);
+        return;
+      }
+    }catch{ /* fall through */ }
 
-  function toastMsg(t){ toast.textContent=t; toast.classList.add('on'); setTimeout(()=>toast.classList.remove('on'),1400); }
+    // Fallback to single-current model
+    try{
+      const pub = await jget("/api/raffles/public");
+      if (pub && pub.active){
+        renderList([{ id: pub.id, title: pub.title, open: !!pub.open }]);
+        return;
+      }
+    }catch{ /* ignore */ }
 
-  async function getEntries(){
-    const r = await fetch(`/api/raffles/${encodeURIComponent(RID)}/entries`, { credentials:"include" });
-    if(!r.ok) throw new Error("Failed to load entries");
-    const j = await r.json(); return Array.isArray(j.entries)? j.entries : [];
+    grid.innerHTML = "";
+    info.textContent = "No raffles are live yet. Check back soon.";
   }
-  async function submitEntry(user){
-    const r = await fetch(`/api/raffles/${encodeURIComponent(RID)}/entries`, {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      credentials:"include",
-      body: JSON.stringify({ user })
+
+  /* ------------------------------
+     Render cards + wire actions
+     ------------------------------ */
+  function renderList(items){
+    info.textContent = items.length===1 ? "1 raffle available." : `${items.length} raffles available.`;
+    grid.innerHTML = items.map(r => cardHTML(r)).join("");
+    // hook up buttons
+    items.forEach(r=>{
+      const enterBtn = document.querySelector(`[data-enter="${cssq(r.id)}"]`);
+      const listBtn  = document.querySelector(`[data-list="${cssq(r.id)}"]`);
+      if (enterBtn) enterBtn.addEventListener("click", ()=>enterRaffle(r));
+      if (listBtn)  listBtn.addEventListener("click", ()=>loadEntries(r));
+      // load entry badges right away
+      loadEntries(r, true);
     });
-    if(!r.ok) throw new Error("Failed to submit entry");
-    return r.json();
+  }
+  function cssq(s){ return String(s).replace(/"/g,'&quot;'); }
+
+  function cardHTML(r){
+    const openTxt = r.open ? "Open" : "Closed";
+    return `
+      <div class="card" id="card-${esc(r.id)}">
+        <div class="row" style="justify-content:space-between">
+          <div><b>${esc(r.title||r.id)}</b> <span class="pill">${esc(r.id)}</span></div>
+          <div class="pill" id="state-${esc(r.id)}">${openTxt}</div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn ok" data-enter="${esc(r.id)}" ${r.open? "": "disabled"}>Enter</button>
+          <span class="pill" id="me-${esc(r.id)}">Checking…</span>
+          <span class="pill">Entries: <b id="cnt-${esc(r.id)}">0</b></span>
+          <button class="btn" data-list="${esc(r.id)}">Refresh list</button>
+        </div>
+        <div class="list" id="list-${esc(r.id)}" style="margin-top:8px"></div>
+      </div>`;
   }
 
-  async function paint(){
+  /* ------------------------------
+     Load entries for a raffle
+     ------------------------------ */
+  async function loadEntries(r, quiet=false){
+    const id = r.id;
+    const listEl = $(`#list-${cssq(id)}`), cntEl = $(`#cnt-${cssq(id)}`), meEl = $(`#me-${cssq(id)}`);
     try{
-      const arr = await getEntries();
-      countEl.textContent = arr.length;
-      listEl.innerHTML = arr.map(e=>`<span class="entry">${esc(e.user)}</span>`).join('') || `<span class="muted">No entries yet.</span>`;
-      const u = up(userEl.value);
-      const entered = !!arr.find(e=>e.user === u);
-      statusEl.textContent = entered ? "You're in!" : "Not entered";
-      joinBtn.disabled = entered ? true : false;
+      // Prefer direct id endpoint; fallback to /entries for current
+      let data=null;
+      try { data = await jget(`/api/raffles/${encodeURIComponent(id)}/entries`); }
+      catch {
+        await jput("/api/raffles/current", { id });
+        data = await jget("/api/raffles/entries");
+      }
+      const arr = Array.isArray(data.entries)? data.entries : [];
+      cntEl.textContent = arr.length;
+      listEl.innerHTML = arr.map(e=>`<span class="pill">${esc(e.user)}</span>`).join("") || `<span class="muted">No entries yet.</span>`;
+      const me = arr.some(e => up(e.user)===up(USER));
+      meEl.textContent = me ? "You're in!" : "Not entered";
     }catch(e){
-      statusEl.textContent = "Error loading entries";
-      console.error(e);
+      if(!quiet) toast("Failed to load entries");
+      listEl.innerHTML = `<span class="muted">Entries unavailable.</span>`;
     }
   }
 
-  async function init(){
-    await paint();
-    setInterval(paint, 4000); // poll
+  /* ------------------------------
+     Enter a raffle
+     ------------------------------ */
+  async function enterRaffle(r){
+    const id = r.id;
+    const btn = document.querySelector(`[data-enter="${cssq(id)}"]`);
+    const meEl = $(`#me-${cssq(id)}`);
+    try{
+      btn.disabled = true;
+
+      // Try modern endpoint first
+      let ok = true;
+      try {
+        await jpost(`/api/raffles/${encodeURIComponent(id)}/enter`, { user: USER });
+      } catch {
+        // Fallback: set current then use /enter (current)
+        await jput("/api/raffles/current", { id });
+        await jpost("/api/raffles/enter", { user: USER });
+      }
+
+      meEl.textContent = "You're in!";
+      toast("Entry submitted");
+      loadEntries(r, true);
+    }catch{
+      btn.disabled = false;
+      toast("Failed to submit entry");
+    }
   }
 
-  joinBtn.addEventListener('click', async ()=>{
-    const u = up(userEl.value);
-    if(!u){ toastMsg('Not logged in'); return; }
-    joinBtn.disabled = true;
-    try{
-      const j = await submitEntry(u);
-      if(j.ok || j.already){ toastMsg('Entry submitted'); }
-      await paint();
-    }catch(e){
-      toastMsg('Failed to submit'); joinBtn.disabled = false;
-    }
-  });
-
-  init();
+  // boot
+  loadRaffles();
+  // poll every 6s so new raffles appear for open viewers
+  setInterval(loadRaffles, 6000);
 })();
 </script>
 </body>
