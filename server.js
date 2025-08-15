@@ -1,4 +1,4 @@
-// server.js — Render-safe, accepts JSON *and* form posts, admin gate OK
+// server.js — Homepage-first routing, keeps working admin & APIs, JSON+form login
 import fs from "fs";
 import path from "path";
 import express from "express";
@@ -35,8 +35,21 @@ const PUBLIC_DIR = process.env.PUBLIC_DIR
   ? path.resolve(process.env.PUBLIC_DIR)
   : __dirname;
 
-const INDEX_PATH = path.join(PUBLIC_DIR, "index.html");
-const HAS_INDEX_HTML = (() => { try { fs.accessSync(INDEX_PATH); return true; } catch { return false; } })();
+// Pin exact homepage file (can override with HOME_INDEX env; relative to PUBLIC_DIR if not absolute)
+const HOME_INDEX = (() => {
+  const val = process.env.HOME_INDEX || "index.html";
+  return path.isAbsolute(val) ? val : path.join(PUBLIC_DIR, val);
+})();
+
+// Optional: admin login file (relative to PUBLIC_DIR unless absolute)
+const ADMIN_LOGIN_FILE = (() => {
+  const val = process.env.ADMIN_LOGIN_FILE || "pages/dashboard/home/admin_login.html";
+  return path.isAbsolute(val) ? val : path.join(PUBLIC_DIR, val);
+})();
+
+function existsSync(p) { try { fs.accessSync(p); return true; } catch { return false; } }
+const HAS_HOME = existsSync(HOME_INDEX);
+const HAS_ADMIN = existsSync(ADMIN_LOGIN_FILE);
 
 // ===== In-memory stores (keeps UI functional without DB)
 const memory = {
@@ -90,7 +103,6 @@ app.post(["/api/admin/gate/login", "/api/admin/login"], (req, res) => {
   const body = req.body || {};
   const username = (body.username || body.user || body.email || "").toString().trim();
   const password = (body.password || body.pass || body.pwd || "").toString();
-
   if (!username || !password) return res.status(400).json({ error: "Missing credentials" });
 
   if (username.toLowerCase() === ADMIN_USER && password === ADMIN_PASS) {
@@ -114,16 +126,45 @@ app.get(["/api/admin/gate/check", "/api/admin/me"], verifyAdminToken, (req, res)
   res.json({ success: true, admin: true, username: req.adminUser });
 });
 
-// ===== Health + root
+// ===== Health
 app.get("/api/health", (req, res) => {
-  res.json({ ok: true, env: NODE_ENV, port: PORT, publicDir: PUBLIC_DIR, hasIndex: HAS_INDEX_HTML, db: !!globalThis.__dbReady });
-});
-app.get("/", (req, res, next) => {
-  if (HAS_INDEX_HTML) return res.sendFile(INDEX_PATH, err => err && next(err));
-  res.status(200).send("L3Z server is up. No SPA found. Set PUBLIC_DIR or place index.html next to server.js.");
+  res.json({
+    ok: true,
+    env: NODE_ENV,
+    port: PORT,
+    publicDir: PUBLIC_DIR,
+    homeIndex: HOME_INDEX,
+    hasHome: HAS_HOME,
+    adminLoginFile: ADMIN_LOGIN_FILE,
+    hasAdminLogin: HAS_ADMIN,
+    db: !!globalThis.__dbReady
+  });
 });
 
-// ===== Minimal APIs (unchanged behavior so your admin UI doesn’t error)
+// ===== Public homepage (always at /)
+app.get("/", (req, res) => {
+  if (HAS_HOME) return res.sendFile(HOME_INDEX);
+  res.status(200).send("Homepage not found: put index.html in PUBLIC_DIR or set HOME_INDEX/PUBLIC_DIR correctly.");
+});
+
+// ===== Optional admin shortcut (/admin -> the admin login page if present)
+app.get("/admin", (req, res) => {
+  if (HAS_ADMIN) return res.sendFile(ADMIN_LOGIN_FILE);
+  return res.redirect(302, "/");
+});
+
+// ===== Static files
+app.use(express.static(PUBLIC_DIR, {
+  setHeaders(res, filePath) {
+    if (/\.(png|jpe?g|gif|webp|svg|woff2?|mp3|mp4)$/i.test(filePath)) {
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    } else {
+      res.setHeader("Cache-Control", "no-store");
+    }
+  }
+}));
+
+// ===== Minimal APIs (unchanged so your admin UI doesn’t error)
 app.get("/api/jackpot", (req, res) => {
   res.json({ amount: Number(memory.jackpot.amount || 0), month: memory.jackpot.month, perSubAUD: memory.jackpot.perSubAUD });
 });
@@ -172,31 +213,22 @@ app.get("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => { const r =
 app.delete("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); r.entries = []; r.open = true; r.winner = null; res.json({ success:true }); });
 app.post("/api/raffles/:rid/draw", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); const pool = r.entries || []; r.winner = pool.length ? pool[Math.floor(Math.random()*pool.length)].user : null; res.json({ success:true, winner:r.winner }); });
 
-// Static files
-app.use(express.static(PUBLIC_DIR, {
-  setHeaders(res, filePath) {
-    if (/\.(png|jpe?g|gif|webp|svg|woff2?|mp3|mp4)$/i.test(filePath)) res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-    else res.setHeader("Cache-Control", "no-store");
-  }
-}));
-
-// ---- Landing-only change below ----
-// Instead of a SPA catch-all rewrite, we 404 unknown paths to prevent landing on admin.
-// (Everything else above remains exactly as-is.)
+// ===== No SPA catch-all — unknown routes 404 (prevents accidental admin landings)
 app.use((req, res) => {
   res.status(404).send("Not found.");
 });
 
-// Error handler
+// ===== Error handler
 app.use((err, req, res, next) => {
   console.error("[ERROR]", err?.stack || err);
   if (req.path.startsWith("/api")) return res.status(500).json({ error: "Server error" });
   res.status(500).send("Server error");
 });
 
-// Start (non-blocking DB connect)
+// ===== Start (non-blocking DB connect)
 app.listen(PORT, HOST, () => {
-  console.log(`[Server] http://${HOST}:${PORT} (${NODE_ENV}) PUBLIC_DIR=${PUBLIC_DIR} hasIndex=${HAS_INDEX_HTML}`);
+  console.log(`[Server] http://${HOST}:${PORT} (${NODE_ENV}) PUBLIC_DIR=${PUBLIC_DIR}`);
+  console.log(`[Server] HOME_INDEX=${HOME_INDEX} hasHome=${HAS_HOME} | ADMIN_LOGIN_FILE=${ADMIN_LOGIN_FILE} hasAdmin=${HAS_ADMIN}`);
 });
 (async () => {
   if (!MONGO_URI) { if (!ALLOW_MEMORY_FALLBACK) console.warn("[DB] No MONGO_URI; memory mode."); return; }
