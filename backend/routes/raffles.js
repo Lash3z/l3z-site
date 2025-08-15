@@ -1,18 +1,20 @@
-// backend/routes/raffles.js (ESM)
+// backend/routes/raffles.js (ESM) — Single “Raffles” system
 import express from "express";
 import mongoose from "mongoose";
 
 const router = express.Router();
 const mongoUp = () => mongoose?.connection?.readyState === 1;
 const MEM_OK = String(process.env.ALLOW_MEMORY_FALLBACK || "").toLowerCase() === "true";
+const DEF_ID = process.env.DEFAULT_RAFFLE_ID || null;
+const up = s => (s||"").toString().trim().toUpperCase();
 
-// ---------- Models ----------
+/* ---------- Models ---------- */
 let Raffle, RaffleEntry, KV;
 try {
   const raffleSchema = new mongoose.Schema({
-    id: { type:String, unique:true, index:true },     // slug-like id you type in admin
-    title: { type:String, default:"" },
-    open: { type:Boolean, default:true },             // can accept entries
+    id:      { type:String, unique:true, index:true },     // the name you type
+    title:   { type:String, default:"" },
+    open:    { type:Boolean, default:true },               // accepting entries?
     created: { type:Date, default:()=>new Date() },
   }, { versionKey:false, collection:"raffles" });
   Raffle = mongoose.models.Raffle || mongoose.model("Raffle", raffleSchema);
@@ -33,22 +35,26 @@ try {
   KV = mongoose.models.KV || mongoose.model("KV", kvSchema);
 } catch {}
 
-// ---------- Memory fallback ----------
+/* ---------- Memory fallback ---------- */
 const mem = {
-  current: process.env.DEFAULT_RAFFLE_ID || null,
+  current: DEF_ID,
   raffles: new Map(), // id -> {id,title,open,created}
   entries: new Map(), // rid -> [{user,ts}]
 };
-const up = s => (s||"").toString().trim().toUpperCase();
 
-// helpers
+/* ---------- Helpers ---------- */
 async function setCurrent(id){
   if (!id) return false;
   if (mongoUp() && KV){
-    await KV.updateOne({key:"raffle_current_id"},{$set:{value:String(id),ts:new Date()}},{upsert:true});
+    await KV.updateOne(
+      {key:"raffle_current_id"},
+      {$set:{value:String(id), ts:new Date()}},
+      {upsert:true}
+    );
     return true;
   }
-  mem.current = String(id); return true;
+  mem.current = String(id);
+  return true;
 }
 async function getCurrent(){
   if (mongoUp() && KV){
@@ -59,22 +65,24 @@ async function getCurrent(){
 }
 async function ensureRaffle(id,title){
   if (mongoUp() && Raffle){
-    await Raffle.updateOne({id:String(id)},{$setOnInsert:{id:String(id),title:String(title||id),open:true,created:new Date()}},{upsert:true});
+    await Raffle.updateOne(
+      {id:String(id)},
+      {$setOnInsert:{id:String(id), title:String(title||id), open:true, created:new Date()}},
+      {upsert:true}
+    );
     return true;
   }
   if (!mem.raffles.has(id)) mem.raffles.set(id,{id,title:title||id,open:true,created:new Date()});
   return true;
 }
 async function getRaffleInfo(id){
-  if (mongoUp() && Raffle){
-    return await Raffle.findOne({id}).lean();
-  }
+  if (mongoUp() && Raffle) return await Raffle.findOne({id}).lean();
   return mem.raffles.get(id) || null;
 }
 
-// ---------- Routes ----------
+/* ---------- Routes ---------- */
 
-// ADMIN: create and make current
+// Create and set current raffle (Admin UX = “Deploy”)
 router.post("/create", async (req,res)=>{
   const id = (req.body?.id||"").trim();
   const title = (req.body?.title||id).trim();
@@ -86,7 +94,7 @@ router.post("/create", async (req,res)=>{
   res.json({ok:true, id, title});
 });
 
-// ADMIN: open/close entries for a raffle
+// Open/Close entries
 router.put("/:id/open", async (req,res)=>{
   const id = (req.params.id||"").trim();
   const open = !!req.body?.open;
@@ -100,7 +108,7 @@ router.put("/:id/open", async (req,res)=>{
   res.json({ok:true, id, open});
 });
 
-// ADMIN: set current (switch)
+// Set current
 router.put("/current", async (req,res)=>{
   const id = (req.body?.id||"").trim();
   if (!id) return res.status(400).json({ok:false,error:"bad_id"});
@@ -108,7 +116,7 @@ router.put("/current", async (req,res)=>{
   res.json({ok, id});
 });
 
-// PUBLIC: what should players see?
+// Player-facing: what’s live?
 router.get("/public", async (_req,res)=>{
   const id = await getCurrent();
   if (!id) return res.json({ok:true, active:false});
@@ -116,22 +124,23 @@ router.get("/public", async (_req,res)=>{
   res.json({ok:true, active:!!info, id, title: info?.title||id, open: !!info?.open});
 });
 
-// PUBLIC: entries for current
+// Current entries (player + admin use)
 router.get("/entries", async (_req,res)=>{
   const rid = await getCurrent();
   if (!rid) return res.json({ok:true, id:null, entries:[]});
+
   if (mongoUp() && RaffleEntry){
-    const rows = await RaffleEntry.find({rid}).sort({ts:1}).lean();
+    const rows = await RaffleEntry.find({ rid }).sort({ ts:1 }).lean();
     res.setHeader("X-Store","mongo");
-    return res.json({ok:true, id:rid, entries: rows.map(r=>({user:r.user,ts:r.ts}))});
+    return res.json({ ok:true, id: rid, entries: rows.map(r=>({ user:r.user, ts:r.ts })) });
   }
-  if (!MEM_OK) { res.setHeader("X-Store","offline"); return res.status(503).json({ok:false,reason:"DB_OFFLINE"}); }
+  if (!MEM_OK) { res.setHeader("X-Store","offline"); return res.status(503).json({ ok:false, reason:"DB_OFFLINE" }); }
   const arr = mem.entries.get(rid) || [];
   res.setHeader("X-Store","memory");
-  res.json({ok:true, id:rid, entries: arr});
+  res.json({ ok:true, id: rid, entries: arr });
 });
 
-// PUBLIC: enter current
+// Enter current raffle
 router.post("/enter", async (req,res)=>{
   const user = up(req.body?.user||"");
   if (!user) return res.status(400).json({ok:false,error:"bad_user"});
@@ -143,33 +152,36 @@ router.post("/enter", async (req,res)=>{
   if (mongoUp() && RaffleEntry){
     try{
       await RaffleEntry.updateOne(
-        {rid, user}, { $setOnInsert:{rid,user}, $set:{ts:new Date()} }, { upsert:true }
+        { rid, user },
+        { $setOnInsert:{ rid, user }, $set:{ ts:new Date() } },
+        { upsert:true }
       );
       res.setHeader("X-Store","mongo");
-      return res.json({ok:true, id:rid});
+      return res.json({ ok:true, id: rid });
     }catch(e){
-      if (e?.code===11000){ res.setHeader("X-Store","mongo"); return res.json({ok:true, already:true, id:rid}); }
-      return res.status(500).json({ok:false,error:e?.message||"db_error"});
+      if (e?.code===11000){ res.setHeader("X-Store","mongo"); return res.json({ ok:true, already:true, id: rid }); }
+      return res.status(500).json({ ok:false, error:e?.message||"db_error" });
     }
   }
-  if (!MEM_OK) { res.setHeader("X-Store","offline"); return res.status(503).json({ok:false,reason:"DB_OFFLINE"}); }
+
+  if (!MEM_OK) { res.setHeader("X-Store","offline"); return res.status(503).json({ ok:false, reason:"DB_OFFLINE" }); }
   const list = mem.entries.get(rid) || [];
-  if (!list.some(x=>x.user===user)) list.push({user, ts:new Date().toISOString()});
+  if (!list.some(x=>x.user===user)) list.push({ user, ts:new Date().toISOString() });
   mem.entries.set(rid, list);
   res.setHeader("X-Store","memory");
-  res.json({ok:true, id:rid});
+  res.json({ ok:true, id: rid });
 });
 
-// (Optional) explicit ID endpoints for admin drill-down
+// Admin explicit ID endpoints (optional)
 router.get("/:id/entries", async (req,res)=>{
   const rid = (req.params.id||"").trim();
   if (!rid) return res.status(400).json({ok:false,error:"bad_id"});
   if (mongoUp() && RaffleEntry){
-    const rows = await RaffleEntry.find({rid}).sort({ts:1}).lean();
-    return res.json({ok:true, entries: rows.map(r=>({user:r.user, ts:r.ts}))});
+    const rows = await RaffleEntry.find({ rid }).sort({ ts:1 }).lean();
+    return res.json({ ok:true, entries: rows.map(r=>({ user:r.user, ts:r.ts })) });
   }
   if (!MEM_OK) return res.status(503).json({ok:false,reason:"DB_OFFLINE"});
-  res.json({ok:true, entries: (mem.entries.get(rid)||[])});
+  res.json({ ok:true, entries:(mem.entries.get(rid)||[]) });
 });
 
 export default router;
