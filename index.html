@@ -1,538 +1,189 @@
 <!DOCTYPE html>
-<html lang="en" data-admin="checking">
+<html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-store"/>
-<title>L3Z — Admin Hub</title>
+<title>L3Z — Dashboard</title>
 <style>
-  :root{ --bg:#060b0d; --panel:#0b1417; --ink:#eaf7ff; --muted:#9fd0d6;
-         --line:rgba(0,255,255,.18); --teal:#00ffff; --gold:#ffb42d;
-         --ok:#12d48a; --bad:#e25a6f; --ink2:#cfffff; }
+  :root{
+    --bg:#060b0d; --panel:#0b1417; --ink:#eaf7ff; --muted:#9fd0d6;
+    --line:rgba(0,255,255,.18); --teal:#00ffff; --gold:#ffb42d;
+    --ok:#12d48a; --bad:#e25a6f; --ink2:#cfffff;
+  }
   *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-  html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
-  h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
-  h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
-  .wrap{max-width:1300px;margin:0 auto;padding:0 16px 48px}
-  .toprow{display:flex;gap:10px;align-items:center;justify-content:space-between}
-  .toprow .right{display:flex;gap:10px;align-items:center}
-  .gate{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
-  .panel{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;min-height:220px}
-  .full{grid-column:1 / -1}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:var(--ink2)}
-  input,select,textarea{border-radius:10px;border:1px solid var(--line);background:#0c1519;color:var(--ink);padding:8px}
-  textarea{width:100%;min-height:80px}
-  button{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:#0f1720;color:var(--ink);font-weight:800;cursor:pointer}
-  button.ok{background:#103d30;border-color:#1fa37b}
-  button.danger{background:#2b1116;border-color:#7e2a3c}
-  button.warn{background:#231b0f;border-color:#8c6926}
-  button[disabled]{opacity:.5;cursor:not-allowed}
-  .hr{height:1px;background:var(--line);margin:10px 0}
-  .tbl{width:100%;border-collapse:separate;border-spacing:0;overflow:auto}
-  .tbl th,.tbl td{border-bottom:1px solid rgba(255,255,255,.06);padding:8px;text-align:left;font-size:13px}
-  .tbl th{color:var(--muted)}
-  .right{margin-left:auto}
-  .hint{color:var(--muted);font-size:12px}
-  .mini{font-size:12px;color:var(--muted)}
-  .badge{padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#081318;color:#bfe}
-  .toast{position:fixed;right:16px;bottom:16px;background:#0b1f21;border:1px solid var(--line);border-radius:10px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:.2s all;pointer-events:none}
-  .toast.on{opacity:1;transform:translateY(0)}
-  a.linkbtn{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:#0f1720;color:#9fd0d6;text-decoration:none;font-weight:800}
-  a.linkbtn:hover{filter:brightness(1.1)}
-
-  /* Admin Launcher */
-  .launcher{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 4px}
-  .chip{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:11px;background:#0c1418;color:#dff;text-decoration:none;font-weight:700}
-  .chip:hover{background:#0f1b20}
-  .chip small{opacity:.75;font-weight:600}
-  @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  a{color:#8fefff;text-decoration:none}
+  a:hover{filter:brightness(1.1)}
+  .app{display:grid;grid-template-columns:280px 1fr;grid-template-rows:auto 1fr;min-height:100vh}
+  .topbar{
+    grid-column:1 / -1; display:flex; align-items:center; gap:12px;
+    padding:12px 16px; border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#0a1418,#0a1216);
+    position:sticky; top:0; z-index:5;
+  }
+  .brand{font-weight:900; letter-spacing:.5px; color:var(--teal); text-shadow:0 0 12px #00ffff55}
+  .spacer{flex:1}
+  .btn{border:1px solid var(--line); background:#0f1720; padding:8px 12px; border-radius:10px; font-weight:800; color:var(--ink); cursor:pointer}
+  .btn.ok{background:#103d30; border-color:#1fa37b}
+  .btn.warn{background:#231b0f; border-color:#8c6926}
+  .btn.bad{background:#2b1116; border-color:#7e2a3c}
+  .side{
+    border-right:1px solid var(--line); padding:16px; background:linear-gradient(180deg,#081318,#0a1216);
+  }
+  .side h3{margin:8px 0 10px; color:#bfe}
+  .nav{display:flex; flex-direction:column; gap:8px}
+  .nav a{display:block; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#0c1418; font-weight:700}
+  .nav a.active{outline:1px solid #00ffff66}
+  .main{padding:16px}
+  .card{
+    background:linear-gradient(180deg,#0a1418,#0a1216);
+    border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:16px;
+  }
+  .kpi{display:flex; gap:16px; align-items:center; flex-wrap:wrap}
+  .badge{padding:6px 10px; border:1px solid var(--line); border-radius:999px; background:#081318; color:#bfe; font-weight:700}
+  .jackpot{font-size:26px; font-weight:900; color:var(--gold); text-shadow:0 0 18px #ffb42d44}
+  .muted{color:var(--muted); font-size:12px}
+  .hidden{display:none!important}
+  @media (max-width: 980px){
+    .app{grid-template-columns:1fr}
+    .side{order:2}
+    .main{order:3}
+  }
 </style>
 </head>
 <body>
+<div class="app">
 
-<!-- Admin cookie gate -->
-<script>
-(function(){
-  "use strict";
-  const ADMIN_CHECK="/api/admin/gate/check";
-  const ADMIN_LOGIN="/pages/dashboard/home/admin_login.html";
-  const DASH="/index.html";
-  const H=document.documentElement;
-  H.setAttribute("data-admin","checking");
-  function lock(){
-    H.removeAttribute("data-admin");
-    const s=document.createElement("style");
-    s.textContent=".lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}.lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75);box-shadow:0 0 18px rgba(0,255,255,.15)}.lockcard h1{margin:0 0 10px;color:#cfe}.lockcard a{color:#7ad7ff;text-decoration:underline}";
-    document.head.appendChild(s);
-    document.body.innerHTML='<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fadmin_hub.html">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you already logged in, your session may have expired.</div><div style="margin-top:14px"><a href="'+DASH+'">Back to Dashboard</a></div></div></div>';
-  }
-  fetch(ADMIN_CHECK,{credentials:"include",cache:"no-store"})
-    .then(r=>r.ok?r.json():null)
-    .then(j=>{
-      if(j&&j.admin){ try{localStorage.setItem("l3z:admin:unlocked","1");}catch{} H.removeAttribute("data-admin"); }
-      else lock();
-    })
-    .catch(lock);
-})();
-</script>
+  <!-- Header -->
+  <header class="topbar">
+    <div class="brand">L3Z Dashboard</div>
+    <div class="spacer"></div>
 
-<div class="wrap">
-  <div class="toprow">
-    <h1>Admin Hub</h1>
-    <div class="right">
-      <a class="linkbtn" href="/index.html">← Back to Dashboard</a>
-      <a id="adminLogout" class="linkbtn" href="#">Log out</a>
+    <!-- Always present: Home -->
+    <a href="/" class="btn" id="btnHome">Home</a>
+
+    <!-- Changes based on admin session -->
+    <a href="/pages/dashboard/home/admin_login.html" class="btn" id="btnAdminLogin">Admin Login</a>
+    <a href="/pages/dashboard/admin/admin_hub.html" class="btn ok hidden" id="btnAdminHub">Admin Hub</a>
+    <button class="btn bad hidden" id="btnLogout">Log out</button>
+  </header>
+
+  <!-- Sidebar -->
+  <aside class="side">
+    <h3>Menu</h3>
+    <nav class="nav">
+      <a href="#overview" class="active">Overview</a>
+      <a href="#leaderboard">Leaderboard</a>
+      <a href="#battleground">Battleground</a>
+      <a href="#bonus">Bonus Hunt</a>
+      <a href="#pvp">PVP</a>
+      <a href="#lucky7">Lucky 7</a>
+      <!-- add more as needed -->
+    </nav>
+    <div class="card" style="margin-top:16px">
+      <div class="muted">Tip: Admin is separate. Use the Admin button above, do your business, then click “Home”. No more traps.</div>
     </div>
-  </div>
+  </aside>
 
-  <!-- ===== Admin Launcher (ALL the old sidebar admin links) ===== -->
-  <div class="launcher" aria-label="Admin Launcher">
-    <a class="chip" href="/pages/dashboard/admin/admin_hub.html">Admin Home <small>(this)</small></a>
-    <a class="chip" href="/pages/dashboard/admin/bets_admin.html">Bets Admin</a>
-    <a class="chip" href="/pages/dashboard/admin/battleground_admin.html">Battleground Admin</a>
-    <a class="chip" href="/pages/dashboard/admin/battleground_widget.html">Battleground Widget</a>
-    <a class="chip" href="/pages/dashboard/admin/bonus_hunt_admin.html">Bonus Hunt Admin</a>
-    <a class="chip" href="/pages/dashboard/admin/bonus_hunt_widget.html">Bonus Hunt Widget</a>
-    <a class="chip" href="/pages/dashboard/admin/pvp_admin.html">PVP Admin</a>
-    <a class="chip" href="/pages/dashboard/admin/lucky7.html">Lucky 7</a>
-    <!-- Quick anchors to sections inside this page -->
-    <a class="chip" href="#raffles">Raffles</a>
-    <a class="chip" href="#claims">Prize Claims</a>
-    <a class="chip" href="#deposits">LBX Deposits</a>
-    <a class="chip" href="#rules">Rules & Jackpot</a>
-    <a class="chip" href="#danger">Danger Zone</a>
-  </div>
-
-  <!-- Local unlock (UX visibility only) -->
-  <div id="gate" class="gate">
-    <div class="row">
-      <span class="pill">Unlock Admin Panels (local)</span>
-      <input id="gate-u" placeholder="Username" style="width:160px" autocomplete="username">
-      <input id="gate-p" placeholder="Password" type="password" style="width:160px" autocomplete="current-password">
-      <button id="gate-unlock" class="ok">Unlock</button>
-      <button id="gate-lock" class="danger">Lock</button>
-      <span id="gate-status" class="pill">Locked</span>
-      <span class="hint">Shows/hides locally; API still needs the server cookie.</span>
-    </div>
-  </div>
-
-  <div id="grid" class="grid" style="display:none">
-
-    <!-- RAFFLES MANAGER -->
-    <div class="panel full" id="raffles">
-      <h2>Raffles Manager</h2>
-      <div class="row">
-        <input id="rfId"    placeholder="RID (slug)" style="width:180px;text-transform:uppercase">
-        <input id="rfTitle" placeholder="Title for players" style="width:320px">
-        <button id="rfCreate" class="ok">Create</button>
-        <button id="rfDeleteAll" class="danger">Delete ALL raffles</button>
-        <span id="rfMsg" class="pill">Ready</span>
+  <!-- Main Content -->
+  <main class="main">
+    <section id="overview" class="card">
+      <h2>Overview</h2>
+      <div class="kpi">
+        <span class="badge">Month: <span id="jpMonth">—</span></span>
+        <span class="badge">Per Sub (AUD): <span id="jpPer">—</span></span>
       </div>
-      <div class="hr"></div>
-      <div class="mini">Open raffles appear first. Click “Manage” to view entries, draw, or clear.</div>
-      <div style="max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:8px">
-        <table class="tbl" id="rfTbl">
-          <thead><tr><th>RID</th><th>Title</th><th>Status</th><th>Winner</th><th>Created</th><th>Actions</th></tr></thead>
-          <tbody></tbody>
-        </table>
+      <div style="margin-top:10px">
+        <div class="muted">Current Jackpot</div>
+        <div class="jackpot" id="jpAmount">A$ —</div>
       </div>
-      <div class="hr"></div>
-      <div id="rfDetail" style="display:none">
-        <div class="row">
-          <span class="pill" id="dRid">RID: —</span>
-          <span class="pill" id="dTitle">Title: —</span>
-          <span class="pill" id="dStatus">Status: —</span>
-          <button id="dOpen"  class="ok">Open</button>
-          <button id="dClose" class="warn">Close</button>
-          <button id="dClear" class="danger">Clear Entries</button>
-          <button id="dDraw"  class="ok">Draw Winner</button>
-          <span id="dMsg" class="pill">—</span>
-        </div>
-        <div class="hr"></div>
-        <div class="mini">Entries</div>
-        <div style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px">
-          <table class="tbl" id="rfEntries">
-            <thead><tr><th>#</th><th>User</th><th>Time</th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    </section>
 
-    <!-- Prize Claims -->
-    <div class="panel full" id="claims">
-      <h2>Prize Claims</h2>
-      <div class="row">
-        <button id="pcRefresh" class="ok">Refresh</button>
-        <select id="pcFilter">
-          <option value="pending" selected>Pending</option>
-          <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
-          <option value="all">All</option>
-        </select>
-        <span id="pcMsg" class="pill">Ready</span>
-      </div>
-      <div class="hr"></div>
-      <div style="max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:10px">
-        <table class="tbl" id="pcTbl">
-          <thead>
-            <tr>
-              <th>ID</th><th>User</th><th>Raffle</th><th>Affiliate</th>
-              <th>Asset</th><th>Chain</th><th>Wallet</th><th>Created</th><th>Status</th><th>Actions</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
+    <section id="leaderboard" class="card">
+      <h2>Leaderboard</h2>
+      <div class="muted">Coming soon (front-end only placeholder).</div>
+    </section>
 
-    <!-- VIP Wallet -->
-    <div class="panel">
-      <h2>VIP — Wallet Adjust</h2>
-      <div class="row">
-        <input id="vipUser" placeholder="USERNAME" style="width:160px;text-transform:uppercase">
-        <input id="vipAmt" type="number" step="1" placeholder="Amount LBX" style="width:140px">
-        <input id="vipReason" placeholder="Reason (VIP, prize, fix…)" style="width:220px">
-        <button id="vipCredit" class="ok">Credit</button>
-        <button id="vipDebit" class="danger">Debit</button>
-        <span id="vipMsg" class="pill">Ready</span>
-      </div>
-      <div class="hr"></div>
-      <div class="row"><button id="vipCheck">Check Balance</button><span id="vipBal" class="badge">—</span></div>
-      <div class="hint">Prefers <code>/api/wallet/adjust</code>; falls back to signed credit if needed.</div>
-    </div>
+    <section id="battleground" class="card">
+      <h2>Battleground</h2>
+      <div class="muted">Front-end widget placeholder.</div>
+    </section>
 
-    <!-- Deposits -->
-    <div class="panel" id="deposits">
-      <h2>LBX Deposits (Orders)</h2>
-      <div class="row"><button id="depRefresh">Refresh Pending</button><span id="depMsg" class="pill">Ready</span></div>
-      <div class="hr"></div>
-      <div style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px">
-        <table class="tbl" id="depTbl">
-          <thead><tr><th>ID</th><th>User</th><th>LBX</th><th>Method</th><th>Created</th><th>Actions</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
+    <section id="bonus" class="card">
+      <h2>Bonus Hunt</h2>
+      <div class="muted">Front-end widget placeholder.</div>
+    </section>
 
-    <!-- Events + Rules + Jackpot -->
-    <div class="panel full" id="rules">
-      <div class="row" style="align-items:flex-end">
-        <h2 style="margin-right:12px">Live Events • Rules • Jackpot</h2>
-        <span id="jackpotBadge" class="badge">Jackpot: —</span>
-        <span id="jackpotMonth" class="badge">Month: —</span>
-        <span class="right mini">AUD • configurable per sub/resub/gift</span>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <button id="evtRefresh">Refresh Events</button>
-        <span class="pill">Rules</span>
-        <label>SUB_NEW LBX <input id="rSUBNEW" type="number" step="1" style="width:80px"></label>
-        <label>SUB_RENEW LBX <input id="rSUBRENEW" type="number" step="1" style="width:80px"></label>
-        <label>GIFT (gifter/each) <input id="rGIFTG" type="number" step="1" style="width:80px"></label>
-        <label>GIFT (recipient) <input id="rGIFTR" type="number" step="1" style="width:80px"></label>
-        <label>Cap / 24h <input id="rCAP" type="number" step="1" style="width:90px"></label>
-        <label>$ / sub (AUD) <input id="rAUD" type="number" step="0.01" style="width:100px"></label>
-        <button id="rulesSave" class="ok">Save Rules</button>
-        <span id="rulesMsg" class="pill">Ready</span>
+    <section id="pvp" class="card">
+      <h2>PVP</h2>
+      <div class="muted">Front-end widget placeholder.</div>
+    </section>
 
-        <span class="right"></span>
-        <label>Adjust Jackpot (AUD) <input id="jpDelta" type="number" step="0.01" style="width:120px"></label>
-        <input id="jpReason" placeholder="Reason" style="width:240px">
-        <button id="jpApply" class="ok">Apply</button>
-      </div>
-
-      <div class="hr"></div>
-      <div class="mini">Recent Events</div>
-      <div style="max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:10px">
-        <table class="tbl" id="evtTbl">
-          <thead><tr><th>Time</th><th>Type</th><th>User</th><th>Qty</th><th>Recipients</th><th>Applied</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Danger Zone -->
-    <div class="panel full" id="danger">
-      <h2>Danger Zone</h2>
-      <div class="row" style="align-items:center">
-        <label>Player Username
-          <input id="dzUser" placeholder="e.g. LASH3Z" style="width:160px;text-transform:uppercase">
-        </label>
-        <button id="dzResetPlayer" class="warn">Reset Player Points</button>
-        <span class="hint">Clears local point keys for that user. Wallet LBX untouched.</span>
-      </div>
-      <div class="hr"></div>
-      <div class="row"><button id="dzResetAll" class="danger">Reset ALL Points (Everyone)</button><span class="hint">Wipes all players’ local point keys. Wallets unaffected.</span></div>
-      <div class="hr"></div>
-      <div class="row"><button id="dzResetLeaderboard" class="ok">Reset Leaderboard (No Points)</button><span id="dzMsg" class="pill">Ready</span></div>
-    </div>
-
-  </div>
+    <section id="lucky7" class="card">
+      <h2>Lucky 7</h2>
+      <div class="muted">Front-end widget placeholder.</div>
+    </section>
+  </main>
 </div>
 
-<div id="toast" class="toast">Saved.</div>
-
 <script>
 (function(){
   "use strict";
-  const $=(s,r=document)=>r.querySelector(s);
-  const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
-  const up=s=>(s||"").trim().toUpperCase();
-  const toast=t=>{ const b=$("#toast"); b.textContent=t; b.classList.add("on"); setTimeout(()=>b.classList.remove("on"),1400); };
 
-  // logout
-  $("#adminLogout").addEventListener("click", async (e)=>{
-    e.preventDefault();
-    try{ await fetch("/api/admin/gate/logout",{method:"POST",credentials:"include"}); }catch{}
-    try{ localStorage.removeItem("l3z:admin:unlocked"); }catch{}
-    location.href="/index.html";
+  // Toggle header buttons depending on admin cookie
+  async function checkAdmin() {
+    try{
+      const r = await fetch("/api/admin/gate/check", { credentials:"include", cache:"no-store" });
+      const ok = r.ok ? await r.json() : null;
+      const isAdmin = !!(ok && ok.admin);
+      document.getElementById("btnAdminLogin").classList.toggle("hidden", isAdmin);
+      document.getElementById("btnAdminHub").classList.toggle("hidden", !isAdmin);
+      document.getElementById("btnLogout").classList.toggle("hidden", !isAdmin);
+    }catch{
+      // no cookie or endpoint—stay in public mode
+    }
+  }
+
+  // Logout (stays on homepage after)
+  document.getElementById("btnLogout").addEventListener("click", async () => {
+    try { await fetch("/api/admin/gate/logout", { method:"POST", credentials:"include" }); } catch {}
+    // also clear any local “unlocked” keys from your admin pages (defensive)
+    try { localStorage.removeItem("l3z:admin:unlocked"); } catch {}
+    await checkAdmin();
   });
 
-  // local unlock show/hide
-  const unlocked=()=> localStorage.getItem("l3z:admin:unlocked")==="1";
-  function syncGate(){ $("#gate-status").textContent = unlocked() ? "Unlocked" : "Locked"; $("#grid").style.display = unlocked() ? "" : "none"; }
-  $("#gate-unlock").addEventListener("click", ()=>{ if($("#gate-u").value && $("#gate-p").value){ localStorage.setItem("l3z:admin:unlocked","1"); syncGate(); toast("Panels unlocked"); refreshAll(); } else toast("Enter credentials"); });
-  $("#gate-lock").addEventListener("click", ()=>{ localStorage.removeItem("l3z:admin:unlocked"); syncGate(); });
-
-  const j = {
-    async get(u){ const r=await fetch(u,{credentials:"include",cache:"no-store"}); if(!r.ok) throw new Error(r.status); return r.json(); },
-    async post(u,b){ const r=await fetch(u,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})}); if(!r.ok) throw new Error(r.status); return r.json(); },
-    async put(u,b){ const r=await fetch(u,{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})}); if(!r.ok) throw new Error(r.status); return r.json(); },
-    async del(u){ const r=await fetch(u,{method:"DELETE",credentials:"include"}); if(!r.ok) throw new Error(r.status); return r.json(); }
-  };
-
-  /* ---------- RAFFLES ---------- */
-  let currentRID=null;
-  async function rfList(){
+  // Fetch jackpot
+  async function loadJackpot(){
     try{
-      const a = await j.get("/api/raffles");
-      const tb=$("#rfTbl tbody");
-      tb.innerHTML = (a.raffles||[]).map(r=>`
-        <tr data-rid="${r.rid}">
-          <td><b>${r.rid}</b></td><td>${r.title||""}</td><td>${r.open?"OPEN":"CLOSED"}</td>
-          <td>${r.winner||"—"}</td><td>${new Date(r.createdAt||Date.now()).toLocaleString()}</td>
-          <td>
-            <button data-act="open" class="ok" ${r.open?"disabled":""}>Open</button>
-            <button data-act="close" class="warn" ${!r.open?"disabled":""}>Close</button>
-            <button data-act="manage">Manage</button>
-          </td>
-        </tr>`).join("") || `<tr><td colspan="6" class="mini">No raffles yet.</td></tr>`;
-      tb.querySelectorAll("button[data-act]").forEach(btn=>{
-        btn.addEventListener("click", async ()=>{
-          const rid=btn.closest("tr").getAttribute("data-rid");
-          if(btn.dataset.act==="manage"){ loadDetail(rid); return; }
-          try{
-            btn.disabled=true;
-            if(btn.dataset.act==="open"){ await j.put(`/api/raffles/${encodeURIComponent(rid)}/open`,{open:true}); toast("Opened"); }
-            if(btn.dataset.act==="close"){ await j.put(`/api/raffles/${encodeURIComponent(rid)}/open`,{open:false}); toast("Closed"); }
-            rfList(); if(currentRID===rid) loadDetail(rid);
-          }catch{ toast("Action failed"); } finally{ btn.disabled=false; }
-        });
-      });
-    }catch{ $("#rfMsg").textContent="Load failed"; }
+      const r = await fetch("/api/jackpot", { cache:"no-store" });
+      if(!r.ok) throw 0;
+      const a = await r.json();
+      const amt = Number(a.amount ?? a.pot ?? 0).toFixed(2);
+      document.getElementById("jpAmount").textContent = "A$ " + amt;
+      document.getElementById("jpMonth").textContent  = a.month || "—";
+      document.getElementById("jpPer").textContent    = (a.perSubAUD ?? a.jackpotPerSubAUD ?? 2.50).toFixed ? (a.perSubAUD ?? a.jackpotPerSubAUD ?? 2.50).toFixed(2) : (a.perSubAUD ?? a.jackpotPerSubAUD ?? 2.50);
+    }catch{
+      document.getElementById("jpAmount").textContent = "A$ —";
+      document.getElementById("jpMonth").textContent  = "—";
+      document.getElementById("jpPer").textContent    = "—";
+    }
   }
-  async function rfCreate(){
-    const rid=up($("#rfId").value||""); const title=($("#rfTitle").value||"").trim();
-    if(!rid||!title) return toast("Enter RID and Title");
-    try{
-      const b=$("#rfCreate"); b.disabled=true;
-      await j.post("/api/raffles",{rid,title});
-      $("#rfId").value=""; $("#rfTitle").value="";
-      toast("Raffle created"); rfList();
-    }catch{ toast("Create failed"); } finally{ $("#rfCreate").disabled=false; }
-  }
-  async function rfDeleteAll(){
-    if(!confirm("Delete ALL raffles (including entries)?")) return;
-    try{
-      const b=$("#rfDeleteAll"); b.disabled=true;
-      await j.del("/api/raffles");
-      toast("All raffles deleted"); $("#rfDetail").style.display="none"; currentRID=null; rfList();
-    }catch{ toast("Delete failed"); } finally{ $("#rfDeleteAll").disabled=false; }
-  }
-  async function loadDetail(rid){
-    try{
-      const a = await j.get(`/api/raffles/${encodeURIComponent(rid)}/entries`);
-      currentRID = a.rid;
-      $("#rfDetail").style.display="";
-      $("#dRid").textContent="RID: "+(a.rid||rid); $("#dTitle").textContent="Title: "+(a.title||"");
-      $("#dStatus").textContent="Status: "+(a.open?"OPEN":"CLOSED");
-      $("#dOpen").disabled=a.open; $("#dClose").disabled=!a.open;
-      $("#rfEntries tbody").innerHTML = (a.entries||[]).map((e,i)=>`<tr><td>${i+1}</td><td>${e.user||""}</td><td>${new Date(e.ts||Date.now()).toLocaleString()}</td></tr>`).join("") || `<tr><td colspan="3" class="mini">No entries yet.</td></tr>`;
-      $("#dMsg").textContent = a.winner ? ("Winner: "+a.winner) : "—";
-    }catch{ toast("Load failed"); }
-  }
-  $("#rfCreate").addEventListener("click", rfCreate);
-  $("#rfDeleteAll").addEventListener("click", rfDeleteAll);
-  $("#dOpen").addEventListener("click", async ()=>{ if(!currentRID) return; try{ $("#dOpen").disabled=true; await j.put(`/api/raffles/${encodeURIComponent(currentRID)}/open`,{open:true}); toast("Opened"); }catch{ toast("Open failed"); } finally{ $("#dOpen").disabled=false; loadDetail(currentRID); rfList(); } });
-  $("#dClose").addEventListener("click", async ()=>{ if(!currentRID) return; try{ $("#dClose").disabled=true; await j.put(`/api/raffles/${encodeURIComponent(currentRID)}/open`,{open:false}); toast("Closed"); }catch{ toast("Close failed"); } finally{ $("#dClose").disabled=false; loadDetail(currentRID); rfList(); } });
-  $("#dClear").addEventListener("click", async ()=>{ if(!currentRID) return; if(!confirm("Clear entries and reopen?")) return; try{ $("#dClear").disabled=true; await j.del(`/api/raffles/${encodeURIComponent(currentRID)}/entries`); toast("Cleared"); }catch{ toast("Clear failed"); } finally{ $("#dClear").disabled=false; loadDetail(currentRID); rfList(); } });
-  $("#dDraw").addEventListener("click", async ()=>{ if(!currentRID) return; try{ $("#dDraw").disabled=true; const r=await j.post(`/api/raffles/${encodeURIComponent(currentRID)}/draw`); toast("Winner: "+(r.winner||"—")); }catch{ toast("Draw failed"); } finally{ $("#dDraw").disabled=false; loadDetail(currentRID); rfList(); } });
 
-  /* ---------- Prize Claims ---------- */
-  async function pcRefresh(){
-    const filter=$("#pcFilter").value;
-    try{
-      const a = await j.get(`/api/prize-claims?status=${encodeURIComponent(filter)}`);
-      const tb=$("#pcTbl tbody");
-      tb.innerHTML = (a.claims||[]).map(c=>{
-        const short = c.walletAddr ? (c.walletAddr.slice(0,6)+"…"+c.walletAddr.slice(-6)) : "—";
-        return `<tr data-id="${c._id}">
-          <td>${c._id}</td>
-          <td>${c.user}</td>
-          <td>${c.raffleRid||"—"}</td>
-          <td>${c.affiliate||"—"}</td>
-          <td>${c.asset||"—"}</td>
-          <td>${c.chain||"—"}</td>
-          <td title="${c.walletAddr||""}">${short}</td>
-          <td>${new Date(c.createdAt||Date.now()).toLocaleString()}</td>
-          <td>${c.status}</td>
-          <td>
-            <button data-act="view">View</button>
-            <button data-act="approve" class="ok">Approve</button>
-            <button data-act="reject" class="danger">Reject</button>
-          </td>
-        </tr>`;
-      }).join("") || `<tr><td colspan="10" class="mini">No claims.</td></tr>`;
+  // Kill any old service worker caches that could hijack routing
+  (async () => {
+    try {
+      const regs = await (navigator.serviceWorker?.getRegistrations?.() || []);
+      for (const r of regs) await r.unregister();
+      if (window.caches) {
+        const keys = await caches.keys();
+        for (const k of keys) await caches.delete(k);
+      }
+    } catch {}
+  })();
 
-      tb.querySelectorAll("button[data-act]").forEach(btn=>{
-        btn.addEventListener("click", async ()=>{
-          const id = btn.closest("tr").getAttribute("data-id");
-          try{
-            btn.disabled=true;
-            if(btn.dataset.act==="view"){
-              const a = await j.get(`/api/prize-claims/${encodeURIComponent(id)}`);
-              if(a?.claim?.screenshot){ window.open(`/api/prize-claims/${encodeURIComponent(id)}/image`, "_blank"); }
-              else toast("No screenshot attached");
-            }else{
-              const status = btn.dataset.act==="approve" ? "approved" : "rejected";
-              await j.post(`/api/prize-claims/${encodeURIComponent(id)}/status`, { status });
-              toast("Marked "+status);
-              pcRefresh();
-            }
-          }catch{ toast("Action failed"); }
-          finally{ btn.disabled=false; }
-        });
-      });
-    }catch{ $("#pcMsg").textContent="Load failed"; }
-  }
-  $("#pcRefresh").addEventListener("click", pcRefresh);
-  $("#pcFilter").addEventListener("change", pcRefresh);
-
-  /* ---------- VIP / Deposits / Rules / Jackpot / Danger Zone ---------- */
-  async function vipAdjust(sign){
-    const user=($("#vipUser").value||"").trim().toUpperCase();
-    const amt=Number($("#vipAmt").value||0);
-    const reason=($("#vipReason").value||"ADMIN").trim();
-    if(!user||!(amt>0)) return toast("Enter USER and positive AMOUNT");
-    try{
-      let ok=false;
-      try{ const r=await fetch("/api/wallet/adjust",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:user,delta:sign<0?-amt:amt,reason})}); ok=r.ok; }catch{}
-      if(!ok) await j.post("/api/wallet/credit",{username:user,amount:sign<0?-amt:amt,reason});
-      toast("Wallet updated"); vipCheck();
-    }catch{ toast("Wallet update failed"); }
-  }
-  async function vipCheck(){
-    const user=($("#vipUser").value||"").trim().toUpperCase();
-    if(!user){ $("#vipBal").textContent="—"; return; }
-    try{
-      let a=null; try { a = await j.get("/api/wallet/balance?user="+encodeURIComponent(user)); } catch {}
-      if(!a){ try { a = await j.get("/api/wallet/me?viewer="+encodeURIComponent(user)); } catch {} }
-      $("#vipBal").textContent = a ? ("LBX "+Number(a?.balance||a?.wallet?.balance||0).toFixed(0)) : "(no endpoint)";
-    }catch{ $("#vipBal").textContent="(error)"; }
-  }
-  $("#vipCredit").addEventListener("click",()=>vipAdjust(+1));
-  $("#vipDebit").addEventListener("click",()=>vipAdjust(-1));
-  $("#vipCheck").addEventListener("click",vipCheck);
-
-  async function depRefresh(){
-    const tb=$("#depTbl tbody");
-    tb.innerHTML = `<tr><td colspan="6" class="mini">Loading…</td></tr>`;
-    try{
-      const r=await fetch("/api/deposits/pending",{credentials:"include",cache:"no-store"});
-      if(!r.ok){ tb.innerHTML=`<tr><td colspan="6" class="mini">No backend (/api/deposits/pending not found)</td></tr>`; return; }
-      const a=await r.json();
-      tb.innerHTML = (a?.orders||[]).map(o=>`
-        <tr>
-          <td>${o.id||o._id||""}</td><td>${o.user||""}</td><td>${o.lbx||o.amount||""}</td>
-          <td>${o.method||""}</td><td>${new Date(o.created||o.ts||Date.now()).toLocaleString()}</td>
-          <td><button data-act="approve" data-id="${o.id||o._id}" class="ok">Approve</button>
-              <button data-act="reject"  data-id="${o.id||o._id}" class="danger">Reject</button></td>
-        </tr>`).join("") || `<tr><td colspan="6" class="mini">No pending orders.</td></tr>`;
-      tb.querySelectorAll("button[data-act]").forEach(btn=>{
-        btn.addEventListener("click", async ()=>{
-          const id=btn.getAttribute("data-id"), act=btn.getAttribute("data-act");
-          try{
-            btn.disabled=true;
-            const url = act==="approve" ? "/api/deposits/"+encodeURIComponent(id)+"/approve" : "/api/deposits/"+encodeURIComponent(id)+"/reject";
-            const r=await fetch(url,{method:"POST",credentials:"include"}); if(!r.ok) throw 0;
-            toast("Order "+act); depRefresh();
-          }catch{ toast("Order action failed"); }
-          finally{ btn.disabled=false; }
-        });
-      });
-    }catch{ tb.innerHTML=`<tr><td colspan="6" class="mini">Error loading deposits</td></tr>`; }
-  }
-  $("#depRefresh").addEventListener("click",depRefresh);
-
-  async function loadRules(){ try{
-    const a=await j.get("/api/events/rules"); const r=a.rules||{};
-    $("#rSUBNEW").value = Number(r.lbx?.SUB_NEW ?? 10);
-    $("#rSUBRENEW").value = Number(r.lbx?.SUB_RENEW ?? 5);
-    $("#rGIFTG").value = Number(r.lbx?.SUB_GIFT_GIFTER_PER ?? 2);
-    $("#rGIFTR").value = Number(r.lbx?.SUB_GIFT_RECIPIENT ?? 3);
-    $("#rCAP").value    = Number(r.caps?.eventLBXPerUserPerDay ?? 100);
-    $("#rAUD").value    = Number(r.jackpotPerSubAUD ?? 2.50).toFixed(2);
-  }catch{} }
-  async function saveRules(){
-    const body = {
-      lbx:{ SUB_NEW:+($("#rSUBNEW").value||0), SUB_RENEW:+($("#rSUBRENEW").value||0),
-            SUB_GIFT_GIFTER_PER:+($("#rGIFTG").value||0), SUB_GIFT_RECIPIENT:+($("#rGIFTR").value||0) },
-      caps:{ eventLBXPerUserPerDay:+($("#rCAP").value||0) },
-      jackpotPerSubAUD:+($("#rAUD").value||0), jackpotCurrency:"AUD", depositContributesJackpot:false
-    };
-    try{ await j.put("/api/events/rules", body); $("#rulesMsg").textContent="Saved"; toast("Rules saved"); loadJackpot(); }
-    catch{ $("#rulesMsg").textContent="Save failed"; }
-  }
-  $("#rulesSave").addEventListener("click",saveRules);
-
-  async function loadEvents(){ try{
-    const a=await j.get("/api/events/recent?limit=200");
-    $("#evtTbl tbody").innerHTML = (a.events||[]).map(ev=>`
-      <tr>
-        <td>${new Date(ev.ts||Date.now()).toLocaleString()}</td>
-        <td>${ev.type||""}</td><td>${ev.user||""}</td>
-        <td>${+ev.quantity||1}</td><td>${Array.isArray(ev.recipients)?ev.recipients.length:0}</td>
-        <td>${ev.applied?"yes":"no"}</td>
-      </tr>`).join("");
-  }catch{} }
-  $("#evtRefresh").addEventListener("click",loadEvents);
-
-  async function loadJackpot(){ try{
-    const a=await j.get("/api/jackpot"); const amt = Number(a.amount ?? a.pot ?? 0).toFixed(2);
-    $("#jackpotBadge").textContent = "Jackpot: A$ "+amt;
-    $("#jackpotMonth").textContent = "Month: "+(a.month||"—");
-  }catch{ $("#jackpotBadge").textContent="Jackpot: —"; } }
-  async function applyJackpot(){
-    const delta=+($("#jpDelta").value||0); const reason=($("#jpReason").value||"ADJUST").trim();
-    if(!delta) return toast("Enter amount");
-    try{ await j.post("/api/jackpot/adjust",{delta,reason}); $("#jpDelta").value=""; $("#jpReason").value=""; toast("Jackpot adjusted"); loadJackpot(); }
-    catch{ toast("Adjust failed"); }
-  }
-  $("#jpApply").addEventListener("click",applyJackpot);
-
-  function setDZ(msg){ const el=$("#dzMsg"); if(el) el.textContent=msg; }
-  function clearLeaderboardCachesLocal(){ const toDel=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i)||""; if(k==="users:all" || k.startsWith("leaderboard:") || k.startsWith("rank:")) toDel.push(k); } toDel.forEach(k=>localStorage.removeItem(k)); return toDel.length; }
-  function clearAllPointsLocal(){ const prefixes=["points:bonus:","points:tournament:","points:pvp:","points:lucky7:"]; const toDel=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i)||""; if(prefixes.some(p=>k.startsWith(p)) || /^(points:(bonus|tournament|pvp|lucky7):.*:updatedAt)$/.test(k)){ toDel.push(k); } } toDel.forEach(k=>localStorage.removeItem(k)); return toDel.length; }
-  function clearPlayerPointsLocal(user){ if(!user) return 0; const keys=[`points:bonus:${user}`,`points:tournament:${user}`,`points:pvp:${user}`,`points:lucky7:${user}`,`points:bonus:${user}:updatedAt`,`points:tournament:${user}:updatedAt`,`points:pvp:${user}:updatedAt`,`points:lucky7:${user}:updatedAt`]; let n=0; keys.forEach(k=>{ if(localStorage.getItem(k)!=null){ localStorage.removeItem(k); n++; } }); return n; }
-  $("#dzResetPlayer").addEventListener("click", ()=>{ const u=up($("#dzUser").value||""); if(!u) return setDZ("Enter username"); const n=clearPlayerPointsLocal(u); setDZ(`Player ${u}: cleared ${n} point keys`); });
-  $("#dzResetAll").addEventListener("click", ()=>{ if(!confirm("Wipe ALL players’ local points?")) return; const n=clearAllPointsLocal(); setDZ(`All points cleared: ${n} keys`); });
-  $("#dzResetLeaderboard").addEventListener("click", ()=>{ const n=clearLeaderboardCachesLocal(); setDZ(`Leaderboard caches cleared: ${n} keys`); });
-
-  function refreshAll(){ rfList(); pcRefresh(); loadRules(); loadEvents(); loadJackpot(); depRefresh(); }
-  syncGate(); if(unlocked()) refreshAll();
+  checkAdmin();
+  loadJackpot();
 })();
 </script>
 </body>
