@@ -89,44 +89,30 @@
 
   <div id="grid" class="grid" style="display:none">
 
-    <!-- RAFFLES -->
+    <!-- RAFFLES (single system: deploy -> open/close -> refresh -> draw) -->
     <div class="panel">
       <h2>Raffles</h2>
-      <div class="row">
-        <input id="raffleId" placeholder="RAFFLE ID" style="width:160px">
-        <input id="raffleUser" placeholder="USERNAME (add entry)" style="width:200px;text-transform:uppercase">
-        <button id="raffleAdd" class="ok">Add Entry</button>
+      <div class="row" style="margin-bottom:6px">
+        <input id="raffleId" placeholder="RAFFLE NAME / ID" style="width:220px">
+        <button id="rfDeploy" class="ok">Deploy</button>
+        <button id="rfUseCur">Use Current</button>
+        <button id="rfOpen" class="ok">Open</button>
+        <button id="rfClose" class="danger">Close</button>
         <button id="raffleRefresh">Refresh</button>
         <button id="raffleDraw">Draw Winner (local)</button>
         <span id="raffleMsg" class="pill">Ready</span>
+      </div>
+      <div class="row" style="margin-bottom:8px">
+        <input id="raffleUser" placeholder="USERNAME (optional manual add)" style="width:220px;text-transform:uppercase">
+        <button id="raffleAdd">Add Entry</button>
+        <span class="hint">Manual add goes to the raffle shown above.</span>
       </div>
       <div class="hr"></div>
       <div class="mini">Entries</div>
       <div style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px">
         <table class="tbl" id="raffleTbl">
           <thead><tr><th>#</th><th>User</th><th>Time</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- GIVEAWAYS (Slot Wheel) -->
-    <div class="panel">
-      <h2>Giveaways (Slot Wheel)</h2>
-      <div class="row">
-        <input id="giveId" placeholder="GIVEAWAY ID" style="width:160px">
-        <input id="giveUser" placeholder="USERNAME (add entry)" style="width:200px;text-transform:uppercase">
-        <button id="giveAdd" class="ok">Add Entry</button>
-        <button id="giveRefresh">Refresh</button>
-        <button id="giveDraw">Draw Winner (local)</button>
-        <span id="giveMsg" class="pill">Ready</span>
-      </div>
-      <div class="hr"></div>
-      <div class="mini">Entries</div>
-      <div style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px">
-        <table class="tbl" id="giveTbl">
-          <thead><tr><th>#</th><th>User</th><th>Time</th></tr></thead>
-          <tbody></tbody>
+          <tbody><tr><td colspan="3" class="mini">No data.</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -198,7 +184,7 @@
       <div style="max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:10px">
         <table class="tbl" id="evtTbl">
           <thead><tr><th>Time</th><th>Type</th><th>User</th><th>Qty</th><th>Recipients</th><th>Applied</th></tr></thead>
-          <tbody></tbody>
+        <tbody></tbody>
         </table>
       </div>
     </div>
@@ -264,21 +250,48 @@
   async function jpost(url, body){ const r=await fetch(url,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(body||{})}); if(!r.ok) throw new Error(r.status); return r.json(); }
   async function jput(url, body){ const r=await fetch(url,{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(body||{})}); if(!r.ok) throw new Error(r.status); return r.json(); }
 
-  // ---- Raffles ----
+  /* =======================
+     RAFFLES (single system)
+     ======================= */
+  async function raffleUseCurrent(){
+    try{
+      const cur = await jget("/api/raffles/public");
+      if (cur.active){ $("#raffleId").value = cur.id; $("#raffleMsg").textContent = "Current: "+cur.id; await raffleRefresh(); }
+      else { $("#raffleMsg").textContent="No active raffle"; }
+    }catch{ $("#raffleMsg").textContent="Server error"; }
+  }
+  async function raffleDeploy(){
+    const id = ($("#raffleId").value||"").trim();
+    if(!id) return toast("Type a raffle name/id first");
+    await jpost("/api/raffles/create",{ id, title:id });
+    $("#raffleMsg").textContent = "Deployed "+id+" and set current";
+    await raffleRefresh();
+  }
+  async function raffleOpen(open){
+    const id=($("#raffleId").value||"").trim();
+    if(!id) return toast("Enter/Use a raffle id first");
+    await jput(`/api/raffles/${encodeURIComponent(id)}/open`, { open });
+    $("#raffleMsg").textContent = open ? "Opened" : "Closed";
+    await raffleRefresh();
+  }
   async function raffleRefresh(){
-    const id=($("#raffleId").value||"").trim(); if(!id) return;
+    // If empty, use current
+    const id=($("#raffleId").value||"").trim();
+    if(!id) return raffleUseCurrent();
     try{
       const res=await jget("/api/raffles/"+encodeURIComponent(id)+"/entries");
       const tb=$("#raffleTbl tbody");
-      tb.innerHTML=(res.entries||[]).map((e,i)=>`<tr><td>${i+1}</td><td>${e.user||""}</td><td>${new Date(e.ts).toLocaleString()}</td></tr>`).join("");
-      $("#raffleMsg").textContent="Loaded "+(res.entries||[]).length;
+      tb.innerHTML=(res.entries||[]).map((e,i)=>`<tr><td>${i+1}</td><td>${e.user||""}</td><td>${new Date(e.ts).toLocaleString()}</td></tr>`).join("")
+        || `<tr><td colspan="3" class="mini">No entries yet.</td></tr>`;
+      $("#raffleMsg").textContent="Loaded "+(res.entries?.length||0);
     }catch{ $("#raffleMsg").textContent="Error loading"; }
   }
   async function raffleAdd(){
     const id=($("#raffleId").value||"").trim();
     const user=($("#raffleUser").value||"").trim().toUpperCase();
     if(!id||!user) return toast("Enter RAFFLE ID and USERNAME");
-    try{ await jpost("/api/raffles/"+encodeURIComponent(id)+"/entries",{user}); toast("Entry added"); $("#raffleUser").value=""; raffleRefresh(); }catch{ toast("Add failed"); }
+    try{ await jpost("/api/raffles/"+encodeURIComponent(id)+"/entries",{user}); toast("Entry added"); $("#raffleUser").value=""; raffleRefresh(); }
+    catch{ toast("Add failed"); }
   }
   function raffleDrawLocal(){
     const rows=$$("#raffleTbl tbody tr"); if(!rows.length) return toast("No entries");
@@ -286,35 +299,13 @@
     rows.forEach((tr,i)=>{ tr.style.outline = i===idx ? "2px solid var(--gold)" : "none"; });
     toast("Winner (local): "+rows[idx].children[1].textContent);
   }
+  $("#rfDeploy").addEventListener("click",raffleDeploy);
+  $("#rfUseCur").addEventListener("click",raffleUseCurrent);
+  $("#rfOpen").addEventListener("click",()=>raffleOpen(true));
+  $("#rfClose").addEventListener("click",()=>raffleOpen(false));
   $("#raffleRefresh").addEventListener("click",raffleRefresh);
   $("#raffleAdd").addEventListener("click",raffleAdd);
   $("#raffleDraw").addEventListener("click",raffleDrawLocal);
-
-  // ---- Giveaways (Slot Wheel) ----
-  async function giveRefresh(){
-    const id=($("#giveId").value||"").trim(); if(!id) return;
-    try{
-      const res=await jget("/api/giveaways/slotwheel/"+encodeURIComponent(id)+"/entries");
-      const tb=$("#giveTbl tbody");
-      tb.innerHTML=(res.entries||[]).map((e,i)=>`<tr><td>${i+1}</td><td>${e.user||""}</td><td>${new Date(e.ts).toLocaleString()}</td></tr>`).join("");
-      $("#giveMsg").textContent="Loaded "+(res.entries||[]).length;
-    }catch{ $("#giveMsg").textContent="Error loading"; }
-  }
-  async function giveAdd(){
-    const id=($("#giveId").value||"").trim();
-    const user=($("#giveUser").value||"").trim().toUpperCase();
-    if(!id||!user) return toast("Enter GIVEAWAY ID and USERNAME");
-    try{ await jpost("/api/giveaways/slotwheel/"+encodeURIComponent(id)+"/entries",{user}); toast("Entry added"); $("#giveUser").value=""; giveRefresh(); }catch{ toast("Add failed"); }
-  }
-  function giveDrawLocal(){
-    const rows=$$("#giveTbl tbody tr"); if(!rows.length) return toast("No entries");
-    const idx=Math.floor(Math.random()*rows.length);
-    rows.forEach((tr,i)=>{ tr.style.outline = i===idx ? "2px solid var(--gold)" : "none"; });
-    toast("Winner (local): "+rows[idx].children[1].textContent);
-  }
-  $("#giveRefresh").addEventListener("click",giveRefresh);
-  $("#giveAdd").addEventListener("click",giveAdd);
-  $("#giveDraw").addEventListener("click",giveDrawLocal);
 
   // ---- VIP wallet ----
   async function vipAdjust(sign){
@@ -491,7 +482,7 @@
   $("#dzResetLeaderboard").addEventListener("click", resetLeaderboardOnly);
 
   // ---- Master refresh ----
-  function refreshAll(){ loadRules(); loadEvents(); loadJackpot(); depRefresh(); raffleRefresh(); giveRefresh(); }
+  function refreshAll(){ loadRules(); loadEvents(); loadJackpot(); depRefresh(); raffleUseCurrent(); }
 
   // boot
   syncGate(); if(unlocked()) refreshAll();
