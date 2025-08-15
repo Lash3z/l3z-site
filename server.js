@@ -1,11 +1,11 @@
-// server.js — Homepage-first routing, admin resolvers & aliases, JSON+form login
+// server.js — homepage-first, admin aliases, JSON+form login, + PVP API (DB or memory)
 import fs from "fs";
 import path from "path";
 import express from "express";
 import cookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
 import { fileURLToPath } from "url";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -29,12 +29,10 @@ const ALLOW_MEMORY_FALLBACK = (process.env.ALLOW_MEMORY_FALLBACK || "true") === 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 
-// Where static files are served from. Override with PUBLIC_DIR if needed.
 const PUBLIC_DIR = process.env.PUBLIC_DIR
   ? path.resolve(process.env.PUBLIC_DIR)
   : __dirname;
 
-// Home page file (relative to PUBLIC_DIR unless absolute)
 const HOME_INDEX = (() => {
   const val = process.env.HOME_INDEX || "index.html";
   return path.isAbsolute(val) ? val : path.join(PUBLIC_DIR, val);
@@ -43,7 +41,7 @@ const HOME_INDEX = (() => {
 function existsSync(p) { try { fs.accessSync(p); return true; } catch { return false; } }
 const HAS_HOME = existsSync(HOME_INDEX);
 
-// Helper to resolve the first existing file from a list (relative to PUBLIC_DIR unless absolute)
+// Resolve first matching admin login/hub file
 function resolveFirstExisting(candidates) {
   for (const rel of candidates) {
     const abs = path.isAbsolute(rel) ? rel : path.join(PUBLIC_DIR, rel);
@@ -51,29 +49,18 @@ function resolveFirstExisting(candidates) {
   }
   return null;
 }
-
-// Admin file resolvers (cover common repo paths)
-const ADMIN_LOGIN_CANDIDATES = [
+const ADMIN_LOGIN_FILE = resolveFirstExisting([
   process.env.ADMIN_LOGIN_FILE || "pages/dashboard/home/admin_login.html",
   "pages/dashboard/home/login.html",
-  "pages/dashboard/admin/admin_login.html",
   "admin_login.html",
   "admin/index.html",
-  "admin.html",
-  "pages/admin/login.html",
-  "pages/dashboard/home/login_admin.html"
-];
-
-const ADMIN_HUB_CANDIDATES = [
+]);
+const ADMIN_HUB_FILE = resolveFirstExisting([
   process.env.ADMIN_HUB_FILE || "pages/dashboard/admin/admin_hub.html",
   "admin/admin_hub.html",
-  "pages/admin/admin_hub.html"
-];
+]);
 
-const ADMIN_LOGIN_FILE = resolveFirstExisting(ADMIN_LOGIN_CANDIDATES);
-const ADMIN_HUB_FILE   = resolveFirstExisting(ADMIN_HUB_CANDIDATES);
-
-// ===== In-memory stores (keeps UI functional without DB)
+// ===== In-memory stores
 const memory = {
   jackpot: { amount: 0, month: new Date().toISOString().slice(0,7), perSubAUD: 2.5 },
   rules: {
@@ -85,7 +72,8 @@ const memory = {
   wallets: {},
   raffles: [],
   claims: [],
-  deposits: []
+  deposits: [],
+  pvpEntries: []   // <— NEW: server copy when DB not available
 };
 
 // ===== App
@@ -93,7 +81,7 @@ const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 
-// Light safety headers
+// Light headers
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "no-referrer-when-downgrade");
@@ -101,7 +89,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Body parsers: JSON *and* forms
+// Parsers
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
@@ -128,26 +116,22 @@ function verifyAdminToken(req, res, next) {
   catch { return res.status(401).json({ error: "Unauthorized" }); }
 }
 
-// ===== Admin auth (accepts JSON or form fields)
+// ===== Admin auth (JSON or form)
 app.post(["/api/admin/gate/login", "/api/admin/login"], (req, res) => {
-  const body = req.body || {};
-  const username = (body.username || body.user || body.email || "").toString().trim();
-  const password = (body.password || body.pass || body.pwd || "").toString();
+  const b = req.body || {};
+  const username = (b.username || b.user || b.email || "").toString().trim();
+  const password = (b.password || b.pass || b.pwd || "").toString();
   if (!username || !password) return res.status(400).json({ error: "Missing credentials" });
 
   if (username.toLowerCase() === ADMIN_USER && password === ADMIN_PASS) {
     res.cookie("admin_token", generateAdminToken(username.toLowerCase()), {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: NODE_ENV === "production",
-      maxAge: 1000 * 60 * 60 * 12,
-      path: "/",
+      httpOnly: true, sameSite: "lax", secure: NODE_ENV === "production",
+      maxAge: 1000 * 60 * 60 * 12, path: "/",
     });
     return res.json({ success: true, admin: true, username: username.toLowerCase() });
   }
   return res.status(401).json({ error: "Invalid credentials" });
 });
-
 app.post(["/api/admin/gate/logout", "/api/admin/logout"], (req, res) => {
   res.clearCookie("admin_token", { path: "/" });
   res.json({ success: true });
@@ -173,23 +157,23 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// ===== Public homepage (always at /)
+// ===== Home
 app.get("/", (req, res) => {
   if (HAS_HOME) return res.sendFile(HOME_INDEX);
   res.status(200).send("Homepage not found: put index.html in PUBLIC_DIR or set HOME_INDEX/PUBLIC_DIR correctly.");
 });
 
-// ===== Friendly admin helpers
+// ===== Admin helper pages
 app.get("/admin/login", (req, res) => {
   if (ADMIN_LOGIN_FILE) return res.sendFile(ADMIN_LOGIN_FILE);
-  res.status(404).send("Admin login page not found (check ADMIN_LOGIN_FILE or your /pages/... path).");
+  res.status(404).send("Admin login page not found.");
 });
 app.get("/admin/hub", (req, res) => {
   if (ADMIN_HUB_FILE) return res.sendFile(ADMIN_HUB_FILE);
-  res.status(404).send("Admin hub page not found (check ADMIN_HUB_FILE or your /pages/... path).");
+  res.status(404).send("Admin hub page not found.");
 });
 
-// ===== Admin aliases (so /admin/<file>.html maps to /pages/dashboard/admin/<file>.html)
+// ===== Admin aliases (/admin/<file>.html → /pages/dashboard/admin/<file>.html)
 const ADMIN_WHITELIST = new Set([
   "bets_admin.html",
   "battleground_admin.html",
@@ -200,13 +184,10 @@ const ADMIN_WHITELIST = new Set([
   "lucky7.html",
   "admin_hub.html"
 ]);
-
-app.get("/admin/:file", (req, res, next) => {
-  const raw = String(req.params.file || "");
-  // normalize and prevent traversal
-  const name = raw.replace(/[^a-zA-Z0-9_.-]/g, "");
-  if (!ADMIN_WHITELIST.has(name)) return res.status(404).send("Not found.");
-  const abs = path.join(PUBLIC_DIR, "pages/dashboard/admin", name);
+app.get("/admin/:file", (req, res) => {
+  const safe = String(req.params.file || "").replace(/[^a-zA-Z0-9_.-]/g, "");
+  if (!ADMIN_WHITELIST.has(safe)) return res.status(404).send("Not found.");
+  const abs = path.join(PUBLIC_DIR, "pages/dashboard/admin", safe);
   if (!existsSync(abs)) return res.status(404).send("Not found.");
   return res.sendFile(abs);
 });
@@ -217,7 +198,7 @@ app.get("/logout", (req, res) => {
   res.redirect(302, "/");
 });
 
-// ===== Static files
+// ===== Static
 app.use(express.static(PUBLIC_DIR, {
   setHeaders(res, filePath) {
     if (/\.(png|jpe?g|gif|webp|svg|woff2?|mp3|mp4)$/i.test(filePath)) {
@@ -228,7 +209,7 @@ app.use(express.static(PUBLIC_DIR, {
   }
 }));
 
-// ===== Minimal APIs (unchanged so your admin UI doesn’t error)
+// ===== Minimal APIs already present (jackpot/rules/wallet/raffles/deposits) …
 app.get("/api/jackpot", (req, res) => {
   res.json({ amount: Number(memory.jackpot.amount || 0), month: memory.jackpot.month, perSubAUD: memory.jackpot.perSubAUD });
 });
@@ -238,7 +219,6 @@ app.post("/api/jackpot/adjust", verifyAdminToken, (req, res) => {
   memory.events.unshift({ ts: Date.now(), type: "JACKPOT_ADJUST", user: req.adminUser, quantity: d, recipients: [], applied: true });
   res.json({ success: true, amount: memory.jackpot.amount });
 });
-
 app.get("/api/events/rules", verifyAdminToken, (req, res) => res.json({ rules: memory.rules }));
 app.put("/api/events/rules", verifyAdminToken, (req, res) => { memory.rules = { ...memory.rules, ...(req.body || {}) }; res.json({ success: true, rules: memory.rules }); });
 app.get("/api/events/recent", verifyAdminToken, (req, res) => { const limit = Math.max(1, Math.min(500, Number(req.query.limit || 200))); res.json({ events: memory.events.slice(0, limit) }); });
@@ -277,10 +257,106 @@ app.get("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => { const r =
 app.delete("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); r.entries = []; r.open = true; r.winner = null; res.json({ success:true }); });
 app.post("/api/raffles/:rid/draw", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); const pool = r.entries || []; r.winner = pool.length ? pool[Math.floor(Math.random()*pool.length)].user : null; res.json({ success:true, winner:r.winner }); });
 
-// ===== Default 404 (prevents accidental admin landings)
-app.use((req, res) => {
-  res.status(404).send("Not found.");
+// ===== NEW: PVP API =====
+// Public submit/update (no auth for now). OPTIONAL: add basic spam guard here if needed.
+app.post("/api/pvp/entries", async (req, res) => {
+  const username = String(req.body?.username || "").trim().toUpperCase();
+  const side     = String(req.body?.side || "").trim().toUpperCase();   // "EAST"/"WEST"
+  const game     = String(req.body?.game || "").trim();
+  if (!username) return res.status(400).json({ error: "username required" });
+
+  const doc = {
+    username, side: side === "WEST" ? "WEST" : "EAST",
+    game,
+    status: "pending",
+    ts: new Date()
+  };
+
+  try {
+    if (globalThis.__dbReady) {
+      const col = globalThis.__db.collection("pvp_entries");
+      // upsert by username (latest wins)
+      await col.updateOne({ username }, { $set: doc }, { upsert: true });
+      const saved = await col.findOne({ username });
+      return res.json({ success: true, entry: saved });
+    } else {
+      const idx = memory.pvpEntries.findIndex(e => e.username === username);
+      if (idx >= 0) memory.pvpEntries[idx] = { ...memory.pvpEntries[idx], ...doc };
+      else memory.pvpEntries.push({ _id: String(Date.now()), ...doc });
+      const saved = memory.pvpEntries.find(e => e.username === username);
+      return res.json({ success: true, entry: saved });
+    }
+  } catch (e) {
+    console.error("[PVP] save failed", e);
+    return res.status(500).json({ error: "save failed" });
+  }
 });
+
+// Admin: list all
+app.get("/api/pvp/entries", verifyAdminToken, async (req, res) => {
+  try {
+    if (globalThis.__dbReady) {
+      const list = await globalThis.__db.collection("pvp_entries")
+        .find().sort({ ts: -1 }).toArray();
+      return res.json({ entries: list });
+    } else {
+      const list = [...memory.pvpEntries].sort((a,b)=> new Date(b.ts) - new Date(a.ts));
+      return res.json({ entries: list });
+    }
+  } catch (e) {
+    console.error("[PVP] list failed", e);
+    return res.status(500).json({ error: "list failed" });
+  }
+});
+
+// Admin: change status
+app.post("/api/pvp/entries/:id/status", verifyAdminToken, async (req, res) => {
+  const status = String(req.body?.status || "").toLowerCase(); // "approved" | "rejected" | "pending"
+  if (!["approved","rejected","pending"].includes(status)) return res.status(400).json({ error: "bad status" });
+
+  try {
+    if (globalThis.__dbReady) {
+      const col = globalThis.__db.collection("pvp_entries");
+      const id = req.params.id;
+      const q = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { username: id.toUpperCase() };
+      const r = await col.updateOne(q, { $set: { status } });
+      return res.json({ success: r.matchedCount > 0 });
+    } else {
+      const id = req.params.id;
+      const i = memory.pvpEntries.findIndex(e => e._id === id || e.username === id.toUpperCase());
+      if (i < 0) return res.json({ success: false });
+      memory.pvpEntries[i].status = status;
+      return res.json({ success: true });
+    }
+  } catch (e) {
+    console.error("[PVP] status failed", e);
+    return res.status(500).json({ error: "status failed" });
+  }
+});
+
+// Admin: delete entry
+app.delete("/api/pvp/entries/:id", verifyAdminToken, async (req, res) => {
+  try {
+    if (globalThis.__dbReady) {
+      const col = globalThis.__db.collection("pvp_entries");
+      const id = req.params.id;
+      const q = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { username: id.toUpperCase() };
+      const r = await col.deleteOne(q);
+      return res.json({ success: r.deletedCount > 0 });
+    } else {
+      const id = req.params.id;
+      const before = memory.pvpEntries.length;
+      memory.pvpEntries = memory.pvpEntries.filter(e => e._id !== id && e.username !== id.toUpperCase());
+      return res.json({ success: memory.pvpEntries.length !== before });
+    }
+  } catch (e) {
+    console.error("[PVP] delete failed", e);
+    return res.status(500).json({ error: "delete failed" });
+  }
+});
+
+// ===== Default 404
+app.use((req, res) => res.status(404).send("Not found."));
 
 // ===== Error handler
 app.use((err, req, res, next) => {
