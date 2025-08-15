@@ -73,7 +73,7 @@ const memory = {
   raffles: [],
   claims: [],
   deposits: [],
-  pvpEntries: []   // <— NEW: server copy when DB not available
+  pvpEntries: []   // <— server copy when DB not available
 };
 
 // ===== App
@@ -258,7 +258,8 @@ app.delete("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => { const 
 app.post("/api/raffles/:rid/draw", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); const pool = r.entries || []; r.winner = pool.length ? pool[Math.floor(Math.random()*pool.length)].user : null; res.json({ success:true, winner:r.winner }); });
 
 // ===== NEW: PVP API =====
-// Public submit/update (no auth for now). OPTIONAL: add basic spam guard here if needed.
+
+// Public submit/update (upsert by username)
 app.post("/api/pvp/entries", async (req, res) => {
   const username = String(req.body?.username || "").trim().toUpperCase();
   const side     = String(req.body?.side || "").trim().toUpperCase();   // "EAST"/"WEST"
@@ -275,7 +276,6 @@ app.post("/api/pvp/entries", async (req, res) => {
   try {
     if (globalThis.__dbReady) {
       const col = globalThis.__db.collection("pvp_entries");
-      // upsert by username (latest wins)
       await col.updateOne({ username }, { $set: doc }, { upsert: true });
       const saved = await col.findOne({ username });
       return res.json({ success: true, entry: saved });
@@ -292,7 +292,7 @@ app.post("/api/pvp/entries", async (req, res) => {
   }
 });
 
-// Admin: list all
+// Admin: list all entries
 app.get("/api/pvp/entries", verifyAdminToken, async (req, res) => {
   try {
     if (globalThis.__dbReady) {
