@@ -21,7 +21,7 @@
   .btn{padding:12px 14px;border:none;border-radius:12px;font-weight:800;cursor:pointer}
   .btn.primary{background:var(--gold);color:#222}
   .btn.alt{background:#102126;border:1px solid var(--line);color:#cfe}
-  .caps{ text-transform:uppercase; }
+  .caps{text-transform:uppercase}
   .radio{display:flex;gap:12px;align-items:center}
   .mini{font-size:12px;color:var(--muted)}
   .ok{background:var(--ok);border:1px solid rgba(0,255,170,.25);padding:10px;border-radius:10px}
@@ -77,29 +77,24 @@
   </div>
 
   <div class="card ok mini">
-    Your entry is saved locally and also sent to the server queue for the admin to approve.
+    Your entry is stored locally and submitted to the tournament queue for the admin to approve.
   </div>
 </div>
 
 <script>
-/* ===== Keys ===== */
 const ENTRY_Q_KEY = 'pvp:entry_requests';
 const API = "";
 
-/* ===== Helpers ===== */
 const $ = (s,root=document)=>root.querySelector(s);
 function read(k,f='[]'){ try{return JSON.parse(localStorage.getItem(k)||f);}catch{return JSON.parse(f);} }
 function write(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
 function up(s){ return (s||'').toString().trim().toUpperCase(); }
 function nowStr(ts){ const d=new Date(ts); return d.toLocaleString(); }
 
-/* ===== Username from login ===== */
 function getUser(){
-  const u = localStorage.getItem('user:username') || 'GUEST';
-  return up(u);
+  return up(localStorage.getItem('user:username') || localStorage.getItem('auth:username') || 'GUEST');
 }
 
-/* ===== Load existing entry for this user (local mirror) ===== */
 function getMine(){
   const me = getUser();
   const arr = read(ENTRY_Q_KEY,'[]');
@@ -115,8 +110,6 @@ function renderMine(){
   $('#youGame').textContent = mine.game;
   $('#youTime').textContent = nowStr(mine.ts);
 }
-
-/* ===== Init form ===== */
 function paintForm(){
   $('#username').value = getUser();
   const mine = getMine();
@@ -129,66 +122,52 @@ function paintForm(){
   }
   renderMine();
 }
+function setMsg(t){ $('#msg').textContent=t; }
 
-/* ===== Submit/Update (local + server) ===== */
 async function submitEntry(){
   const name = getUser();
   const game = up($('#game').value);
   const side = (document.querySelector('input[name="side"]:checked')?.value) || 'EAST';
-  if(!game){ return setMsg('Please enter a game (slot) name.'); }
+  if(!game){ setMsg('Please enter a game (slot) name.'); return; }
 
-  // 1) Save locally (player can see it right away)
+  // local mirror (for UX)
   const arr = read(ENTRY_Q_KEY,'[]');
   const idx = arr.findIndex(r=>r.name===name);
   const rec = { name, game, side, ts: Date.now() };
   if(idx>-1){ arr[idx] = rec; } else { arr.push(rec); }
   write(ENTRY_Q_KEY, arr);
-  renderMine();
 
-  // 2) Send to server so Admin can see it
+  // server queue
   try{
     const r = await fetch(API + "/api/pvp/entries", {
       method:"POST",
-      headers:{"Content-Type":"application/json"},
+      headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ username:name, game, side })
     });
-    if(!r.ok) throw new Error(String(r.status));
-    setMsg('Entry saved and sent to admin ✅');
-  }catch(e){
-    setMsg('Saved locally. Failed to send to server — will retry next submit.');
-  }
+    if(!r.ok) throw 0;
+    setMsg('Entry saved and submitted ✅');
+  }catch{ setMsg('Saved locally. Network issue submitting to server.'); }
+
+  paintForm();
 }
 
-/* ===== Clear my entry (local) ===== */
 function clearMine(){
   const name = getUser();
   const arr = read(ENTRY_Q_KEY,'[]').filter(r=>r.name!==name);
   write(ENTRY_Q_KEY, arr);
-  setMsg('Your local entry has been cleared.');
+  setMsg('Your entry has been cleared (local).');
   paintForm();
 }
 
-/* ===== UI Helpers ===== */
-function setMsg(t){ const el=$('#msg'); el.textContent=t; }
-
-/* ===== Force UPPERCASE typing for game field ===== */
 $('#game').addEventListener('input', (e)=>{
   const pos = e.target.selectionStart;
   e.target.value = up(e.target.value);
   e.target.setSelectionRange(pos,pos);
 });
-
-/* ===== Wire ===== */
 $('#submitBtn').addEventListener('click', submitEntry);
 $('#clearBtn').addEventListener('click', clearMine);
-
-/* ===== Start ===== */
 paintForm();
-
-/* ===== Cross-tab sync ===== */
-window.addEventListener('storage', (e)=>{
-  if(e.key===ENTRY_Q_KEY || e.key==='user:username'){ paintForm(); }
-});
+window.addEventListener('storage', (e)=>{ if(e.key===ENTRY_Q_KEY || e.key==='user:username'){ paintForm(); }});
 </script>
 </body>
 </html>
