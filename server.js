@@ -1,4 +1,6 @@
-// server.js — homepage-first, admin aliases, JSON+form login, + PVP API (DB or memory)
+// server.js — homepage-first, admin aliases, JSON+form login
+// + PVP entries + PVP bracket publish/serve (DB or in-memory)
+
 import fs from "fs";
 import path from "path";
 import express from "express";
@@ -73,7 +75,8 @@ const memory = {
   raffles: [],
   claims: [],
   deposits: [],
-  pvpEntries: []   // <— server copy when DB not available
+  pvpEntries: [],        // signup queue (public submissions)
+  pvpBracket: null       // published builder for Live (games, matches, lastUpdated)
 };
 
 // ===== App
@@ -81,7 +84,7 @@ const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 
-// Light headers
+// Basic headers
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "no-referrer-when-downgrade");
@@ -209,7 +212,7 @@ app.use(express.static(PUBLIC_DIR, {
   }
 }));
 
-// ===== Minimal APIs already present (jackpot/rules/wallet/raffles/deposits) …
+// ===== Existing minimal APIs (jackpot/rules/wallet/raffles/deposits) — unchanged
 app.get("/api/jackpot", (req, res) => {
   res.json({ amount: Number(memory.jackpot.amount || 0), month: memory.jackpot.month, perSubAUD: memory.jackpot.perSubAUD });
 });
@@ -257,9 +260,7 @@ app.get("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => { const r =
 app.delete("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); r.entries = []; r.open = true; r.winner = null; res.json({ success:true }); });
 app.post("/api/raffles/:rid/draw", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); const pool = r.entries || []; r.winner = pool.length ? pool[Math.floor(Math.random()*pool.length)].user : null; res.json({ success:true, winner:r.winner }); });
 
-// ===== NEW: PVP API =====
-
-// Public submit/update (upsert by username)
+// ===== PVP ENTRIES (public submit; admin manage)
 app.post("/api/pvp/entries", async (req, res) => {
   const username = String(req.body?.username || "").trim().toUpperCase();
   const side     = String(req.body?.side || "").trim().toUpperCase();   // "EAST"/"WEST"
@@ -292,7 +293,6 @@ app.post("/api/pvp/entries", async (req, res) => {
   }
 });
 
-// Admin: list all entries
 app.get("/api/pvp/entries", verifyAdminToken, async (req, res) => {
   try {
     if (globalThis.__dbReady) {
@@ -309,9 +309,8 @@ app.get("/api/pvp/entries", verifyAdminToken, async (req, res) => {
   }
 });
 
-// Admin: change status
 app.post("/api/pvp/entries/:id/status", verifyAdminToken, async (req, res) => {
-  const status = String(req.body?.status || "").toLowerCase(); // "approved" | "rejected" | "pending"
+  const status = String(req.body?.status || "").toLowerCase();
   if (!["approved","rejected","pending"].includes(status)) return res.status(400).json({ error: "bad status" });
 
   try {
@@ -334,7 +333,6 @@ app.post("/api/pvp/entries/:id/status", verifyAdminToken, async (req, res) => {
   }
 });
 
-// Admin: delete entry
 app.delete("/api/pvp/entries/:id", verifyAdminToken, async (req, res) => {
   try {
     if (globalThis.__dbReady) {
@@ -352,6 +350,42 @@ app.delete("/api/pvp/entries/:id", verifyAdminToken, async (req, res) => {
   } catch (e) {
     console.error("[PVP] delete failed", e);
     return res.status(500).json({ error: "delete failed" });
+  }
+});
+
+// ===== PVP BRACKET (publish for Live) =====
+// Admin publishes one canonical builder object
+app.post("/api/pvp/bracket", verifyAdminToken, async (req, res) => {
+  const builder = req.body?.builder;
+  if (!builder || typeof builder !== "object") return res.status(400).json({ error: "builder required" });
+  builder.lastUpdated = Date.now();
+
+  try {
+    if (globalThis.__dbReady) {
+      const col = globalThis.__db.collection("pvp_bracket");
+      await col.updateOne({ key:"current" }, { $set: { key:"current", builder } }, { upsert: true });
+    } else {
+      memory.pvpBracket = builder;
+    }
+    return res.json({ success: true, lastUpdated: builder.lastUpdated });
+  } catch (e) {
+    console.error("[PVP] bracket publish failed", e);
+    return res.status(500).json({ error: "publish failed" });
+  }
+});
+
+// Public fetch for Live page (no auth)
+app.get("/api/pvp/bracket", async (req, res) => {
+  try {
+    if (globalThis.__dbReady) {
+      const doc = await globalThis.__db.collection("pvp_bracket").findOne({ key:"current" });
+      return res.json({ builder: doc?.builder || null });
+    } else {
+      return res.json({ builder: memory.pvpBracket || null });
+    }
+  } catch (e) {
+    console.error("[PVP] bracket get failed", e);
+    return res.status(500).json({ error: "get failed" });
   }
 });
 
