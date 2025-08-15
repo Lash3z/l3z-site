@@ -19,10 +19,7 @@ h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
 .tabs{display:flex;gap:8px;flex-wrap:wrap}
 .tab{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:#0f1720;color:#cfffff;cursor:pointer}
 .tab.active{border-color:#00ffff88;box-shadow:0 0 14px #00ffff33}
-
 .list{display:grid;gap:14px}
-
-/* New row layout: [Left Name] [Left Img] [LScore] [:] [RScore] [Right Img] [Right Name] */
 .rowLive{
   display:grid;align-items:center;gap:12px;
   grid-template-columns: 1fr 92px 56px 18px 56px 92px 1fr;
@@ -33,13 +30,10 @@ h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
 .nameR{align-items:flex-start;text-align:left}
 .title{font-weight:900;line-height:1.1}
 .prov{font-size:12px;color:#9fd0d6}
-
 .thumb{width:92px;height:120px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#000}
 .thumb img{width:100%;height:100%;object-fit:cover;display:block}
-
 .score{min-width:56px;padding:10px;border:1px solid var(--line);border-radius:10px;text-align:center;font-weight:900;background:#0d1820}
 .colon{font-weight:900;color:#9fe;text-align:center}
-
 .statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
 .stat{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px}
 .stat h4{margin:0 0 6px 0}
@@ -74,94 +68,45 @@ h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
   function sget(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}}
   function esc(s){s=String(s==null?'':s);return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 
-  // Your existing keys preserved here:
   function bkey(){return mode==='battleground'?'bg:builder:battleground':mode==='pvp'?'pv:builder:pvp':'bh:builder:bonus'}
   function mkey(){return 'sb:markets:'+mode}
 
   function setMode(m){ mode=m; localStorage.setItem('sb:mode',m); for(var i=0;i<els.tabs.length;i++){ els.tabs[i].classList.toggle('active', els.tabs[i].getAttribute('data-mode')===m); } load(); }
 
-  function load(){
-    builder = sget(bkey()) || {games:[],matches:[],lastUpdated:0};
-    markets = sget(mkey()) || {title:mode.toUpperCase(),eventId:mode+':'+new Date().toISOString().slice(0,10)};
-
-    // [ADD] If PVP admin published to legacy/simple key, pick it up:
+  async function load(){
+    markets=sget(mkey())||{title:mode.toUpperCase(),eventId:mode+':'+new Date().toISOString().slice(0,10)};
     if(mode==='pvp'){
-      var legacy = sget('pvp:builder'); // fallback feed many of your pages used earlier
-      if(legacy && (!builder.matches || !builder.matches.length)){
-        builder = legacy;
+      // NEW: try server first
+      try{
+        const r = await fetch('/api/pvp/bracket', { cache:'no-store' });
+        if(r.ok){
+          const j = await r.json();
+          builder = j && j.builder ? j.builder : (sget('pv:builder:pvp') || sget('pvp:builder'));
+        }else{
+          builder = sget('pv:builder:pvp') || sget('pvp:builder');
+        }
+      }catch{
+        builder = sget('pv:builder:pvp') || sget('pvp:builder');
       }
-      // [ADD] Normalize EAST/WEST-structured matches to left/right so your renderer just works
-      builder = normalizePvp(builder);
+    }else{
+      builder = sget(bkey())||{games:[],matches:[],lastUpdated:0};
     }
-
-    // [ADD] If Battleground admin uses different draft keys, you can add fallbacks here similarly (left intact for now)
-
-    last=builder.lastUpdated||0;
+    last = builder && builder.lastUpdated || 0;
     paint();
   }
 
-  // [ADD] Convert {east,west,scoreEast,scoreWest,game:{title,image,provider}} → {left/right…}
-  function normalizePvp(b){
-    if(!b || !Array.isArray(b.matches)) return b||{games:[],matches:[]};
-    // If it already has left/right, keep as-is
-    if(b.matches.some(function(m){return m.leftId||m.leftTitle||m.leftImg})) return b;
-
-    // Build a flat games list from embedded match.game objects if needed
-    var games = Array.isArray(b.games)? b.games.slice(): [];
-    var matches = b.matches.map(function(m, idx){
-      var g = m.game || {};
-      // create a synthetic game id if one wasn’t provided
-      var gid = g.id || ('pvp_game_'+idx);
-      // push the game once if not present
-      if(!games.find(function(x){return x.id===gid;})){
-        games.push({
-          id: gid,
-          title: g.title || '—',
-          image: g.image || g.imageUrl || '',
-          provider: g.provider || ''
-        });
-      }
-      return {
-        // left/right fields expected by your current renderer:
-        leftId: gid,
-        rightId: gid,
-        leftTitle: (m.east||'EAST'),
-        rightTitle:(m.west||'WEST'),
-        leftImg:  g.image || g.imageUrl || '',
-        rightImg: g.image || g.imageUrl || '',
-        leftScore: Number(m.scoreEast||0),
-        rightScore:Number(m.scoreWest||0),
-        // keep original status if present (live/pending/finished)
-        status: (m.status||'pending')
-      };
-    });
-
-    return {
-      ts: b.ts || Date.now(),
-      lastUpdated: b.lastUpdated || Date.now(),
-      games: games,
-      matches: matches
-    };
-  }
-
-  function gById(id){
-    if(!builder||!builder.games) return {};
-    for(var i=0;i<builder.games.length;i++){ if(builder.games[i].id===id) return builder.games[i]; }
-    return {};
-  }
+  function gById(id){ if(!builder||!builder.games) return {}; for(var i=0;i<builder.games.length;i++){ if(builder.games[i].id===id) return builder.games[i]; } return {}; }
   function resolveTitle(id){ if(!id) return '—'; var g=gById(id); return g.title||'—'; }
 
   function paint(){
     els.tag.textContent=(markets.title||mode.toUpperCase())+' — '+(markets.eventId||'EVT');
-    els.stamp.textContent = builder.lastUpdated ? ('Live @ '+new Date(builder.lastUpdated).toLocaleTimeString()) : 'Live';
+    els.stamp.textContent = builder && builder.lastUpdated ? ('Live @ '+new Date(builder.lastUpdated).toLocaleTimeString()) : 'Live';
     els.content.innerHTML='';
-
     if(mode==='bonus'){ paintBonus(); return; }
 
     var list=document.createElement('div'); list.className='card list';
-    if(!builder.matches || !builder.matches.length){
-      list.innerHTML='<div class="pill">No matchups yet.</div>';
-    } else {
+    if(!builder || !builder.matches || !builder.matches.length){ list.innerHTML='<div class="pill">No matchups yet.</div>'; }
+    else{
       for(var i=0;i<builder.matches.length;i++){
         var mx=builder.matches[i], L=gById(mx.leftId)||{}, R=gById(mx.rightId)||{};
         var row=document.createElement('div'); row.className='rowLive';
@@ -204,23 +149,14 @@ h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
   }
 
   for(var i=0;i<els.tabs.length;i++){ (function(t){ t.addEventListener('click', function(){ setMode(t.getAttribute('data-mode')); }); })(els.tabs[i]); }
-
-  // re-render when the corresponding builder key changes
-  window.addEventListener('storage', function(e){
-    if(!e) return;
-    // [ADD] watch both the main key and the legacy PVP key
-    var keysToWatch = [bkey()];
-    if(mode==='pvp') keysToWatch.push('pvp:builder');
-    if(keysToWatch.indexOf(e.key) !== -1) load();
-  });
-
-  // keep your polling logic
-  setInterval(function(){
-    var b=sget(bkey());
-    // [ADD] PVP legacy fallback polling
-    if(mode==='pvp' && (!b || !b.matches || !b.matches.length)) b = sget('pvp:builder');
-    if(b && b.lastUpdated && b.lastUpdated!==last){ load(); }
-  }, 1500);
+  window.addEventListener('storage', function(e){ if(e && (e.key===bkey())) { load(); } });
+  setInterval(async function(){
+    if(mode!=='pvp'){ var b=sget(bkey()); if(b && b.lastUpdated && b.lastUpdated!==last){ load(); } return; }
+    try{
+      const r=await fetch('/api/pvp/bracket',{cache:'no-store'});
+      if(r.ok){ const j=await r.json(); const lu=(j&&j.builder&&j.builder.lastUpdated)||0; if(lu && lu!==last){ load(); } }
+    }catch{}
+  }, 2000);
 
   setMode(mode);
 })();
