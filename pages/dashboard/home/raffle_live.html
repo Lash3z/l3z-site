@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Raffles — L3Z</title>
 <style>
-  :root{ --bg:#0b0f10; --ink:#eaf7ff; --muted:#9bc; --ring:rgba(0,255,255,.22); --gold:#ffb42d; --ok:#00ffff; }
+  :root{ --bg:#0b0f10; --ink:#eaf7ff; --muted:#9bc; --ring:rgba(0,255,255,.22); --gold:#ffb42d; }
   *,*:before,*:after{box-sizing:border-box}
   html,body{margin:0;background:#000 url("/assets/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
   .topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:12px;background:rgba(0,0,0,.7);border-bottom:1px solid var(--ring)}
@@ -25,7 +25,7 @@
 </style>
 
 <script>
-/* ---- Very light auth gate ---- */
+/* --- simple auth & helpers --- */
 (function(){
   const now=()=>Date.now(), up=s=>(s||"").toString().trim().toUpperCase();
   function sget(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch{ return null; } }
@@ -58,32 +58,30 @@
   const USER = window.__L3Z_USER__;
   const $=s=>document.querySelector(s), grid=$("#raffleGrid"), info=$("#info"), toastEl=$("#toast");
   $("#welcome").textContent = USER;
-
   const up=s=>(s||"").toString().trim().toUpperCase();
   const esc=s=>(s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
   const toast=t=>{ toastEl.textContent=t; toastEl.classList.add("on"); setTimeout(()=>toastEl.classList.remove("on"),1600); };
 
+  // local ledger hooks so profile shows a note
+  const WALLET = u=>`lbx:wallet:${up(u)}`, LEDGER = u=>`lbx:ledger:${up(u)}`;
+  function sget(k,def=null){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch{ return def; } }
+  function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+  function ensureWallet(u){ let w=sget(WALLET(u)); if(!w){ w={balance:50,created:Date.now(),lastDaily:0}; sset(WALLET(u),w); sset(LEDGER(u),[{ts:Date.now(),delta:+50,reason:'WELCOME_BONUS',balance:50}]); } return w; }
+  function ledgerNote(u, text){ ensureWallet(u); const list=sget(LEDGER(u),[]); const w=sget(WALLET(u)); list.push({ts:Date.now(),delta:0,reason:text,balance:w?.balance||0}); sset(LEDGER(u), list.slice(-200)); }
+
   async function jget(u){ const r=await fetch(u,{credentials:"include",cache:"no-store"}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
   async function jpost(u,b){ const r=await fetch(u,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
-  async function jput(u,b){ const r=await fetch(u,{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
 
-  /* ------------------------------
-     Load list of raffles (multi -> single fallback)
-     ------------------------------ */
   async function loadRaffles(){
     try{
-      const list = await jget("/api/raffles/list?open=0"); // expects [{id,title,open,winner?},...]
+      const list = await jget("/api/raffles/list?open=0");
       if (Array.isArray(list) && list.length){ renderList(list); return; }
     }catch{}
     try{
       const pub = await jget("/api/raffles/public");
-      if (pub && (pub.active || pub.id)){
-        renderList([{ id: pub.id, title: pub.title, open: !!pub.open, winner: pub.winner||null }]);
-        return;
-      }
+      if (pub && (pub.active || pub.id)){ renderList([{ id: pub.id, title: pub.title, open: !!pub.open, winner: pub.winner||null }]); return; }
     }catch{}
-    grid.innerHTML = "";
-    info.textContent = "No raffles are live yet. Check back soon.";
+    grid.innerHTML = ""; info.textContent = "No raffles are live yet. Check back soon.";
   }
 
   function renderList(items){
@@ -101,18 +99,17 @@
   function cssq(s){ return String(s).replace(/"/g,'&quot;'); }
 
   function cardHTML(r){
-    const openTxt = r.open ? "Open" : "Closed";
     return `
       <div class="card" id="card-${esc(r.id)}">
         <div class="row" style="justify-content:space-between">
           <div><b>${esc(r.title||r.id)}</b> <span class="pill">${esc(r.id)}</span></div>
-          <div class="pill" id="state-${esc(r.id)}">${openTxt}</div>
+          <div class="pill" id="state-${esc(r.id)}">${r.open ? "Open" : "Closed"}</div>
         </div>
         <div class="row" style="margin-top:8px">
           <button class="btn ok" data-enter="${esc(r.id)}" ${r.open? "": "disabled"}>Enter</button>
           <span class="pill" id="me-${esc(r.id)}">Checking…</span>
           <span class="pill">Entries: <b id="cnt-${esc(r.id)}">0</b></span>
-          <button class="btn" data-list="${esc(r.id)}">Refresh list</button>
+          <button class="btn" data-list="${esc(r.id)}">Refresh</button>
         </div>
         <div class="list" id="list-${esc(r.id)}" style="margin-top:8px"></div>
         <div class="row" style="margin-top:8px">
@@ -123,90 +120,59 @@
       </div>`;
   }
 
-  /* ------------------------------
-     Entries + Winner
-     ------------------------------ */
   async function loadEntries(r, quiet=false){
     const id = r.id;
     const listEl = $(`#list-${cssq(id)}`), cntEl = $(`#cnt-${cssq(id)}`), meEl = $(`#me-${cssq(id)}`);
     try{
-      // PRIMARY: your existing working route
-      let data = await jget(`/api/raffles/${encodeURIComponent(id)}/entries`);
+      const data = await jget(`/api/raffles/${encodeURIComponent(id)}/entries`);
       const arr = Array.isArray(data.entries)? data.entries : [];
       cntEl.textContent = arr.length;
-      listEl.innerHTML = arr.map(e=>`<span class="pill">${esc(e.user)}</span>`).join("") || `<span class="muted">No entries yet.</span>`;
+      // show the list but keep it compact
+      listEl.innerHTML = arr.slice(-30).map(e=>`<span class="pill">${esc(e.user)}</span>`).join("") || `<span class="muted">No entries yet.</span>`;
       const me = arr.some(e => up(e.user)===up(USER));
       meEl.textContent = me ? "You're in!" : "Not entered";
+      const btn = document.querySelector(`[data-enter="${cssq(id)}"]`);
+      if (btn) btn.disabled = me || !r.open;
     }catch(e){
-      if(!quiet) toast("Entries failed: "+String(e.message||e));
+      if(!quiet) toast("Entries failed");
       listEl.innerHTML = `<span class="muted">Entries unavailable.</span>`;
     }
   }
 
   async function loadWinner(r, quiet=false){
-    const id = r.id;
-    const winEl = $(`#win-${cssq(id)}`), tsEl = $(`#winTs-${cssq(id)}`);
+    const id = r.id; const winEl = $(`#win-${cssq(id)}`), tsEl = $(`#winTs-${cssq(id)}`);
     try{
-      let w=null;
-      // Try explicit winner endpoint
-      try { const jw = await jget(`/api/raffles/${encodeURIComponent(id)}/winner`); w = jw?.winner||null; }
-      catch {
-        // fallback: if server exposes current with winner
-        await jput("/api/raffles/current", { id });
-        const pub = await jget("/api/raffles/public");
-        w = pub?.winner || null;
-      }
-      if (w && w.user){
-        winEl.textContent = w.user;
-        tsEl.textContent = w.ts ? new Date(w.ts).toLocaleString() : "";
-      } else {
-        winEl.textContent = "—";
-        tsEl.textContent = "";
-      }
-    }catch(e){
-      if(!quiet) toast("Winner failed: "+String(e.message||e));
-    }
+      const jw = await jget(`/api/raffles/${encodeURIComponent(id)}/winner`);
+      const w = jw?.winner;
+      if (w && w.user){ winEl.textContent = w.user; tsEl.textContent = w.ts ? new Date(w.ts).toLocaleString() : ""; }
+      else { winEl.textContent = "—"; tsEl.textContent = ""; }
+    }catch(e){ if(!quiet) toast("Winner load failed"); }
   }
 
-  /* ------------------------------
-     Enter a raffle (fixed: legacy-first)
-     ------------------------------ */
   async function enterRaffle(r){
     const id = r.id;
     const btn = document.querySelector(`[data-enter="${cssq(id)}"]`);
     const meEl = $(`#me-${cssq(id)}`);
     btn.disabled = true;
     try{
-      // 1) Use your existing working route
-      await jpost(`/api/raffles/${encodeURIComponent(id)}/entries`, { user: USER });
-
+      // Use the working legacy route you already expose
+      const j = await jpost(`/api/raffles/${encodeURIComponent(id)}/entries`, { user: USER });
       meEl.textContent = "You're in!";
       toast("Entry submitted");
-      loadEntries(r, true);
-    }catch(e1){
-      // 2) Fallbacks only if needed
-      try{
-        await jpost(`/api/raffles/${encodeURIComponent(id)}/enter`, { user: USER });
-        meEl.textContent = "You're in!";
-        toast("Entry submitted");
-        loadEntries(r, true);
-      }catch(e2){
-        try{
-          await jput("/api/raffles/current", { id });
-          await jpost("/api/raffles/enter", { user: USER });
-          meEl.textContent = "You're in!";
-          toast("Entry submitted");
-          loadEntries(r, true);
-        }catch(e3){
-          btn.disabled = false;
-          toast("Submit failed: " + [e1?.message||"", e2?.message||"", e3?.message||""].filter(Boolean).join(" | "));
-        }
-      }
+      // add ledger note so it shows on profile
+      const title = r.title || id;
+      ledgerNote(USER, `RAFFLE_ENTRY: ${title}`);
+      // “entry disappears” UX: disable the button and refresh counts
+      await loadEntries(r, true);
+    }catch(e){
+      btn.disabled = false;
+      toast("Submit failed");
     }
   }
 
+  ensureWallet(USER);
   loadRaffles();
-  setInterval(loadRaffles, 6000);
+  setInterval(loadRaffles, 7000);
 })();
 </script>
 </body>
