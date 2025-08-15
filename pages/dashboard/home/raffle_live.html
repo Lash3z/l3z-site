@@ -25,7 +25,7 @@
 </style>
 
 <script>
-/* ---- Very light auth gate (same pattern as your other pages) ---- */
+/* ---- Very light auth gate ---- */
 (function(){
   const now=()=>Date.now(), up=s=>(s||"").toString().trim().toUpperCase();
   function sget(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch{ return null; } }
@@ -68,51 +68,46 @@
   async function jput(u,b){ const r=await fetch(u,{method:"PUT",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})}); if(!r.ok) throw r; return r.json(); }
 
   /* ------------------------------
-     Load list of available raffles
+     Load list of raffles (multi -> single fallback)
      ------------------------------ */
   async function loadRaffles(){
-    // Try multi-list endpoint first
     try{
-      const list = await jget("/api/raffles/list?open=1"); // expected: [{id,title,open,created}, ...]
-      if (Array.isArray(list) && list.length){
-        renderList(list);
-        return;
-      }
-    }catch{ /* fall through */ }
-
-    // Fallback to single-current model
+      const list = await jget("/api/raffles/list?open=0"); // expects [{id,title,open,winner?},...]
+      if (Array.isArray(list) && list.length){ renderList(list); return; }
+    }catch{}
     try{
       const pub = await jget("/api/raffles/public");
       if (pub && pub.active){
-        renderList([{ id: pub.id, title: pub.title, open: !!pub.open }]);
+        renderList([{ id: pub.id, title: pub.title, open: !!pub.open, winner: pub.winner||null }]);
         return;
       }
-    }catch{ /* ignore */ }
-
+    }catch{}
     grid.innerHTML = "";
     info.textContent = "No raffles are live yet. Check back soon.";
   }
 
-  /* ------------------------------
-     Render cards + wire actions
-     ------------------------------ */
   function renderList(items){
-    info.textContent = items.length===1 ? "1 raffle available." : `${items.length} raffles available.`;
+    info.textContent = items.length===1 ? "1 raffle available." : `${items.length} raffles.`;
     grid.innerHTML = items.map(r => cardHTML(r)).join("");
-    // hook up buttons
     items.forEach(r=>{
       const enterBtn = document.querySelector(`[data-enter="${cssq(r.id)}"]`);
       const listBtn  = document.querySelector(`[data-list="${cssq(r.id)}"]`);
       if (enterBtn) enterBtn.addEventListener("click", ()=>enterRaffle(r));
       if (listBtn)  listBtn.addEventListener("click", ()=>loadEntries(r));
-      // load entry badges right away
       loadEntries(r, true);
+      loadWinner(r, true);
     });
   }
   function cssq(s){ return String(s).replace(/"/g,'&quot;'); }
 
   function cardHTML(r){
     const openTxt = r.open ? "Open" : "Closed";
+    const winnerBlock = `
+      <div class="row" style="margin-top:8px">
+        <span class="pill">Winner:</span>
+        <span class="pill" id="win-${esc(r.id)}">${r.winner?.user ? esc(r.winner.user) : "—"}</span>
+        <span class="muted" id="winTs-${esc(r.id)}">${r.winner?.ts ? new Date(r.winner.ts).toLocaleString() : ""}</span>
+      </div>`;
     return `
       <div class="card" id="card-${esc(r.id)}">
         <div class="row" style="justify-content:space-between">
@@ -126,17 +121,14 @@
           <button class="btn" data-list="${esc(r.id)}">Refresh list</button>
         </div>
         <div class="list" id="list-${esc(r.id)}" style="margin-top:8px"></div>
+        ${winnerBlock}
       </div>`;
   }
 
-  /* ------------------------------
-     Load entries for a raffle
-     ------------------------------ */
   async function loadEntries(r, quiet=false){
     const id = r.id;
     const listEl = $(`#list-${cssq(id)}`), cntEl = $(`#cnt-${cssq(id)}`), meEl = $(`#me-${cssq(id)}`);
     try{
-      // Prefer direct id endpoint; fallback to /entries for current
       let data=null;
       try { data = await jget(`/api/raffles/${encodeURIComponent(id)}/entries`); }
       catch {
@@ -154,26 +146,38 @@
     }
   }
 
-  /* ------------------------------
-     Enter a raffle
-     ------------------------------ */
+  async function loadWinner(r, quiet=false){
+    const id = r.id;
+    const winEl = $(`#win-${cssq(id)}`), tsEl = $(`#winTs-${cssq(id)}`);
+    try{
+      // Try explicit winner endpoint; else public includes winner for the current one
+      let w=null;
+      try { w = await jget(`/api/raffles/${encodeURIComponent(id)}/winner`); }
+      catch {
+        await jput("/api/raffles/current", { id });
+        const pub = await jget("/api/raffles/public");
+        w = pub?.winner || null;
+      }
+      if (w && w.user){
+        winEl.textContent = w.user;
+        tsEl.textContent = w.ts ? new Date(w.ts).toLocaleString() : "";
+      } else {
+        winEl.textContent = "—";
+        tsEl.textContent = "";
+      }
+    }catch{
+      if(!quiet) toast("Failed to load winner");
+    }
+  }
+
   async function enterRaffle(r){
     const id = r.id;
     const btn = document.querySelector(`[data-enter="${cssq(id)}"]`);
     const meEl = $(`#me-${cssq(id)}`);
     try{
       btn.disabled = true;
-
-      // Try modern endpoint first
-      let ok = true;
-      try {
-        await jpost(`/api/raffles/${encodeURIComponent(id)}/enter`, { user: USER });
-      } catch {
-        // Fallback: set current then use /enter (current)
-        await jput("/api/raffles/current", { id });
-        await jpost("/api/raffles/enter", { user: USER });
-      }
-
+      try { await jpost(`/api/raffles/${encodeURIComponent(id)}/enter`, { user: USER }); }
+      catch { await jput("/api/raffles/current", { id }); await jpost("/api/raffles/enter", { user: USER }); }
       meEl.textContent = "You're in!";
       toast("Entry submitted");
       loadEntries(r, true);
@@ -183,9 +187,8 @@
     }
   }
 
-  // boot
   loadRaffles();
-  // poll every 6s so new raffles appear for open viewers
+  // poll: keep entries + winner fresh
   setInterval(loadRaffles, 6000);
 })();
 </script>
