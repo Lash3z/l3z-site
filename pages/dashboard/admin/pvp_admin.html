@@ -17,7 +17,7 @@
     html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
     h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
     h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
-    .wrap{max-width:1200px;margin:0 auto;padding:0 14px 32px}
+    .wrap{max-width:1200px;margin:0 auto;padding:0 14px 40px}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .panel{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
     .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cfffff}
@@ -27,16 +27,19 @@
     .btn.bad{background:#2b1116;border-color:#7e2a3c}
     .btn[disabled]{opacity:.6;cursor:not-allowed}
     .tbl{width:100%;border-collapse:separate;border-spacing:0}
-    .tbl th,.tbl td{border-bottom:1px solid rgba(255,255,255,.06);padding:8px;text-align:left;font-size:13px}
+    .tbl th,.tbl td{border-bottom:1px solid rgba(255,255,255,.06);padding:8px;text-align:left;font-size:13px;vertical-align:top}
     .tbl th{color:var(--muted)}
     .badge{padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#081318;color:#bfe}
     .right{margin-left:auto}
     .hint{color:var(--muted);font-size:12px}
-    /* lock screen */
-    .lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff}
-    .lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75);box-shadow:0 0 18px rgba(0,255,255,.15)}
-    .lockcard h1{margin:0 0 10px;color:#cfe}
-    .lockcard a{color:#7ad7ff}
+    .mini{font-size:12px;color:var(--muted)}
+    input,textarea{background:#0c1519;border:1px solid var(--line);color:var(--ink);padding:8px;border-radius:10px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width: 980px){ .grid2{grid-template-columns:1fr} }
+    .ghost{opacity:.6}
+    .imgPrev{width:60px;height:60px;object-fit:cover;border-radius:10px;border:1px solid var(--line);background:#091115}
+    .soft{opacity:.8}
+    .sep{height:1px;background:var(--line);margin:10px 0}
   </style>
 </head>
 <body>
@@ -49,19 +52,21 @@
     </div>
   </div>
 
-  <!-- Entries panel -->
-  <div class="panel">
+  <!-- ===== ENTRIES ===== -->
+  <div class="panel" id="entriesPanel">
     <div class="row" style="align-items:center">
       <h2 style="margin-right:10px">Player Entries</h2>
       <span id="entCount" class="badge">—</span>
+      <span id="eastCount" class="badge soft">EAST: 0</span>
+      <span id="westCount" class="badge soft">WEST: 0</span>
       <span class="right"></span>
       <button id="entRefresh" class="btn ok">Refresh</button>
       <button id="entClearEmpty" class="btn warn" title="Remove entries with no username">Clear Empty</button>
     </div>
     <div class="hint" style="margin:6px 0 10px">
-      Loaded from <code>/api/pvp/entries</code>. Use Approve / Reject / Delete to manage entries.
+      Loaded from <code>/api/pvp/entries</code>. Approve/Reject entries you want to include in the tournament.
     </div>
-    <div style="max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:10px">
+    <div style="max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:10px">
       <table class="tbl" id="entTbl" aria-label="PVP entries">
         <thead>
           <tr>
@@ -80,11 +85,72 @@
     </div>
   </div>
 
-  <!-- Keep room for your existing builder UI, if any -->
-  <div class="panel">
+  <!-- ===== BUILDER ===== -->
+  <div class="panel" id="builderPanel">
     <div class="row" style="align-items:center">
-      <h2 style="margin-right:10px">Games • Matchups • Live</h2>
-      <span class="hint">Your existing PVP builder UI can live here.</span>
+      <h2 style="margin-right:12px">Games & Matchups Builder</h2>
+      <button id="saveDraft"   class="btn">Save Draft</button>
+      <button id="publishAll"  class="btn ok">Publish → Player UIs + Live</button>
+      <button id="deleteAll"   class="btn bad">Delete All</button>
+      <span id="buildMsg" class="pill right">Ready</span>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- Game creator -->
+    <div class="grid2">
+      <div>
+        <div class="mini">GAME TITLE</div>
+        <input id="gTitle" placeholder="E.G. DUCK HUNTERS">
+      </div>
+      <div>
+        <div class="mini">PROVIDER</div>
+        <input id="gProvider" placeholder="E.G. HACKSAW">
+      </div>
+      <div>
+        <div class="mini">UPLOAD IMAGE (or) PICK FILE</div>
+        <input id="gFile" type="file" accept="image/*">
+      </div>
+      <div>
+        <div class="mini">OR ASSET PATH (relative)</div>
+        <div class="row">
+          <input id="gPath" placeholder='assets/slot images/duck-hunters.webp' style="flex:1 1 auto">
+          <button id="gAuto" class="btn">Auto</button>
+        </div>
+        <div class="mini soft">“Auto” guesses from your assets with several file/dir patterns.</div>
+      </div>
+      <div class="row" style="align-items:center">
+        <img id="gPrev" class="imgPrev" alt="preview">
+        <button id="gAdd" class="btn ok">+ Add Game</button>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- Games table -->
+    <div class="mini" style="margin-bottom:6px">Games</div>
+    <div style="max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:10px">
+      <table class="tbl" id="gamesTbl" aria-label="Games">
+        <thead><tr><th>Game</th><th>Provider</th><th>Image</th><th style="width:120px">Actions</th></tr></thead>
+        <tbody><tr><td colspan="4" class="hint">No games yet.</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- Matchups -->
+    <div class="row" style="align-items:center">
+      <h2 style="margin-right:10px">Matchups & Live Scores</h2>
+      <button id="autoMake" class="btn ok">Auto-Make Matchups (Approved EAST vs WEST)</button>
+      <span class="mini">Cycles through your games list.</span>
+    </div>
+    <div style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:8px">
+      <table class="tbl" id="matchTbl" aria-label="Matchups">
+        <thead>
+          <tr><th>#</th><th>Game</th><th>East</th><th>West</th><th>Status</th><th style="width:120px">Actions</th></tr>
+        </thead>
+        <tbody><tr><td colspan="6" class="hint">No matchups yet.</td></tr></tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -93,9 +159,10 @@
 (function(){
   "use strict";
   const $=(s,r=document)=>r.querySelector(s);
+  const $$=(s,r=document)=>Array.from((r||document).querySelectorAll(s));
   const API="";
 
-  // ---- Admin cookie gate ----
+  // ===== Admin gate =====
   const H=document.documentElement;
   H.setAttribute("data-admin","checking");
   function lock(){
@@ -103,121 +170,278 @@
     const wrap=document.createElement("div");
     wrap.className="lockwrap";
     wrap.innerHTML = '<div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="/pages/dashboard/home/admin_login.html?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fpvp_admin.html">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you already logged in, your session may have expired.</div><div style="margin-top:14px"><a href="/index.html">Back to Dashboard</a></div></div>';
-    document.body.innerHTML="";
-    document.body.appendChild(wrap);
+    document.body.innerHTML=""; document.body.appendChild(wrap);
   }
   fetch(API+"/api/admin/gate/check",{credentials:"include",cache:"no-store"})
     .then(r=>r.ok?r.json():null)
     .then(j=>{ if(j&&j.admin){ H.removeAttribute("data-admin"); boot(); } else lock(); })
     .catch(lock);
 
-  // ---- App logic ----
-  function boot(){
-    const entTbl=$("#entTbl tbody");
-    const entCount=$("#entCount");
-    const refreshBtn=$("#entRefresh");
-    const clearBtn=$("#entClearEmpty");
+  // ===== Local storage keys for builder =====
+  const K_GAMES   = "pvp:games";
+  const K_MATCHES = "pvp:matches";
+  const K_PUBLISH = "pvp:builder";
 
-    async function entriesLoad(){
-      entTbl.innerHTML = `<tr><td colspan="6" class="hint">Loading…</td></tr>`;
-      try{
-        const r = await fetch(API+"/api/pvp/entries",{credentials:"include",cache:"no-store"});
-        if(!r.ok) throw new Error(r.status);
-        const a = await r.json();
-        const list = Array.isArray(a.entries)? a.entries : [];
-        entCount.textContent = list.length;
-        if(!list.length){
-          entTbl.innerHTML = `<tr><td colspan="6" class="hint">No entries yet.</td></tr>`;
-          return;
-        }
-        entTbl.innerHTML = list.map(rowHtml).join("");
-        wireRowActions();
-      }catch{
-        entTbl.innerHTML = `<tr><td colspan="6" class="hint">Failed to load entries.</td></tr>`;
-        entCount.textContent = "—";
+  // ===== State =====
+  let entries = []; // from server
+  let games   = read(K_GAMES, []);
+  let matches = read(K_MATCHES, []);
+
+  function read(k,f){ try{ return JSON.parse(localStorage.getItem(k)||JSON.stringify(f)); }catch{return f;} }
+  function write(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+  function slug(s){ return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,""); }
+  function msg(t){ $("#buildMsg").textContent = t; }
+
+  // ===== ENTRIES (server) =====
+  async function loadEntries(){
+    const tb=$("#entTbl tbody");
+    tb.innerHTML = `<tr><td colspan="6" class="hint">Loading…</td></tr>`;
+    try{
+      const r=await fetch(API+"/api/pvp/entries",{credentials:"include",cache:"no-store"});
+      if(!r.ok) throw 0;
+      const a=await r.json();
+      entries = Array.isArray(a.entries)? a.entries : [];
+      const east=entries.filter(e=>String(e.status).toLowerCase()==="approved" && String(e.side).toUpperCase()==="EAST").length;
+      const west=entries.filter(e=>String(e.status).toLowerCase()==="approved" && String(e.side).toUpperCase()==="WEST").length;
+      $("#entCount").textContent = entries.length;
+      $("#eastCount").textContent = "EAST: "+east;
+      $("#westCount").textContent = "WEST: "+west;
+
+      if(!entries.length){ tb.innerHTML = `<tr><td colspan="6" class="hint">No entries yet.</td></tr>`; return; }
+      tb.innerHTML = entries.map(rowHtml).join("");
+      wireEntryActions();
+    }catch{
+      tb.innerHTML = `<tr><td colspan="6" class="hint">Failed to load entries.</td></tr>`;
+      $("#entCount").textContent="—"; $("#eastCount").textContent="EAST: 0"; $("#westCount").textContent="WEST: 0";
+    }
+  }
+  function rowHtml(e){
+    const id = e._id || e.username;
+    const when = e.ts ? new Date(e.ts).toLocaleString() : "—";
+    const user = (e.username||"").toUpperCase();
+    const side = (e.side||"").toUpperCase();
+    const game = e.game || "—";
+    const status = (e.status||"pending").toLowerCase();
+    return `<tr data-id="${id}">
+      <td>${when}</td><td><b>${user}</b></td><td>${side}</td>
+      <td>${escapeHtml(game)}</td><td><span class="badge">${status}</span></td>
+      <td>
+        <button class="btn ok"   data-act="approve">Approve</button>
+        <button class="btn warn" data-act="reject">Reject</button>
+        <button class="btn bad"  data-act="delete">Delete</button>
+      </td></tr>`;
+  }
+  function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function wireEntryActions(){
+    $("#entTbl").querySelectorAll("button[data-act]").forEach(b=>{
+      b.addEventListener("click", async ()=>{
+        const tr=b.closest("tr"); const id=tr?.getAttribute("data-id"); if(!id) return;
+        b.disabled=true;
+        try{
+          if(b.dataset.act==="approve"||b.dataset.act==="reject"){
+            const status = b.dataset.act==="approve" ? "approved" : "rejected";
+            const r=await fetch(API+`/api/pvp/entries/${encodeURIComponent(id)}/status`,{
+              method:"POST",credentials:"include",
+              headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({status})
+            }); if(!r.ok) throw 0;
+          }else if(b.dataset.act==="delete"){
+            const r=await fetch(API+`/api/pvp/entries/${encodeURIComponent(id)}`,{method:"DELETE",credentials:"include"}); if(!r.ok) throw 0;
+          }
+          await loadEntries();
+        }catch{ alert("Action failed."); b.disabled=false; }
+      });
+    });
+  }
+  $("#entRefresh").addEventListener("click", loadEntries);
+  $("#entClearEmpty").addEventListener("click", async ()=>{
+    const rows = Array.from($("#entTbl tbody").querySelectorAll("tr"));
+    for(const tr of rows){
+      const name = tr.children[1]?.textContent?.trim();
+      const id = tr.getAttribute("data-id");
+      if(!name || name==="—"){
+        try{ await fetch(API+`/api/pvp/entries/${encodeURIComponent(id)}`,{method:"DELETE",credentials:"include"}); }catch{}
       }
     }
+    loadEntries();
+  });
 
-    function rowHtml(e){
-      const id = e._id || e.username;
-      const when = e.ts ? new Date(e.ts).toLocaleString() : "—";
-      const user = (e.username||"").toUpperCase();
-      const side = (e.side||"").toUpperCase();
-      const game = e.game || "—";
-      const status = (e.status||"pending").toLowerCase();
-
-      return `<tr data-id="${id}">
-        <td>${when}</td>
-        <td><b>${user}</b></td>
-        <td>${side}</td>
-        <td>${escapeHtml(game)}</td>
-        <td><span class="badge">${status}</span></td>
+  // ===== GAMES BUILDER =====
+  function paintGames(){
+    const tb=$("#gamesTbl tbody");
+    if(!games.length){ tb.innerHTML=`<tr><td colspan="4" class="hint">No games yet.</td></tr>`; return; }
+    tb.innerHTML = games.map((g,i)=>`
+      <tr data-i="${i}">
+        <td><b>${escapeHtml(g.title)}</b></td>
+        <td>${escapeHtml(g.provider||"")}</td>
+        <td>${g.image ? (g.image.startsWith("data:") ? "[inline]" : escapeHtml(g.image)) : "—"}</td>
         <td>
-          <button class="btn ok"   data-act="approve">Approve</button>
-          <button class="btn warn" data-act="reject">Reject</button>
-          <button class="btn bad"  data-act="delete">Delete</button>
+          <button class="btn warn" data-act="up">↑</button>
+          <button class="btn warn" data-act="down">↓</button>
+          <button class="btn bad"  data-act="del">Delete</button>
         </td>
-      </tr>`;
+      </tr>`).join("");
+    $("#gamesTbl").querySelectorAll("button[data-act]").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        const i = Number(btn.closest("tr").dataset.i);
+        if(btn.dataset.act==="del"){ games.splice(i,1); }
+        if(btn.dataset.act==="up" && i>0){ const t=games[i]; games[i]=games[i-1]; games[i-1]=t; }
+        if(btn.dataset.act==="down" && i<games.length-1){ const t=games[i]; games[i]=games[i+1]; games[i+1]=t; }
+        write(K_GAMES,games); paintGames();
+      });
+    });
+  }
+
+  // Preview uploaded image
+  $("#gFile").addEventListener("change", ()=>{
+    const f=$("#gFile").files?.[0]; const img=$("#gPrev");
+    if(!f){ img.src=""; img.classList.add("ghost"); return; }
+    const url=URL.createObjectURL(f); img.src=url; img.classList.remove("ghost");
+  });
+
+  // Auto guess asset path
+  $("#gAuto").addEventListener("click", async ()=>{
+    const title=$("#gTitle").value.trim();
+    if(!title){ msg("Enter a game title first"); return; }
+    const s=slug(title);
+    const guesses=[
+      `/assets/slot images/${s}.webp`,
+      `/assets/slot images/${s}.png`,
+      `/assets/slot_images/${s}.webp`,
+      `/assets/slot_images/${s}.png`,
+      `/assets/slots/${s}.webp`,
+      `/assets/slots/${s}.png`
+    ];
+    let found="";
+    for(const p of guesses){
+      try{ const r=await fetch(p,{method:"HEAD",cache:"no-store"}); if(r.ok){ found=p; break; } }catch{}
+    }
+    if(found){ $("#gPath").value=found; msg("Auto: found "+found); } else { msg("Auto: no asset found"); }
+  });
+
+  $("#gAdd").addEventListener("click", async ()=>{
+    const title=$("#gTitle").value.trim();
+    if(!title){ msg("Enter game title"); return; }
+    const provider=$("#gProvider").value.trim();
+    const file=$("#gFile").files?.[0];
+    let imagePath=$("#gPath").value.trim();
+
+    let image="";
+    if(file){
+      // inline base64 for builder feed; keeps things simple
+      image = await fileToDataURL(file);
+    }else if(imagePath){
+      image = imagePath;
+    }else{
+      msg("Pick an image file or provide an asset path"); return;
     }
 
-    function wireRowActions(){
-      $("#entTbl").querySelectorAll("button[data-act]").forEach(b=>{
-        b.addEventListener("click", async ()=>{
-          const tr = b.closest("tr");
-          const id = tr?.getAttribute("data-id");
-          if(!id) return;
+    games.push({ id: slug(title)+"-"+Date.now(), title, provider, image });
+    write(K_GAMES,games);
+    $("#gTitle").value=""; $("#gProvider").value=""; $("#gFile").value=""; $("#gPath").value="";
+    $("#gPrev").src=""; $("#gPrev").classList.add("ghost");
+    paintGames(); msg("Game added");
+  });
 
-          const act = b.getAttribute("data-act");
-          b.disabled = true;
-          try{
-            if(act==="approve" || act==="reject"){
-              const status = act==="approve" ? "approved" : "rejected";
-              const r = await fetch(API+`/api/pvp/entries/${encodeURIComponent(id)}/status`,{
-                method:"POST", credentials:"include",
-                headers:{"Content-Type":"application/json"},
-                body: JSON.stringify({ status })
-              });
-              if(!r.ok) throw 0;
-            }else if(act==="delete"){
-              const r = await fetch(API+`/api/pvp/entries/${encodeURIComponent(id)}`,{
-                method:"DELETE", credentials:"include"
-              });
-              if(!r.ok) throw 0;
-            }
-            await entriesLoad();
-          }catch{
-            b.disabled=false;
-            alert("Action failed.");
-          }
-        });
+  function fileToDataURL(file){
+    return new Promise((res,rej)=>{
+      const r=new FileReader();
+      r.onload=()=>res(r.result);
+      r.onerror=rej;
+      r.readAsDataURL(file);
+    });
+  }
+
+  // ===== MATCHUPS =====
+  function paintMatches(){
+    const tb=$("#matchTbl tbody");
+    if(!matches.length){ tb.innerHTML=`<tr><td colspan="6" class="hint">No matchups yet.</td></tr>`; return; }
+    tb.innerHTML = matches.map((m,i)=>`
+      <tr data-i="${i}">
+        <td>${i+1}</td>
+        <td>${escapeHtml(m.game?.title||"")}</td>
+        <td>${escapeHtml(m.east||"")}</td>
+        <td>${escapeHtml(m.west||"")}</td>
+        <td>${escapeHtml(m.status||"pending")}</td>
+        <td>
+          <button class="btn warn" data-act="up">↑</button>
+          <button class="btn warn" data-act="down">↓</button>
+          <button class="btn bad"  data-act="del">Delete</button>
+        </td>
+      </tr>`).join("");
+    $("#matchTbl").querySelectorAll("button[data-act]").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        const i = Number(btn.closest("tr").dataset.i);
+        if(btn.dataset.act==="del"){ matches.splice(i,1); }
+        if(btn.dataset.act==="up" && i>0){ const t=matches[i]; matches[i]=matches[i-1]; matches[i-1]=t; }
+        if(btn.dataset.act==="down" && i<matches.length-1){ const t=matches[i]; matches[i]=matches[i+1]; matches[i+1]=t; }
+        write(K_MATCHES,matches); paintMatches();
+      });
+    });
+  }
+
+  $("#autoMake").addEventListener("click", ()=>{
+    const east = entries.filter(e=>safeApproved(e,"EAST")).map(e=>e.username.toUpperCase());
+    const west = entries.filter(e=>safeApproved(e,"WEST")).map(e=>e.username.toUpperCase());
+    if(!east.length || !west.length){ msg("Need approved EAST and WEST entries"); return; }
+    if(!games.length){ msg("Add at least one game first"); return; }
+
+    const rounds = Math.min(east.length, west.length);
+    const newMatches=[];
+    for(let i=0;i<rounds;i++){
+      const g = games[i % games.length];
+      newMatches.push({
+        id: `m-${Date.now()}-${i}`,
+        game: { id:g.id, title:g.title, image:g.image, provider:g.provider },
+        east: east[i], west: west[i],
+        status: "pending", scoreEast:0, scoreWest:0
       });
     }
+    matches = newMatches;
+    write(K_MATCHES,matches);
+    paintMatches(); msg(`Created ${matches.length} matchup(s)`);
+  });
+  function safeApproved(e,side){
+    return String(e.status).toLowerCase()==="approved" && String(e.side).toUpperCase()===side && e.username;
+  }
 
-    function escapeHtml(s){
-      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    }
+  // ===== SAVE / PUBLISH / DELETE =====
+  $("#saveDraft").addEventListener("click", ()=>{
+    write(K_GAMES,games);
+    write(K_MATCHES,matches);
+    msg("Draft saved");
+  });
 
-    clearBtn.addEventListener("click", async ()=>{
-      // convenience: remove blank usernames quickly (memory or DB)
-      const rows = Array.from($("#entTbl tbody").querySelectorAll("tr"));
-      for(const tr of rows){
-        const name = tr.children[1]?.textContent?.trim();
-        const id = tr.getAttribute("data-id");
-        if(!name || name==="—"){
-          try{ await fetch(API+`/api/pvp/entries/${encodeURIComponent(id)}`,{method:"DELETE",credentials:"include"}); }catch{}
-        }
-      }
-      entriesLoad();
-    });
+  $("#publishAll").addEventListener("click", ()=>{
+    const feed = {
+      ts: Date.now(),
+      games,
+      matches
+    };
+    write(K_PUBLISH, feed);
+    msg("Published (local feed: pvp:builder)");
+  });
 
-    refreshBtn.addEventListener("click", entriesLoad);
-    entriesLoad();
+  $("#deleteAll").addEventListener("click", ()=>{
+    if(!confirm("Delete ALL games & matchups?")) return;
+    games=[]; matches=[];
+    write(K_GAMES,games); write(K_MATCHES,matches);
+    paintGames(); paintMatches(); msg("Cleared");
+  });
 
+  // ===== BOOT =====
+  function boot(){
+    // buttons
     $("#adminLogout").addEventListener("click", async ()=>{
       try{ await fetch("/api/admin/gate/logout",{method:"POST",credentials:"include"}); }catch{}
       location.href="/index.html";
     });
+    // initial UI
+    paintGames(); paintMatches();
+    loadEntries();
   }
+
+  boot();
 })();
 </script>
 </body>
