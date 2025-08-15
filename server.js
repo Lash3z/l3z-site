@@ -363,6 +363,8 @@ await mountIfExists("./backend/routes/pvp.js",          "/api/pvp",         "pvp
 await mountIfExists("./backend/routes/lbx.js",          "/api",             "lbx");
 await mountIfExists("./backend/routes/raffles.js",      "/api/raffles",     "raffles");
 await mountIfExists("./backend/routes/wallet.js",       "/api/wallet",      "wallet");
+// >>> NEW: mount Prize Claims API <<<
+await mountIfExists("./backend/routes/prizeClaims.js",  "/api/prize-claims","prizeClaims");
 
 // Back-compat (old endpoints still work)
 app.get("/api/giveaways/slotwheel/:id/entries", async (req, res) => {
