@@ -77,13 +77,14 @@
   </div>
 
   <div class="card ok mini">
-    Your entry is stored locally and queued for the admin to approve. You can update it any time until entries are locked.
+    Your entry is saved locally and also sent to the server queue for the admin to approve.
   </div>
 </div>
 
 <script>
 /* ===== Keys ===== */
 const ENTRY_Q_KEY = 'pvp:entry_requests';
+const API = "";
 
 /* ===== Helpers ===== */
 const $ = (s,root=document)=>root.querySelector(s);
@@ -98,7 +99,7 @@ function getUser(){
   return up(u);
 }
 
-/* ===== Load existing entry for this user ===== */
+/* ===== Load existing entry for this user (local mirror) ===== */
 function getMine(){
   const me = getUser();
   const arr = read(ENTRY_Q_KEY,'[]');
@@ -129,29 +130,41 @@ function paintForm(){
   renderMine();
 }
 
-/* ===== Submit/Update ===== */
-function submitEntry(){
+/* ===== Submit/Update (local + server) ===== */
+async function submitEntry(){
   const name = getUser();
   const game = up($('#game').value);
   const side = (document.querySelector('input[name="side"]:checked')?.value) || 'EAST';
-
   if(!game){ return setMsg('Please enter a game (slot) name.'); }
 
+  // 1) Save locally (player can see it right away)
   const arr = read(ENTRY_Q_KEY,'[]');
   const idx = arr.findIndex(r=>r.name===name);
   const rec = { name, game, side, ts: Date.now() };
   if(idx>-1){ arr[idx] = rec; } else { arr.push(rec); }
   write(ENTRY_Q_KEY, arr);
-  setMsg('Entry saved ✅');
-  paintForm();
+  renderMine();
+
+  // 2) Send to server so Admin can see it
+  try{
+    const r = await fetch(API + "/api/pvp/entries", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ username:name, game, side })
+    });
+    if(!r.ok) throw new Error(String(r.status));
+    setMsg('Entry saved and sent to admin ✅');
+  }catch(e){
+    setMsg('Saved locally. Failed to send to server — will retry next submit.');
+  }
 }
 
-/* ===== Clear my entry ===== */
+/* ===== Clear my entry (local) ===== */
 function clearMine(){
   const name = getUser();
   const arr = read(ENTRY_Q_KEY,'[]').filter(r=>r.name!==name);
   write(ENTRY_Q_KEY, arr);
-  setMsg('Your entry has been cleared.');
+  setMsg('Your local entry has been cleared.');
   paintForm();
 }
 
