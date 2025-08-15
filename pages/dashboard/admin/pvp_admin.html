@@ -7,13 +7,17 @@
   <title>PVP — Admin</title>
   <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
   <style>
-    :root{ --bg:#060b0d; --panel:#0b1417; --ink:#eaf7ff; --muted:#9fd0d6; --line:rgba(0,255,255,.18); --teal:#00ffff; --gold:#ffb42d; --ok:#12d48a; --bad:#e25a6f; }
+    :root{
+      --bg:#060b0d; --panel:#0b1417; --ink:#eaf7ff; --muted:#9fd0d6;
+      --line:rgba(0,255,255,.18); --teal:#00ffff; --gold:#ffb42d;
+      --ok:#12d48a; --bad:#e25a6f;
+    }
     *{box-sizing:border-box}
     html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
     html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
     h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
     h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
-    .wrap{max-width:1300px;margin:0 auto;padding:0 14px 40px}
+    .wrap{max-width:1200px;margin:0 auto;padding:0 14px 40px}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .panel{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
     .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cfffff}
@@ -28,14 +32,11 @@
     .badge{padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#081318;color:#bfe}
     .right{margin-left:auto}
     .hint{color:var(--muted);font-size:12px}
-    input,select{background:#0d171b;border:1px solid var(--line);color:#eaf7ff;border-radius:10px;padding:8px}
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    @media (max-width: 1000px){ .grid2{grid-template-columns:1fr} }
-    /* lock */
-    .lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff}
-    .lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75)}
-    .lockcard h1{margin:0 0 10px;color:#cfe}
-    .lockcard a{color:#7ad7ff}
+    .seed{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:6px 10px}
+    input{border:1px solid var(--line);border-radius:10px;background:#0e151a;color:#eaf7ff;padding:8px}
+    select{border:1px solid var(--line);border-radius:10px;background:#0e151a;color:#eaf7ff;padding:8px}
+    .tag{padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:#0f1e22;font-size:12px}
+    .list{display:flex;flex-direction:column;gap:8px}
   </style>
 </head>
 <body>
@@ -48,64 +49,78 @@
     </div>
   </div>
 
-  <!-- Entries -->
+  <!-- Player Entries -->
   <div class="panel">
-    <div class="row">
+    <div class="row" style="align-items:center">
       <h2 style="margin-right:10px">Player Entries</h2>
       <span id="entCount" class="badge">—</span>
       <span class="right"></span>
       <button id="entRefresh" class="btn ok">Refresh</button>
-      <button id="takeApproved" class="btn ok" title="Transfer approved entries to the seeding list">Take Approved → Seeding</button>
+      <button id="takeApproved" class="btn">Take Approved → Seeding</button>
     </div>
-    <div class="hint" style="margin:6px 0 10px">From <code>/api/pvp/entries</code>. Approve or reject; you can also delete an entry.</div>
-    <div style="max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:10px">
+    <div class="hint" style="margin:6px 0 10px">
+      From <code>/api/pvp/entries</code>. Approve/reject; you can also delete an entry.
+    </div>
+    <div style="max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:10px">
       <table class="tbl" id="entTbl">
-        <thead><tr><th>When</th><th>User</th><th>Side</th><th>Game</th><th>Status</th><th>Actions</th></tr></thead>
+        <thead>
+          <tr><th>When</th><th>User</th><th>Side</th><th>Game</th><th>Status</th><th>Actions</th></tr>
+        </thead>
         <tbody><tr><td colspan="6" class="hint">Loading…</td></tr></tbody>
       </table>
     </div>
   </div>
 
-  <!-- Seeding & Manual adds -->
+  <!-- Seeding -->
   <div class="panel">
-    <div class="row">
+    <div class="row" style="align-items:center">
       <h2 style="margin-right:10px">Seeding (EAST vs WEST)</h2>
-      <span class="hint">Add entrants and auto-build a bracket.</span>
-      <span class="right"></span>
-      <button id="autoSeed" class="btn ok">Auto-Seed & Build Bracket</button>
-      <button id="clearSeed" class="btn warn">Clear Seeding</button>
+      <span class="tag">Bracket size</span>
+      <select id="sizeSel">
+        <option value="16">16 (8 per side)</option>
+        <option value="32">32 (16 per side)</option>
+      </select>
+      <button id="autoSeedBtn" class="btn ok">Auto-Seed & Build Bracket</button>
+      <button id="clearSeedsBtn" class="btn warn">Clear Seeding</button>
+      <span id="seedInfo" class="pill">—</span>
     </div>
 
-    <div class="grid2" style="margin-top:8px">
-      <div>
-        <div class="row"><strong>EAST Seed</strong></div>
-        <div class="row" style="gap:6px;margin:6px 0">
-          <input id="addEUser" placeholder="USERNAME (caps)" style="flex:1 1 200px">
-          <input id="addEGame" placeholder="GAME (optional)" style="flex:1 1 200px">
-          <button id="addE" class="btn">Add</button>
+    <div class="row">
+      <!-- EAST -->
+      <div style="flex:1 1 480px">
+        <div class="row"><h3 style="margin:6px 0">EAST Seed</h3></div>
+        <div class="row" style="gap:8px;margin-bottom:8px">
+          <input id="eastUser" placeholder="USERNAME (caps)" style="flex:1 1 220px"/>
+          <input id="eastGame" placeholder="GAME (optional)" style="flex:1 1 220px"/>
+          <button id="eastAdd" class="btn">Add</button>
         </div>
-        <div id="eastList" class="hint">None yet.</div>
+        <div id="eastList" class="list"></div>
       </div>
-      <div>
-        <div class="row"><strong>WEST Seed</strong></div>
-        <div class="row" style="gap:6px;margin:6px 0">
-          <input id="addWUser" placeholder="USERNAME (caps)" style="flex:1 1 200px">
-          <input id="addWGame" placeholder="GAME (optional)" style="flex:1 1 200px">
-          <button id="addW" class="btn">Add</button>
+
+      <!-- WEST -->
+      <div style="flex:1 1 480px">
+        <div class="row"><h3 style="margin:6px 0">WEST Seed</h3></div>
+        <div class="row" style="gap:8px;margin-bottom:8px">
+          <input id="westUser" placeholder="USERNAME (caps)" style="flex:1 1 220px"/>
+          <input id="westGame" placeholder="GAME (optional)" style="flex:1 1 220px"/>
+          <button id="westAdd" class="btn">Add</button>
         </div>
-        <div id="westList" class="hint">None yet.</div>
+        <div id="westList" class="list"></div>
       </div>
     </div>
   </div>
 
   <!-- Publish -->
   <div class="panel">
-    <div class="row">
+    <div class="row" style="align-items:center">
       <h2 style="margin-right:10px">Publish Bracket → Live</h2>
-      <span class="hint">Writes to localStorage (<code>pv:builder:pvp</code> and legacy <code>pvp:builder</code>) and to <code>/api/pvp/bracket</code>.</span>
+      <span class="hint">
+        Writes to <code>localStorage</code> (<code>pv:builder:pvp</code> and legacy <code>pvp:builder</code>)
+        and to <code>/api/pvp/bracket</code>.
+      </span>
       <span class="right"></span>
-      <button id="publish" class="btn ok">Publish</button>
-      <span id="pubMsg" class="pill">—</span>
+      <button id="publishBtn" class="btn ok">Publish</button>
+      <span id="pubMsg" class="pill">Bracket built locally. Click Publish to push to server.</span>
     </div>
   </div>
 </div>
@@ -117,182 +132,228 @@
   const API="";
 
   // ---- Admin cookie gate ----
-  const H=document.documentElement;
-  H.setAttribute("data-admin","checking");
+  const H=document.documentElement; H.setAttribute("data-admin","checking");
   function lock(){
     H.removeAttribute("data-admin");
-    const wrap=document.createElement("div");
-    wrap.className="lockwrap";
-    wrap.innerHTML = '<div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="/pages/dashboard/home/admin_login.html?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fpvp_admin.html">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you already logged in, your session may have expired.</div><div style="margin-top:14px"><a href="/index.html">Back to Dashboard</a></div></div>';
-    document.body.innerHTML=""; document.body.appendChild(wrap);
+    document.body.innerHTML='<div style="min-height:100vh;display:grid;place-items:center"><div class="panel"><h2>Administration Locked</h2><div>You must unlock admin on the <a href="/pages/dashboard/home/admin_login.html?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fpvp_admin.html">Admin Login</a> first.</div><div style="margin-top:8px"><a class="btn" href="/index.html">Back to Dashboard</a></div></div></div>';
   }
   fetch(API+"/api/admin/gate/check",{credentials:"include",cache:"no-store"})
     .then(r=>r.ok?r.json():null)
     .then(j=>{ if(j&&j.admin){ H.removeAttribute("data-admin"); boot(); } else lock(); })
     .catch(lock);
 
-  function esc(s){return String(s||"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-  function up(s){return String(s||"").trim().toUpperCase()}
-  function nowStr(ts){ return new Date(ts).toLocaleString(); }
+  // ---------- State ----------
+  let entries = [];
+  let east = [];  // [{name, game}]
+  let west = [];
+  let size = 16;  // 16 or 32
 
-  // local seeding state kept in-page
-  let seedEast=[], seedWest=[];
+  // ---------- Helpers ----------
+  const up = s => (s||"").toString().trim().toUpperCase();
+  const esc = s => String(s==null?"":s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+  const when = ts => (ts? new Date(ts).toLocaleString() : "—");
 
-  function renderSeeds(){
-    const render = (arr, host) => {
-      host.innerHTML = arr.length ? arr.map((e,i)=>`<div class="row" style="margin:4px 0">
-        <span class="pill">${i+1}. ${esc(e.username)} <span class="hint">(${esc(e.game||'—')})</span></span>
-        <button class="btn bad" data-i="${i}">Remove</button>
-      </div>`).join("") : '<div class="hint">None yet.</div>';
-      host.querySelectorAll('button[data-i]').forEach(b=>{
-        b.addEventListener('click',()=>{ const i=+b.getAttribute('data-i'); arr.splice(i,1); renderSeeds(); });
-      });
-    };
-    render(seedEast, $("#eastList"));
-    render(seedWest, $("#westList"));
-  }
-
-  function boot(){
-    const entTbl=$("#entTbl tbody");
-    const entCount=$("#entCount");
-    const refreshBtn=$("#entRefresh");
-    const takeBtn=$("#takeApproved");
-
-    async function entriesLoad(){
-      entTbl.innerHTML = `<tr><td colspan="6" class="hint">Loading…</td></tr>`;
-      try{
-        const r = await fetch(API+"/api/pvp/entries",{credentials:"include",cache:"no-store"});
-        if(!r.ok) throw new Error(r.status);
-        const a = await r.json();
-        const list = Array.isArray(a.entries)? a.entries : [];
-        entCount.textContent = list.length || "0";
-        if(!list.length){ entTbl.innerHTML = `<tr><td colspan="6" class="hint">No entries yet.</td></tr>`; return; }
-        entTbl.innerHTML = list.map(rowHtml).join("");
-        wireRowActions();
-      }catch{
-        entTbl.innerHTML = `<tr><td colspan="6" class="hint">Failed to load entries.</td></tr>`;
-        entCount.textContent = "—";
-      }
-    }
-
-    function rowHtml(e){
+  function paintEntries(){
+    const tb = $("#entTbl tbody");
+    $("#entCount").textContent = entries.length;
+    if(!entries.length){ tb.innerHTML = '<tr><td colspan="6" class="hint">No entries.</td></tr>'; return; }
+    tb.innerHTML = entries.map(e=>{
       const id = e._id || e.username;
-      const when = e.ts ? nowStr(e.ts) : "—";
-      const user = (e.username||"").toUpperCase();
-      const side = (e.side||"").toUpperCase();
-      const game = e.game || "—";
       const status = (e.status||"pending").toLowerCase();
-
-      return `<tr data-id="${id}" data-user="${esc(user)}" data-side="${esc(side)}" data-game="${esc(game)}" data-status="${esc(status)}">
-        <td>${when}</td>
-        <td><b>${esc(user)}</b></td>
-        <td>${esc(side)}</td>
-        <td>${esc(game)}</td>
+      return `<tr data-id="${esc(id)}">
+        <td>${esc(when(e.ts))}</td>
+        <td><b>${esc(e.username||"")}</b></td>
+        <td>${esc(e.side||"")}</td>
+        <td>${esc(e.game||"—")}</td>
         <td><span class="badge">${esc(status)}</span></td>
         <td>
-          <button class="btn ok"   data-act="approve">Approve</button>
+          <button class="btn ok" data-act="approve">Approve</button>
           <button class="btn warn" data-act="reject">Reject</button>
-          <button class="btn bad"  data-act="delete">Delete</button>
+          <button class="btn bad" data-act="delete">Delete</button>
         </td>
       </tr>`;
-    }
+    }).join("");
 
-    function wireRowActions(){
-      $("#entTbl").querySelectorAll("button[data-act]").forEach(b=>{
-        b.addEventListener("click", async ()=>{
-          const tr = b.closest("tr");
-          const id = tr?.getAttribute("data-id");
-          if(!id) return;
-
-          const act = b.getAttribute("data-act");
-          b.disabled = true;
-          try{
-            if(act==="approve" || act==="reject"){
-              const status = act==="approve" ? "approved" : "rejected";
-              const r = await fetch(API+`/api/pvp/entries/${encodeURIComponent(id)}/status`,{
-                method:"POST", credentials:"include",
-                headers:{"Content-Type":"application/json"},
-                body: JSON.stringify({ status })
-              });
-              if(!r.ok) throw 0;
-            }else if(act==="delete"){
-              const r = await fetch(API+`/api/pvp/entries/${encodeURIComponent(id)}`,{
-                method:"DELETE", credentials:"include"
-              });
-              if(!r.ok) throw 0;
-            }
-            await entriesLoad();
-          }catch{
-            b.disabled=false;
-            alert("Action failed.");
+    tb.querySelectorAll("button[data-act]").forEach(btn=>{
+      btn.addEventListener("click", async ()=>{
+        const tr = btn.closest("tr"); const id = tr.getAttribute("data-id");
+        const act = btn.getAttribute("data-act"); btn.disabled = true;
+        try{
+          if(act==="approve"||act==="reject"){
+            const status = act==="approve" ? "approved" : "rejected";
+            const r = await fetch(API+`/api/pvp/entries/${encodeURIComponent(id)}/status`,{
+              method:"POST", credentials:"include",
+              headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({status})
+            });
+            if(!r.ok) throw 0;
+          }else{
+            const r = await fetch(API+`/api/pvp/entries/${encodeURIComponent(id)}`,{
+              method:"DELETE", credentials:"include"
+            });
+            if(!r.ok) throw 0;
           }
-        });
+          await loadEntries();
+        }catch{ alert("Action failed"); }
+        finally{ btn.disabled=false; }
       });
+    });
+  }
+
+  async function loadEntries(){
+    try{
+      const r = await fetch(API+"/api/pvp/entries",{credentials:"include",cache:"no-store"});
+      const j = await r.json();
+      entries = Array.isArray(j.entries)? j.entries : [];
+    }catch{ entries = []; }
+    paintEntries();
+  }
+
+  function paintSeeds(){
+    const eBox = $("#eastList"), wBox=$("#westList");
+    eBox.innerHTML = east.map((s,i)=>seedRow("EAST",i,s)).join("") || `<div class="hint">None yet.</div>`;
+    wBox.innerHTML = west.map((s,i)=>seedRow("WEST",i,s)).join("") || `<div class="hint">None yet.</div>`;
+
+    eBox.querySelectorAll("button[data-rem]").forEach(b=>{
+      b.addEventListener("click", ()=>{ const i=+b.getAttribute("data-rem"); east.splice(i,1); paintSeeds(); });
+    });
+    wBox.querySelectorAll("button[data-rem]").forEach(b=>{
+      b.addEventListener("click", ()=>{ const i=+b.getAttribute("data-rem"); west.splice(i,1); paintSeeds(); });
+    });
+
+    const perSide = size/2;
+    $("#seedInfo").textContent = `Seeds: EAST ${east.length}/${perSide} • WEST ${west.length}/${perSide}`;
+  }
+
+  function seedRow(side,i,s){
+    return `<div class="seed"><span class="tag">${i+1}.</span> <b>${esc(s.name)}</b> <span class="tag">${esc(side)}</span> <span class="pill">${esc(s.game||"TBD")}</span> <button class="btn bad" data-rem="${i}">Remove</button></div>`;
+  }
+
+  function autoSeedFromApproved(){
+    const perSide = size/2;
+    const approved = entries.filter(e=>String(e.status).toLowerCase()==="approved");
+    const eApproved = approved.filter(e=>String(e.side).toUpperCase()==="EAST");
+    const wApproved = approved.filter(e=>String(e.side).toUpperCase()==="WEST");
+
+    east = eApproved.slice(0,perSide).map(x=>({name:up(x.username||""), game:up(x.game||"")}));
+    west = wApproved.slice(0,perSide).map(x=>({name:up(x.username||""), game:up(x.game||"")}));
+
+    // If one side short, fill from the other pool ignoring side
+    const pool = approved.map(x=>({name:up(x.username||""), game:up(x.game||"")}));
+    while(east.length < perSide && pool.length){ east.push(pool.shift()); }
+    while(west.length < perSide && pool.length){ west.push(pool.shift()); }
+
+    paintSeeds();
+  }
+
+  function addSeed(which){
+    const name = up($(which==="EAST"?"#eastUser":"#westUser").value);
+    const game = up($(which==="EAST"?"#eastGame":"#westGame").value);
+    if(!name) return;
+    (which==="EAST"?east:west).push({name, game});
+    $(which==="EAST"?"#eastUser":"#westUser").value="";
+    $(which==="EAST"?"#eastGame":"#westGame").value="";
+    paintSeeds();
+  }
+
+  // Build a simple “builder” object that Unified Live can list (match rows).
+  function buildBracketObject(){
+    const perSide = size/2;
+    const E = east.slice(0,perSide), W = west.slice(0,perSide);
+
+    // Games catalog so matches can reference an id
+    let gid = 0;
+    function mkGameFromSeed(s){
+      gid++;
+      return { id:`G${gid}`, title:s.game||"TBD", provider:"", imageUrl:"" };
     }
 
-    // take approved entries into seeding
-    takeBtn.addEventListener("click", ()=>{
-      const rows = Array.from($("#entTbl tbody").querySelectorAll("tr"));
-      rows.forEach(tr=>{
-        const status = tr.getAttribute("data-status");
-        if(status==="approved"){
-          const user = tr.getAttribute("data-user");
-          const side = tr.getAttribute("data-side");
-          const game = tr.getAttribute("data-game");
-          const obj = { username:user, side, game };
-          if(side==="WEST") seedWest.push(obj); else seedEast.push(obj);
+    const games = [];
+    const leftIds = E.map(s=>{ const g=mkGameFromSeed(s); games.push(g); return g.id; });
+    const rightIds= W.map(s=>{ const g=mkGameFromSeed(s); games.push(g); return g.id; });
+
+    // Create round-1 matches for East and West separately (paired sequentially)
+    function pair(ids, side){
+      const out=[];
+      for(let i=0;i<ids.length;i+=2){
+        const L = ids[i], R = ids[i+1];
+        if(!R){ // odd count → bye (single advances)
+          out.push({ leftId:L, rightId:null, leftTitle:side+" #"+(i+1), rightTitle:"BYE", leftScore:0, rightScore:0, side });
+        }else{
+          out.push({ leftId:L, rightId:R, leftTitle:side+" #"+(i+1), rightTitle:side+" #"+(i+2), leftScore:0, rightScore:0, side });
         }
+      }
+      return out;
+    }
+
+    const eastMatches = pair(leftIds, "EAST");
+    const westMatches = pair(rightIds, "WEST");
+
+    // Publish a combined “matches” list; Unified Live will just list these rows.
+    const matches = [...eastMatches, ...westMatches];
+
+    const builder = {
+      kind: "pvp",
+      title: "PVP — East vs West",
+      eventId: "pvp:"+new Date().toISOString().slice(0,10),
+      size,
+      lastUpdated: Date.now(),
+      games,
+      matches
+    };
+
+    // Local storage (for your current unified live)
+    try{
+      localStorage.setItem("pv:builder:pvp", JSON.stringify(builder));
+      localStorage.setItem("pvp:builder", JSON.stringify(builder)); // legacy
+    }catch{}
+
+    return builder;
+  }
+
+  async function publish(){
+    const builder = buildBracketObject();
+    $("#pubMsg").textContent = "Publishing…";
+    try{
+      const r = await fetch(API+"/api/pvp/bracket",{
+        method:"PUT", credentials:"include",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ bracket: builder })
       });
-      // dedupe by username within each side
-      const dedupe = arr => {
-        const seen=new Set(), out=[];
-        for(const x of arr){ if(!seen.has(x.username)){ seen.add(x.username); out.push(x); } }
-        return out;
-      };
-      seedEast = dedupe(seedEast);
-      seedWest = dedupe(seedWest);
-      renderSeeds();
-      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+      if(!r.ok) throw 0;
+      $("#pubMsg").textContent = "Published ✓";
+    }catch{
+      $("#pubMsg").textContent = "Publish failed.";
+    }
+  }
+
+  // ---------- Boot ----------
+  function boot(){
+    // load entries
+    loadEntries();
+
+    // wire entries controls
+    $("#entRefresh").addEventListener("click", loadEntries);
+    $("#takeApproved").addEventListener("click", ()=>{
+      // mark approved quickly in UI (quality-of-life)
+      entries.forEach(e=>{ if(String(e.status).toLowerCase()==="approved"){
+        const s = String(e.side).toUpperCase()==="WEST" ? west : east;
+        if(!s.find(x=>x.name===up(e.username))) s.push({name:up(e.username), game:up(e.game||"")});
+      }});
+      paintSeeds();
     });
 
-    // manual add
-    $("#addE").addEventListener("click", ()=>{
-      const u = up($("#addEUser").value); if(!u) return;
-      seedEast.push({ username:u, side:"EAST", game:$("#addEGame").value.trim() });
-      $("#addEUser").value=""; $("#addEGame").value="";
-      renderSeeds();
-    });
-    $("#addW").addEventListener("click", ()=>{
-      const u = up($("#addWUser").value); if(!u) return;
-      seedWest.push({ username:u, side:"WEST", game:$("#addWGame").value.trim() });
-      $("#addWUser").value=""; $("#addWGame").value="";
-      renderSeeds();
-    });
-    $("#clearSeed").addEventListener("click", ()=>{ seedEast=[]; seedWest=[]; renderSeeds(); });
+    // seed controls
+    $("#autoSeedBtn").addEventListener("click", ()=>{ autoSeedFromApproved(); buildBracketObject(); $("#pubMsg").textContent="Bracket built locally. Click Publish to push to server."; });
+    $("#clearSeedsBtn").addEventListener("click", ()=>{ east=[]; west=[]; paintSeeds(); });
 
-    // build bracket
-    $("#autoSeed").addEventListener("click", ()=>{
-      const builder = buildBracket(seedEast, seedWest);
-      // preview by storing locally (so you can open live page and see it instantly)
-      publishLocal(builder);
-      $("#pubMsg").textContent = "Bracket built locally. Click Publish to push to server.";
-      $("#pubMsg").classList.add("pill");
-    });
+    $("#eastAdd").addEventListener("click", ()=>addSeed("EAST"));
+    $("#westAdd").addEventListener("click", ()=>addSeed("WEST"));
 
-    // publish to server + localStorage (both keys)
-    $("#publish").addEventListener("click", async ()=>{
-      const builder = JSON.parse(localStorage.getItem('pv:builder:pvp') || "null");
-      if(!builder){ alert("No local bracket to publish. Use Auto-Seed first."); return; }
-      try{
-        const r = await fetch(API+"/api/pvp/bracket", {
-          method:"POST", credentials:"include",
-          headers:{ "Content-Type":"application/json" },
-          body: JSON.stringify({ builder })
-        });
-        if(!r.ok) throw 0;
-        $("#pubMsg").textContent = "Published ✓";
-      }catch{ $("#pubMsg").textContent="Publish failed"; }
-    });
+    $("#sizeSel").addEventListener("change", (e)=>{ size = Number(e.target.value)||16; paintSeeds(); });
+
+    // publish
+    $("#publishBtn").addEventListener("click", publish);
 
     // logout
     $("#adminLogout").addEventListener("click", async ()=>{
@@ -300,70 +361,9 @@
       location.href="/index.html";
     });
 
-    // first load
-    renderSeeds();
-    entriesLoad();
-  }
-
-  // ===== bracket helpers =====
-  function publishLocal(builder){
-    try{
-      localStorage.setItem('pv:builder:pvp', JSON.stringify(builder));
-      localStorage.setItem('pvp:builder',    JSON.stringify(builder)); // legacy
-      localStorage.setItem('sb:markets:pvp', JSON.stringify({ title:'PVP — EAST vs WEST', eventId:'pvp:'+new Date().toISOString().slice(0,10) }));
-    }catch{}
-  }
-
-  // Build tournament bracket data structure the live page understands:
-  // { games:[{id,title,provider,imageUrl, side:"EAST/WEST", seed, player}], matches:[{leftId,rightId,leftTitle,rightTitle,leftScore,rightScore}], lastUpdated }
-  function buildBracket(eastArr, westArr){
-    // Normalize
-    const east = eastArr.map((x,i)=>({ id:`E${i+1}`, title:x.game||x.username, provider:"", imageUrl:guessImage(x.game), side:"EAST", seed:i+1, player:x.username }));
-    const west = westArr.map((x,i)=>({ id:`W${i+1}`, title:x.game||x.username, provider:"", imageUrl:guessImage(x.game), side:"WEST", seed:i+1, player:x.username }));
-
-    // Next power of two for each side
-    const padToPower = (n)=>{ let p=1; while(p<n) p<<=1; return Math.max(1,p); };
-    const padSide = (arr,padPrefix)=> {
-      const need = padToPower(arr.length) - arr.length;
-      for(let i=0;i<need;i++) arr.push({ id:`${padPrefix}BYE${i+1}`, title:"BYE", provider:"", imageUrl:"", side: padPrefix==="E"?"EAST":"WEST", seed: arr.length+1, player:"BYE", bye:true });
-      return arr;
-    };
-    padSide(east,"E");
-    padSide(west,"W");
-
-    const games = [...east, ...west];
-
-    // Pair 1vN seeding for each side into initial matches
-    const makeRound = (sidePrefix, arr) => {
-      const round=[];
-      let L=0, R=arr.length-1;
-      while(L<R){
-        const left=arr[L], right=arr[R];
-        round.push({
-          leftId:left.id, rightId:right.id,
-          leftTitle:left.title, rightTitle:right.title,
-          leftScore:0, rightScore:0,
-          leftSide:left.side, rightSide:right.side
-        });
-        L++; R--;
-      }
-      return round;
-    };
-
-    const matches = [
-      ...makeRound("E", east),
-      ...makeRound("W", west)
-    ];
-
-    const builder = { games, matches, lastUpdated: Date.now() };
-    return builder;
-  }
-
-  function guessImage(game){
-    if(!game) return "";
-    const base = "/assets/slot images/";
-    const safe = game.toLowerCase().replace(/\s+/g,"-");
-    return `${base}${safe}.webp`; // your library uses this folder; harmless if missing
+    // defaults
+    size = Number($("#sizeSel").value)||16;
+    paintSeeds();
   }
 })();
 </script>
