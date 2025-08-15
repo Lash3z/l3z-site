@@ -41,11 +41,9 @@ const ALLOW = new Set([
 ]);
 app.use(cors({
   origin(origin, cb) {
-    // allow same-origin/no-origin (curl), your allowlist, and Render previews
     if (!origin) return cb(null, true);
     if (ALLOW.has(origin)) return cb(null, true);
     if (/\.onrender\.com$/i.test(new URL(origin).hostname)) return cb(null, true);
-    // loosen during dev to avoid CORS hair-pulling:
     return cb(null, true);
   },
   credentials: true,
@@ -80,7 +78,6 @@ if (!MONGO_URI_RAW) {
 }
 const mongoUp = () => mongoose?.connection?.readyState === 1;
 
-// Quick debug endpoint (handy to verify live)
 app.get("/api/_debug/mongo", (_req, res) => {
   res.json({
     up: mongoUp(),
@@ -92,26 +89,30 @@ app.get("/api/_debug/mongo", (_req, res) => {
 });
 
 /* ------------------------------------
- * Optional simple models (slot wheel / raffle entries)
+ * Models
  * ------------------------------------ */
-let SlotwheelEntry, RaffleEntry;
+let SlotwheelEntry, RaffleEntry, ConfigKV;
 try {
   const slotwheelSchema = new mongoose.Schema(
     { gid: { type: String, index: true }, user: { type: String, index: true }, ts: { type: Date, default: () => new Date() } },
-    { versionKey: false }
+    { versionKey: false, collection: "slotwheel_entries" }
   );
   slotwheelSchema.index({ gid: 1, user: 1 }, { unique: true });
   SlotwheelEntry = mongoose.models.SlotwheelEntry || mongoose.model("SlotwheelEntry", slotwheelSchema);
 
   const raffleSchema = new mongoose.Schema(
     { rid: { type: String, index: true }, user: { type: String, index: true }, ts: { type: Date, default: () => new Date() } },
-    { versionKey: false }
+    { versionKey: false, collection: "raffle_entries" }
   );
   raffleSchema.index({ rid: 1, user: 1 }, { unique: true });
   RaffleEntry = mongoose.models.RaffleEntry || mongoose.model("RaffleEntry", raffleSchema);
-} catch {
-  /* ignore if mongo not ready */
-}
+
+  const configSchema = new mongoose.Schema(
+    { key: { type: String, unique: true }, value: mongoose.Schema.Types.Mixed, ts: { type: Date, default: () => new Date() } },
+    { versionKey: false, collection: "app_config" }
+  );
+  ConfigKV = mongoose.models.ConfigKV || mongoose.model("ConfigKV", configSchema);
+} catch {}
 
 /* ------------------------------------
  * Admin Gate (server-side, 6h cookie)
@@ -120,7 +121,7 @@ const ADMIN_USER   = (process.env.ADMIN_USER || "lash3z").toLowerCase();
 const ADMIN_PASS   = process.env.ADMIN_PASS || "Lash3z777";
 const ADMIN_SECRET = process.env.ADMIN_SECRET || "change-me-now";
 const ADMIN_COOKIE = "adm_sess";
-const ADMIN_MAX_AGE_MS = 6 * 60 * 60 * 1000; // 6 hours
+const ADMIN_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 
 function signToken(payloadObj) {
   const body = Buffer.from(JSON.stringify(payloadObj)).toString("base64url");
@@ -136,58 +137,37 @@ function verifyToken(token) {
     const obj = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
     if (!obj || Date.now() > Number(obj.exp || 0)) return null;
     return obj;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 function setAdminCookie(res, username) {
   const payload = { u: String(username), exp: Date.now() + ADMIN_MAX_AGE_MS };
   const token = signToken(payload);
   res.cookie(ADMIN_COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
+    httpOnly: true, sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    maxAge: ADMIN_MAX_AGE_MS,
-    path: "/",
+    maxAge: ADMIN_MAX_AGE_MS, path: "/",
   });
 }
-function clearAdminCookie(res) {
-  res.clearCookie(ADMIN_COOKIE, { path: "/" });
-}
+function clearAdminCookie(res) { res.clearCookie(ADMIN_COOKIE, { path: "/" }); }
 function adminGuard(req, res, next) {
-  const tok = req.cookies?.[ADMIN_COOKIE];
-  const ok  = verifyToken(tok);
+  const ok  = verifyToken(req.cookies?.[ADMIN_COOKIE]);
   if (ok) return next();
-
   if (req.accepts("html")) {
-    return res
-      .status(401)
-      .type("html")
-      .send(
-        `<!doctype html><meta charset="utf-8">
-         <title>Admin Locked</title>
-         <style>body{background:#0b0f10;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif;padding:32px}</style>
-         <h1>Administration Locked</h1>
-         <p>You must unlock admin on the <a href="/index.html">Dashboard</a> first.</p>`
-      );
+    return res.status(401).type("html").send(
+      `<!doctype html><meta charset="utf-8"><title>Admin Locked</title>
+       <style>body{background:#0b0f10;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif;padding:32px}</style>
+       <h1>Administration Locked</h1><p>You must unlock admin on the <a href="/index.html">Dashboard</a> first.</p>`
+    );
   }
   return res.status(401).json({ ok: false, error: "admin_locked" });
 }
-
-// Admin gate endpoints
 app.post("/api/admin/gate/login", (req, res) => {
   const u = String(req.body?.username || "").trim().toLowerCase();
   const p = String(req.body?.password || "");
-  if (u === ADMIN_USER && p === ADMIN_PASS) {
-    setAdminCookie(res, u);
-    return res.json({ ok: true, admin: true, exp: Date.now() + ADMIN_MAX_AGE_MS });
-  }
+  if (u === ADMIN_USER && p === ADMIN_PASS) { setAdminCookie(res, u); return res.json({ ok: true, admin: true, exp: Date.now() + ADMIN_MAX_AGE_MS }); }
   return res.status(401).json({ ok: false, error: "bad_credentials" });
 });
-app.post("/api/admin/gate/logout", (_req, res) => {
-  clearAdminCookie(res);
-  res.json({ ok: true });
-});
+app.post("/api/admin/gate/logout", (_req, res) => { clearAdminCookie(res); res.json({ ok: true }); });
 app.get("/api/admin/gate/check", (req, res) => {
   const ok = verifyToken(req.cookies?.[ADMIN_COOKIE]);
   res.json({ ok: true, admin: !!ok, exp: ok?.exp || 0, user: ok?.u || null });
@@ -242,24 +222,15 @@ async function rolloverIfNeeded(state){
   }
   return state;
 }
-
-// Public
 app.get("/api/jackpot", async (_req,res)=>{
   const st = await rolloverIfNeeded(await loadJackpot());
-  res.json({
-    ok:true, currency:"AUD", month: st.month, base: JACKPOT_BASE_AUD, subsCap: SUBS_CAP_AUD,
-    amount: Number(computeAmountAUD(st).toFixed(2)), nextResetTs: melNextMonthStartTs()
-  });
+  res.json({ ok:true, currency:"AUD", month: st.month, base: JACKPOT_BASE_AUD, subsCap: SUBS_CAP_AUD,
+    amount: Number(computeAmountAUD(st).toFixed(2)), nextResetTs: melNextMonthStartTs() });
 });
-
-// Admin
 app.post("/api/jackpot/add-subs", adminGuard, async (req,res)=>{
   const count = Math.max(0, Math.floor(Number(req.body?.count||0)));
   const st = await rolloverIfNeeded(await loadJackpot());
-  if(count>0){
-    st.subsCents += Math.round(count * SUB_VALUE_AUD * 100);
-    await saveJackpot(st);
-  }
+  if(count>0){ st.subsCents += Math.round(count * SUB_VALUE_AUD * 100); await saveJackpot(st); }
   res.json({ ok:true, amount: Number(computeAmountAUD(st).toFixed(2)) });
 });
 app.post("/api/jackpot/adjust", adminGuard, async (req,res)=>{
@@ -286,16 +257,93 @@ app.post("/api/jackpot/reset", adminGuard, async (_req,res)=>{
 });
 
 /* ------------------------------------
- * API routes (conditionally mounted to avoid module-not-found)
+ * Giveaway "current" — players don’t need an ID
+ * ------------------------------------ */
+const DEFAULT_GIVEAWAY_ID = process.env.DEFAULT_GIVEAWAY_ID || "GLOBAL";
+const memSlot = { slotwheel: new Map() };
+
+async function getCurrentGiveawayId() {
+  if (!mongoUp() || !ConfigKV) return DEFAULT_GIVEAWAY_ID;
+  const doc = await ConfigKV.findOne({ key: "giveaway_current_id" }).lean();
+  return (doc?.value && String(doc.value)) || DEFAULT_GIVEAWAY_ID;
+}
+async function setCurrentGiveawayId(id) {
+  if (!mongoUp() || !ConfigKV) return false;
+  await ConfigKV.updateOne(
+    { key: "giveaway_current_id" },
+    { $set: { value: String(id), ts: new Date() } },
+    { upsert: true }
+  );
+  return true;
+}
+
+app.get("/api/giveaways/current", async (_req, res) => {
+  const id = await getCurrentGiveawayId();
+  res.json({ ok: true, id });
+});
+app.put("/api/giveaways/current", adminGuard, async (req, res) => {
+  const id = String(req.body?.id || "").trim();
+  if (!id) return res.status(400).json({ ok: false, error: "bad_id" });
+  const ok = await setCurrentGiveawayId(id);
+  res.json({ ok, id });
+});
+
+// entries for CURRENT
+app.get("/api/giveaways/entries", async (_req, res) => {
+  const gid = await getCurrentGiveawayId();
+  if (mongoUp() && SlotwheelEntry) {
+    const rows = await SlotwheelEntry.find({ gid }).sort({ ts: 1 }).lean();
+    res.setHeader("X-Store", "mongo");
+    return res.json({ ok: true, id: gid, entries: rows.map(r => ({ user: r.user, ts: r.ts })) });
+  }
+  if (!ALLOW_MEMORY_FALLBACK) {
+    res.setHeader("X-Store", "offline");
+    return res.status(503).json({ ok: false, reason: "DB_OFFLINE", id: gid, entries: [] });
+  }
+  const arr = Array.from(memSlot.slotwheel.get(gid) || []);
+  res.setHeader("X-Store", "memory");
+  return res.json({ ok: true, id: gid, entries: arr });
+});
+
+// enter CURRENT
+app.post("/api/giveaways/enter", async (req, res) => {
+  const user = String((req.body?.user || "").toUpperCase());
+  if (!user) return res.status(400).json({ ok: false, error: "bad_input" });
+  const gid = await getCurrentGiveawayId();
+
+  if (mongoUp() && SlotwheelEntry) {
+    try {
+      await SlotwheelEntry.updateOne(
+        { gid, user },
+        { $setOnInsert: { gid, user }, $set: { ts: new Date() } },
+        { upsert: true }
+      );
+      res.setHeader("X-Store", "mongo");
+      return res.json({ ok: true, id: gid });
+    } catch (e) {
+      if (e?.code === 11000) { res.setHeader("X-Store", "mongo"); return res.json({ ok: true, already: true, id: gid }); }
+      return res.status(500).json({ ok: false, error: e?.message || "db_error" });
+    }
+  }
+
+  if (!ALLOW_MEMORY_FALLBACK) {
+    res.setHeader("X-Store", "offline");
+    return res.status(503).json({ ok: false, reason: "DB_OFFLINE" });
+  }
+
+  const arr = memSlot.slotwheel.get(gid) || [];
+  if (!arr.some(e => e.user === user)) arr.push({ user, ts: new Date().toISOString() });
+  memSlot.slotwheel.set(gid, arr);
+  res.setHeader("X-Store", "memory");
+  return res.json({ ok: true, id: gid });
+});
+
+/* ------------------------------------
+ * API routes (conditionally mounted)
  * ------------------------------------ */
 async function mountIfExists(relPath, mountPath, label){
   const abs = path.resolve(__dirname, relPath);
-  try {
-    await fs.access(abs);
-  } catch {
-    console.warn(`[routes] ${label} missing (${relPath}) — skipping`);
-    return;
-  }
+  try { await fs.access(abs); } catch { console.warn(`[routes] ${label} missing (${relPath}) — skipping`); return; }
   try {
     const modUrl = pathToFileURL(abs).href;
     const mod = await import(modUrl);
@@ -316,9 +364,7 @@ await mountIfExists("./backend/routes/lbx.js",          "/api",             "lbx
 await mountIfExists("./backend/routes/raffles.js",      "/api/raffles",     "raffles");
 await mountIfExists("./backend/routes/wallet.js",       "/api/wallet",      "wallet");
 
-// ---- Simple slot wheel entries (server-owned truth; optional memory fallback)
-const memSlot = { slotwheel: new Map() }; // id -> [{user, ts}]
-
+// Back-compat (old endpoints still work)
 app.get("/api/giveaways/slotwheel/:id/entries", async (req, res) => {
   const gid = String(req.params.id || "").trim();
   if (!gid) return res.status(400).json({ ok: false, error: "bad_id" });
@@ -328,17 +374,11 @@ app.get("/api/giveaways/slotwheel/:id/entries", async (req, res) => {
     res.setHeader("X-Store", "mongo");
     return res.json({ ok: true, entries: rows.map((r) => ({ user: r.user, ts: r.ts })) });
   }
-
-  if (!ALLOW_MEMORY_FALLBACK) {
-    res.setHeader("X-Store", "offline");
-    return res.status(503).json({ ok: false, reason: "DB_OFFLINE", entries: [] });
-  }
-
+  if (!ALLOW_MEMORY_FALLBACK) { res.setHeader("X-Store", "offline"); return res.status(503).json({ ok: false, reason: "DB_OFFLINE", entries: [] }); }
   const arr = Array.from(memSlot.slotwheel.get(gid) || []);
   res.setHeader("X-Store", "memory");
   return res.json({ ok: true, entries: arr });
 });
-
 app.post("/api/giveaways/slotwheel/:id/entries", async (req, res) => {
   const gid = String(req.params.id || "").trim();
   const user = String((req.body?.user || "").toUpperCase());
@@ -358,12 +398,7 @@ app.post("/api/giveaways/slotwheel/:id/entries", async (req, res) => {
       return res.status(500).json({ ok: false, error: e?.message || "db_error" });
     }
   }
-
-  if (!ALLOW_MEMORY_FALLBACK) {
-    res.setHeader("X-Store", "offline");
-    return res.status(503).json({ ok: false, reason: "DB_OFFLINE" });
-  }
-
+  if (!ALLOW_MEMORY_FALLBACK) { res.setHeader("X-Store", "offline"); return res.status(503).json({ ok: false, reason: "DB_OFFLINE" }); }
   const arr = memSlot.slotwheel.get(gid) || [];
   if (!arr.some(e => e.user === user)) arr.push({ user, ts: new Date().toISOString() });
   memSlot.slotwheel.set(gid, arr);
@@ -371,66 +406,8 @@ app.post("/api/giveaways/slotwheel/:id/entries", async (req, res) => {
   return res.json({ ok: true });
 });
 
-// Simple raffle entries (mirrors the same logic)
-const memRaf = { raffles: new Map() };
-
-app.get("/api/raffles/:id/entries", async (req, res) => {
-  const rid = String(req.params.id || "").trim();
-  if (!rid) return res.status(400).json({ ok: false, error: "bad_id" });
-
-  if (mongoUp() && RaffleEntry) {
-    const rows = await RaffleEntry.find({ rid }).sort({ ts: 1 }).lean();
-    res.setHeader("X-Store", "mongo");
-    return res.json({ ok: true, entries: rows.map((r) => ({ user: r.user, ts: r.ts })) });
-  }
-
-  if (!ALLOW_MEMORY_FALLBACK) {
-    res.setHeader("X-Store", "offline");
-    return res.status(503).json({ ok: false, reason: "DB_OFFLINE", entries: [] });
-  }
-
-  const arr = Array.from(memRaf.raffles.get(rid) || []);
-  res.setHeader("X-Store", "memory");
-  return res.json({ ok: true, entries: arr });
-});
-
-app.post("/api/raffles/:id/entries", async (req, res) => {
-  const rid = String(req.params.id || "").trim();
-  const user = String((req.body?.user || "").toUpperCase());
-  if (!rid || !user) return res.status(400).json({ ok: false, error: "bad_input" });
-
-  if (mongoUp() && RaffleEntry) {
-    try {
-      await RaffleEntry.updateOne(
-        { rid, user },
-        { $setOnInsert: { rid, user }, $set: { ts: new Date() } },
-        { upsert: true }
-      );
-      res.setHeader("X-Store", "mongo");
-      return res.json({ ok: true });
-    } catch (e) {
-      if (e?.code === 11000) { res.setHeader("X-Store", "mongo"); return res.json({ ok: true, already: true }); }
-      return res.status(500).json({ ok: false, error: e?.message || "db_error" });
-    }
-  }
-
-  if (!ALLOW_MEMORY_FALLBACK) {
-    res.setHeader("X-Store", "offline");
-    return res.status(503).json({ ok: false, reason: "DB_OFFLINE" });
-  }
-
-  const arr = memRaf.raffles.get(rid) || [];
-  if (!arr.some(e => e.user === user)) arr.push({ user, ts: new Date().toISOString() });
-  memRaf.raffles.set(rid, arr);
-  res.setHeader("X-Store", "memory");
-  return res.json({ ok: true });
-});
-
-// Health (JSON)
-app.get("/healthz", (_req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
-
 /* ------------------------------------
- * Static files (protect admin pages) + HTML injector
+ * Static files + injector + guards
  * ------------------------------------ */
 const ROOT_DIR = __dirname;
 const assetsDir = path.resolve(__dirname, "assets");
@@ -438,59 +415,37 @@ const pagesDir  = path.resolve(__dirname, "pages");
 const adminDir  = path.resolve(__dirname, "admin");
 const indexHtml = path.resolve(__dirname, "index.html");
 
-// 🔐 Guard BOTH admin paths BEFORE any HTML/static handling
 app.use("/pages/dashboard/admin", adminGuard);
 app.use("/admin", adminGuard);
 
-// HTML injector (adds API_BASE + api-base.js into every HTML)
 async function sendInjectedHtml(filePath, res, next) {
   try {
     let html = await fs.readFile(filePath, "utf8");
-
-    // Avoid double-injecting if already present
     const already = html.includes("/assets/api-base.js") || html.includes("window.API_BASE");
     if (!already) {
-      const inject =
-        `\n<script>window.API_BASE=${JSON.stringify(PUBLIC_API_BASE)};</script>\n` +
-        `<script src="/assets/api-base.js"></script>\n`;
-      if (/<\/head>/i.test(html)) {
-        html = html.replace(/<\/head>/i, inject + "</head>");
-      } else if (/<\/body>/i.test(html)) {
-        html = html.replace(/<\/body>/i, inject + "</body>");
-      } else {
-        html = inject + html;
-      }
+      const inject = `\n<script>window.API_BASE=${JSON.stringify(PUBLIC_API_BASE)};</script>\n` +
+                     `<script src="/assets/api-base.js"></script>\n`;
+      if (/<\/head>/i.test(html)) html = html.replace(/<\/head>/i, inject + "</head>");
+      else if (/<\/body>/i.test(html)) html = html.replace(/<\/body>/i, inject + "</body>");
+      else html = inject + html;
     }
     res.type("html").send(html);
-  } catch (err) {
-    next(err);
-  }
+  } catch (err) { next(err); }
 }
 
-// Serve "/" and "/index.html" with injection
-app.get(["/","/index.html"], (req,res,next) => {
-  sendInjectedHtml(indexHtml, res, next);
-});
-
-// Serve any other .html file with injection
+app.get(["/","/index.html"], (req,res,next) => { sendInjectedHtml(indexHtml, res, next); });
 app.get(/.*\.html$/i, async (req,res,next) => {
   const file = path.join(ROOT_DIR, req.path);
-  sendInjectedHtml(file, res, err => {
-    if (err) next(); // fall through to static if not found
-  });
+  sendInjectedHtml(file, res, err => { if (err) next(); });
 });
 
-// Static
 app.use(
   express.static(ROOT_DIR, {
-    index: false,
-    extensions: ["html"],
+    index: false, extensions: ["html"],
     setHeaders(res, filePath) {
       if (/\.(png|jpe?g|gif|webp|svg|css|js|woff2?|mp3|mp4)$/i.test(filePath)) {
         res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-      } else {
-        res.setHeader("Cache-Control", "no-cache");
-      }
+      } else { res.setHeader("Cache-Control", "no-cache"); }
     },
   })
 );
@@ -498,46 +453,24 @@ app.use("/assets", express.static(assetsDir, { fallthrough: true }));
 app.use("/pages",  express.static(pagesDir,  { fallthrough: true }));
 app.use("/admin",  express.static(adminDir,  { fallthrough: true }));
 
-// Redirect old path to root
 app.get(
   ["/pages/dashboard/home", "/pages/dashboard/home/", "/pages/dashboard/home/index.html"],
   (_req, res) => res.redirect(302, "/index.html")
 );
-
-// Health HTML
 app.get("/health.html", (_req, res) => res.sendFile(path.resolve(__dirname, "health.html")));
+app.get("/favicon.ico", (_req, res) => { res.sendFile(path.resolve(__dirname, "assets", "L3Z_logoMain.png")); });
 
-// Favicon
-app.get("/favicon.ico", (_req, res) => {
-  res.sendFile(path.resolve(__dirname, "assets", "L3Z_logoMain.png"));
-});
-
-/* ------------------------------------
- * 404 handler (HTML for pages, JSON for API)
- * ------------------------------------ */
 app.use((req, res) => {
-  if (req.path.startsWith("/api/")) {
-    return res.status(404).json({ ok: false, error: "not_found" });
-  }
-  res
-    .status(404)
-    .type("html")
-    .send(
-      `<!doctype html><meta charset="utf-8">
-       <title>404</title>
-       <style>body{background:#0b0f10;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif;padding:32px}</style>
-       <h1>Not Found</h1>
-       <p>The path <code>${req.originalUrl}</code> doesn’t exist.</p>
-       <p><a href="/index.html">Back to Home</a></p>`
-    );
+  if (req.path.startsWith("/api/")) return res.status(404).json({ ok: false, error: "not_found" });
+  res.status(404).type("html").send(
+    `<!doctype html><meta charset="utf-8"><title>404</title>
+     <style>body{background:#0b0f10;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif;padding:32px}</style>
+     <h1>Not Found</h1><p>The path <code>${req.originalUrl}</code> doesn’t exist.</p>
+     <p><a href="/index.html">Back to Home</a></p>`
+  );
 });
 
-/* ------------------------------------
- * Boot
- * ------------------------------------ */
 process.on("unhandledRejection", e => console.error("[unhandledRejection]", e));
 process.on("uncaughtException", e => console.error("[uncaughtException]", e));
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => { console.log(`Server running on port ${PORT}`); });
