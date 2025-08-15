@@ -20,6 +20,8 @@ h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
 .tab{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:#0f1720;color:#cfffff;cursor:pointer}
 .tab.active{border-color:#00ffff88;box-shadow:0 0 14px #00ffff33}
 .list{display:grid;gap:14px}
+
+/* Existing live match row (fallback) */
 .rowLive{
   display:grid;align-items:center;gap:12px;
   grid-template-columns: 1fr 92px 56px 18px 56px 92px 1fr;
@@ -34,9 +36,44 @@ h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
 .thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .score{min-width:56px;padding:10px;border:1px solid var(--line);border-radius:10px;text-align:center;font-weight:900;background:#0d1820}
 .colon{font-weight:900;color:#9fe;text-align:center}
+
+/* Bonus Hunt stats (unchanged) */
 .statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
 .stat{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px}
 .stat h4{margin:0 0 6px 0}
+
+/* ===== Bracket (PVP) ===== */
+.bracketWrap{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;margin-top:12px}
+.sideCol{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:10px;overflow:auto}
+.sideHead{display:flex;align-items:center;justify-content:space-between;margin:0 0 8px 0;color:#9fd0d6;font-size:13px}
+.roundCol{display:flex;flex-direction:column;gap:12px;min-width:220px;margin-right:12px}
+.roundLbl{font-size:12px;color:#9fd0d6;margin:2px 0 0 2px}
+.roundsScroller{display:flex;flex-direction:row;align-items:flex-start}
+.match{
+  position:relative;background:#0c1519;border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-height:64px
+}
+.slot{display:flex;justify-content:space-between;gap:10px}
+.name{font-weight:900}
+.game{font-size:12px;color:#9fd0d6}
+.vs{margin:4px 0 0 0;font-size:11px;opacity:.8}
+.badge{display:inline-block;padding:2px 8px;border:1px solid var(--line);border-radius:999px;background:#0f1e22;font-size:11px;color:#cfe;margin-left:6px}
+.scoreSm{font-weight:900;padding:2px 6px;border:1px solid var(--line);border-radius:8px;background:#0d1820;min-width:34px;text-align:center}
+
+/* subtle “flow” hint toward center */
+.sideCol.east .match::after{
+  content:"";position:absolute;right:-10px;top:50%;width:10px;height:2px;background:linear-gradient(90deg,transparent,#00ffffaa)
+}
+.sideCol.west .match::after{
+  content:"";position:absolute;left:-10px;top:50%;width:10px;height:2px;background:linear-gradient(90deg,#00ffffaa,transparent)
+}
+
+/* Center column */
+.centerCol{display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:flex-start;min-width:260px}
+.finalCard{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px;width:100%}
+.centerTitle{display:flex;align-items:center;justify-content:space-between;color:#9fd0d6;font-size:13px;margin:0 0 8px 0}
+.champ{display:flex;gap:10px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:12px;background:#0c161a;padding:12px}
+.champ .name{font-size:18px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:#081318;color:#cfffff;font-size:12px}
 </style>
 </head>
 <body>
@@ -71,12 +108,18 @@ h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
   function bkey(){return mode==='battleground'?'bg:builder:battleground':mode==='pvp'?'pv:builder:pvp':'bh:builder:bonus'}
   function mkey(){return 'sb:markets:'+mode}
 
-  function setMode(m){ mode=m; localStorage.setItem('sb:mode',m); for(var i=0;i<els.tabs.length;i++){ els.tabs[i].classList.toggle('active', els.tabs[i].getAttribute('data-mode')===m); } load(); }
+  function setMode(m){
+    mode=m; localStorage.setItem('sb:mode',m);
+    for(var i=0;i<els.tabs.length;i++){
+      els.tabs[i].classList.toggle('active', els.tabs[i].getAttribute('data-mode')===m);
+    }
+    load();
+  }
 
   async function load(){
     markets=sget(mkey())||{title:mode.toUpperCase(),eventId:mode+':'+new Date().toISOString().slice(0,10)};
     if(mode==='pvp'){
-      // NEW: try server first
+      // server → local fallback for bracket/builder
       try{
         const r = await fetch('/api/pvp/bracket', { cache:'no-store' });
         if(r.ok){
@@ -95,36 +138,51 @@ h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
     paint();
   }
 
-  function gById(id){ if(!builder||!builder.games) return {}; for(var i=0;i<builder.games.length;i++){ if(builder.games[i].id===id) return builder.games[i]; } return {}; }
+  function gById(id){
+    if(!builder||!builder.games) return {};
+    for(var i=0;i<builder.games.length;i++){ if(builder.games[i].id===id) return builder.games[i]; }
+    return {};
+  }
   function resolveTitle(id){ if(!id) return '—'; var g=gById(id); return g.title||'—'; }
 
   function paint(){
     els.tag.textContent=(markets.title||mode.toUpperCase())+' — '+(markets.eventId||'EVT');
     els.stamp.textContent = builder && builder.lastUpdated ? ('Live @ '+new Date(builder.lastUpdated).toLocaleTimeString()) : 'Live';
     els.content.innerHTML='';
-    if(mode==='bonus'){ paintBonus(); return; }
 
+    if(mode==='bonus'){ paintBonus(); return; }
+    if(mode==='pvp' && builder && builder.bracket && (builder.bracket.east||builder.bracket.west)){
+      paintPvpBracket(builder.bracket); return;
+    }
+    // fallback (keeps your old look & feel)
+    paintPvpOrBgRows();
+  }
+
+  /* ---------- Fallback rows (existing behavior) ---------- */
+  function paintPvpOrBgRows(){
     var list=document.createElement('div'); list.className='card list';
-    if(!builder || !builder.matches || !builder.matches.length){ list.innerHTML='<div class="pill">No matchups yet.</div>'; }
-    else{
+    if(!builder || !builder.matches || !builder.matches.length){
+      list.innerHTML='<div class="pill">No matchups yet.</div>';
+    }else{
       for(var i=0;i<builder.matches.length;i++){
         var mx=builder.matches[i], L=gById(mx.leftId)||{}, R=gById(mx.rightId)||{};
         var row=document.createElement('div'); row.className='rowLive';
         var imgL = mx.leftImg||L.imageUrl||L.image||'', imgR=mx.rightImg||R.imageUrl||R.image||'';
         row.innerHTML =
-          '<div class="nameL"><div class="title">'+esc(mx.leftTitle||L.title||'LEFT')+'</div><div class="prov">'+esc(L.provider||"")+'</div></div>'+
+          '<div class="nameL"><div class="title">'+esc(mx.leftTitle||mx.leftName||L.title||'LEFT')+'</div><div class="prov">'+esc(L.provider||"")+'</div></div>'+
           '<div class="thumb">'+(imgL?('<img src="'+esc(imgL)+'" alt="">'):'')+'</div>'+
           '<div class="score">'+esc(+mx.leftScore||0)+'</div>'+
           '<div class="colon">:</div>'+
           '<div class="score">'+esc(+mx.rightScore||0)+'</div>'+
           '<div class="thumb">'+(imgR?('<img src="'+esc(imgR)+'" alt="">'):'')+'</div>'+
-          '<div class="nameR"><div class="title">'+esc(mx.rightTitle||R.title||'RIGHT')+'</div><div class="prov">'+esc(R.provider||"")+'</div></div>';
+          '<div class="nameR"><div class="title">'+esc(mx.rightTitle||mx.rightName||R.title||'RIGHT')+'</div><div class="prov">'+esc(R.provider||"")+'</div></div>';
         list.appendChild(row);
       }
     }
     els.content.appendChild(list);
   }
 
+  /* ---------- BONUS HUNT (unchanged) ---------- */
   function paintBonus(){
     var card=document.createElement('div'); card.className='card';
     var ag = (builder && builder.aggregates) ? builder.aggregates : computeAgg(builder);
@@ -139,7 +197,6 @@ h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
     card.appendChild(grid);
     els.content.appendChild(card);
   }
-
   function statBox(title, val){ return '<div class="stat"><h4>'+esc(title)+'</h4><div class="pill">'+esc(String(val))+'</div></div>'; }
   function computeAgg(bh){
     var res=(bh&&bh.results)||[], out={finalBalance:(bh&&bh.finalBalance!=null?bh.finalBalance:null),hundredXCount:0,highestX:null,lowestX:null};
@@ -148,13 +205,139 @@ h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
     out.hundredXCount=c; out.highestX=hi.gameId?hi:null; out.lowestX=lo.gameId?lo:null; return out;
   }
 
-  for(var i=0;i<els.tabs.length;i++){ (function(t){ t.addEventListener('click', function(){ setMode(t.getAttribute('data-mode')); }); })(els.tabs[i]); }
-  window.addEventListener('storage', function(e){ if(e && (e.key===bkey())) { load(); } });
+  /* ---------- PVP BRACKET (East ⇢ Final ⇠ West) ---------- */
+  function paintPvpBracket(br){
+    // br = { size, east:[rounds], west:[rounds], finals:[rounds], champion?, meta? }
+    var wrap = document.createElement('div');
+    wrap.className = 'card bracketWrap';
+
+    // EAST column
+    wrap.appendChild(sideColumn('EAST', 'east', br.east));
+
+    // CENTER column (finals + champion)
+    var center = document.createElement('div'); center.className='centerCol';
+    // Finals (rounds, if any)
+    if (Array.isArray(br.finals) && br.finals.length){
+      br.finals.forEach(function(round, idx){
+        var fc = document.createElement('div'); fc.className='finalCard';
+        var lbl = (idx===br.finals.length-1 && round && round.length===1) ? 'GRAND FINAL' : ('FINALS R'+(idx+1));
+        fc.innerHTML = '<div class="centerTitle"><div>'+esc(lbl)+'</div><div class="chip">'+esc((br.meta&&br.meta.bestOf)?('Bo'+br.meta.bestOf):'LIVE')+'</div></div>';
+        round.forEach(function(m){ fc.appendChild(matchBlock(m)); });
+        center.appendChild(fc);
+      });
+    }
+    // Champion (if provided)
+    var champName = (br.champion && (br.champion.name||br.champion.username||br.champion.player)) || (br.winner && (br.winner.name||br.winner.username));
+    if (champName){
+      var c = document.createElement('div'); c.className='finalCard';
+      c.innerHTML = '<div class="centerTitle"><div>Champion</div><div class="chip">E vs W</div></div>';
+      var box = document.createElement('div'); box.className='champ';
+      box.innerHTML = '<div class="name">'+esc(champName)+'</div>';
+      c.appendChild(box);
+      center.appendChild(c);
+    }
+    wrap.appendChild(center);
+
+    // WEST column
+    wrap.appendChild(sideColumn('WEST', 'west', br.west));
+
+    els.content.appendChild(wrap);
+  }
+
+  function sideColumn(title, sideClass, rounds){
+    var col = document.createElement('div'); col.className='sideCol '+sideClass;
+    var head = document.createElement('div'); head.className='sideHead';
+    head.innerHTML = '<div>'+esc(title)+'</div><div class="chip">'+(Array.isArray(rounds)? rounds.length : 0)+' Rounds</div>';
+    col.appendChild(head);
+
+    var scroller = document.createElement('div'); scroller.className='roundsScroller';
+    if(Array.isArray(rounds) && rounds.length){
+      var total = rounds.length;
+      rounds.forEach(function(round, idx){
+        var rcol = document.createElement('div'); rcol.className='roundCol';
+        var rlbl = document.createElement('div'); rlbl.className='roundLbl';
+        rlbl.textContent = roundLabel(idx, total);
+        rcol.appendChild(rlbl);
+        (round||[]).forEach(function(m){ rcol.appendChild(matchBlock(m)); });
+        scroller.appendChild(rcol);
+      });
+    }else{
+      var empty = document.createElement('div'); empty.className='roundCol';
+      empty.innerHTML = '<div class="roundLbl">No rounds</div><div class="match"><div class="vs">No entries.</div></div>';
+      scroller.appendChild(empty);
+    }
+    col.appendChild(scroller);
+    return col;
+  }
+
+  function roundLabel(idx, total){
+    // Left to right (deeper → nearer to center): R16/R32 → QF → SF
+    var map = {2:'SF',3:'QF'}; // if total=3: [R16,QF,SF]
+    if (total<=1) return 'SF';
+    if (total===2) return idx===0 ? 'QF' : 'SF';
+    if (total>=3){
+      if (idx===total-1) return 'SF';
+      if (idx===total-2) return 'QF';
+      var size = 1<<((total-idx)); // rough label
+      if (size>=64) return 'R64';
+      if (size>=32) return 'R32';
+      if (size>=16) return 'R16';
+      if (size>=8)  return 'R8';
+      return 'R'+size;
+    }
+    return 'Round '+(idx+1);
+  }
+
+  function matchBlock(m){
+    // Accepts flexible schemas:
+    // {left/right: {name,img,score,game}, winner?} OR legacy {leftName,rightName,leftImg,rightImg,leftScore,rightScore, game}
+    var L = m.left || {}; var R = m.right || {};
+    var lName = (m.leftName||L.name||L.username||L.player||'').toString();
+    var rName = (m.rightName||R.name||R.username||R.player||'').toString();
+    var lImg  = m.leftImg||L.img||L.image||''; var rImg = m.rightImg||R.img||R.image||'';
+    var lScore = num((m.leftScore!=null?m.leftScore:L.score)); var rScore = num((m.rightScore!=null?m.rightScore:R.score));
+    var game = (m.game || (L && L.game) || (R && R.game) || '').toString();
+
+    var div = document.createElement('div'); div.className='match';
+    var html = '';
+    html += rowSlot(lName || '—', lImg, lScore, 'L');
+    html += '<div class="vs">vs'+(game?(' • <span class="game">'+esc(game)+'</span>'):'')+'</div>';
+    html += rowSlot(rName || '—', rImg, rScore, 'R');
+    div.innerHTML = html;
+    return div;
+  }
+
+  function rowSlot(name, img, score, side){
+    var scoreHtml = (score!=null && !Number.isNaN(score)) ? ('<span class="scoreSm">'+esc(score)+'</span>') : '';
+    var imgHtml = img ? ('<img src="'+esc(img)+'" alt="" style="width:28px;height:28px;object-fit:cover;border-radius:6px;border:1px solid var(--line)">') : '';
+    return '<div class="slot"><div class="name">'+esc(name)+'</div><div style="display:flex;gap:8px;align-items:center">'+(imgHtml||'')+scoreHtml+'</div></div>';
+  }
+
+  function num(v){ var n = Number(v); return Number.isFinite(n) ? n : null; }
+
+  /* ---------- wiring ---------- */
+  for(var i=0;i<els.tabs.length;i++){
+    (function(t){ t.addEventListener('click', function(){ setMode(t.getAttribute('data-mode')); }); })(els.tabs[i]);
+  }
+
+  window.addEventListener('storage', function(e){
+    if(e && (e.key===bkey())) { load(); }
+  });
+
+  // Auto-refresh: for PVP, poll the published bracket; for others, detect local changes
   setInterval(async function(){
-    if(mode!=='pvp'){ var b=sget(bkey()); if(b && b.lastUpdated && b.lastUpdated!==last){ load(); } return; }
+    if(mode!=='pvp'){
+      var b=sget(bkey());
+      if(b && b.lastUpdated && b.lastUpdated!==last){ load(); }
+      return;
+    }
     try{
       const r=await fetch('/api/pvp/bracket',{cache:'no-store'});
-      if(r.ok){ const j=await r.json(); const lu=(j&&j.builder&&j.builder.lastUpdated)||0; if(lu && lu!==last){ load(); } }
+      if(r.ok){
+        const j=await r.json();
+        const lu=(j&&j.builder&&j.builder.lastUpdated)||0;
+        if(lu && lu!==last){ load(); }
+      }
     }catch{}
   }, 2000);
 
