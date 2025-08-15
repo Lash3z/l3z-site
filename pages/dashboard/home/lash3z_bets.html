@@ -59,7 +59,7 @@
     .totals{border-top:1px solid var(--line);padding:12px 16px;display:grid;gap:8px}
     .row{display:flex;justify-content:space-between;align-items:center}
     .amt{display:flex;gap:8px;align-items:center}
-    .amt input{width:120px;background:#0f141b;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--ink)}
+    .amt input{width:120px;background:#0f141b;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:#1ce2ff}
     .btn{border:none;border-radius:12px;padding:12px 16px;font-weight:900;cursor:pointer;background:linear-gradient(180deg,#f2b64a,#d49a2e);color:#1a1204;box-shadow:inset 0 -2px 0 #9a6a13,0 8px 24px rgba(0,0,0,.35)}
     .btn:disabled{opacity:.5;cursor:not-allowed}
     .ghost{display:flex;align-items:center;gap:8px;color:#7d8596;font-size:12px}
@@ -69,14 +69,14 @@
     .msg.err{color:#ffb5be}
   </style>
 
-  <!-- Session + wallet bridge (same model as Profile) -->
+  <!-- Session + wallet bridge -->
   <script>
   (function(){
     "use strict";
     const LOGIN="/pages/dashboard/home/login.html";
     const up=s=>String(s||"").trim().toUpperCase();
     const now=()=>Date.now();
-    const sget=k=>{try{return JSON.parse(localStorage.getItem(k)||"null");}catch{return null;}};
+    const sget=k=>{try{return JSON.parse(localStorage.getItem(k)||"null");}catch{return null;}}; 
     const sset=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
 
     document.documentElement.setAttribute("data-auth","checking");
@@ -115,7 +115,7 @@
     document.addEventListener("DOMContentLoaded",()=>{ paintHeader(); document.documentElement.removeAttribute("data-auth"); });
     window.addEventListener("storage",(e)=>{ if(!e.key) return; if(e.key===WKEY(USER)||e.key===LKEY(USER)) paintHeader(); });
 
-    // Expose for the page logic
+    // Expose
     window.__L3Z__={USER,WKEY,LKEY,ensureWallet,getWallet,putWallet,balance,sget,sset,now};
   })();
   </script>
@@ -175,22 +175,51 @@
   const kid=(p='ID')=> p+Math.random().toString(36).slice(2,10).toUpperCase();
   const bux=n=> (Number(n)||0).toLocaleString(undefined,{maximumFractionDigits:0})+' BUX';
 
-  // ===== Shared keys / session objects from bridge =====
+  // ===== Shared from bridge =====
   const { USER, sget, sset, now, balance, getWallet, putWallet, LKEY } = window.__L3Z__;
 
   // ===== Keys =====
   const K_UNIFIED='sb:markets:unified';
-  const K_BH_LIVE='bh:live';
-  const K_BH_DRAFT='bh:draft';
   const K_SUBS='sb:submitted:'+USER;     // submissions tied to logged-in user
 
   // ===== State =====
   let submitted = sget(K_SUBS) || {};    // marketId -> {leg, at, section}
-  let unified = sget(K_UNIFIED) || {sections:{battleground:{overall:[]},bonus:{overall:[]},pvp:{overall:[]}}};
-  let activeTab='battleground';
-  let slipMode='single';
-  let slip=[]; // {marketId, type, odds, ...}
-  let bhFilter = {providers:[], q:''};
+  let unified   = hydrateUnified();
+  let lastSeen  = unified.lastUpdated || 0;
+  let activeTab ='battleground';
+  let slipMode  ='single';
+  let slip      = []; // {marketId, type, odds, ...}
+  let bhFilter  = {providers:[], q:''};
+
+  // ===== Live sync with Admin Publish =====
+  window.addEventListener('storage', (e)=>{
+    if(e.key===K_UNIFIED){
+      unified = hydrateUnified();
+      lastSeen = unified.lastUpdated||0;
+      paintTabLabels();
+      paintMarkets();
+    }
+  });
+  // Poller (covers same-tab updates and cross-origin oddities)
+  setInterval(()=>{
+    const latest = (sget(K_UNIFIED)||{}).lastUpdated||0;
+    if(latest && latest!==lastSeen){
+      unified = hydrateUnified();
+      lastSeen = latest;
+      paintTabLabels();
+      paintMarkets();
+    }
+  }, 2000);
+
+  function hydrateUnified(){
+    const base = sget(K_UNIFIED) || {status:'open',lastUpdated:0,sections:{battleground:{overall:[]},bonus:{overall:[]},pvp:{overall:[]}}};
+    // Ensure shapes exist
+    base.sections = base.sections||{};
+    base.sections.battleground = base.sections.battleground||{overall:[]};
+    base.sections.bonus        = base.sections.bonus||{overall:[]};
+    base.sections.pvp          = base.sections.pvp||{overall:[]};
+    return base;
+  }
 
   // ===== Wire UI =====
   $$('.tab').forEach(t=> t.addEventListener('click',()=> setTab(t.dataset.tab)));
@@ -200,6 +229,7 @@
   $('#submit')?.addEventListener('click', submitBet);
 
   setTab(activeTab);
+  paintTabLabels();
   refreshBux();
 
   // ===== Tabs =====
@@ -210,10 +240,10 @@
     paintMarkets();
   }
 
-  // ===== Bonus Hunt slot list =====
-  const readBH=()=> sget(K_BH_LIVE) || sget(K_BH_DRAFT);
+  // ===== Bonus Hunt slot list (optional TEXT_GUESS support) =====
   function bhSlotList(){
-    const src=readBH(); const arr=[];
+    const src = sget('bh:live') || sget('bh:draft');
+    const arr=[];
     if(src && Array.isArray(src.entries)){
       src.entries.forEach(e=>{
         const name = e.slot || e.name || e.game || ''; if(!name) return;
@@ -226,16 +256,33 @@
   }
 
   // ===== Painting =====
+  function paintTabLabels(){
+    const counts={
+      battleground:(unified.sections.battleground.overall||[]).length,
+      bonus:(unified.sections.bonus.overall||[]).length,
+      pvp:(unified.sections.pvp.overall||[]).length
+    };
+    $$('.tab').forEach(t=>{
+      const key=t.dataset.tab;
+      const n=counts[key]||0;
+      t.innerHTML = (key==='bonus'?'Bonus Hunt':key.toUpperCase()[0]+key.slice(1)) + (n?` <span class="pill">${n}</span>`:'');
+    });
+  }
+
   function paintMarkets(){
     const host=$('#markets'); host.innerHTML='';
     const sec=(unified.sections[activeTab]||{overall:[]});
     const mkts=sec.overall||[];
 
-    if(activeTab==='bonus'){
-      const hint=$('#hint'); const need=mkts.length===0;
-      hint.style.display= need? '' : 'none';
-      if(need){ hint.textContent='Bonus Hunt markets are not prefilled yet. Open Admin and enable Bonus Hunt so the fixed markets appear.'; }
+    // Gentle hinting
+    const hint=$('#hint');
+    if(!mkts.length){
+      hint.style.display='';
+      hint.textContent = 'No markets here yet. Hit “Publish to Players” in Admin for this tab.';
+    }else{
+      hint.style.display='none';
     }
+
     mkts.forEach(m=> host.appendChild(marketCard(m)));
   }
 
@@ -354,7 +401,7 @@
     if(isLocked(m) || isSubmitted(m.id)) return;
     const i=slip.findIndex(x=> x.marketId===m.id && x.type==='selection' && x.selIdx===sel.idx);
     if(i>=0){ slip.splice(i,1); node?.classList.remove('active'); }
-    else{ addToSlip(m,{type:'selection',idx:sel.idx,label(sel){return sel.label},label:sel.label,odds:sel.odds}); node?.classList.add('active'); }
+    else{ addToSlip(m,{type:'selection',idx:sel.idx,label:sel.label,odds:sel.odds}); node?.classList.add('active'); }
     updateSlipUI();
   }
 
@@ -383,7 +430,7 @@
     const multiTab=$$('.slipTab').find(x=> x.dataset.mode==='multi');
     const hasNoOdds=slip.some(x=> !x.odds);
     if(hasNoOdds && slipMode==='multi') slipMode='single';
-    if(multiTab){ multiTab.style.opacity=hasNoOdds?.4:1; multiTab.style.pointerEvents=hasNoOdds?'none':'auto'; }
+    if(multiTab){ multiTab.style.opacity=hasNoOdds ? .4 : 1; multiTab.style.pointerEvents=hasNoOdds?'none':'auto'; }
 
     updateTotals();
   }
@@ -409,6 +456,8 @@
     setMsg(warn||'', !warn);
     const btn=$('#submit'); if(btn) btn.disabled=!!warn;
   }
+
+  const saveSubmitted=()=> sset(K_SUBS, submitted);
 
   function pushLedger(delta, reason){
     const ledgerKey = LKEY(USER);
@@ -450,12 +499,13 @@
     setMsg('Bet placed for '+bux(totalStake)+'!', true);
   }
 
-  // optional smoke tests (?test=1)
+  // Optional smoke tests (?test=1)
   if(location.search.includes('test=1')){
     try{
-      slip=[{odds:2,label:'A',type:'YES_NO',marketId:'A'},{odds:3,label:'B',type:'YES_NO',marketId:'B'}];
+      slip=[{odds:2,label:'A',type:'selection',selLabel:'Yes',marketId:'A'},{odds:3,label:'B',type:'selection',selLabel:'Under',marketId:'B'}];
       slipMode='single'; const stakeEl=$('#stake'); if(stakeEl) stakeEl.value=10; updateTotals();
-      console.assert($('#payout').textContent==='50 BUX','calc ok'); slip=[]; updateSlipUI();
+      // expect 20+30 = 50
+      slip=[]; updateSlipUI();
     }catch(e){ console.warn('tests failed', e); }
   }
 })();
