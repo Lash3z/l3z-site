@@ -1,4 +1,4 @@
-// server.js — Homepage-first routing, admin resolvers, JSON+form login
+// server.js — Homepage-first routing, admin resolvers & aliases, JSON+form login
 import fs from "fs";
 import path from "path";
 import express from "express";
@@ -29,13 +29,12 @@ const ALLOW_MEMORY_FALLBACK = (process.env.ALLOW_MEMORY_FALLBACK || "true") === 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 
-// Serve static from the folder that holds your site; default to same dir as server.js.
-// Override with PUBLIC_DIR if you serve from /public, /dist, etc.
+// Where static files are served from. Override with PUBLIC_DIR if needed.
 const PUBLIC_DIR = process.env.PUBLIC_DIR
   ? path.resolve(process.env.PUBLIC_DIR)
   : __dirname;
 
-// Pin exact homepage file (can override with HOME_INDEX env; relative to PUBLIC_DIR if not absolute)
+// Home page file (relative to PUBLIC_DIR unless absolute)
 const HOME_INDEX = (() => {
   const val = process.env.HOME_INDEX || "index.html";
   return path.isAbsolute(val) ? val : path.join(PUBLIC_DIR, val);
@@ -53,7 +52,7 @@ function resolveFirstExisting(candidates) {
   return null;
 }
 
-// Admin file resolvers (cover the common paths in your repo)
+// Admin file resolvers (cover common repo paths)
 const ADMIN_LOGIN_CANDIDATES = [
   process.env.ADMIN_LOGIN_FILE || "pages/dashboard/home/admin_login.html",
   "pages/dashboard/home/login.html",
@@ -94,7 +93,7 @@ const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 
-// Tiny safety headers (no behavioral changes)
+// Light safety headers
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "no-referrer-when-downgrade");
@@ -120,7 +119,7 @@ app.use("/api", (req, res, next) => {
 
 // ===== JWT helpers
 function generateAdminToken(username) {
-  return jwt.sign({ username }, JWT_SECRET, { expiresIn: "12h" }); // 12h to match your UI note
+  return jwt.sign({ username }, JWT_SECRET, { expiresIn: "12h" });
 }
 function verifyAdminToken(req, res, next) {
   const token = req.cookies?.admin_token;
@@ -141,7 +140,7 @@ app.post(["/api/admin/gate/login", "/api/admin/login"], (req, res) => {
       httpOnly: true,
       sameSite: "lax",
       secure: NODE_ENV === "production",
-      maxAge: 1000 * 60 * 60 * 12, // 12h
+      maxAge: 1000 * 60 * 60 * 12,
       path: "/",
     });
     return res.json({ success: true, admin: true, username: username.toLowerCase() });
@@ -180,18 +179,36 @@ app.get("/", (req, res) => {
   res.status(200).send("Homepage not found: put index.html in PUBLIC_DIR or set HOME_INDEX/PUBLIC_DIR correctly.");
 });
 
-// ===== Friendly admin helpers (no redirect loops)
-// /admin/login resolves to whatever login page actually exists right now
+// ===== Friendly admin helpers
 app.get("/admin/login", (req, res) => {
   if (ADMIN_LOGIN_FILE) return res.sendFile(ADMIN_LOGIN_FILE);
-  // fallback to home with a hint
   res.status(404).send("Admin login page not found (check ADMIN_LOGIN_FILE or your /pages/... path).");
 });
-
-// /admin/hub resolves to the Admin Hub file
 app.get("/admin/hub", (req, res) => {
   if (ADMIN_HUB_FILE) return res.sendFile(ADMIN_HUB_FILE);
   res.status(404).send("Admin hub page not found (check ADMIN_HUB_FILE or your /pages/... path).");
+});
+
+// ===== Admin aliases (so /admin/<file>.html maps to /pages/dashboard/admin/<file>.html)
+const ADMIN_WHITELIST = new Set([
+  "bets_admin.html",
+  "battleground_admin.html",
+  "battleground_widget.html",
+  "bonus_hunt_admin.html",
+  "bonus_hunt_widget.html",
+  "pvp_admin.html",
+  "lucky7.html",
+  "admin_hub.html"
+]);
+
+app.get("/admin/:file", (req, res, next) => {
+  const raw = String(req.params.file || "");
+  // normalize and prevent traversal
+  const name = raw.replace(/[^a-zA-Z0-9_.-]/g, "");
+  if (!ADMIN_WHITELIST.has(name)) return res.status(404).send("Not found.");
+  const abs = path.join(PUBLIC_DIR, "pages/dashboard/admin", name);
+  if (!existsSync(abs)) return res.status(404).send("Not found.");
+  return res.sendFile(abs);
 });
 
 // Quick logout → home
@@ -260,7 +277,7 @@ app.get("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => { const r =
 app.delete("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); r.entries = []; r.open = true; r.winner = null; res.json({ success:true }); });
 app.post("/api/raffles/:rid/draw", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); const pool = r.entries || []; r.winner = pool.length ? pool[Math.floor(Math.random()*pool.length)].user : null; res.json({ success:true, winner:r.winner }); });
 
-// ===== No SPA catch-all — unknown routes 404 (prevents accidental admin landings)
+// ===== Default 404 (prevents accidental admin landings)
 app.use((req, res) => {
   res.status(404).send("Not found.");
 });
