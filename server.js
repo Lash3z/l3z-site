@@ -1,4 +1,4 @@
-// server.js — fixed & hardened
+// server.js — fixed & hardened (minimal patch to stop ENOENT & keep login working)
 import fs from "fs/promises";
 import path from "path";
 import express from "express";
@@ -36,11 +36,25 @@ const WALLET_CURRENCY  = process.env.WALLET_CURRENCY || "L3Z";
 // ----- Paths
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
-const PUBLIC_DIR = path.join(__dirname, "public");
-const UP_DIR     = path.join(__dirname, "uploads");
+
+// allow override so Render can point to the right folder
+const PUBLIC_DIR = process.env.PUBLIC_DIR
+  ? path.resolve(process.env.PUBLIC_DIR)
+  : path.join(__dirname, "public");
+
+const UP_DIR = path.join(__dirname, "uploads");
 
 // Ensure dirs exist
 await fs.mkdir(UP_DIR, { recursive: true });
+
+// Pre-check for SPA index to avoid ENOENT spam
+let HAS_INDEX_HTML = false;
+try {
+  await fs.access(path.join(PUBLIC_DIR, "index.html"));
+  HAS_INDEX_HTML = true;
+} catch {
+  console.warn(`[Server] No index.html at ${path.join(PUBLIC_DIR, "index.html")} — SPA fallback disabled.`);
+}
 
 // ----- DB (optional)
 let db = null;
@@ -70,17 +84,17 @@ const memoryStore = {
 // ----- App
 const app = express();
 app.disable("x-powered-by");
-app.set("trust proxy", 1); // <- important when behind a proxy (https + secure cookies)
+app.set("trust proxy", 1); // important when behind a proxy (https + secure cookies)
 
 app.use(express.json());
 app.use(cookieParser());
 
-// ----- CORS only for /api (and only echo a real Origin when present)
+// ----- CORS only for /api
 app.use("/api", (req, res, next) => {
   const origin = req.headers.origin;
   if (origin) {
-    res.setHeader("Access-Control-Allow-Origin", origin); // echo exact origin (required with credentials)
-    res.setHeader("Vary", "Origin"); // caches won't mix responses
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
   }
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -93,7 +107,6 @@ app.use("/api", (req, res, next) => {
 function generateAdminToken(username) {
   return jwt.sign({ username }, JWT_SECRET, { expiresIn: "2h" });
 }
-
 function verifyAdminToken(req, res, next) {
   const token = req.cookies?.admin_token;
   if (!token) return res.status(401).json({ error: "Unauthorized" });
@@ -101,7 +114,7 @@ function verifyAdminToken(req, res, next) {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.adminUser = decoded.username;
     next();
-  } catch (e) {
+  } catch {
     return res.status(401).json({ error: "Unauthorized" });
   }
 }
@@ -116,7 +129,7 @@ app.post(["/api/admin/gate/login", "/api/admin/login"], (req, res) => {
     res.cookie("admin_token", token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: NODE_ENV === "production", // set true on HTTPS
+      secure: NODE_ENV === "production", // true on HTTPS
       maxAge: 1000 * 60 * 60 * 2,
       path: "/",
     });
@@ -136,12 +149,7 @@ app.get(["/api/admin/gate/check", "/api/admin/me"], verifyAdminToken, (req, res)
 
 // ----- Health check
 app.get("/api/health", (req, res) => {
-  res.json({
-    ok: true,
-    env: NODE_ENV,
-    db: !!db,
-    time: new Date().toISOString(),
-  });
+  res.json({ ok: true, env: NODE_ENV, db: !!db, time: new Date().toISOString() });
 });
 
 // ----- Jackpot
@@ -172,7 +180,7 @@ app.post("/api/prizes/claim", async (req, res) => {
   res.json({ success: true });
 });
 
-// ----- Static
+// ----- Static (will 404 safely if folder doesn’t exist)
 app.use(express.static(PUBLIC_DIR, {
   setHeaders(res, filePath) {
     if (/\.(png|jpe?g|gif|webp|svg|woff2?|mp3|mp4)$/i.test(filePath)) {
@@ -183,8 +191,14 @@ app.use(express.static(PUBLIC_DIR, {
   }
 }));
 
-// ----- SPA fallback (serve index.html cleanly)
+// ----- SPA fallback — only if index.html exists
 app.get("*", (req, res, next) => {
+  if (!HAS_INDEX_HTML) {
+    // Don’t throw — return a simple message so your service stays up
+    return res
+      .status(200)
+      .send("SPA not installed on this service. Set PUBLIC_DIR to your web folder or add index.html.");
+  }
   res.sendFile(path.join(PUBLIC_DIR, "index.html"), (err) => {
     if (err) next(err);
   });
@@ -193,13 +207,11 @@ app.get("*", (req, res, next) => {
 // ----- Error handler (last)
 app.use((err, req, res, next) => {
   console.error("[ERROR]", err?.stack || err);
-  if (req.path.startsWith("/api")) {
-    return res.status(500).json({ error: "Server error" });
-  }
+  if (req.path.startsWith("/api")) return res.status(500).json({ error: "Server error" });
   res.status(500).send("Server error");
 });
 
 // ----- Start
 app.listen(PORT, HOST, () => {
-  console.log(`[Server] http://${HOST}:${PORT} (${NODE_ENV})  public=${PUBLIC_DIR}`);
+  console.log(`[Server] http://${HOST}:${PORT} (${NODE_ENV})  PUBLIC_DIR=${PUBLIC_DIR}`);
 });
