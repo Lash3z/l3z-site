@@ -52,19 +52,44 @@ app.use(cors({
 }));
 
 /* ------------------------------------
- * Mongo
+ * Mongo (robust env detection + clear logs)
  * ------------------------------------ */
-const MONGO_URI = process.env.MONGO_URI;
-if (MONGO_URI) {
+function pickMongoUri() {
+  const keys = ["MONGO_URI", "MONGODB_URI", "ATLAS_URI", "DB_URI"];
+  for (const k of keys) if (process.env[k]) return { key: k, uri: process.env[k] };
+  return { key: null, uri: "" };
+}
+function redact(u) {
+  try { const url = new URL(u); if (url.password) url.password = "***"; return url.toString(); }
+  catch { return u ? u.replace(/\/\/[^@]*@/, "//***@") : ""; }
+}
+
+const { key: MONGO_KEY, uri: MONGO_URI_RAW } = pickMongoUri();
+const MONGO_DB = process.env.MONGO_DB || "";
+const ALLOW_MEMORY_FALLBACK = String(process.env.ALLOW_MEMORY_FALLBACK || "").toLowerCase() === "true";
+
+if (!MONGO_URI_RAW) {
+  console.warn("[mongo] No URI found (MONGO_URI|MONGODB_URI|ATLAS_URI|DB_URI). Running WITHOUT DB.");
+} else {
+  console.log("[mongo] Connecting via", MONGO_KEY, "→", redact(MONGO_URI_RAW), MONGO_DB ? `(db=${MONGO_DB})` : "");
   mongoose.set("strictQuery", true);
   mongoose
-    .connect(MONGO_URI, { dbName: process.env.MONGO_DB || undefined })
-    .then(() => console.log("[mongo] connected"))
-    .catch((err) => console.error("[mongo] failed:", err?.message || err));
-} else {
-  console.warn("[mongo] MONGO_URI not set — continuing without DB");
+    .connect(MONGO_URI_RAW, { dbName: MONGO_DB || undefined })
+    .then(() => console.log("[mongo] CONNECTED"))
+    .catch((err) => console.error("[mongo] FAILED:", err?.message || err));
 }
 const mongoUp = () => mongoose?.connection?.readyState === 1;
+
+// Quick debug endpoint (handy to verify live)
+app.get("/api/_debug/mongo", (_req, res) => {
+  res.json({
+    up: mongoUp(),
+    readyState: mongoose?.connection?.readyState ?? -1,
+    dbName: mongoose?.connection?.name || null,
+    usedKey: MONGO_KEY,
+    allowMemoryFallback: ALLOW_MEMORY_FALLBACK
+  });
+});
 
 /* ------------------------------------
  * Optional simple models (slot wheel / raffle entries)
@@ -291,20 +316,34 @@ await mountIfExists("./backend/routes/lbx.js",          "/api",             "lbx
 await mountIfExists("./backend/routes/raffles.js",      "/api/raffles",     "raffles");
 await mountIfExists("./backend/routes/wallet.js",       "/api/wallet",      "wallet");
 
-// Simple slot wheel entries
+// ---- Simple slot wheel entries (server-owned truth; optional memory fallback)
+const memSlot = { slotwheel: new Map() }; // id -> [{user, ts}]
+
 app.get("/api/giveaways/slotwheel/:id/entries", async (req, res) => {
   const gid = String(req.params.id || "").trim();
   if (!gid) return res.status(400).json({ ok: false, error: "bad_id" });
+
   if (mongoUp() && SlotwheelEntry) {
     const rows = await SlotwheelEntry.find({ gid }).sort({ ts: 1 }).lean();
+    res.setHeader("X-Store", "mongo");
     return res.json({ ok: true, entries: rows.map((r) => ({ user: r.user, ts: r.ts })) });
   }
-  return res.json({ ok: true, entries: [] });
+
+  if (!ALLOW_MEMORY_FALLBACK) {
+    res.setHeader("X-Store", "offline");
+    return res.status(503).json({ ok: false, reason: "DB_OFFLINE", entries: [] });
+  }
+
+  const arr = Array.from(memSlot.slotwheel.get(gid) || []);
+  res.setHeader("X-Store", "memory");
+  return res.json({ ok: true, entries: arr });
 });
+
 app.post("/api/giveaways/slotwheel/:id/entries", async (req, res) => {
   const gid = String(req.params.id || "").trim();
   const user = String((req.body?.user || "").toUpperCase());
   if (!gid || !user) return res.status(400).json({ ok: false, error: "bad_input" });
+
   if (mongoUp() && SlotwheelEntry) {
     try {
       await SlotwheelEntry.updateOne(
@@ -312,29 +351,54 @@ app.post("/api/giveaways/slotwheel/:id/entries", async (req, res) => {
         { $setOnInsert: { gid, user }, $set: { ts: new Date() } },
         { upsert: true }
       );
+      res.setHeader("X-Store", "mongo");
       return res.json({ ok: true });
     } catch (e) {
-      if (e?.code === 11000) return res.json({ ok: true, already: true });
+      if (e?.code === 11000) { res.setHeader("X-Store", "mongo"); return res.json({ ok: true, already: true }); }
       return res.status(500).json({ ok: false, error: e?.message || "db_error" });
     }
   }
+
+  if (!ALLOW_MEMORY_FALLBACK) {
+    res.setHeader("X-Store", "offline");
+    return res.status(503).json({ ok: false, reason: "DB_OFFLINE" });
+  }
+
+  const arr = memSlot.slotwheel.get(gid) || [];
+  if (!arr.some(e => e.user === user)) arr.push({ user, ts: new Date().toISOString() });
+  memSlot.slotwheel.set(gid, arr);
+  res.setHeader("X-Store", "memory");
   return res.json({ ok: true });
 });
 
-// Simple raffle entries
+// Simple raffle entries (mirrors the same logic)
+const memRaf = { raffles: new Map() };
+
 app.get("/api/raffles/:id/entries", async (req, res) => {
   const rid = String(req.params.id || "").trim();
   if (!rid) return res.status(400).json({ ok: false, error: "bad_id" });
+
   if (mongoUp() && RaffleEntry) {
     const rows = await RaffleEntry.find({ rid }).sort({ ts: 1 }).lean();
+    res.setHeader("X-Store", "mongo");
     return res.json({ ok: true, entries: rows.map((r) => ({ user: r.user, ts: r.ts })) });
   }
-  return res.json({ ok: true, entries: [] });
+
+  if (!ALLOW_MEMORY_FALLBACK) {
+    res.setHeader("X-Store", "offline");
+    return res.status(503).json({ ok: false, reason: "DB_OFFLINE", entries: [] });
+  }
+
+  const arr = Array.from(memRaf.raffles.get(rid) || []);
+  res.setHeader("X-Store", "memory");
+  return res.json({ ok: true, entries: arr });
 });
+
 app.post("/api/raffles/:id/entries", async (req, res) => {
   const rid = String(req.params.id || "").trim();
   const user = String((req.body?.user || "").toUpperCase());
   if (!rid || !user) return res.status(400).json({ ok: false, error: "bad_input" });
+
   if (mongoUp() && RaffleEntry) {
     try {
       await RaffleEntry.updateOne(
@@ -342,12 +406,23 @@ app.post("/api/raffles/:id/entries", async (req, res) => {
         { $setOnInsert: { rid, user }, $set: { ts: new Date() } },
         { upsert: true }
       );
+      res.setHeader("X-Store", "mongo");
       return res.json({ ok: true });
     } catch (e) {
-      if (e?.code === 11000) return res.json({ ok: true, already: true });
+      if (e?.code === 11000) { res.setHeader("X-Store", "mongo"); return res.json({ ok: true, already: true }); }
       return res.status(500).json({ ok: false, error: e?.message || "db_error" });
     }
   }
+
+  if (!ALLOW_MEMORY_FALLBACK) {
+    res.setHeader("X-Store", "offline");
+    return res.status(503).json({ ok: false, reason: "DB_OFFLINE" });
+  }
+
+  const arr = memRaf.raffles.get(rid) || [];
+  if (!arr.some(e => e.user === user)) arr.push({ user, ts: new Date().toISOString() });
+  memRaf.raffles.set(rid, arr);
+  res.setHeader("X-Store", "memory");
   return res.json({ ok: true });
 });
 
