@@ -70,7 +70,7 @@
   </div>
 
   <div class="wrap">
-    <!-- LEFT: Overview + Daily + Giveaways + Ledger -->
+    <!-- LEFT: Overview + Daily + Giveaway + Ledger -->
     <div class="card">
       <h2>Overview</h2>
       <div class="row" style="margin-bottom:12px">
@@ -88,15 +88,29 @@
           </div>
         </div>
 
+        <!-- GIVEAWAY (CURRENT) -->
         <div class="card" style="padding:12px">
           <h2 style="font-size:18px;margin:0 0 8px">Giveaway</h2>
-          <div class="muted" style="margin-bottom:8px">One click enters the **current** giveaway.</div>
+          <div class="muted" style="margin-bottom:8px">
+            Current raffle managed by Admin. Enter once; winner is published server-side.
+          </div>
           <div class="row">
             <button class="btn ok" id="enterGiveaway">Enter Giveaway</button>
             <span id="giveStatus" class="pill">Checking…</span>
           </div>
-          <div class="muted" style="margin-top:8px">Giveaway ID: <b id="giveId">—</b> • Entries: <b id="giveCount">0</b></div>
+          <div class="muted" style="margin-top:8px">
+            Title: <b id="giveTitle">—</b> • ID: <b id="giveId">—</b> • Entries: <b id="giveCount">0</b>
+          </div>
+          <div class="row" style="margin-top:6px">
+            <span class="pill">Winner:</span>
+            <span class="pill" id="giveWinner">—</span>
+            <span class="muted" id="giveWinTs"></span>
+          </div>
           <div id="giveList" class="row" style="margin-top:8px;flex-wrap:wrap"></div>
+
+          <div class="muted" style="margin-top:10px">
+            Last action: <span id="giveLast">—</span>
+          </div>
         </div>
       </div>
 
@@ -175,17 +189,19 @@
   const welcomeName=$("#welcomeName"), balEl=$("#bal"), rankEl=$("#rank"), rankSub=$("#rankSub");
   const claimBtn=$("#claimBtn"), claimStatus=$("#claimStatus");
   const ledgerBody=$("#ledger tbody"), lbTableBody=$("#lbTable tbody");
-  const rewardsList=null; // (not used now — can add later)
   const toast=$("#toast");
 
-  // Giveaway UI elems
-  const enterBtn=$("#enterGiveaway"), giveStatus=$("#giveStatus"), giveIdEl=$("#giveId"), giveCount=$("#giveCount"), giveList=$("#giveList");
+  // GIVEAWAY elems
+  const enterBtn=$("#enterGiveaway"), giveStatus=$("#giveStatus");
+  const giveIdEl=$("#giveId"), giveTitleEl=$("#giveTitle"), giveCount=$("#giveCount");
+  const giveList=$("#giveList"), giveWinner=$("#giveWinner"), giveWinTs=$("#giveWinTs");
+  const giveLast=$("#giveLast");
 
   // BUY LBX elems
   const pkgRow=$("#pkgRow"), assetSel=$("#assetSel"), usdDue=$("#usdDue");
   const addrEl=$("#addr"), refEl=$("#ref"), txidEl=$("#txid"), submitBtn=$("#submitOrder"), limitNote=$("#limitNote");
 
-  // Replace with YOUR addresses
+  // Addresses (placeholder)
   const CRYPTO_ADDR = {
     "BTC":"bc1q0l428lsymjqrksxrnlx4m9jahzjjrnvns5a6ah",
     "ETH":"0xc59Ab6F4f71ba573F7435fA3fb730EdEdAF26884",
@@ -197,105 +213,13 @@
   const PKGS=[5,10,15,20,25,30];
   let selectedPkg=0;
 
-  /* -----------------------------
-     SERVER HELPERS (real backend)
-     ----------------------------- */
-  async function apiGet(url){
-    const r = await fetch(url,{credentials:"include",cache:"no-store"});
-    if(!r.ok) throw new Error(r.status);
-    return r.json();
-  }
-  async function apiPost(url, body){
-    const r = await fetch(url,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(body||{})});
-    if(!r.ok) throw new Error(r.status);
-    return r.json();
-  }
+  // --- helpers
+  function toastMsg(t){ toast.textContent=t; toast.classList.add('on'); setTimeout(()=>toast.classList.remove('on'),1400); }
+  async function apiGet(url){ const r=await fetch(url,{credentials:"include",cache:"no-store"}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+  async function apiPost(url,body){ const r=await fetch(url,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(body||{})}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
 
-  /* -----------------------------
-     WALLET (server source of truth)
-     ----------------------------- */
-  async function loadBalance(){
-    try{
-      const j = await apiGet(`/api/wallet/me?viewer=${encodeURIComponent(USER)}`);
-      const bal = Number(j?.wallet?.balance||0);
-      balEl.textContent = fmt(bal);
-      return bal;
-    }catch(e){
-      // fallback: local
-      const w = localGetWallet(USER);
-      balEl.textContent = fmt(w.balance||0);
-      return w.balance||0;
-    }
-  }
-  async function adjustBalance(delta, reason){
-    try{
-      const j = await apiPost("/api/wallet/adjust",{ username: USER, delta:Number(delta||0), reason: String(reason||"ADJUST") });
-      balEl.textContent = fmt(Number(j.balance||0));
-      return true;
-    }catch(e){
-      // fallback local
-      localPushLedger(USER, Number(delta||0), reason||"ADJUST");
-      return false;
-    }
-  }
-
-  /* -----------------------------
-     GIVEAWAYS (current)
-     ----------------------------- */
-  async function loadGiveaway(){
-    try{
-      const j = await apiGet("/api/giveaways/entries");  // { ok, id, entries }
-      giveIdEl.textContent = j.id || "GLOBAL";
-      const arr = Array.isArray(j.entries) ? j.entries : [];
-      giveCount.textContent = arr.length;
-      giveList.innerHTML = arr.map(e=>`<span class="pill">${esc(e.user)}</span>`).join('') || `<span class="muted">No entries yet.</span>`;
-      const entered = !!arr.find(e=> up(e.user) === up(USER) );
-      giveStatus.textContent = entered ? "You're in!" : "Not entered";
-      enterBtn.disabled = entered;
-    }catch(e){
-      giveStatus.textContent = "Giveaway offline";
-    }
-  }
-  async function enterGiveaway(){
-    enterBtn.disabled = true;
-    try{
-      await apiPost("/api/giveaways/enter",{ user: USER });
-      giveStatus.textContent = "You're in!";
-      await loadGiveaway();
-    }catch(e){
-      giveStatus.textContent = "Enter failed";
-      enterBtn.disabled = false;
-    }
-  }
-
-  /* -----------------------------
-     DAILY (client-enforced cooldown)
-     ----------------------------- */
-  const DAILY_KEY = `lbx:daily:${USER}`;
-  function nextDailyTs(){ const v=localStorage.getItem(DAILY_KEY); return v?Number(v):0; }
-  function setDailyNow(){ localStorage.setItem(DAILY_KEY, String(now())); }
-  function updateDailyUI(){
-    const remain = (nextDailyTs()+DAY) - now();
-    if(remain <= 0){ claimBtn.disabled=false; claimStatus.textContent="Ready"; }
-    else{
-      const h=Math.floor(remain/3600000), m=Math.floor((remain%3600000)/60000), s=Math.floor((remain%60000)/1000);
-      claimBtn.disabled=true; claimStatus.textContent=`Next in ${h}h ${m}m ${s}s`;
-    }
-  }
-  claimBtn.addEventListener('click', async ()=>{
-    if((nextDailyTs()+DAY) > now()) return;
-    const ok = await adjustBalance(+5, "DAILY_REWARD");
-    setDailyNow(); updateDailyUI();
-    toastMsg(ok?"+5 LBX claimed (server)":"+5 LBX claimed (local)");
-    await loadBalance();
-  });
-  setInterval(updateDailyUI, 1000);
-
-  /* -----------------------------
-     LEDGER (local fallback view)
-     ----------------------------- */
-  const LEDGER = u=>`lbx:ledger:${up(u)}`;
-  const WALLET = u=>`lbx:wallet:${up(u)}`;
+  // --- local wallet/ledger fallback (and to log raffle entry)
+  const LEDGER = u=>`lbx:ledger:${up(u)}`, WALLET = u=>`lbx:wallet:${up(u)}`;
   function sget(k,def=null){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch{ return def; } }
   function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
   function localGetWallet(u){ return sget(WALLET(u)) || { balance:0, created:now(), lastDaily:0 }; }
@@ -310,14 +234,109 @@
     sset(LEDGER(u), list.slice(-200));
     paintLedgerLocal(); paintLeaderLocal();
   }
+
+  // --- balance (server-first)
+  async function loadBalance(){
+    try{
+      const j = await apiGet(`/api/wallet/me?viewer=${encodeURIComponent(USER)}`);
+      balEl.textContent = fmt(Number(j?.wallet?.balance||0));
+    }catch{ balEl.textContent = fmt(Number(localGetWallet(USER).balance||0)); }
+  }
+
+  // --- DAILY
+  const DAILY_KEY = `lbx:daily:${USER}`;
+  function nextDailyTs(){ const v=localStorage.getItem(DAILY_KEY); return v?Number(v):0; }
+  function setDailyNow(){ localStorage.setItem(DAILY_KEY, String(now())); }
+  function updateDailyUI(){
+    const remain = (nextDailyTs()+DAY) - now();
+    if(remain <= 0){ claimBtn.disabled=false; claimStatus.textContent="Ready"; }
+    else{
+      const h=Math.floor(remain/3600000), m=Math.floor((remain%3600000)/60000), s=Math.floor((remain%60000)/1000);
+      claimBtn.disabled=true; claimStatus.textContent=`Next in ${h}h ${m}m ${s}s`;
+    }
+  }
+  claimBtn.addEventListener('click', async ()=>{
+    if((nextDailyTs()+DAY) > now()) return;
+    try{
+      const j = await apiPost("/api/wallet/adjust",{ username: USER, delta:5, reason:"DAILY_REWARD" });
+      balEl.textContent = fmt(Number(j.balance||0));
+      toastMsg("+5 LBX (server)");
+    }catch{
+      localPushLedger(USER, +5, "DAILY_REWARD");
+      toastMsg("+5 LBX (local)");
+    }
+    setDailyNow(); updateDailyUI();
+  });
+  setInterval(updateDailyUI, 1000);
+
+  // --- GIVEAWAY (current)
+  async function loadCurrentGiveaway(){
+    // 1) Info (title/id/open/winner)
+    let id="GLOBAL", title="—", winner=null;
+    try{
+      const pub = await apiGet("/api/raffles/public");
+      if (pub?.id){ id=pub.id; title=pub.title||pub.id; winner=pub.winner||null; }
+    }catch{}
+
+    giveIdEl.textContent = id;
+    giveTitleEl.textContent = title;
+
+    if (winner && winner.user){
+      giveWinner.textContent = winner.user;
+      giveWinTs.textContent = winner.ts ? new Date(winner.ts).toLocaleString() : "";
+    } else {
+      giveWinner.textContent = "—";
+      giveWinTs.textContent = "";
+    }
+
+    // 2) Entries (and whether *you* are in)
+    try{
+      const j = await apiGet(`/api/raffles/${encodeURIComponent(id)}/entries`);
+      const arr = Array.isArray(j.entries)? j.entries : [];
+      giveCount.textContent = arr.length;
+      giveList.innerHTML = arr.slice(-30).map(e=>`<span class="pill">${esc(e.user)}</span>`).join('') || `<span class="muted">No entries yet.</span>`;
+      const me = arr.some(e=> up(e.user)===up(USER) );
+      giveStatus.textContent = me ? "You're in!" : "Not entered";
+      enterBtn.disabled = me;
+      // show last action (if entered, show when)
+      if (me){
+        const my = arr.findLast ? arr.findLast(e=> up(e.user)===up(USER) ) : arr.filter(e=> up(e.user)===up(USER) ).pop();
+        giveLast.textContent = my?.ts ? new Date(my.ts).toLocaleString() : "Entered";
+      } else {
+        giveLast.textContent = "—";
+      }
+    }catch{
+      giveStatus.textContent = "Giveaway offline";
+      giveList.innerHTML = `<span class="muted">Entries unavailable.</span>`;
+    }
+  }
+
+  async function enterCurrentGiveaway(){
+    const title = giveTitleEl.textContent || "RAFFLE";
+    enterBtn.disabled = true;
+    try{
+      // server route that uses the CURRENT raffle id
+      await apiPost("/api/giveaways/enter",{ user: USER });
+      giveStatus.textContent = "You're in!";
+      // log a zero-delta ledger row so it shows in profile history
+      localPushLedger(USER, 0, `RAFFLE_ENTRY: ${title}`);
+      giveLast.textContent = new Date().toLocaleString();
+      await loadCurrentGiveaway();
+      toastMsg("Entry submitted");
+    }catch(e){
+      enterBtn.disabled = false;
+      toastMsg("Enter failed");
+    }
+  }
+  enterBtn.addEventListener("click", enterCurrentGiveaway);
+
+  // --- LEDGER (local view)
   function paintLedgerLocal(){
     const L=(localLedger(USER)).slice(-50).reverse();
     ledgerBody.innerHTML = L.map(row=>`<tr><td>${new Date(row.ts).toLocaleString()}</td><td>${esc(row.reason||'')}</td><td class="right ${row.delta>=0?'':'bad'}">${row.delta>=0?'+':''}${fmt(row.delta||0)}</td><td class="right">${fmt(row.balance||0)}</td></tr>`).join('') || `<tr><td colspan="4" class="muted">No transactions yet.</td></tr>`;
   }
 
-  /* -----------------------------
-     LEADERBOARD (local snapshot)
-     ----------------------------- */
+  // --- Leaderboard (local)
   function collectWallets(){ const res=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.startsWith("lbx:wallet:")){ const u=k.split(":").pop(); const w=sget(k); if(w) res.push({user:u,balance:+(w.balance||0)}); } } return res; }
   function paintLeaderLocal(){
     const all=collectWallets().sort((a,b)=>b.balance-a.balance); const meIndex=all.findIndex(x=>x.user===up(USER));
@@ -326,11 +345,8 @@
     lbTableBody.innerHTML = top.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.user)} ${r.user===up(USER)?'<span class="pill">you</span>':''}</td><td class="right">${fmt(r.balance)}</td></tr>`).join('') || `<tr><td colspan="3" class="muted">No data yet.</td></tr>`;
   }
 
-  /* -----------------------------
-     BUY LBX (client form only)
-     ----------------------------- */
+  // --- BUY LBX (client form only)
   const ORDERS_KEY="lbx:orders";
-  function toastMsg(t){ toast.textContent=t; toast.classList.add('on'); setTimeout(()=>toast.classList.remove('on'),1400); }
   function renderPkgs(){
     pkgRow.innerHTML = PKGS.map(n=>`<button class="btn" data-pkg="${n}">${n} LBX</button>`).join("");
     pkgRow.querySelectorAll("[data-pkg]").forEach(b=> b.addEventListener("click", ()=>{
@@ -381,34 +397,25 @@
   }
   submitBtn.addEventListener("click", submitOrder);
 
-  /* -----------------------------
-     BOOT
-     ----------------------------- */
+  // --- BOOT
   welcomeName.textContent = USER;
-
-  // Balance & leaderboard
   loadBalance();
   paintLeaderLocal();
-
-  // Daily + Giveaway
+  paintLedgerLocal();
   updateDailyUI();
-  loadGiveaway();
-  setInterval(loadGiveaway, 4000);
+
+  // Giveaway boot / poll
+  loadCurrentGiveaway();
+  setInterval(loadCurrentGiveaway, 5000);
 
   // Packages UI
   renderPkgs(); refreshAddrRef(); validateLimit();
-
-  // Ledger (local view only)
-  paintLedgerLocal();
-
-  // Giveaway button
-  enterBtn.addEventListener("click", enterGiveaway);
 
   // Cross-tab updates
   window.addEventListener('storage', (e)=>{
     if(!e.key) return;
     if(e.key.startsWith("lbx:wallet:") || e.key.startsWith("lbx:ledger:")){ loadBalance(); paintLedgerLocal(); paintLeaderLocal(); }
-    if(e.key===ORDERS_KEY){ validateLimit(); }
+    if(e.key==="lbx:orders"){ validateLimit(); }
   });
 })();
 </script>
