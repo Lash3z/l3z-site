@@ -18,24 +18,16 @@
   .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .controls input{background:#061417;border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:8px 10px;outline:none}
   .hint{color:var(--muted);font-size:12px}
-
-  /* Match row grid */
-  .match{
-    display:grid;grid-template-columns:1fr 52px 60px 52px 1fr;gap:14px;align-items:center;
-    border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:rgba(0,0,0,.35)
-  }
+  .match{display:grid;grid-template-columns:1fr 52px 60px 52px 1fr;gap:14px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:rgba(0,0,0,.35)}
   .match + .match{margin-top:12px}
   .desc{min-width:0}
   .name{font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .prov{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .thumb{width:52px;height:68px;border:1px solid var(--line);border-radius:8px;background:#000;overflow:hidden}
   .thumb img{width:100%;height:100%;object-fit:cover;display:block}
-
   .vs{font-weight:900;text-align:center;opacity:.9;display:flex;flex-direction:column;gap:6px;align-items:center}
   .badge{font-size:11px;padding:2px 6px;border:1px solid var(--line);border-radius:999px;background:#0b1f21;color:#9ff8ff}
-
-  .pick-left{grid-column:1 / span 2}
-  .pick-right{grid-column:4 / span 2}
+  .pick-left{grid-column:1 / span 2}.pick-right{grid-column:4 / span 2}
   .pick{display:grid;gap:10px;align-items:center}
   .pick-left .pick{grid-template-columns:1fr 52px}
   .pick-right .pick{grid-template-columns:52px 1fr}
@@ -44,24 +36,13 @@
   .card{border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:8px;transition:.15s all}
   .card.active{outline:2px solid var(--ok);box-shadow:0 0 0 3px rgba(18,243,214,.15) inset}
   .card.locked{opacity:.5;pointer-events:none}
-
   .section{margin-top:18px}
-
-  /* Final Score */
-  .scoreGrid{
-    display:grid;grid-template-columns:1fr 52px 60px 52px 1fr;gap:14px;align-items:center;
-    border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:rgba(0,0,0,.35)
-  }
+  .scoreGrid{display:grid;grid-template-columns:1fr 52px 60px 52px 1fr;gap:14px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:rgba(0,0,0,.35)}
   .scoreTitle{grid-column:1 / -1;font-weight:900;margin-bottom:4px}
   .scoreInput{display:flex;gap:8px;align-items:center}
-  .scoreInput input{
-    width:70px;text-align:center;font-weight:900;background:#061417;border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:8px
-  }
-  .lblL{justify-self:end}
-  .lblR{justify-self:start}
-  .colon{font-weight:900;text-align:center;opacity:.85}
+  .scoreInput input{width:70px;text-align:center;font-weight:900;background:#061417;border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:8px}
+  .lblL{justify-self:end}.lblR{justify-self:start}.colon{font-weight:900;text-align:center;opacity:.85}
   .hintRow{grid-column:1 / -1;color:var(--muted);font-size:12px;margin-top:4px}
-
   .err{color:var(--danger);font-size:12px;margin-top:4px}
   .submitbar{display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-top:16px}
   button{background:#0b1f21;border:1px solid var(--line);color:#fff;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}
@@ -73,34 +54,21 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="topbar">
-    <h1>Battleground — Prediction Form</h1>
-    <div class="pill" id="evtInfo">—</div>
-  </div>
-
+  <div class="topbar"><h1>Battleground — Prediction Form</h1><div class="pill" id="evtInfo">—</div></div>
   <div class="controls">
     <label>Player&nbsp;Name <input id="user" placeholder="USERNAME"/></label>
     <span class="hint">Pick LEFT or RIGHT for each matchup. Bonus: predict the exact final score.</span>
   </div>
-
   <div id="list"></div>
 
   <div class="section">
     <div class="scoreGrid">
       <div class="scoreTitle">Final Score</div>
-
       <div class="lblL"><span id="leftLbl">Left</span></div>
-      <div class="scoreInput" style="grid-column:2">
-        <input id="scoreL" type="number" min="0" step="1" value="0"/>
-      </div>
-
+      <div class="scoreInput" style="grid-column:2"><input id="scoreL" type="number" min="0" step="1" value="0"/></div>
       <div class="colon">:</div>
-
-      <div class="scoreInput" style="grid-column:4">
-        <input id="scoreR" type="number" min="0" step="1" value="0"/>
-      </div>
+      <div class="scoreInput" style="grid-column:4"><input id="scoreR" type="number" min="0" step="1" value="0"/></div>
       <div class="lblR"><span id="rightLbl">Right</span></div>
-
       <div class="hintRow" id="scoreHint">Must add up to 3 (e.g., 2–1 or 3–0).</div>
     </div>
     <div class="err" id="scoreErr"></div>
@@ -111,16 +79,15 @@
     <button id="submitBtn" class="primary" disabled>Submit Predictions</button>
   </div>
 </div>
-
 <div class="toast" id="toast">Saved.</div>
 
 <script>
 (() => {
   "use strict";
-
-  const K_PUBLISHED='sb:markets:battleground';   // legacy/stale sometimes
-  const K_BUILDER='bg:builder:battleground';     // admin pushes here
-  const K_BETS='lash3z_bets';
+  const K_PUBLISHED='sb:markets:battleground';
+  const K_BUILDER='bg:builder:battleground';
+  const K_BETS='lash3z_bets';                // legacy per-match entries (kept)
+  const MYBETS_KEY = u => 'sb:mybets:'+u;    // compact “My Bets” feed
 
   const $=s=>document.querySelector(s);
   const listEl=$('#list'), userEl=$('#user'), evtInfoEl=$('#evtInfo');
@@ -154,7 +121,6 @@
       seriesTotal:Number(o.seriesTotal||o.bestOf||3)
     };
   }
-
   function normalizeFromBuilder(o){
     if(!o||typeof o!=='object') return null;
     const gById=new Map((o.games||[]).map(g=>[g.id,g]));
@@ -164,51 +130,30 @@
       const R=gById.get(m.rightId||m.rightGameId)||{};
       return {
         id:m.id||('M'+(i+1)),
-        left:{
-          title:    L.title    || L.name    || m.leftTitle  || 'LEFT',
-          provider: L.provider || m.leftProv|| '',
-          img:      L.imageUrl || L.image   || m.leftImg    || ''
-        },
-        right:{
-          title:    R.title    || R.name    || m.rightTitle || 'RIGHT',
-          provider: R.provider || m.rightProv|| '',
-          img:      R.imageUrl || R.image   || m.rightImg   || ''
-        },
+        left:{ title:L.title||L.name||m.leftTitle||'LEFT', provider:L.provider||m.leftProv||'', img:L.imageUrl||L.image||m.leftImg||'' },
+        right:{ title:R.title||R.name||m.rightTitle||'RIGHT', provider:R.provider||m.rightProv||'', img:R.imageUrl||R.image||m.rightImg||'' },
         status:(m.status||'OPEN').toUpperCase()
       };
     });
-    return {
-      source:'builder',
-      lastUpdated:Number(o.lastUpdated||0)||0,
-      eventId:o.eventId||eventId,
-      title:o.title||eventTitle,
-      matchups:M,
-      seriesTotal:Number(o.seriesTotal||o.bestOf||3)
-    };
+    return { source:'builder', lastUpdated:Number(o.lastUpdated||0)||0, eventId:o.eventId||eventId, title:o.title||eventTitle, matchups:M, seriesTotal:Number(o.seriesTotal||o.bestOf||3) };
   }
-
   function chooseDataset(){
-    const pub = normalizeFromPublished(read(K_PUBLISHED));
-    const bld = normalizeFromBuilder(read(K_BUILDER));
-    const pubCount = pub && pub.matchups ? pub.matchups.length : 0;
-    const bldCount = bld && bld.matchups ? bld.matchups.length : 0;
-
-    if (bld && bldCount && bldCount >= pubCount) return bld;
-    if (pub && pubCount) return pub;
-    return bld || pub || {source:'none', eventId, title:eventTitle, matchups:[], seriesTotal:3, lastUpdated:0};
+    const pub=normalizeFromPublished(read(K_PUBLISHED));
+    const bld=normalizeFromBuilder(read(K_BUILDER));
+    const pc=pub?.matchups?.length||0, bc=bld?.matchups?.length||0;
+    if(bld && bc && bc>=pc) return bld;
+    if(pub && pc) return pub;
+    return bld || pub || {source:'none',eventId,title:eventTitle,matchups:[],seriesTotal:3,lastUpdated:0};
   }
 
   function loadData(){
     const norm=chooseDataset();
-
     eventId=norm.eventId||eventId;
     eventTitle=(norm.title||'BATTLEGROUND').toString().toUpperCase();
-    matchups=Array.isArray(norm.matchups)?norm.matchups.slice():[];
+    matchups=[...(norm.matchups||[])];
     seriesTotal=Number(norm.seriesTotal||3)||3;
-
     const when = norm.lastUpdated ? (' @ '+new Date(norm.lastUpdated).toLocaleString()) : '';
     evtInfoEl.textContent=`${eventTitle} — ${eventId}  [${norm.source.toUpperCase()}${when}]`;
-
     if(matchups.length){
       leftSeriesName=matchups[0].left?.title||'Left';
       rightSeriesName=matchups[0].right?.title||'Right';
@@ -224,10 +169,7 @@
       <div class="match" data-id="${esc(m.id)}">
         <div class="pick-left">
           <div class="card pick ${picks.get(m.id)==='left'?'active':''} ${m.status!=='OPEN'?'locked':''}" data-pick="left">
-            <div class="desc">
-              <div class="name">${esc(m.left.title||'—')}</div>
-              <div class="prov">${esc(m.left.provider||'')}</div>
-            </div>
+            <div class="desc"><div class="name">${esc(m.left.title||'—')}</div><div class="prov">${esc(m.left.provider||'')}</div></div>
             <div class="thumb">${m.left.img?`<img src="${esc(m.left.img)}" alt="">`:''}</div>
           </div>
         </div>
@@ -235,15 +177,11 @@
         <div class="pick-right">
           <div class="card pick ${picks.get(m.id)==='right'?'active':''} ${m.status!=='OPEN'?'locked':''}" data-pick="right">
             <div class="thumb">${m.right.img?`<img src="${esc(m.right.img)}" alt="">`:''}</div>
-            <div class="desc">
-              <div class="name">${esc(m.right.title||'—')}</div>
-              <div class="prov">${esc(m.right.provider||'')}</div>
-            </div>
+            <div class="desc"><div class="name">${esc(m.right.title||'—')}</div><div class="prov">${esc(m.right.provider||'')}</div></div>
           </div>
         </div>
       </div>`).join('');
     $('#list').innerHTML=html||`<div class="hint">No published matchups yet. Hit “Push → Prediction + Live + Bets” in BG Admin.</div>`;
-
     $('#list').querySelectorAll('.match').forEach(row=>{
       const id=row.getAttribute('data-id');
       row.querySelectorAll('.card.pick').forEach(card=>{
@@ -269,6 +207,7 @@
     submitBtn.disabled=!(uname && allPicked && sumOk && within);
   }
 
+  // legacy per-match write (kept, no UI change)
   function upsertBets(records){
     const now=Date.now();
     const existing=(()=>{try{return JSON.parse(localStorage.getItem(K_BETS)||'[]')}catch{return []}})();
@@ -276,6 +215,28 @@
     const filtered=existing.filter(r=>!(r.mode==='battleground' && r.user===uname && r.eventId===eventId && (r.type==='prediction'||r.type==='series_score')));
     const next=filtered.concat(records.map(r=>({ts:now,...r})));
     localStorage.setItem(K_BETS,JSON.stringify(next));
+  }
+
+  // NEW: minimal “My Bets” record for display
+  function writeMyBets(){
+    const uname=(userEl.value||'').trim().toUpperCase();
+    const sl=Number(scoreLEl.value||0), sr=Number(scoreREl.value||0);
+    const rec={
+      ts: Date.now(),
+      user: uname,
+      eventId,
+      eventTitle,
+      picks: matchups.map(m=>{
+        const side=picks.get(m.id);
+        const pickName = side==='left' ? (m.left.title||'LEFT') : (m.right.title||'RIGHT');
+        return { matchId:m.id, left:m.left.title||'LEFT', right:m.right.title||'RIGHT', pick:side, pickName };
+      }),
+      final: { leftName:leftSeriesName, rightName:rightSeriesName, left:sl, right:sr, total:seriesTotal }
+    };
+    const k=MYBETS_KEY(uname);
+    let arr=[]; try{ arr=JSON.parse(localStorage.getItem(k)||'[]')||[]; }catch{}
+    arr.push(rec);
+    localStorage.setItem(k, JSON.stringify(arr.slice(-20)));
   }
 
   function submit(){
@@ -288,7 +249,8 @@
     });
     const sl=Number(scoreLEl.value||0), sr=Number(scoreREl.value||0);
     recs.push({mode:'battleground',type:'series_score',user:uname,eventId,leftName:leftSeriesName,rightName:rightSeriesName,left:sl,right:sr,total:seriesTotal});
-    upsertBets(recs);
+    upsertBets(recs);     // keep legacy feed
+    writeMyBets();        // new compact feed
     toast.textContent=`Saved ${recs.length-1} picks + final score for ${uname}.`;
     toast.classList.add('on'); setTimeout(()=>toast.classList.remove('on'),1400);
   }
