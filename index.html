@@ -29,6 +29,15 @@
     .icon-bar.right{ margin-left:auto; }
     .icon-bar.left{ margin-right:auto; }
     .icon-bar.center{ position:absolute; left:50%; transform:translateX(-50%);}
+    /* Top-right Admin chip */
+    .admin-chip{
+      border:1px solid var(--line); border-radius:999px; padding:8px 12px; background:#0f151a;
+      color:#cfe; font-weight:800; cursor:pointer; white-space:nowrap; box-shadow:0 0 10px rgba(0,255,255,.08);
+      text-decoration:none;
+    }
+    .admin-chip.ok{ color:#9ff1c7; border-color:rgba(0,255,200,.35);}
+    .admin-chip small{opacity:.85}
+
     .sidebar{ position:fixed; top:var(--toph); left:0; bottom:0; width:var(--sidew);
       background:var(--glass); box-shadow:0 0 16px var(--cyan); overflow:auto; padding:12px; z-index:900; }
     .main{ margin-left:var(--sidew); padding:calc(var(--toph) + 16px) 20px 24px; min-height:100vh; }
@@ -40,7 +49,7 @@
     .navlink:active{transform:translateY(1px)}
     .navlink img{width:20px; height:20px; object-fit:contain}
 
-    /* Banner (slider host keeps same footprint as single image) */
+    /* Banner (slider) */
     .banner{text-align:center}
     .slider{ position:relative; max-width:100%; margin:0 auto;
       border-radius:12px; box-shadow:var(--shadow); overflow:hidden; border:1px solid var(--line);
@@ -112,13 +121,10 @@
       .digit{font-size:38px}
       .sep{width:22px; font-size:36px}
     }
-    /* small pill used for admin status text */
-    .pill-status{display:flex; align-items:center; justify-content:center; gap:8px; width:100%;
-      background:#0f151a; border:1px solid var(--line); border-radius:8px; padding:10px; margin-bottom:8px; color:#cfe; }
-    .pill-status.ok{ color:#9ff1c7; border-color:rgba(0,255,200,.35);}
+    .hidden{display:none !important;}
   </style>
 
-  <!-- Make API base available; helper fetch -->
+  <!-- Server injects API base into every HTML -->
   <script>window.API_BASE="";</script>
   <script src="/assets/api-base.js" defer></script>
 
@@ -141,7 +147,7 @@
     };
   </script>
 
-  <!-- Home-only wiring + Admin status -->
+  <!-- Home wiring + Admin chip -->
   <script>
     (function(){
       "use strict";
@@ -197,48 +203,36 @@
           </a>`).join('');
       }
 
-      async function paintAdminStatus(){
-        const badge = $("#adminStatus");
-        const unlock = $("#adminUnlock");
-        const logout = $("#adminLogout");
+      async function paintAdminChip(){
+        const chip = $("#adminChip");
+        const resetBtn = $("#resetJackpotBtn"); // show only for admins
         try{
           const r = await fetch(API + "/api/admin/gate/check", { credentials:"include" });
           const j = await r.json();
           if(j.admin){
-            badge.textContent = "Admin: UNLOCKED";
-            badge.classList.add("ok");
-            unlock.textContent = "Go to Admin Hub";
-            unlock.href = "/pages/dashboard/admin/admin_hub.html";
-            logout.style.display = "";
+            chip.classList.add("ok");
+            chip.innerHTML = 'Admin <small>(unlocked)</small>';
+            chip.href = "/pages/dashboard/admin/admin_hub.html";
+            resetBtn?.classList.remove("hidden");
           }else{
-            badge.textContent = "Admin: LOCKED";
-            badge.classList.remove("ok");
-            unlock.textContent = "Unlock Admin";
-            unlock.href = "/pages/dashboard/home/admin_login.html?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fadmin_hub.html";
-            logout.style.display = "none";
+            chip.classList.remove("ok");
+            chip.innerHTML = 'Admin <small>(login)</small>';
+            chip.href = "/pages/dashboard/home/admin_login.html?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fadmin_hub.html";
+            resetBtn?.classList.add("hidden");
           }
         }catch{
-          badge.textContent = "Admin: Unknown (network error)";
-          badge.classList.remove("ok");
-          unlock.textContent = "Unlock Admin";
-          unlock.href = "/pages/dashboard/home/admin_login.html?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fadmin_hub.html";
-          logout.style.display = "none";
+          chip.classList.remove("ok");
+          chip.innerHTML = 'Admin <small>(offline)</small>';
+          chip.href = "/pages/dashboard/home/admin_login.html?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fadmin_hub.html";
+          resetBtn?.classList.add("hidden");
         }
       }
 
-      function wireAdminLogout(){
-        const logout = $("#adminLogout");
-        logout.addEventListener("click", async (e)=>{
-          e.preventDefault();
-          try{ await fetch(API + "/api/admin/gate/logout", { method:"POST", credentials:"include" }); }catch{}
-          paintAdminStatus();
-        });
-      }
-
-      // Home page must never redirect.
       document.addEventListener("DOMContentLoaded", ()=>{
-        setUser(); wireMenu(); buildIconBar();
-        wireAdminLogout(); paintAdminStatus();
+        setUser();
+        wireMenu();
+        buildIconBar();
+        paintAdminChip();
       });
     })();
   </script>
@@ -251,10 +245,12 @@
     <button id="menuBtn" class="menu-btn">☰ Menu</button>
     <div class="username-display" id="usernameDisplay">Welcome, PLAYER</div>
     <div id="iconBar" class="icon-bar right"></div>
+    <!-- Only admin entry point (top-right) -->
+    <a id="adminChip" class="admin-chip" href="/pages/dashboard/home/admin_login.html?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fadmin_hub.html">Admin <small>(checking)</small></a>
   </div>
 </div>
 
-<!-- ====== SIDEBAR NAV (links only) ====== -->
+<!-- ====== SIDEBAR NAV (NO admin items) ====== -->
 <div id="sidebar" class="sidebar">
   <h3>Dashboard</h3>
   <a class="navlink" href="/index.html"><img src="/assets/overview_icon.png" alt="Home">Home Page</a>
@@ -289,33 +285,11 @@
   <a class="navlink" href="/pages/dashboard/home/about.html"><img src="/assets/paw.png" alt="About">About</a>
   <a class="navlink" href="/pages/dashboard/home/casino.html"><img src="/assets/mateslots_logo.png" alt="Casino">Casino</a>
   <a class="navlink" href="/pages/dashboard/home/vip.html"><img src="/assets/vip_icon.png" alt="VIP">VIP</a>
-  
-
-  <h3>Administration</h3>
-
-  <!-- NEW: live status + unlock/lock actions -->
-  <div id="adminStatus" class="pill-status">Checking admin…</div>
-  <a id="adminUnlock" class="navlink" href="/pages/dashboard/home/admin_login.html?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fadmin_hub.html">
-    <img src="/assets/L3Z_logoMain.png" alt="Unlock">Unlock Admin
-  </a>
-  <a id="adminLogout" class="navlink" href="#" style="display:none">
-    <img src="/assets/L3Z_logoMain.png" alt="Lock">Lock Admin (Log out)
-  </a>
-
-  <div class="navlink" style="justify-content:center;opacity:.8">Admin pages are server-locked</div>
-  <a class="navlink" href="/pages/dashboard/admin/bets_admin.html"><img src="/assets/lash3zbux_pp.png" alt="Bets Admin">Bets Admin (Unified)</a>
-  <a class="navlink" href="/pages/dashboard/admin/battleground_admin.html"><img src="/assets/lashes%20battleground.png" alt="BG Admin">Battleground Admin</a>
-  <a class="navlink" href="/pages/dashboard/admin/battleground_widget.html"><img src="/assets/lashes%20battleground.png" alt="BG Widget">Battleground Widget</a>
-  <a class="navlink" href="/pages/dashboard/admin/bonus_hunt_admin.html"><img src="/assets/bonus_hunt_icon.png" alt="BH Admin">Bonus Hunt Admin</a>
-  <a class="navlink" href="/pages/dashboard/admin/bonus_hunt_widget.html"><img src="/assets/bonus_hunt_icon.png" alt="BH Widget">Bonus Hunt Widget</a>
-  <a class="navlink" href="/pages/dashboard/admin/pvp_admin.html"><img src="/assets/pvp_icon.png" alt="PVP Admin">PVP Admin</a>
-  <a class="navlink" href="/pages/dashboard/admin/lucky7.html"><img src="/assets/L3Z_logoMain.png" alt="Lucky7">Lucky 7</a>
-  <a class="navlink" href="/pages/dashboard/admin/admin_hub.html"><img src="/assets/L3Z_logoMain.png" alt="LBX Deposits">Admin Hub</a>
 </div>
 
 <!-- ====== MAIN ====== -->
 <div class="main">
-  <!-- Banner SLIDER (replaces the single <img>) -->
+  <!-- Banner SLIDER -->
   <div class="banner">
     <div class="slider" id="homeSlider" aria-label="Promotions">
       <button class="slide-nav prev" aria-label="Previous slide">❮</button>
@@ -329,7 +303,8 @@
       <div class="jp-header">
         <div class="jp-title">MONTHLY JACKPOT</div>
         <div class="jp-ctl">
-          <button id="resetJackpotBtn" class="jp-reset" title="Reset this month">Reset Jackpot</button>
+          <!-- Only visible if admin (JS toggles) -->
+          <button id="resetJackpotBtn" class="jp-reset hidden" title="Reset this month">Reset Jackpot</button>
         </div>
       </div>
 
@@ -379,7 +354,7 @@
   </div>
 </div>
 
-<!-- Slider logic (header only) -->
+<!-- Slider logic -->
 <script>
 (function(){
   "use strict";
@@ -459,7 +434,7 @@
 })();
 </script>
 
-<!-- Jackpot logic (unchanged, separate) -->
+<!-- Jackpot logic -->
 <script src="/assets/js/jackpot.client.js" defer></script>
 </body>
 </html>
