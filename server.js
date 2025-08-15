@@ -58,10 +58,9 @@ const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 
-// Body parsers: JSON *and* forms (this fixes your 400)
+// Body parsers: JSON *and* forms
 app.use(express.json({ limit: "2mb" }));
-app.use(express.urlencoded({ extended: false }));  // <-- important
-
+app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
 // CORS only for /api
@@ -88,7 +87,6 @@ function verifyAdminToken(req, res, next) {
 
 // ===== Admin auth (accepts JSON or form fields)
 app.post(["/api/admin/gate/login", "/api/admin/login"], (req, res) => {
-  // Normalize possible field names coming from forms or code
   const body = req.body || {};
   const username = (body.username || body.user || body.email || "").toString().trim();
   const password = (body.password || body.pass || body.pwd || "").toString();
@@ -182,9 +180,10 @@ app.use(express.static(PUBLIC_DIR, {
   }
 }));
 
-// SPA fallback
-app.get("*", (req, res, next) => {
-  if (HAS_INDEX_HTML) return res.sendFile(INDEX_PATH, err => err && next(err));
+// ---- Landing-only change below ----
+// Instead of a SPA catch-all rewrite, we 404 unknown paths to prevent landing on admin.
+// (Everything else above remains exactly as-is.)
+app.use((req, res) => {
   res.status(404).send("Not found.");
 });
 
