@@ -39,14 +39,14 @@
   @media (max-width: 980px){ .wrap{grid-template-columns:1fr} }
 </style>
 
-<!-- AUTH GATE (same as before) -->
+<!-- AUTH GATE (server session required) -->
 <script>
 (function(){
   "use strict";
   const LOGIN="/pages/dashboard/home/login.html";
   const SESSION_KEY="l3z:session", PROFILE_KEY="l3z:user", UNAME_KEY="user:username", LAST_KEY="lash3z_last_user";
-  const WALLET = u=>`lbx:wallet:${(u||'').toUpperCase()}`, LEDGER=u=>`lbx:ledger:${(u||'').toUpperCase()}`;
-  const now=()=>Date.now(); const DAY=86400000; const up=s=>(s||"").toString().trim().toUpperCase();
+  const now=()=>Date.now(); const up=s=>(s||"").toString().trim().toUpperCase();
+
   function sget(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch{ return null; } }
   function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
   function redirectToLogin(){ const back=encodeURIComponent(location.pathname+location.search+location.hash); location.replace(`${LOGIN}?redirect=${back}`); }
@@ -56,18 +56,8 @@
   if(!sess || !sess.user || Number(sess.expiresAt)<=now()){ redirectToLogin(); throw new Error("no session"); }
   const USER=up(sess.user);
   localStorage.setItem(UNAME_KEY,USER); localStorage.setItem(LAST_KEY,USER); sset(PROFILE_KEY,{username:USER});
+  window.__L3Z_USER__ = USER;
 
-  // Ensure wallet exists (client-side fallback)
-  function ensureWallet(u){
-    let w=sget(WALLET(u));
-    if(!w){
-      w={balance:50,created:now(),lastDaily:0};
-      sset(WALLET(u),w);
-      sset(LEDGER(u),[{ts:now(),delta:+50,reason:"WELCOME_BONUS",balance:50}]);
-    }
-    return w;
-  }
-  window.__L3Z__ = { USER, WALLET, LEDGER, ensureWallet, now, DAY };
   window.addEventListener("DOMContentLoaded",()=> document.documentElement.removeAttribute("data-auth"));
 })();
 </script>
@@ -80,7 +70,7 @@
   </div>
 
   <div class="wrap">
-    <!-- LEFT: Overview + Daily + Rewards + Ledger (unchanged core) -->
+    <!-- LEFT: Overview + Daily + Giveaways + Ledger -->
     <div class="card">
       <h2>Overview</h2>
       <div class="row" style="margin-bottom:12px">
@@ -99,15 +89,20 @@
         </div>
 
         <div class="card" style="padding:12px">
-          <h2 style="font-size:18px;margin:0 0 8px">Unclaimed Rewards</h2>
-          <div class="muted" style="margin-bottom:8px">Prizes pushed from Admin.</div>
-          <div id="rewardsList" class="row"></div>
+          <h2 style="font-size:18px;margin:0 0 8px">Giveaway</h2>
+          <div class="muted" style="margin-bottom:8px">One click enters the **current** giveaway.</div>
+          <div class="row">
+            <button class="btn ok" id="enterGiveaway">Enter Giveaway</button>
+            <span id="giveStatus" class="pill">Checking…</span>
+          </div>
+          <div class="muted" style="margin-top:8px">Giveaway ID: <b id="giveId">—</b> • Entries: <b id="giveCount">0</b></div>
+          <div id="giveList" class="row" style="margin-top:8px;flex-wrap:wrap"></div>
         </div>
       </div>
 
       <div class="card" style="margin-top:12px">
         <h2>Ledger</h2>
-        <div class="muted" style="margin-bottom:8px">Your last 50 transactions (local fallback).</div>
+        <div class="muted" style="margin-bottom:8px">Server balance is the source of truth. (Local ledger shown if server ledger isn’t available.)</div>
         <table id="ledger">
           <thead><tr><th>When</th><th>Reason</th><th class="right">Δ LBX</th><th class="right">Balance</th></tr></thead>
           <tbody></tbody>
@@ -118,7 +113,7 @@
     <!-- RIGHT: Top 10 + BUY LBX -->
     <div class="card">
       <h2>Top 10 Leaderboard</h2>
-      <div class="muted" style="margin-bottom:8px">Local wallets on this device (server leaderboard coming next).</div>
+      <div class="muted" style="margin-bottom:8px">Local snapshot (server leaderboard can be wired later).</div>
       <table id="lbTable">
         <thead><tr><th>#</th><th>User</th><th class="right">LBX</th></tr></thead>
         <tbody></tbody>
@@ -170,19 +165,23 @@
 <script>
 (function(){
   "use strict";
+  const USER = window.__L3Z_USER__;
   const $=s=>document.querySelector(s);
   const esc=s=>(s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
   const fmt=n=> (+n).toFixed(2);
   const up=s=>(s||'').toString().trim().toUpperCase();
-
-  const { USER, WALLET, LEDGER, ensureWallet, now, DAY } = window.__L3Z__;
+  const now=()=>Date.now(); const DAY=86400000;
 
   const welcomeName=$("#welcomeName"), balEl=$("#bal"), rankEl=$("#rank"), rankSub=$("#rankSub");
   const claimBtn=$("#claimBtn"), claimStatus=$("#claimStatus");
   const ledgerBody=$("#ledger tbody"), lbTableBody=$("#lbTable tbody");
-  const rewardsList=$("#rewardsList"), toast=$("#toast");
+  const rewardsList=null; // (not used now — can add later)
+  const toast=$("#toast");
 
-  // ---- BUY LBX UI ----
+  // Giveaway UI elems
+  const enterBtn=$("#enterGiveaway"), giveStatus=$("#giveStatus"), giveIdEl=$("#giveId"), giveCount=$("#giveCount"), giveList=$("#giveList");
+
+  // BUY LBX elems
   const pkgRow=$("#pkgRow"), assetSel=$("#assetSel"), usdDue=$("#usdDue");
   const addrEl=$("#addr"), refEl=$("#ref"), txidEl=$("#txid"), submitBtn=$("#submitOrder"), limitNote=$("#limitNote");
 
@@ -194,95 +193,151 @@
     "SOL":"tS4aS93waE4sPRjVVagkSaZ3wQyhfir3GzL1Lhm2eJ4",
     "LTC":"ltc1qn6klwjdalpfk8g252ypht03tktr4em7x367vm7"
   };
-
   const PRICE_USD = {5:2.50, 10:5.00, 15:7.00, 20:9.00, 25:10.50, 30:12.00};
   const PKGS=[5,10,15,20,25,30];
   let selectedPkg=0;
 
-  // orders stored locally as fallback; server endpoint is /api/lbx/orders (optional)
-  const ORDERS_KEY="lbx:orders";
-  function sget(k,def=null){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch{ return def; } }
-  function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
-
-  function toastMsg(t){ toast.textContent=t; toast.classList.add('on'); setTimeout(()=>toast.classList.remove('on'),1400); }
-
-  function readWallet(u){ return ensureWallet(u); }
-  function writeWallet(u,w){ sset(WALLET(u),w); }
-  function readLedger(u){ return sget(LEDGER(u),[]) }
-  function pushLedger(u,delta,reason){
-    const w = readWallet(u);
-    w.balance = +(w.balance||0) + (+delta||0);
-    writeWallet(u,w);
-    const list = readLedger(u);
-    list.push({ ts: now(), delta:+delta, reason:String(reason||'ADJUSTMENT'), balance:w.balance });
-    sset(LEDGER(u), list.slice(-200));
-    paintWallet(); paintLedger(); paintLeaderboard();
+  /* -----------------------------
+     SERVER HELPERS (real backend)
+     ----------------------------- */
+  async function apiGet(url){
+    const r = await fetch(url,{credentials:"include",cache:"no-store"});
+    if(!r.ok) throw new Error(r.status);
+    return r.json();
+  }
+  async function apiPost(url, body){
+    const r = await fetch(url,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(body||{})});
+    if(!r.ok) throw new Error(r.status);
+    return r.json();
   }
 
-  function msToHMS(ms){ if(ms<=0) return "ready"; const h=Math.floor(ms/3600000), m=Math.floor((ms%3600000)/60000), s=Math.floor((ms%60000)/1000); return `${h}h ${m}m ${s}s`; }
+  /* -----------------------------
+     WALLET (server source of truth)
+     ----------------------------- */
+  async function loadBalance(){
+    try{
+      const j = await apiGet(`/api/wallet/me?viewer=${encodeURIComponent(USER)}`);
+      const bal = Number(j?.wallet?.balance||0);
+      balEl.textContent = fmt(bal);
+      return bal;
+    }catch(e){
+      // fallback: local
+      const w = localGetWallet(USER);
+      balEl.textContent = fmt(w.balance||0);
+      return w.balance||0;
+    }
+  }
+  async function adjustBalance(delta, reason){
+    try{
+      const j = await apiPost("/api/wallet/adjust",{ username: USER, delta:Number(delta||0), reason: String(reason||"ADJUST") });
+      balEl.textContent = fmt(Number(j.balance||0));
+      return true;
+    }catch(e){
+      // fallback local
+      localPushLedger(USER, Number(delta||0), reason||"ADJUST");
+      return false;
+    }
+  }
 
-  // Daily reward
+  /* -----------------------------
+     GIVEAWAYS (current)
+     ----------------------------- */
+  async function loadGiveaway(){
+    try{
+      const j = await apiGet("/api/giveaways/entries");  // { ok, id, entries }
+      giveIdEl.textContent = j.id || "GLOBAL";
+      const arr = Array.isArray(j.entries) ? j.entries : [];
+      giveCount.textContent = arr.length;
+      giveList.innerHTML = arr.map(e=>`<span class="pill">${esc(e.user)}</span>`).join('') || `<span class="muted">No entries yet.</span>`;
+      const entered = !!arr.find(e=> up(e.user) === up(USER) );
+      giveStatus.textContent = entered ? "You're in!" : "Not entered";
+      enterBtn.disabled = entered;
+    }catch(e){
+      giveStatus.textContent = "Giveaway offline";
+    }
+  }
+  async function enterGiveaway(){
+    enterBtn.disabled = true;
+    try{
+      await apiPost("/api/giveaways/enter",{ user: USER });
+      giveStatus.textContent = "You're in!";
+      await loadGiveaway();
+    }catch(e){
+      giveStatus.textContent = "Enter failed";
+      enterBtn.disabled = false;
+    }
+  }
+
+  /* -----------------------------
+     DAILY (client-enforced cooldown)
+     ----------------------------- */
+  const DAILY_KEY = `lbx:daily:${USER}`;
+  function nextDailyTs(){ const v=localStorage.getItem(DAILY_KEY); return v?Number(v):0; }
+  function setDailyNow(){ localStorage.setItem(DAILY_KEY, String(now())); }
   function updateDailyUI(){
-    const w = readWallet(USER);
-    const next = (w.lastDaily||0) + DAY;
-    const remain = next - now();
+    const remain = (nextDailyTs()+DAY) - now();
     if(remain <= 0){ claimBtn.disabled=false; claimStatus.textContent="Ready"; }
-    else{ claimBtn.disabled=true; claimStatus.textContent="Next in " + msToHMS(remain); }
+    else{
+      const h=Math.floor(remain/3600000), m=Math.floor((remain%3600000)/60000), s=Math.floor((remain%60000)/1000);
+      claimBtn.disabled=true; claimStatus.textContent=`Next in ${h}h ${m}m ${s}s`;
+    }
   }
-  claimBtn.addEventListener('click', ()=>{
-    const w = readWallet(USER); const next=(w.lastDaily||0)+DAY;
-    if(now() < next){ toastMsg("Too soon — come back later"); return; }
-    w.lastDaily = now(); writeWallet(USER,w);
-    pushLedger(USER, +5, "DAILY_REWARD"); toastMsg("+5 LBX claimed"); updateDailyUI();
+  claimBtn.addEventListener('click', async ()=>{
+    if((nextDailyTs()+DAY) > now()) return;
+    const ok = await adjustBalance(+5, "DAILY_REWARD");
+    setDailyNow(); updateDailyUI();
+    toastMsg(ok?"+5 LBX claimed (server)":"+5 LBX claimed (local)");
+    await loadBalance();
   });
   setInterval(updateDailyUI, 1000);
 
-  // Rewards (local awards scan)
-  function listAwards(){
-    const out=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i);
-      if(!k || !k.startsWith("bux:awards:")) continue; const arr=sget(k,[]);
-      if(Array.isArray(arr)) arr.forEach((a,idx)=>{ const uname=up(a.userId||a.name||''); if(uname===USER) out.push({id:`${k}::${idx}`, key:k, idx, label:a.label||'Reward', amount:+(a.amount||0)}); });
-    } return out;
+  /* -----------------------------
+     LEDGER (local fallback view)
+     ----------------------------- */
+  const LEDGER = u=>`lbx:ledger:${up(u)}`;
+  const WALLET = u=>`lbx:wallet:${up(u)}`;
+  function sget(k,def=null){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch{ return def; } }
+  function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+  function localGetWallet(u){ return sget(WALLET(u)) || { balance:0, created:now(), lastDaily:0 }; }
+  function localSetWallet(u,w){ sset(WALLET(u), w); }
+  function localLedger(u){ return sget(LEDGER(u), []); }
+  function localPushLedger(u,delta,reason){
+    const w = localGetWallet(u);
+    w.balance = Number(w.balance||0) + Number(delta||0);
+    localSetWallet(u,w);
+    const list = localLedger(u);
+    list.push({ ts: now(), delta:+delta, reason:String(reason||'ADJUSTMENT'), balance:w.balance });
+    sset(LEDGER(u), list.slice(-200));
+    paintLedgerLocal(); paintLeaderLocal();
   }
-  function isClaimed(id){ return localStorage.getItem("lbx:award:claimed:"+id)==="1"; }
-  function setClaimed(id){ localStorage.setItem("lbx:award:claimed:"+id,"1"); }
-  function paintRewards(){
-    const items=listAwards(); if(!items.length){ rewardsList.innerHTML=`<span class="muted">No rewards pending.</span>`; return; }
-    rewardsList.innerHTML=""; items.forEach(it=>{
-      const wrap=document.createElement('div'); wrap.className="row"; wrap.style.marginBottom="6px";
-      const claimed=isClaimed(it.id);
-      wrap.innerHTML=`<div class="pill">${esc(it.label)}</div><div class="pill">${claimed?'CLAIMED':('+'+fmt(it.amount)+' LBX')}</div><button class="btn" data-claim="${it.id}" ${claimed?'disabled':''}>Claim</button>`;
-      rewardsList.appendChild(wrap);
-    });
-    rewardsList.querySelectorAll('[data-claim]').forEach(btn=>{
-      btn.addEventListener('click',()=>{ const id=btn.getAttribute('data-claim'); const it=listAwards().find(x=>x.id===id); if(!it||isClaimed(id)) return;
-        pushLedger(USER, +it.amount, `AWARD:${it.label}`); setClaimed(id); toastMsg(`+${fmt(it.amount)} LBX added`); paintRewards(); });
-    });
+  function paintLedgerLocal(){
+    const L=(localLedger(USER)).slice(-50).reverse();
+    ledgerBody.innerHTML = L.map(row=>`<tr><td>${new Date(row.ts).toLocaleString()}</td><td>${esc(row.reason||'')}</td><td class="right ${row.delta>=0?'':'bad'}">${row.delta>=0?'+':''}${fmt(row.delta||0)}</td><td class="right">${fmt(row.balance||0)}</td></tr>`).join('') || `<tr><td colspan="4" class="muted">No transactions yet.</td></tr>`;
   }
 
-  // Leaderboard (local scan)
+  /* -----------------------------
+     LEADERBOARD (local snapshot)
+     ----------------------------- */
   function collectWallets(){ const res=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.startsWith("lbx:wallet:")){ const u=k.split(":").pop(); const w=sget(k); if(w) res.push({user:u,balance:+(w.balance||0)}); } } return res; }
-  function paintLeaderboard(){
+  function paintLeaderLocal(){
     const all=collectWallets().sort((a,b)=>b.balance-a.balance); const meIndex=all.findIndex(x=>x.user===up(USER));
     rankEl.textContent = "#"+(meIndex>=0?meIndex+1:"—"); rankSub.textContent = all.length?`of ${all.length}`:"—";
     const top=all.slice(0,10);
     lbTableBody.innerHTML = top.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.user)} ${r.user===up(USER)?'<span class="pill">you</span>':''}</td><td class="right">${fmt(r.balance)}</td></tr>`).join('') || `<tr><td colspan="3" class="muted">No data yet.</td></tr>`;
   }
 
-  // Ledger + wallet painters
-  function paintLedger(){ const L=(sget(LEDGER(USER),[])).slice(-50).reverse();
-    ledgerBody.innerHTML = L.map(row=>`<tr><td>${new Date(row.ts).toLocaleString()}</td><td>${esc(row.reason||'')}</td><td class="right ${row.delta>=0?'':'bad'}">${row.delta>=0?'+':''}${fmt(row.delta||0)}</td><td class="right">${fmt(row.balance||0)}</td></tr>`).join('') || `<tr><td colspan="4" class="muted">No transactions yet.</td></tr>`; }
-  function paintWallet(){ const w=sget(WALLET(USER)); welcomeName.textContent=USER; balEl.textContent=fmt((w&&w.balance)||0); }
-
-  // ----- Purchase UI -----
+  /* -----------------------------
+     BUY LBX (client form only)
+     ----------------------------- */
+  const ORDERS_KEY="lbx:orders";
+  function toastMsg(t){ toast.textContent=t; toast.classList.add('on'); setTimeout(()=>toast.classList.remove('on'),1400); }
   function renderPkgs(){
     pkgRow.innerHTML = PKGS.map(n=>`<button class="btn" data-pkg="${n}">${n} LBX</button>`).join("");
     pkgRow.querySelectorAll("[data-pkg]").forEach(b=> b.addEventListener("click", ()=>{
       selectedPkg = +b.getAttribute("data-pkg");
       pkgRow.querySelectorAll("button").forEach(x=>x.classList.remove("ok")); b.classList.add("ok");
       usdDue.value = "$" + (PRICE_USD[selectedPkg] ? PRICE_USD[selectedPkg].toFixed(2) : "0.00");
-      refreshAddrRef();
-      validateLimit();
+      refreshAddrRef(); validateLimit();
     }));
   }
   function refreshAddrRef(){
@@ -292,13 +347,13 @@
     refEl.textContent = code;
   }
   function copy(el){ navigator.clipboard.writeText(el.textContent||"").then(()=>toastMsg("Copied")); }
-
   document.getElementById("copyAddr").addEventListener("click", ()=>copy(addrEl));
   document.getElementById("copyRef").addEventListener("click", ()=>copy(refEl));
   assetSel.addEventListener("change", ()=>refreshAddrRef());
 
+  function sgetArr(k){ const v=sget(k,[]); return Array.isArray(v)?v:[]; }
   function lbxBoughtLast24h(){
-    const orders = sget(ORDERS_KEY,[]).filter(o=> up(o.user)===up(USER) );
+    const orders = sgetArr(ORDERS_KEY).filter(o=> up(o.user)===up(USER) );
     const since = now()-DAY;
     return orders.filter(o=>Number(o.ts)>=since).reduce((a,o)=> a + (+o.amount||0), 0);
   }
@@ -320,31 +375,40 @@
       asset, address: addrEl.textContent, ref: refEl.textContent, txid: (txidEl.value||"").trim(),
       status: "pending", ts: now()
     };
-    // Save locally (fallback)
-    const all = sget(ORDERS_KEY,[]); all.push(o); sset(ORDERS_KEY, all);
-
-    // Try to POST to backend if available
-    try{
-      await fetch("/api/lbx/orders", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(o) });
-    }catch(_){ /* no backend yet – ignore */ }
-
-    toastMsg("Submitted for review. We'll approve after confirming on-chain.");
-    // reset
-    txidEl.value=""; validateLimit();
+    const all = sgetArr(ORDERS_KEY); all.push(o); localStorage.setItem(ORDERS_KEY, JSON.stringify(all));
+    try{ await fetch("/api/lbx/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(o)}); }catch{}
+    toastMsg("Submitted for review."); txidEl.value=""; validateLimit();
   }
   submitBtn.addEventListener("click", submitOrder);
 
-  // Boot all
-  ensureWallet(USER);
+  /* -----------------------------
+     BOOT
+     ----------------------------- */
+  welcomeName.textContent = USER;
+
+  // Balance & leaderboard
+  loadBalance();
+  paintLeaderLocal();
+
+  // Daily + Giveaway
+  updateDailyUI();
+  loadGiveaway();
+  setInterval(loadGiveaway, 4000);
+
+  // Packages UI
   renderPkgs(); refreshAddrRef(); validateLimit();
-  paintWallet(); paintLedger(); paintLeaderboard(); paintRewards(); updateDailyUI();
+
+  // Ledger (local view only)
+  paintLedgerLocal();
+
+  // Giveaway button
+  enterBtn.addEventListener("click", enterGiveaway);
 
   // Cross-tab updates
   window.addEventListener('storage', (e)=>{
     if(!e.key) return;
-    if(e.key.startsWith("lbx:wallet:") || e.key.startsWith("lbx:ledger:")){ paintWallet(); paintLedger(); paintLeaderboard(); }
+    if(e.key.startsWith("lbx:wallet:") || e.key.startsWith("lbx:ledger:")){ loadBalance(); paintLedgerLocal(); paintLeaderLocal(); }
     if(e.key===ORDERS_KEY){ validateLimit(); }
-    if(e.key.startsWith("bux:awards:") || e.key.startsWith("lbx:award:claimed:")){ paintRewards(); }
   });
 })();
 </script>
