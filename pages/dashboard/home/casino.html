@@ -30,12 +30,34 @@
   /* One full-width card per row, stacked vertically */
   .list{display:grid;grid-template-columns:1fr;gap:16px}
 
-  .card{background:#0e1416;border:1px solid var(--line);border-radius:16px;display:grid;grid-template-columns:180px 1fr;gap:14px;padding:12px;transition:transform .15s ease, box-shadow .15s ease}
+  .card{
+    background:#0e1416;border:1px solid var(--line);border-radius:16px;
+    display:grid;grid-template-columns:180px 1fr;gap:14px;padding:12px;
+    transition:transform .15s ease, box-shadow .15s ease
+  }
   .card:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(0,0,0,.35)}
   @media (max-width:680px){ .card{grid-template-columns:1fr} }
 
-  .logoBox{display:flex;align-items:center;justify-content:center;background:#0a0f10;border-radius:12px;border:1px dashed var(--line);padding:16px;cursor:pointer}
-  .logo{max-width:140px;max-height:100px;object-fit:contain;filter:drop-shadow(0 6px 24px #00ffff33)}
+  /* FILLED LOGO BOX — crops without distortion */
+  .logoBox{
+    position:relative;
+    height:160px;               /* consistent visual height */
+    background:#0a0f10;
+    border-radius:12px;
+    border:1px dashed var(--line);
+    overflow:hidden;            /* hide cropped edges */
+    cursor:pointer;
+    padding:0;
+  }
+  .logo{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    object-fit:cover;           /* fill box, keep aspect, crop as needed */
+    object-position:center;
+    display:block;
+    filter:drop-shadow(0 6px 24px #00ffff33);
+  }
+
   .content{display:flex;flex-direction:column;gap:8px}
   .title{display:flex;align-items:center;gap:10px;cursor:pointer}
   .title h2{margin:0;color:#eaf7ff;font-size:20px}
@@ -130,9 +152,9 @@
           </ul>
         </div>
         <div class="ctaRow">
+          <a class="btn visit" href="https://dimebit.com/tiers/" target="_blank" rel="noopener">Promotions</a>
+          <a class="btn visit" href="https://dimebit.com/page/kyc/" target="_blank" rel="noopener">Terms</a>
           <a class="btn visit" href="https://dimebit.com/affiliate/fullsend/utm_campaign/lashes-kick/utm_source/kick" target="_blank" rel="noopener">Visit Dimebit</a>
-          <a class="btn tiny" href="https://dimebit.com/tiers/" target="_blank" rel="noopener">Promotions</a>
-          <a class="btn tiny" href="https://dimebit.com/page/kyc/" target="_blank" rel="noopener">Terms</a>
         </div>
       </div>
     </article>
@@ -163,9 +185,9 @@
           </ul>
         </div>
         <div class="ctaRow">
-          <a class="btn visit" href="https://shuffle.com?r=lash3z" target="_blank" rel="noopener">Visit Shuffle</a>
           <a class="btn tiny" href="https://shuffle.com/promotions" target="_blank" rel="noopener">Promotions</a>
           <a class="btn tiny" href="https://shuffle.com/info/terms" target="_blank" rel="noopener">Terms</a>
+          <a class="btn visit" href="https://shuffle.com?r=lash3z" target="_blank" rel="noopener">Visit Shuffle</a>
         </div>
       </div>
     </article>
