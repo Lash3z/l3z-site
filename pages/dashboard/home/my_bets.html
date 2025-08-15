@@ -1,372 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Player Betting Slip — Lash3zBux</title>
-  <style>
-    :root{
-      --bg:#0b0e13;--panel:#12151c;--ink:#e8ecf3;--soft:#aeb7c6;--line:rgba(0,255,255,.18);
-      --gold:#f0a320;--muted:#7d8596;--danger:#e85c6b;--ok:#12d48a;
-      --card:#0f1319;--chip:#1a202b;--chipLine:rgba(240,163,32,.35);
-    }
-    *{box-sizing:border-box}
-    html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,Arial,sans-serif}
-    a{color:inherit;text-decoration:none}
-    html[data-auth="checking"] body{opacity:0;transition:opacity .12s ease}
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>My Bets — LASH3Z</title>
+<meta name="description" content="Player predictions saved from the Battleground Prediction Form."/>
+<style>
+  :root{
+    --bg:#0b0e13; --panel:#12151c; --ink:#e8ecf3; --muted:#9fb3c5;
+    --line:rgba(0,255,255,.18); --gold:#f0a320; --teal:#00ffff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#000 url("/assets/media/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
 
-    .wrap{max-width:1400px;margin:0 auto;padding:14px}
-    .top{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:12px}
-    .tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .tab{padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;cursor:pointer;font-weight:700;color:#ffd78a}
-    .tab.active{background:linear-gradient(180deg,#181d26,#141923);border-color:rgba(255,187,0,.35);box-shadow:0 10px 18px rgba(0,0,0,.35) inset,0 0 0 1px rgba(255,187,0,.08)}
+  .topbar{height:64px;background:rgba(0,0,0,.7);backdrop-filter:saturate(140%) blur(6px);
+    border:1px solid var(--line);border-radius:14px;display:flex;align-items:center;justify-content:space-between;padding:0 14px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand h1{margin:0;font-size:18px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
+  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0a1016;color:#cfe;font-weight:800}
 
-    .layout{display:grid;grid-template-columns:1fr 380px;gap:16px}
-    @media (max-width:1100px){.layout{grid-template-columns:1fr}}
+  .list{margin-top:16px;display:flex;flex-direction:column;gap:12px}
+  .card{background:linear-gradient(180deg,#0e1319,#0b1016);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px}
+  .head .title{font-weight:900}
+  .body{padding:10px 14px;display:flex;flex-direction:column;gap:6px}
+  .row{display:flex;justify-content:space-between;gap:10px}
+  .muted{color:var(--muted)}
+  .empty{margin:16px 0;border:1px dashed var(--line);border-radius:12px;padding:16px;text-align:center;color:#cfe;background:#0f151c}
+  .small{font-size:12px}
 
-    .panel{background:linear-gradient(180deg,#0e1319,#0b1016);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
-    .sectionTitle{padding:14px 16px;border-bottom:1px solid var(--line);font-weight:900;color:#ffd589}
-    .markets{display:flex;flex-direction:column;gap:12px;padding:12px}
-
-    .mkt{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-    .mHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px}
-    .mLabel{display:flex;gap:10px;align-items:center;font-weight:800}
-    .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0a1016;color:#ffd589;font-size:12px}
-
-    .options{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 8px 12px}
-    .opt{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#10151d;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
-    .odd{font-weight:900;color:#ffd78a}
-
-    .numBox,.textBox{padding:12px;border-top:1px dashed var(--line);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-    .chips{display:flex;flex-wrap:wrap;gap:8px}
-
-    /* Slip */
-    .slip{position:sticky;top:10px;display:flex;flex-direction:column;height:calc(100dvh - 24px)}
-    .slipHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px}
-    .slipTabs{display:flex;gap:12px;padding:0 16px 10px}
-    .slipTab{font-weight:800;border-bottom:2px solid transparent;padding:6px 2px;cursor:pointer;color:#ffd589}
-    .slipTab.active{border-bottom-color:var(--gold)}
-    .slipBody{flex:1;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
-    .ticket{border:1px solid var(--line);border-radius:10px;background:#0f151c;padding:10px 12px}
-    .tTop{display:flex;justify-content:space-between;gap:10px}
-    .tMeta{font-size:12px;color:#7d8596}
-    .trash{cursor:pointer;color:#ffb5be}
-    .totals{border-top:1px solid var(--line);padding:12px 16px;display:grid;gap:8px}
-    .row{display:flex;justify-content:space-between;align-items:center}
-    .amt{display:flex;gap:8px;align-items:center}
-    .amt input{width:120px;background:#0f141b;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:#e8ecf3}
-    .btn{border:none;border-radius:12px;padding:12px 16px;font-weight:900;cursor:pointer;background:linear-gradient(180deg,#f2b64a,#d49a2e);color:#1a1204;box-shadow:inset 0 -2px 0 #9a6a13,0 8px 24px rgba(0,0,0,.35)}
-    .btn:disabled{opacity:.5;cursor:not-allowed}
-    .ghost{display:flex;align-items:center;gap:8px;color:#7d8596;font-size:12px}
-    .note{padding:8px 12px;color:#c7d0e4;font-size:12px;border-left:3px solid #2d3648;background:#0f151d;border-radius:8px;margin:6px 12px}
-
-    /* My Bets (basic) */
-    .mbList{padding:12px;display:flex;flex-direction:column;gap:10px}
-    .mbItem{border:1px solid var(--line);border-radius:10px;background:#0f151c}
-    .mbHead{display:flex;justify-content:space-between;align-items:center;padding:10px 12px}
-    .mbBody{padding:10px 12px;display:flex;flex-direction:column;gap:6px}
-    .mbRow{display:flex;justify-content:space-between;gap:8px}
-  </style>
-
-  <!-- Session + wallet bridge (unchanged) -->
-  <script>
-  (function(){
-    "use strict";
-    const LOGIN="/pages/dashboard/home/login.html";
-    const up=s=>String(s||"").trim().toUpperCase();
-    const now=()=>Date.now();
-    const sget=k=>{try{return JSON.parse(localStorage.getItem(k)||"null");}catch{return null;}};
-    const sset=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
-
-    document.documentElement.setAttribute("data-auth","checking");
-    const sess=sget("l3z:session");
-    const USER=up(sess?.user || localStorage.getItem("auth:username") || localStorage.getItem("lash3z_last_user") || "");
-    if(!USER){
-      const back=encodeURIComponent(location.pathname+location.search+location.hash);
-      location.replace(`${LOGIN}?redirect=${back}`); throw 0;
-    }
-    localStorage.setItem("user:username", USER);
-    localStorage.setItem("lash3z_last_user", USER);
-
-    const WKEY=u=>`lbx:wallet:${up(u)}`;
-    const LKEY=u=>`lbx:ledger:${up(u)}`;
-
-    function ensureWallet(u){
-      let w=sget(WKEY(u));
-      if(!w){
-        w={balance:50,created:now(),lastDaily:0};
-        sset(WKEY(u),w);
-        sset(LKEY(u),[{ts:now(),delta:+50,reason:"WELCOME_BONUS",balance:50}]);
-      }
-      return w;
-    }
-    function getWallet(){ return sget(WKEY(USER)) || ensureWallet(USER); }
-    function putWallet(w){ sset(WKEY(USER), w); }
-    function balance(){ return Number(getWallet().balance||0); }
-
-    function paintHeader(){
-      const who=document.getElementById('who'); if(who) who.textContent=`Welcome, ${USER}`;
-      const b=document.getElementById('bal');
-      if(b) b.textContent='🪙 '+(balance()||0).toLocaleString(undefined,{maximumFractionDigits:0})+' BUX';
-    }
-
-    ensureWallet(USER);
-    document.addEventListener("DOMContentLoaded",()=>{ paintHeader(); document.documentElement.removeAttribute("data-auth"); });
-    window.addEventListener("storage",(e)=>{ if(!e.key) return; if(e.key===WKEY(USER)||e.key===LKEY(USER)) paintHeader(); });
-
-    window.__L3Z__={USER,WKEY,LKEY,ensureWallet,getWallet,putWallet,balance,sget,sset,now};
-  })();
-  </script>
+  .toolbar{display:flex;align-items:center;gap:8px;margin:12px 0}
+  .btn{padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#0f1a1f;color:#cfe;font-weight:800;cursor:pointer}
+  .btn:hover{filter:brightness(1.06)}
+  .search{flex:1;min-width:180px;background:#0f141b;border:1px solid var(--line);border-radius:10px;color:#e8ecf3;padding:9px 12px}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="top">
-      <div class="tabs">
-        <div class="tab active" data-tab="battleground">Battleground</div>
-        <div class="tab" data-tab="bonus">Bonus Hunt</div>
-        <div class="tab" data-tab="pvp">PVP</div>
-      </div>
-      <div class="pill" id="who">Welcome, —</div>
-      <div class="pill" id="bal">🪙 0 BUX</div>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand">
+      <img src="/assets/l3z_logo.png" alt="LASH3Z" onerror="this.src='/assets/lash3zbux_pp.png'" style="width:36px;height:36px;border-radius:10px;border:1px solid var(--line);object-fit:cover;background:#000">
+      <h1>My Bets</h1>
     </div>
-
-    <div class="layout">
-      <!-- LEFT: Markets -->
-      <div class="panel">
-        <div class="sectionTitle" id="sectionLabel">Battleground — Custom Markets</div>
-        <div id="markets" class="markets"></div>
-        <div id="hint" class="note" style="display:none"></div>
-      </div>
-
-      <!-- RIGHT: Slip -->
-      <div class="panel slip">
-        <div class="slipHead">
-          <div style="font-weight:900;color:#ffd589">Picks <span id="slipCount" class="pill">0</span></div>
-          <div class="trash" id="clearSlip" title="Clear">🗑</div>
-        </div>
-        <div class="slipTabs">
-          <div class="slipTab active" data-mode="single">Single</div>
-          <div class="slipTab" data-mode="multi">Multi</div>
-        </div>
-        <div id="slipBody" class="slipBody"></div>
-        <div class="totals">
-          <div class="row"><div>Bet Amount</div><div class="amt"><input id="stake" type="number" min="1" max="100" step="1" value="10"/><span>BUX</span></div></div>
-          <div class="row"><div>Estimated Winnings</div><div id="payout">0 BUX</div></div>
-          <div id="warn" class="msg"></div>
-          <button id="submit" class="btn" disabled>Place Bet</button>
-          <div class="row" style="justify-content:space-between">
-            <div class="ghost"><label><input id="ghost" type="checkbox"/> Ghost Mode</label></div>
-            <div class="ghost">Max 100 BUX per bet.</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- RIGHT (below): My Bets -->
-      <div class="panel">
-        <div class="sectionTitle">My Bets</div>
-        <div id="mybets" class="mbList"></div>
-      </div>
-    </div>
+    <div id="who" class="pill">—</div>
   </div>
+
+  <div class="toolbar">
+    <input id="q" class="search" placeholder="Filter by event, game, or pick…">
+    <button id="refresh" class="btn">Refresh</button>
+    <span class="small muted" id="count"></span>
+  </div>
+
+  <div id="list" class="list"></div>
+</div>
 
 <script>
 (function(){
   "use strict";
-  const $=(q,r)=> (r||document).querySelector(q);
-  const $$=(q,r)=> Array.from((r||document).querySelectorAll(q));
-  const esc=s=>String(s??'').replace(/[&<>\"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
-  const kid=(p='ID')=> p+Math.random().toString(36).slice(2,10).toUpperCase();
-  const bux=n=> (Number(n)||0).toLocaleString(undefined,{maximumFractionDigits:0})+' BUX';
+  const up = s => String(s||'').trim().toUpperCase();
+  const esc = s => String(s??'').replace(/[&<>"']/g,m=>m==="&"?"&amp;":m==="<"?"&lt;":m===">"?"&gt;":"&quot;");
+  const USER = up(localStorage.getItem("user:username") || localStorage.getItem("lash3z_last_user") || "");
+  const KEY = u => "sb:mybets:"+u;
 
-  const { USER, sget, sset, now, balance, getWallet, putWallet, LKEY } = window.__L3Z__;
+  const listEl = document.getElementById("list");
+  const whoEl  = document.getElementById("who");
+  const qEl    = document.getElementById("q");
+  const countEl= document.getElementById("count");
 
-  const K_UNIFIED='sb:markets:unified';
-  const K_BH_LIVE='bh:live';
-  const K_BH_DRAFT='bh:draft';
-  const K_SUBS='sb:submitted:'+USER;
-  const MYBETS_KEY='sb:mybets:'+USER;   // <- compact predictions from the form
+  whoEl.textContent = USER ? "User: "+USER : "User: (not set)";
 
-  let submitted = sget(K_SUBS) || {};
-  let unified = sget(K_UNIFIED) || {sections:{battleground:{overall:[]},bonus:{overall:[]},pvp:{overall:[]}}};
-  let activeTab='battleground';
-  let slipMode='single';
-  let slip=[];
-
-  $$('.tab').forEach(t=> t.addEventListener('click',()=> setTab(t.dataset.tab)));
-  $$('.slipTab').forEach(t=> t.addEventListener('click',()=>{ slipMode=t.dataset.mode; updateSlipUI(); }));
-  $('#clearSlip')?.addEventListener('click',()=>{ slip=[]; updateSlipUI(); });
-  $('#stake')?.addEventListener('input', updateTotals);
-  $('#submit')?.addEventListener('click', submitBet);
-
-  setTab(activeTab);
-  refreshBux();
-  paintMyBets(); // initial
-
-  function setTab(tab){
-    activeTab=tab;
-    $$('.tab').forEach(x=> x.classList.toggle('active', x.dataset.tab===tab));
-    $('#sectionLabel').textContent=(tab==='battleground'?'Battleground':tab==='bonus'?'Bonus Hunt':'PVP')+' — Custom Markets';
-    paintMarkets();
+  function readAll(){
+    let arr=[]; try{ arr = JSON.parse(localStorage.getItem(KEY(USER))||"[]")||[]; }catch{}
+    // newest first
+    return arr.slice().sort((a,b)=>(b.ts||0)-(a.ts||0));
   }
 
-  // Minimal markets paint (unchanged logic condensed)
-  function paintMarkets(){
-    const host=$('#markets'); host.innerHTML='';
-    const sec=(unified.sections[activeTab]||{overall:[]});
-    const mkts=sec.overall||[];
-    if(activeTab==='bonus'){
-      const hint=$('#hint'); const need=mkts.length===0;
-      hint.style.display= need? '' : 'none';
-      if(need){ hint.textContent='Bonus Hunt markets are not prefilled yet. Open Admin and enable Bonus Hunt so the fixed markets appear.'; }
+  function matchFilter(entry, q){
+    if(!q) return true;
+    q = q.toLowerCase();
+    if((entry.eventId||"").toLowerCase().includes(q)) return true;
+    if((entry.eventTitle||"").toLowerCase().includes(q)) return true;
+    if(entry.picks){
+      for(const p of entry.picks){
+        if((p.left||"").toLowerCase().includes(q)) return true;
+        if((p.right||"").toLowerCase().includes(q)) return true;
+        if((p.pickName||"").toLowerCase().includes(q)) return true;
+      }
     }
-    mkts.forEach(m=> host.appendChild(marketCard(m)));
+    return false;
   }
 
-  const isLocked=m=> String(m.status||'open').toLowerCase()==='locked';
-  const isSubmitted=marketId=> !!submitted[marketId];
-  const saveSubmitted=()=> sset(K_SUBS, submitted);
+  function render(){
+    const data = readAll();
+    const q = (qEl.value||"").trim().toLowerCase();
+    const rows = data.filter(e=>matchFilter(e,q));
+    countEl.textContent = rows.length ? (rows.length+" entr"+(rows.length===1?"y":"ies")) : "";
 
-  function marketCard(m){
-    const card=document.createElement('div'); card.className='mkt';
-    const locked=isLocked(m); const already=isSubmitted(m.id);
-    const head=document.createElement('div'); head.className='mHead';
-    head.innerHTML='<div class="mLabel">'+(locked?'🔒 ':'📦 ')+'<span>'+esc(m.label||m.type)+'</span></div>'
-                  +'<div class="pill">'+esc((m.status||'open').toUpperCase())+'</div>';
-    card.appendChild(head);
-
-    if(already){
-      const bar=document.createElement('div'); bar.className='numBox';
-      bar.innerHTML='<span class="pill">Submitted ✓</span>'+(locked?'':' <button class="chip" data-act="undo">Undo</button>');
-      if(!locked){ bar.querySelector('[data-act="undo"]')?.addEventListener('click',()=>undoSubmit(m.id)); }
-      card.appendChild(bar);
+    if(!rows.length){
+      listEl.innerHTML = '<div class="empty">No predictions saved yet.'+(USER?'':' Set your username first.')+'</div>';
+      return;
     }
 
-    if(['OVER_UNDER','YES_NO','MULTI_RANGE','CUSTOM'].includes(m.type)){
-      const box=document.createElement('div'); box.className='options';
-      (m.selections||[]).forEach((s,idx)=>{
-        const o=document.createElement('div'); o.className='opt'; o.dataset.idx=idx;
-        if(locked||already) o.style.pointerEvents='none';
-        o.classList.toggle('active', slip.some(x=> x.marketId===m.id && x.selIdx==idx));
-        o.innerHTML='<div>'+esc(s.label||'Option')+'</div><div class="odd">'+Number(s.odds||1).toFixed(2)+'×</div>';
-        o.addEventListener('click',()=> togglePick(m,{ idx, label:s.label, odds:Number(s.odds||1) }, o));
-        box.appendChild(o);
-      });
-      card.appendChild(box);
+    listEl.innerHTML = rows.map(entry=>{
+      const when = new Date(entry.ts||Date.now()).toLocaleString();
+      const picks = (entry.picks||[]).map(p=>{
+        return `<div class="row">
+                  <div>${esc(p.left)} vs ${esc(p.right)}</div>
+                  <div><b>Pick:</b> ${esc(p.pickName||'')}</div>
+                </div>`;
+      }).join("");
+
+      const final = entry.final
+        ? `<div class="row" style="margin-top:8px">
+             <div><b>Final Score</b></div>
+             <div>${esc(entry.final.leftName)} ${esc(String(entry.final.left))} : ${esc(String(entry.final.right))} ${esc(entry.final.rightName)}</div>
+           </div>`
+        : "";
+
+      return `
+        <article class="card">
+          <div class="head">
+            <div class="title">${esc(entry.eventTitle||'Battleground')} — <span class="muted">${esc(entry.eventId||'')}</span></div>
+            <div class="pill small">${esc(when)}</div>
+          </div>
+          <div class="body">
+            ${picks || '<div class="muted">No matchup picks.</div>'}
+            ${final}
+          </div>
+        </article>`;
+    }).join("");
+  }
+
+  // wire
+  document.getElementById("refresh").addEventListener("click", render);
+  qEl.addEventListener("input", render);
+
+  // live updates from the prediction form
+  window.addEventListener("storage", e=>{
+    if(e.key === KEY(USER) || e.key === "user:username" || e.key === "lash3z_last_user"){
+      location.reload(); // brutally simple & safe
     }
-    return card;
-  }
-
-  function refreshBux(){
-    const b=document.getElementById('bal');
-    if(b) b.textContent='🪙 '+(balance()||0).toLocaleString(undefined,{maximumFractionDigits:0})+' BUX';
-  }
-
-  function togglePick(m, sel, node){
-    if(isLocked(m) || isSubmitted(m.id)) return;
-    const i=slip.findIndex(x=> x.marketId===m.id && x.type==='selection' && x.selIdx===sel.idx);
-    if(i>=0){ slip.splice(i,1); node?.classList.remove('active'); }
-    else{ addToSlip(m,{type:'selection',idx:sel.idx,label:sel.label,odds:sel.odds}); node?.classList.add('active'); }
-    updateSlipUI();
-  }
-  function addToSlip(m, payload){
-    if(isLocked(m) || isSubmitted(m.id)) return;
-    const item={ id: kid('T'), section:activeTab, marketId:m.id, label:m.label||m.type, mtype:m.type };
-    if(payload.type==='selection'){ item.type='selection'; item.selIdx=payload.idx; item.selLabel=payload.label; item.odds=Number(payload.odds||1); }
-    if(slipMode==='single'){ slip = slip.filter(x=> x.marketId!==item.marketId); }
-    slip.push(item); updateSlipUI();
-  }
-  function undoSubmit(marketId){
-    if(!submitted[marketId]) return;
-    delete submitted[marketId]; saveSubmitted();
-    paintMarkets(); updateSlipUI(); refreshBux();
-  }
-
-  function updateSlipUI(){
-    const body=$('#slipBody'); body.innerHTML='';
-    $('#slipCount').textContent=slip.length;
-    if(!slip.length){ body.innerHTML='<div class="note">Your selections will appear here.</div>'; }
-    slip.forEach((t,i)=>{
-      const row=document.createElement('div'); row.className='ticket';
-      const subtitle = t.type==='selection' ? esc(t.selLabel||'') : '';
-      row.innerHTML='<div class="tTop"><div><div style="font-weight:800">'+esc(t.label)+'</div><div class="tMeta">'+subtitle+'</div></div>'
-                   +'<div class="trash" data-i="'+i+'">✖</div></div>'
-                   +(t.odds?'<div class="tMeta" style="margin-top:6px">Odds ~ '+Number(t.odds).toFixed(2)+'×</div>':'');
-      row.querySelector('.trash')?.addEventListener('click',()=>{ slip.splice(i,1); updateSlipUI(); });
-      body.appendChild(row);
-    });
-    updateTotals();
-  }
-  function updateTotals(){
-    const stakeEl=$('#stake');
-    const stake = Number(stakeEl?.value||0) || 0;
-    const bal = balance();
-
-    let est=0;
-    if(slipMode==='single'){ est = slip.reduce((a,x)=> a + (stake * (x.odds||1)), 0); }
-    else{ est = stake * slip.reduce((p,x)=> p*(x.odds||1), 1); }
-    $('#payout').textContent=bux(est);
-
-    const totalStake = (slipMode==='single') ? stake * slip.length : stake;
-
-    let warn='';
-    if(!slip.length) warn='Add at least one selection.';
-    else if(!(stake>0)) warn='Enter your bet amount.';
-    else if(totalStake>100) warn='Max 100 BUX per bet submission.';
-    else if(totalStake>bal) warn='Insufficient balance ('+bux(bal)+').';
-
-    const w=$('#warn'); w.textContent=warn||''; w.className='msg'+(warn?' err':' ok');
-    $('#submit').disabled=!!warn;
-  }
-
-  function pushLedger(delta, reason){
-    const ledgerKey = LKEY(USER);
-    const list = sget(ledgerKey) || [];
-    const w = getWallet(); w.balance = Number(w.balance||0) + Number(delta||0); putWallet(w);
-    list.push({ ts: now(), delta: Number(delta||0), reason: String(reason||'ADJUSTMENT'), balance: w.balance });
-    sset(ledgerKey, list.slice(-200));
-    refreshBux();
-  }
-  function submitBet(){
-    const stakeEl=$('#stake');
-    const stake = Number(stakeEl?.value||0) || 0;
-    const totalStake = (slipMode==='single') ? stake * slip.length : stake;
-    const bal=balance();
-    if(!(slip.length && stake>0 && totalStake<=100 && totalStake<=bal)){ updateTotals(); return; }
-    const at=Date.now();
-    slip.forEach(leg=>{ if(!submitted[leg.marketId]) submitted[leg.marketId]={leg, at, section:leg.section}; });
-    sset(K_SUBS, submitted);
-    const storeKey='sb:tickets';
-    const store=sget(storeKey)||[]; slip.forEach(leg=> store.push({ id:kid('TK'), user:USER, at, mode:'single', stake, leg, odds:(leg.odds||1) })); sset(storeKey,store);
-    pushLedger(-((slip.length||1)*stake), 'BET_STAKE');
-    slip=[]; updateSlipUI(); paintMarkets(); if(stakeEl) stakeEl.value=10; updateTotals();
-  }
-
-  // ------- My Bets (reads compact predictions) -------
-  function paintMyBets(){
-    const host=$('#mybets'); if(!host) return;
-    const arr = sget(MYBETS_KEY) || [];
-    if(!arr.length){ host.innerHTML='<div class="note" style="margin:8px">No predictions yet. Fill the Battleground Prediction Form.</div>'; return; }
-    // Show latest only (basics)
-    const last = arr[arr.length-1];
-    const when = new Date(last.ts||Date.now()).toLocaleString();
-    let html = '';
-    html += '<div class="mbItem">';
-    html +=   '<div class="mbHead"><div style="font-weight:800">Battleground — '+esc(last.eventId||'')+'</div><div class="pill">'+esc(when)+'</div></div>';
-    html +=   '<div class="mbBody">';
-    (last.picks||[]).forEach(p=>{
-      html += `<div class="mbRow"><div>${esc(p.left)} vs ${esc(p.right)}</div><div><b>Pick:</b> ${esc(p.pickName||'')}</div></div>`;
-    });
-    if(last.final){
-      html += `<div class="mbRow" style="margin-top:6px"><div><b>Final Score</b></div><div>${esc(last.final.leftName)} ${esc(last.final.left)} : ${esc(last.final.right)} ${esc(last.final.rightName)}</div></div>`;
-    }
-    html +=   '</div></div>';
-    host.innerHTML = html;
-  }
-
-  // listen for changes from the form page
-  window.addEventListener('storage', (e)=>{
-    if(e.key === MYBETS_KEY){ paintMyBets(); }
   });
+
+  // boot
+  render();
 })();
 </script>
 </body>
