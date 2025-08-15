@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Prize Claim — L3Z</title>
+<style>
+  :root{ --bg:#0b0f10; --ink:#eaf7ff; --muted:#9bc; --panel:#0f1416; --ring:rgba(0,255,255,.22); --ok:#12d48a; --bad:#e25a6f; }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#000 url("/assets/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  .wrap{max-width:760px;margin:24px auto;padding:0 12px}
+  .card{background:linear-gradient(180deg,#0f1416,#0a1113);border:1px solid var(--ring);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:16px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .pill{padding:6px 10px;border-radius:999px;border:1px solid var(--ring);background:#0b1f21;color:#cfffff;font-weight:800}
+  input,select,textarea{width:100%;border-radius:10px;border:1px solid var(--ring);background:#0a1719;color:#eaf7ff;padding:10px}
+  textarea{min-height:100px}
+  .btn{height:42px;border-radius:10px;border:1px solid var(--ring);background:#0a1719;color:#eaf7ff;padding:8px 12px;font-weight:800;cursor:pointer}
+  .btn.ok{border-color:#0ef;background:linear-gradient(180deg,#0ef,#00dfc6);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .btn[disabled]{opacity:.55;cursor:not-allowed}
+  .muted{color:var(--muted);font-size:13px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .toast{position:fixed;right:16px;bottom:16px;background:#0b1f21;border:1px solid var(--ring);border-radius:10px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:.18s}
+  .toast.on{opacity:1;transform:translateY(0)}
+</style>
+
+<script>
+// simple auth presence like your other pages
+(function(){
+  const LOGIN="/pages/dashboard/home/login.html";
+  function sget(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch{ return null; } }
+  const now=()=>Date.now();
+  const sess=sget("l3z:session");
+  if(!sess || !sess.user || Number(sess.expiresAt)<=now()){
+    const back=encodeURIComponent(location.pathname+location.search+location.hash);
+    location.replace(`${LOGIN}?redirect=${back}`);
+    throw new Error("no session");
+  }
+  window.__USER__ = String(sess.user||"").toUpperCase();
+})();
+</script>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">Prize Claim</h2>
+      <span class="pill">Logged in as <b id="me"></b></span>
+    </div>
+    <p class="muted">If you were declared a winner, complete this form so we can credit your casino account. Include a screenshot that shows your deposits (if required).</p>
+
+    <div class="grid">
+      <div>
+        <label>Raffle ID (optional but helpful)
+          <input id="rid" placeholder="e.g. AUG15-MATESLOTS">
+        </label>
+      </div>
+      <div>
+        <label>Affiliate Username (casino)
+          <input id="affiliate" placeholder="Your affiliate username">
+        </label>
+      </div>
+    </div>
+
+    <div class="grid" style="margin-top:8px">
+      <div>
+        <label>Asset
+          <select id="asset">
+            <option value="USDT">USDT</option>
+            <option value="BTC">BTC</option>
+            <option value="ETH">ETH</option>
+            <option value="SOL">SOL</option>
+            <option value="LTC">LTC</option>
+          </select>
+        </label>
+      </div>
+      <div>
+        <label>Chain / Network
+          <select id="chain">
+            <option value="TRC20">TRC20</option>
+            <option value="ERC20">ERC20</option>
+            <option value="SOL">SOL</option>
+            <option value="BTC">BTC</option>
+            <option value="LTC">LTC</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div style="margin-top:8px">
+      <label>Wallet Address (for credit to your casino account)
+        <input id="wallet" placeholder="Paste your wallet address">
+      </label>
+    </div>
+
+    <div style="margin-top:8px">
+      <label>Notes (optional)
+        <textarea id="note" placeholder="Anything else we should know"></textarea>
+      </label>
+    </div>
+
+    <div style="margin-top:8px">
+      <label>Screenshot (jpg/png; shows deposits)
+        <input id="file" type="file" accept="image/*">
+      </label>
+      <div class="muted">Image is uploaded to our secure admin only area.</div>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <button id="submit" class="btn ok">Submit Claim</button>
+      <span id="status" class="pill">Ready</span>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast">Saved.</div>
+
+<script>
+(function(){
+  "use strict";
+  const USER = window.__USER__;
+  document.getElementById("me").textContent = USER;
+  const $=s=>document.querySelector(s); const toast=t=>{ const b=$("#toast"); b.textContent=t; b.classList.add("on"); setTimeout(()=>b.classList.remove("on"),1400); };
+
+  async function fileToBase64(file){
+    if(!file) return "";
+    const buf = await file.arrayBuffer();
+    const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+    return "data:"+ (file.type||"image/png") +";base64,"+ b64;
+  }
+  async function submit(){
+    $("#submit").disabled = true;
+    $("#status").textContent = "Submitting...";
+    try{
+      const screenshotBase64 = await fileToBase64($("#file").files[0]);
+      const body = {
+        user: USER,
+        raffleRid: $("#rid").value.trim(),
+        affiliate: $("#affiliate").value.trim(),
+        walletAddr: $("#wallet").value.trim(),
+        asset: $("#asset").value,
+        chain: $("#chain").value,
+        note: $("#note").value.trim(),
+        screenshotBase64
+      };
+      const r = await fetch("/api/prize-claims", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body), credentials:"include" });
+      if(!r.ok) throw new Error(await r.text());
+      const j = await r.json();
+      $("#status").textContent = "Submitted ✔";
+      toast("Claim submitted");
+      // Reset form (keep RID in case they want a 2nd file)
+      $("#wallet").value=""; $("#note").value=""; $("#file").value="";
+    }catch(e){
+      $("#status").textContent = "Failed";
+      toast("Submit failed");
+      $("#submit").disabled = false;
+    }
+  }
+  $("#submit").addEventListener("click", submit);
+})();
+</script>
+</body>
+</html>
