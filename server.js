@@ -1,6 +1,8 @@
 // server.js — homepage-first, admin aliases, JSON+form login
 // + PVP Entries + Bracket APIs
 // + LIVE publish feeds for Battleground & Bonus Hunt
+// + Lucky7-compatible wallet + shared leaderboard upsert
+// + Production hardening (CORS, secrets, cookies)
 
 import fs from "fs";
 import path from "path";
@@ -19,14 +21,22 @@ const PORT = Number(process.env.PORT) || 3000;
 const NODE_ENV = process.env.NODE_ENV || "production";
 
 const ADMIN_USER   = (process.env.ADMIN_USER || "lash3z").toLowerCase();
-const ADMIN_PASS   = process.env.ADMIN_PASS || "Lash3z777";
-const ADMIN_SECRET = process.env.ADMIN_SECRET || "supersecretkey";
+const ADMIN_PASS   = process.env.ADMIN_PASS;
+const ADMIN_SECRET = process.env.ADMIN_SECRET;
 const JWT_SECRET   = process.env.SECRET || ADMIN_SECRET;
 
 const MONGO_URI = process.env.MONGO_URI || "";
 const MONGO_DB  = process.env.MONGO_DB  || "lash3z";
-
 const ALLOW_MEMORY_FALLBACK = (process.env.ALLOW_MEMORY_FALLBACK || "true") === "true";
+
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
+  .split(",").map(s=>s.trim()).filter(Boolean);
+
+// Fail fast in production if secrets are missing
+if (NODE_ENV === "production" && (!ADMIN_USER || !ADMIN_PASS || !ADMIN_SECRET || !JWT_SECRET)) {
+  console.error("[SECURITY] Missing required admin credentials/secrets in production.");
+  process.exit(1);
+}
 
 // ===== Paths
 const __filename = fileURLToPath(import.meta.url);
@@ -63,7 +73,7 @@ const ADMIN_HUB_FILE = resolveFirstExisting([
   "admin/admin_hub.html",
 ]);
 
-// ===== In-memory stores
+// ===== In-memory stores (fallbacks if DB isn't ready)
 const memory = {
   jackpot: { amount: 0, month: new Date().toISOString().slice(0,7), perSubAUD: 2.5 },
   rules: {
@@ -76,10 +86,11 @@ const memory = {
   raffles: [],
   claims: [],
   deposits: [],
-  pvpEntries: [],       // entries (if DB not connected)
-  pvpBracket: null,     // active PVP bracket/builder (if DB not connected)
+  profiles: {},        // shared leaderboard/profiles in memory
+  pvpEntries: [],      // entries (if DB not connected)
+  pvpBracket: null,    // active PVP bracket/builder (if DB not connected)
 
-  // NEW — unified live feeds the widgets can read
+  // Unified live feeds the widgets can read
   live: {
     pvp: null,           // mirrors pvpBracket when published
     battleground: null,  // BG builder published from admin
@@ -92,10 +103,10 @@ const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 
-// Light headers
+// Light security headers
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("Referrer-Policy", "no-referrer-when-downgrade");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "interest-cohort=()");
   next();
 });
@@ -105,10 +116,14 @@ app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-// CORS only for /api
+// CORS (only /api)
 app.use("/api", (req, res, next) => {
   const origin = req.headers.origin;
-  if (origin) { res.setHeader("Access-Control-Allow-Origin", origin); res.setHeader("Vary", "Origin"); }
+  const allowAllInDev = NODE_ENV !== "production" && !ALLOWED_ORIGINS.length;
+  if (origin && (allowAllInDev || ALLOWED_ORIGINS.includes(origin))) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  }
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Access-Control-Allow-Credentials", "true");
@@ -128,7 +143,18 @@ function verifyAdminToken(req, res, next) {
 }
 
 // ===== Admin auth (JSON or form)
-app.post(["/api/admin/gate/login", "/api/admin/login"], (req, res) => {
+const loginHits = new Map(); // simple anti-bruteforce (per 10min window)
+function rateLimitLogin(req, res, next){
+  const ip = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || "unknown";
+  const now = Date.now();
+  const rec = loginHits.get(ip) || { count:0, ts:now };
+  if (now - rec.ts > 10*60*1000) { rec.count = 0; rec.ts = now; }
+  rec.count++; loginHits.set(ip, rec);
+  if (rec.count > 30) return res.status(429).json({ error: "Too many attempts, try later" });
+  next();
+}
+
+app.post(["/api/admin/gate/login", "/api/admin/login"], rateLimitLogin, (req, res) => {
   const b = req.body || {};
   const username = (b.username || b.user || b.email || "").toString().trim();
   const password = (b.password || b.pass || b.pwd || "").toString();
@@ -136,8 +162,11 @@ app.post(["/api/admin/gate/login", "/api/admin/login"], (req, res) => {
 
   if (username.toLowerCase() === ADMIN_USER && password === ADMIN_PASS) {
     res.cookie("admin_token", generateAdminToken(username.toLowerCase()), {
-      httpOnly: true, sameSite: "lax", secure: NODE_ENV === "production",
-      maxAge: 1000 * 60 * 60 * 12, path: "/",
+      httpOnly: true,
+      sameSite: "strict",
+      secure: NODE_ENV === "production",
+      maxAge: 1000 * 60 * 60 * 12,
+      path: "/",
     });
     return res.json({ success: true, admin: true, username: username.toLowerCase() });
   }
@@ -214,13 +243,17 @@ app.use(express.static(PUBLIC_DIR, {
   setHeaders(res, filePath) {
     if (/\.(png|jpe?g|gif|webp|svg|woff2?|mp3|mp4)$/i.test(filePath)) {
       res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    } else if (/\.(css|js|map)$/i.test(filePath)) {
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    } else if (/\.html$/i.test(filePath)) {
+      res.setHeader("Cache-Control", "no-store");
     } else {
       res.setHeader("Cache-Control", "no-store");
     }
   }
 }));
 
-// ===== Minimal APIs already present (jackpot/rules/wallet/raffles/deposits)
+// ===== Minimal APIs (jackpot/rules/wallet/raffles/deposits)
 app.get("/api/jackpot", (req, res) => {
   res.json({ amount: Number(memory.jackpot.amount || 0), month: memory.jackpot.month, perSubAUD: memory.jackpot.perSubAUD });
 });
@@ -234,25 +267,34 @@ app.get("/api/events/rules", verifyAdminToken, (req, res) => res.json({ rules: m
 app.put("/api/events/rules", verifyAdminToken, (req, res) => { memory.rules = { ...memory.rules, ...(req.body || {}) }; res.json({ success: true, rules: memory.rules }); });
 app.get("/api/events/recent", verifyAdminToken, (req, res) => { const limit = Math.max(1, Math.min(500, Number(req.query.limit || 200))); res.json({ events: memory.events.slice(0, limit) }); });
 
+// Wallet
 app.post("/api/wallet/adjust", verifyAdminToken, (req, res) => {
-  const u = String(req.body?.username || "").toUpperCase(); const delta = Number(req.body?.delta || 0);
+  const u = String(req.body?.username || req.body?.user || req.body?.name || "").toUpperCase();
+  const delta = Number(req.body?.delta || req.body?.amount || 0);
   if (!u) return res.status(400).json({ error: "username required" });
   const w = memory.wallets[u] || { balance: 0 }; w.balance = Number(w.balance) + delta; memory.wallets[u] = w;
   res.json({ success: true, wallet: w });
 });
 app.post("/api/wallet/credit", verifyAdminToken, (req, res) => {
-  const u = String(req.body?.username || "").toUpperCase(); const amount = Number(req.body?.amount || 0);
+  const u = String(req.body?.username || req.body?.user || req.body?.name || "").toUpperCase();
+  const amount = Number(req.body?.amount || 0);
   if (!u) return res.status(400).json({ error: "username required" });
   const w = memory.wallets[u] || { balance: 0 }; w.balance = Number(w.balance) + amount; memory.wallets[u] = w;
   res.json({ success: true, wallet: w });
 });
 app.get("/api/wallet/balance", verifyAdminToken, (req, res) => { const u = String(req.query.user || "").toUpperCase(); const w = memory.wallets[u] || { balance: 0 }; res.json({ balance: Number(w.balance || 0) }); });
-app.get("/api/wallet/me", verifyAdminToken, (req, res) => { const u = String(req.query.viewer || req.adminUser || "").toUpperCase(); const w = memory.wallets[u] || { balance: 0 }; res.json({ wallet: { balance: Number(w.balance || 0) } }); });
+app.get("/api/wallet/me", verifyAdminToken, (req, res) => {
+  const u = String(req.query.viewer || req.adminUser || "").toUpperCase();
+  const w = memory.wallets[u] || { balance: 0 };
+  res.json({ username: u, wallet: { balance: Number(w.balance || 0) } });
+});
 
+// Deposits (stubs)
 app.get("/api/deposits/pending", verifyAdminToken, (req, res) => res.json({ orders: memory.deposits }));
 app.post("/api/deposits/:id/approve", verifyAdminToken, (req, res) => { const id = String(req.params.id); memory.deposits = memory.deposits.filter(o => String(o.id||o._id) !== id); res.json({ success: true }); });
 app.post("/api/deposits/:id/reject", verifyAdminToken, (req, res) => { const id = String(req.params.id); memory.deposits = memory.deposits.filter(o => String(o.id||o._id) !== id); res.json({ success: true }); });
 
+// Raffles (light)
 app.get("/api/raffles", verifyAdminToken, (req, res) => { res.json({ raffles: memory.raffles.map(r => ({ rid:r.rid, title:r.title, open:r.open, winner:r.winner||null, createdAt:r.createdAt })) }); });
 app.post("/api/raffles", verifyAdminToken, (req, res) => {
   const rid = String(req.body?.rid || "").trim().toUpperCase();
@@ -268,9 +310,42 @@ app.get("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => { const r =
 app.delete("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); r.entries = []; r.open = true; r.winner = null; res.json({ success:true }); });
 app.post("/api/raffles/:rid/draw", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); const pool = r.entries || []; r.winner = pool.length ? pool[Math.floor(Math.random()*pool.length)].user : null; res.json({ success:true, winner:r.winner }); });
 
+// ===== Leaderboard (shared)
+app.post("/api/leaderboard/upsert", verifyAdminToken, async (req, res) => {
+  const user = String(req.body?.user || req.body?.username || "").toUpperCase();
+  const delta = Number(req.body?.deltaTournamentPoints || 0);
+  const actions = Array.isArray(req.body?.actions) ? req.body.actions : [];
+  if (!user) return res.status(400).json({ error: "username required" });
+
+  try {
+    if (globalThis.__dbReady) {
+      const col = globalThis.__db.collection("profiles");
+      const r = await col.findOneAndUpdate(
+        { username: user },
+        {
+          $setOnInsert: { username: user, tournamentPoints: 0, bonusHuntPoints: 0 },
+          $inc: { tournamentPoints: delta },
+          $push: { history: { ts: new Date(), mode: "Lucky7", added: delta, actions } }
+        },
+        { upsert: true, returnDocument: "after" }
+      );
+      return res.json({ success: true, profile: r.value });
+    } else {
+      const p = memory.profiles[user] || { username: user, tournamentPoints: 0, bonusHuntPoints: 0, history: [] };
+      p.tournamentPoints = Number(p.tournamentPoints || 0) + delta;
+      p.history.unshift({ ts: Date.now(), mode: "Lucky7", added: delta, actions });
+      memory.profiles[user] = p;
+      return res.json({ success: true, profile: p });
+    }
+  } catch (e) {
+    console.error("[LEADERBOARD] upsert failed", e);
+    return res.status(500).json({ error: "failed" });
+  }
+});
+
 // ===== PVP Entries
 app.post("/api/pvp/entries", async (req, res) => {
-  const username = String(req.body?.username || "").trim().toUpperCase();
+  const username = String(req.body?.username || req.body?.user || "").trim().toUpperCase();
   const side     = String(req.body?.side || "").trim().toUpperCase();   // "EAST"/"WEST"
   const game     = String(req.body?.game || "").trim();
   if (!username) return res.status(400).json({ error: "username required" });
@@ -397,7 +472,7 @@ async function saveBracket(builder){
   } else {
     memory.pvpBracket = builder;
   }
-  // mirror to unified live store (useful for any future readers)
+  // mirror to unified live store
   memory.live.pvp = builder;
   return builder;
 }
@@ -414,8 +489,14 @@ app.get("/api/pvp/bracket", async (req, res) => {
 });
 
 // Create/replace a bracket (admin)
+// Accept either a full {builder} or seeds payload
 app.post("/api/pvp/bracket", verifyAdminToken, async (req, res) => {
   try {
+    if (req.body?.builder) {
+      const saved = await saveBracket(req.body.builder);
+      return res.json({ success: true, builder: saved });
+    }
+
     const { size, eastSeeds = [], westSeeds = [], games = [], meta = {} } = req.body || {};
     const bracketSize = (size===32||size===16) ? size : 16;
 
@@ -446,7 +527,7 @@ app.post("/api/pvp/bracket", verifyAdminToken, async (req, res) => {
       assign(east[0]); assign(west[0]);
     }
 
-    const builder = await saveBracket({
+    const saved = await saveBracket({
       lastUpdated: nowMs(),
       bracket: {
         size: bracketSize,
@@ -457,7 +538,7 @@ app.post("/api/pvp/bracket", verifyAdminToken, async (req, res) => {
       }
     });
 
-    res.json({ success: true, builder });
+    res.json({ success: true, builder: saved });
   } catch (e) {
     console.error("[PVP] bracket build failed", e);
     res.status(500).json({ error: "failed" });
@@ -600,9 +681,8 @@ app.post("/api/pvp/bracket/reset", verifyAdminToken, async (req, res) => {
   }
 });
 
-// ===== NEW: Unified LIVE feeds for Battleground & Bonus Hunt =====
+// ===== Unified LIVE feeds for Battleground & Bonus Hunt
 async function getLiveBuilder(key){
-  // key: 'battleground' | 'bonus'
   if (globalThis.__dbReady){
     const col = globalThis.__db.collection("live_feeds");
     const doc = await col.findOne({ _id: key });
@@ -632,10 +712,11 @@ app.get("/api/battleground/live", async (req,res)=>{
     res.status(500).json({ error:"failed" });
   }
 });
-// BG publish from admin
+// BG publish from admin — accept {builder:…} or bare object
 app.post("/api/battleground/builder", verifyAdminToken, async (req,res)=>{
   try{
-    const b = req.body && typeof req.body==='object' ? req.body : null;
+    const raw = (req.body && typeof req.body==='object') ? req.body : null;
+    const b = raw?.builder ?? raw;
     if (!b || !Array.isArray(b.matches)) return res.status(400).json({ error:"invalid builder" });
     await saveLiveBuilder("battleground", b);
     res.json({ success:true });
@@ -655,11 +736,11 @@ app.get("/api/bonus-hunt/live", async (req,res)=>{
     res.status(500).json({ error:"failed" });
   }
 });
-// Bonus Hunt publish from admin
+// Bonus Hunt publish — accept {builder:…} or bare object
 app.post("/api/bonus-hunt/builder", verifyAdminToken, async (req,res)=>{
   try{
-    const b = req.body && typeof req.body==='object' ? req.body : null;
-    // expect { title, games:[], results:[], startingBalance?, ... }
+    const raw = (req.body && typeof req.body==='object') ? req.body : null;
+    const b = raw?.builder ?? raw; // expect { title, games:[], results:[], ... }
     if (!b || !Array.isArray(b.games)) return res.status(400).json({ error:"invalid builder" });
     await saveLiveBuilder("bonus", b);
     res.json({ success:true });
@@ -685,8 +766,13 @@ app.listen(PORT, HOST, () => {
   console.log(`[Server] HOME_INDEX=${HOME_INDEX} hasHome=${HAS_HOME}`);
   console.log(`[Server] ADMIN_LOGIN_FILE=${ADMIN_LOGIN_FILE || "(none)"} | ADMIN_HUB_FILE=${ADMIN_HUB_FILE || "(none)"}`);
 });
+
 (async () => {
-  if (!MONGO_URI) { if (!ALLOW_MEMORY_FALLBACK) console.warn("[DB] No MONGO_URI; memory mode."); return; }
+  if (!MONGO_URI) {
+    if (!ALLOW_MEMORY_FALLBACK) console.warn("[DB] No MONGO_URI; memory mode disabled.");
+    else console.warn("[DB] No MONGO_URI; running in MEMORY MODE.");
+    return;
+  }
   try {
     const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 8000 });
     await client.connect();
