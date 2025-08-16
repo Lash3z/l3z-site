@@ -134,11 +134,12 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     </div>
   </div>
 
-  <!-- Live controls + Push -->
+  <!-- Live controls + Push/Publish -->
   <div class="card live">
     <div class="gamesHead">
-      <div style="font-weight:900">Live Controls & Push</div>
+      <div style="font-weight:900">Live Controls — Push / Publish</div>
       <div class="row">
+        <span id="srcBadge" class="pill" title="Where your last publish went">SRC: local</span>
         <span id="stamp" class="pill">Not pushed</span>
         <span id="msg" class="pill">Ready</span>
       </div>
@@ -157,7 +158,12 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
           <button id="clearAll" class="btn danger">Delete All</button>
         </div>
         <div class="row">
-          <button id="pushBuilder" class="btn ok">Push → Prediction + Widget + Bets Admin</button>
+          <button id="pushBuilder" class="btn ok">Push (local)</button>
+          <button id="publishServer" class="btn">Publish to Server</button>
+          <button id="exportJson" class="btn">Export JSON</button>
+          <label class="btn">
+            Import JSON <input id="importJson" type="file" accept=".json" style="display:none">
+          </label>
         </div>
       </div>
     </div>
@@ -179,8 +185,8 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   const ASSET_DIR = '/assets/slot_images/';
   const absPath = p => {
     if (!p) return '';
-    // remove any leading "./" then ensure single leading slash
-    p = String(p).replace(/^\.?\//,'');
+    p = String(p).trim().replace(/slot images\//gi,'slot_images/'); // legacy fix
+    p = p.replace(/^\.?\//,''); // strip leading ./ or /
     return '/' + p;
   };
 
@@ -207,7 +213,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   (function migratePaths(){
     let changed=false;
     (state.games||[]).forEach(g=>{
-      const fixed = absPath(g.imageUrl||'');
+      const fixed = g.imageUrl ? absPath(g.imageUrl) : '';
       if (fixed && fixed!==g.imageUrl){ g.imageUrl=fixed; changed=true; }
     });
     (state.matches||[]).forEach(m=>{
@@ -299,6 +305,14 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     if(!$("#gPath").value) $("#gPath").value = ASSET_DIR + base + '.png';
   });
 
+  function addGameObject(title, provider, path){
+    // prevent duplicate (same title + image path)
+    const dup = (state.games||[]).some(g => (g.title||'').trim().toUpperCase()===title.toUpperCase().trim() && (g.imageUrl||'')===path);
+    if(dup){ toast('Game already exists', false); return false; }
+    state.games.push({ id:kid('G'), title:title.toUpperCase(), provider, imageUrl:path });
+    return true;
+  }
+
   $("#addGame").addEventListener('click',()=>{
     const title=$("#gTitle").value.trim(); if(!title) return toast('Enter a GAME TITLE',false);
     const provider=$("#gProv").value.trim();
@@ -311,22 +325,24 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     }
     path = absPath(path);
 
-    const game={ id:kid('G'), title:title.toUpperCase(), provider, imageUrl:path };
-    state.games.push(game); write(); paintGames();
-    $("#gTitle").value=''; $("#gProv").value=''; $("#gPath").value=''; $("#gUpload").value='';
+    if(addGameObject(title, provider, path)){
+      write(); paintGames();
+      $("#gTitle").value=''; $("#gProv").value=''; $("#gPath").value=''; $("#gUpload").value='';
+    }
   });
 
   $("#bulkAddFromFiles").addEventListener('click',()=>{
     const files = Array.from($("#gUpload").files||[]);
     if(!files.length) return toast('Choose files first',false);
     const N = +($("#bulkN").value||20) || 20;
+    let added=0;
     files.slice(0,N).forEach(f=>{
       const base=f.name.replace(/\.[^.]+$/,'');
       const title=base.replace(/[_-]+/g,' ').toUpperCase();
-      const path=ASSET_DIR + base + '.png';
-      state.games.push({ id:kid('G'), title, provider:'', imageUrl:absPath(path) });
+      const path=absPath(ASSET_DIR + base + '.png');
+      if(addGameObject(title, '', path)) added++;
     });
-    write(); paintGames(); toast('Added '+Math.min(N,files.length)+' games');
+    write(); paintGames(); toast('Added '+added+' games');
   });
 
   $("#autoGen").addEventListener('click',()=>{
@@ -339,7 +355,8 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     const G=[...(state.games||[])]; if(G.length<2) return toast('Need at least 2 games',false);
     // simple shuffle
     for(let i=G.length-1;i>0;i--){ const j=(Math.random()* (i+1))|0; [G[i],G[j]]=[G[j],G[i]]; }
-    state.matches=[]; for(let i=0;i<n && (2*i+1)<G.length;i++){
+    state.matches=[];
+    for(let i=0;i<n && (2*i+1)<G.length;i++){
       const A=G[2*i], B=G[2*i+1];
       state.matches.push({
         id:kid('M'),
@@ -369,10 +386,43 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     write(); paintAll(); toast('Cleared');
   });
 
+  // ---- Push (local) & Publish (server) ----
   $("#pushBuilder").addEventListener('click',()=>{
     state.lastUpdated=Date.now(); write();
     $("#stamp").textContent='Last push @ '+new Date(state.lastUpdated).toLocaleTimeString();
+    $("#srcBadge").textContent='SRC: local';
     toast('Pushed to local storage (Prediction/Widget/Bets Admin will pick this up).', true);
+  });
+
+  $("#publishServer").addEventListener('click', async ()=>{
+    const payload = {
+      builder:{
+        title: state.title || 'BATTLEGROUND',
+        eventId: state.eventId || ('battleground:'+new Date().toISOString().slice(0,10)),
+        lastUpdated: Date.now(),
+        games: state.games||[],
+        matches: state.matches||[],
+        bestOf: state.bestOf||3
+      }
+    };
+    try{
+      const r = await fetch('/api/battleground/builder', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        credentials:'include',
+        body: JSON.stringify(payload)
+      });
+      if(!r.ok) throw 0;
+      $("#stamp").textContent='Published @ '+new Date().toLocaleTimeString();
+      $("#srcBadge").textContent='SRC: server';
+      toast('Published to server', true);
+    }catch{
+      // graceful fallback to local push
+      state.lastUpdated=Date.now(); write();
+      $("#stamp").textContent='Last push @ '+new Date(state.lastUpdated).toLocaleTimeString();
+      $("#srcBadge").textContent='SRC: local (server not available)';
+      toast('Server publish not available — pushed to local instead.', false);
+    }
   });
 
   // delegated clicks for lists
@@ -405,6 +455,51 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
       m.leftScore=+(l?.value||0); m.rightScore=+(r?.value||0); write(); paintMatches();
     }else if(b.dataset.act==='clearScore'){
       m.leftScore=0; m.rightScore=0; m.winnerId=null; write(); paintLiveRows(); paintMatches();
+    }
+  });
+
+  // Export / Import
+  $("#exportJson").addEventListener('click', ()=>{
+    const data = {
+      title: state.title||'BATTLEGROUND',
+      eventId: state.eventId||'',
+      lastUpdated: Date.now(),
+      games: state.games||[],
+      matches: state.matches||[],
+      bestOf: state.bestOf||3
+    };
+    const blob = new Blob([JSON.stringify({builder:data}, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `battleground_builder_${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  });
+
+  $("#importJson").addEventListener('change', async (e)=>{
+    const f=e.target.files?.[0]; if(!f) return;
+    try{
+      const text = await f.text();
+      const j = JSON.parse(text);
+      const b = j.builder || j;
+      if(!b || !Array.isArray(b.games) || !Array.isArray(b.matches)) throw 0;
+      state = {
+        title: b.title||'BATTLEGROUND',
+        eventId: b.eventId || ('battleground:'+new Date().toISOString().slice(0,10)),
+        lastUpdated: Date.now(),
+        games: (b.games||[]).map(g=>({...g, imageUrl: g.imageUrl?absPath(g.imageUrl):''})),
+        matches: (b.matches||[]).map(m=>({
+          ...m,
+          leftImg: m.leftImg?absPath(m.leftImg):m.leftImg,
+          rightImg: m.rightImg?absPath(m.rightImg):m.rightImg
+        })),
+        bestOf: b.bestOf||3
+      };
+      write(); paintAll(); toast('Imported builder JSON', true);
+    }catch{
+      toast('Import failed (bad JSON)', false);
+    }finally{
+      e.target.value='';
     }
   });
 
