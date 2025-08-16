@@ -6,6 +6,10 @@
   <title>Admin Login • LASH3Z</title>
   <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
   <meta http-equiv="Cache-Control" content="no-store"/>
+  <meta name="robots" content="noindex,nofollow"/>
+  <!-- Tight CSP: if your API or assets live on another origin, add it to connect-src/img-src -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests">
   <style>
     body{margin:0;font-family:Segoe UI,system-ui,Arial,sans-serif;background:#0b1113;color:#eaf7ff;display:flex;align-items:center;justify-content:center;min-height:100vh}
     .card{background:rgba(0,0,0,.75);border:1px solid rgba(0,255,255,.2);border-radius:14px;padding:22px;width:320px;box-shadow:0 0 18px rgba(0,255,255,.15)}
@@ -17,17 +21,19 @@
     .msg{margin-top:10px;font-size:12px;min-height:16px}
     .msg.bad{color:#ff9aa7}
     .msg.ok{color:#9effa4}
+    .hint{margin-top:8px;opacity:.7;font-size:12px}
   </style>
 </head>
 <body>
   <div class="card">
     <h1>Admin Login</h1>
     <label for="u">Username</label>
-    <input id="u" autocomplete="username" />
+    <input id="u" autocomplete="username" inputmode="text" />
     <label for="p">Password</label>
     <input id="p" type="password" autocomplete="current-password" />
-    <button id="loginBtn">Sign in</button>
-    <div id="m" class="msg"></div>
+    <button id="loginBtn" type="button">Sign in</button>
+    <div id="m" class="msg" role="status" aria-live="polite"></div>
+    <noscript><div class="hint">JavaScript is required for admin login.</div></noscript>
   </div>
 
   <script>
@@ -36,29 +42,56 @@
     const $ = s => document.querySelector(s);
     const btn = $("#loginBtn");
     const msg = $("#m");
-    const NEXT = new URLSearchParams(location.search).get("next") || "/pages/dashboard/admin/admin_hub.html";
+    const uEl = $("#u");
+    const pEl = $("#p");
+
+    // Accept both ?redirect= and ?next=, sanitize to same-origin path
+    const qs = new URLSearchParams(location.search);
+    const param = qs.get("redirect") || qs.get("next") || "";
+    const DEFAULT_AFTER = "/pages/dashboard/admin/admin_hub.html";
+    function sanitizeRedirect(p){
+      if(!p) return DEFAULT_AFTER;
+      try{
+        // allow only same-origin absolute paths beginning with "/"
+        if(p.startsWith("/") && !p.startsWith("//") && !p.includes("://")) return p;
+      }catch(_){}
+      return DEFAULT_AFTER;
+    }
+    const NEXT = sanitizeRedirect(param);
 
     function setMsg(text, ok){
       msg.textContent = text || "";
       msg.className = "msg " + (ok ? "ok" : "bad");
     }
 
+    // Small fetch timeout to avoid hanging UI
+    async function fetchWithTimeout(url, opts={}, ms=12000){
+      const ctl = new AbortController();
+      const t = setTimeout(()=>ctl.abort(), ms);
+      try{
+        return await fetch(url, {...opts, signal: ctl.signal});
+      } finally {
+        clearTimeout(t);
+      }
+    }
+
     async function doLogin(){
-      const user = ($("#u").value || "").trim();
-      const pass = $("#p").value || "";
+      const user = (uEl.value || "").trim();
+      const pass = pEl.value || "";
       if(!user || !pass){ setMsg("Enter both fields", false); return; }
 
       btn.disabled = true; setMsg("Signing in…", true);
       try{
-        const res = await fetch("/api/admin/gate/login", {
+        const res = await fetchWithTimeout("/api/admin/gate/login", {
           method: "POST",
           credentials: "include",
           headers: {"Content-Type":"application/json"},
           body: JSON.stringify({ username: user, password: pass })
         });
-        const j = await res.json().catch(()=> ({}));
-        if(res.ok && j && j.ok){
-          // Optional UX-only cache so other pages can fade in fast (not security)
+        let j={}; try{ j = await res.json(); }catch(_){}
+
+        if(res.ok && j && (j.ok === true || j.admin === true)){
+          // Optional UX-only cache so other pages can fade in fast (NOT security)
           try{
             localStorage.setItem("l3z:session", JSON.stringify({
               user: (user||"ADMIN").toString().toUpperCase(),
@@ -70,14 +103,16 @@
               ts: Date.now(),
               expiresAt: Date.now()+12*60*60*1000
             }));
-          }catch(_){}
+          }catch(_){/* ignore quota */}
+
           setMsg("Logged in. Redirecting…", true);
-          location.href = NEXT;
+          location.assign(NEXT);
         }else{
-          setMsg("Wrong username or password", false);
+          const reason = (j && (j.message || j.error)) || (res.status===401 ? "Wrong username or password" : "Login failed");
+          setMsg(reason, false);
         }
-      }catch{
-        setMsg("Login failed (network)", false);
+      }catch(err){
+        setMsg(/AbortError/i.test(String(err)) ? "Login timed out, try again." : "Login failed (network).", false);
       }finally{
         btn.disabled = false;
       }
@@ -85,6 +120,8 @@
 
     btn.addEventListener("click", doLogin);
     document.addEventListener("keydown", e => { if(e.key === "Enter") doLogin(); });
+    // Focus username on load
+    window.addEventListener("load", ()=> uEl?.focus());
   })();
   </script>
 </body>
