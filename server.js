@@ -1,4 +1,7 @@
-// server.js — homepage-first, admin aliases, JSON+form login, + PVP Entries + Bracket APIs
+// server.js — homepage-first, admin aliases, JSON+form login
+// + PVP Entries + Bracket APIs
+// + LIVE publish feeds for Battleground & Bonus Hunt
+
 import fs from "fs";
 import path from "path";
 import express from "express";
@@ -74,7 +77,14 @@ const memory = {
   claims: [],
   deposits: [],
   pvpEntries: [],       // entries (if DB not connected)
-  pvpBracket: null      // active bracket/builder (if DB not connected)
+  pvpBracket: null,     // active PVP bracket/builder (if DB not connected)
+
+  // NEW — unified live feeds the widgets can read
+  live: {
+    pvp: null,           // mirrors pvpBracket when published
+    battleground: null,  // BG builder published from admin
+    bonus: null          // Bonus Hunt builder published from admin
+  }
 };
 
 // ===== App
@@ -258,7 +268,7 @@ app.get("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => { const r =
 app.delete("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); r.entries = []; r.open = true; r.winner = null; res.json({ success:true }); });
 app.post("/api/raffles/:rid/draw", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); const pool = r.entries || []; r.winner = pool.length ? pool[Math.floor(Math.random()*pool.length)].user : null; res.json({ success:true, winner:r.winner }); });
 
-// ===== PVP Entries (already added before)
+// ===== PVP Entries
 app.post("/api/pvp/entries", async (req, res) => {
   const username = String(req.body?.username || "").trim().toUpperCase();
   const side     = String(req.body?.side || "").trim().toUpperCase();   // "EAST"/"WEST"
@@ -348,8 +358,7 @@ app.delete("/api/pvp/entries/:id", verifyAdminToken, async (req, res) => {
   }
 });
 
-// ===== NEW: PVP Bracket API =====
-
+// ===== PVP Bracket API =====
 function nowMs(){ return Date.now(); }
 function emptyRound(n){
   return Array.from({length:n}, (_,i)=>({
@@ -360,18 +369,18 @@ function emptyRound(n){
   }));
 }
 function buildEmptySide(size){
-  // size is total bracket size per SIDE x2; side gets size/2 seeds only
-  const firstRound = size/4; // e.g. 32→ firstRound 8, 16→ firstRound 4
+  const firstRound = size/4; // e.g. 32→8, 16→4 (per side)
   const r1 = emptyRound(firstRound);
   const r2 = emptyRound(Math.max(1, firstRound/2)); // QF
   const r3 = emptyRound(1); // SF (side final)
-  return [r1, r2, r3]; // [R16/R32, QF, SF]
+  return [r1, r2, r3];
 }
 function nextIndex(i){ return Math.floor(i/2); }
 function putIntoSlot(match, slot, player){
   if (slot==="left") match.left = { ...(match.left||{}), ...player };
   else match.right = { ...(match.right||{}), ...player };
 }
+
 async function getBracket(){
   if (globalThis.__dbReady){
     const col = globalThis.__db.collection("pvp_bracket");
@@ -388,6 +397,8 @@ async function saveBracket(builder){
   } else {
     memory.pvpBracket = builder;
   }
+  // mirror to unified live store (useful for any future readers)
+  memory.live.pvp = builder;
   return builder;
 }
 
@@ -410,9 +421,8 @@ app.post("/api/pvp/bracket", verifyAdminToken, async (req, res) => {
 
     const east = buildEmptySide(bracketSize);
     const west = buildEmptySide(bracketSize);
-    const finals = [ emptyRound(1) ]; // Grand Final only (center)
+    const finals = [ emptyRound(1) ]; // Grand Final
 
-    // place seeds (names/images) into side first rounds
     const fillSide = (round0, seeds) => {
       for (let i=0; i<round0.length; i++){
         const L = seeds[i*2]   || { name: "" };
@@ -423,11 +433,9 @@ app.post("/api/pvp/bracket", verifyAdminToken, async (req, res) => {
         round0[i].right.img  = R.img||"";
       }
     };
-
     fillSide(east[0], eastSeeds);
     fillSide(west[0], westSeeds);
 
-    // optional: assign games to first round from provided list
     if (Array.isArray(games) && games.length){
       const assign = (round0) => {
         for (let i=0;i<round0.length;i++){
@@ -456,7 +464,7 @@ app.post("/api/pvp/bracket", verifyAdminToken, async (req, res) => {
   }
 });
 
-// Edit a slot (admin) — late players, typo fixes, etc.
+// Edit a slot (admin)
 app.patch("/api/pvp/bracket/slot", verifyAdminToken, async (req, res) => {
   try {
     const { phase, roundIndex, matchIndex, side, name, img } = req.body || {};
@@ -485,7 +493,7 @@ app.patch("/api/pvp/bracket/slot", verifyAdminToken, async (req, res) => {
   }
 });
 
-// Progress current/target match (admin) — winner auto-advances
+// Progress winner (admin)
 app.post("/api/pvp/bracket/progress", verifyAdminToken, async (req, res) => {
   try {
     const { phase, roundIndex, matchIndex, winner, leftScore=null, rightScore=null } = req.body || {};
@@ -500,38 +508,31 @@ app.post("/api/pvp/bracket/progress", verifyAdminToken, async (req, res) => {
     const round = sideArr[rIdx]; if (!round) return res.status(400).json({ error: "bad round index" });
     const match = round[mIdx];   if (!match) return res.status(400).json({ error: "bad match index" });
 
-    // set scores + winner
     if (leftScore !== null)  match.left.score  = Number(leftScore);
     if (rightScore !== null) match.right.score = Number(rightScore);
     match.winner = winner.toUpperCase();
     match.status = "done";
 
-    // compute advancing player
-    const adv = (winner==="L") ? match.left : match.right;
+    const adv = (winner.toUpperCase()==="L") ? match.left : match.right;
     const advPlayer = { name: adv.name || "", img: adv.img || "" };
 
-    // advance within this side or into finals
     const lastRoundIndex = sideArr.length - 1;
     if (rIdx < lastRoundIndex){
-      // next round inside same side
       const nextRound = sideArr[rIdx + 1];
       const target = nextRound[nextIndex(mIdx)];
       const slot = (mIdx % 2 === 0) ? "left" : "right";
       putIntoSlot(target, slot, advPlayer);
     } else {
-      // advance to Grand Final (finals[0][0])
       const gf = (b.bracket.finals && b.bracket.finals[0] && b.bracket.finals[0][0]) ? b.bracket.finals[0][0] : null;
       if (gf){
         if (phase==="east") putIntoSlot(gf, "left", advPlayer);
         if (phase==="west") putIntoSlot(gf, "right", advPlayer);
         if (phase==="finals"){
-          // winner of GF is champion
           b.bracket.champion = { name: advPlayer.name };
         }
       }
     }
 
-    // move cursor to next pending match if we're updating the "current" one
     if (b.bracket.cursor
         && b.bracket.cursor.phase===phase
         && (b.bracket.cursor.roundIndex|0)===rIdx
@@ -549,7 +550,7 @@ app.post("/api/pvp/bracket/progress", verifyAdminToken, async (req, res) => {
 });
 
 function findNextPending(br){
-  const order = [["east"],["west"],["finals"]]; // simple sweep; you can tweak ordering
+  const order = [["east"],["west"],["finals"]];
   for (const [ph] of order){
     const sideArr = br[ph]; if (!sideArr) continue;
     for (let r=0;r<sideArr.length;r++){
@@ -596,6 +597,75 @@ app.post("/api/pvp/bracket/reset", verifyAdminToken, async (req, res) => {
   } catch (e) {
     console.error("[PVP] reset failed", e);
     res.status(500).json({ error: "failed" });
+  }
+});
+
+// ===== NEW: Unified LIVE feeds for Battleground & Bonus Hunt =====
+async function getLiveBuilder(key){
+  // key: 'battleground' | 'bonus'
+  if (globalThis.__dbReady){
+    const col = globalThis.__db.collection("live_feeds");
+    const doc = await col.findOne({ _id: key });
+    return doc?.builder || null;
+  }
+  return memory.live?.[key] || null;
+}
+async function saveLiveBuilder(key, builder){
+  builder.lastUpdated = nowMs();
+  if (globalThis.__dbReady){
+    const col = globalThis.__db.collection("live_feeds");
+    await col.updateOne({ _id: key }, { $set: { builder } }, { upsert: true });
+  } else {
+    if (!memory.live) memory.live = {};
+    memory.live[key] = builder;
+  }
+  return builder;
+}
+
+// BG live (widgets read this)
+app.get("/api/battleground/live", async (req,res)=>{
+  try{
+    const b = await getLiveBuilder("battleground");
+    res.json({ builder: b || null });
+  }catch(e){
+    console.error("[BG] live get failed", e);
+    res.status(500).json({ error:"failed" });
+  }
+});
+// BG publish from admin
+app.post("/api/battleground/builder", verifyAdminToken, async (req,res)=>{
+  try{
+    const b = req.body && typeof req.body==='object' ? req.body : null;
+    if (!b || !Array.isArray(b.matches)) return res.status(400).json({ error:"invalid builder" });
+    await saveLiveBuilder("battleground", b);
+    res.json({ success:true });
+  }catch(e){
+    console.error("[BG] publish failed", e);
+    res.status(500).json({ error:"failed" });
+  }
+});
+
+// Bonus Hunt live (widgets read this)
+app.get("/api/bonus-hunt/live", async (req,res)=>{
+  try{
+    const b = await getLiveBuilder("bonus");
+    res.json({ builder: b || null });
+  }catch(e){
+    console.error("[BH] live get failed", e);
+    res.status(500).json({ error:"failed" });
+  }
+});
+// Bonus Hunt publish from admin
+app.post("/api/bonus-hunt/builder", verifyAdminToken, async (req,res)=>{
+  try{
+    const b = req.body && typeof req.body==='object' ? req.body : null;
+    // expect { title, games:[], results:[], startingBalance?, ... }
+    if (!b || !Array.isArray(b.games)) return res.status(400).json({ error:"invalid builder" });
+    await saveLiveBuilder("bonus", b);
+    res.json({ success:true });
+  }catch(e){
+    console.error("[BH] publish failed", e);
+    res.status(500).json({ error:"failed" });
   }
 });
 
