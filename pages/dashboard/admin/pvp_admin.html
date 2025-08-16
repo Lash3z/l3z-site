@@ -4,6 +4,7 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <meta http-equiv="Cache-Control" content="no-store"/>
+  <meta name="robots" content="noindex,nofollow"/>
   <title>PVP — Admin Tournament Builder</title>
   <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
   <style>
@@ -15,6 +16,7 @@
     }
     *{box-sizing:border-box}
     html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+    /* prevent flash until admin check completes */
     html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
 
     a.btn,button.btn{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:#0f1720;color:var(--ink);font-weight:800;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
@@ -98,8 +100,8 @@
       <button id="saveLive" class="btn warn">Save → Live</button>
     </div>
     <div class="hint" style="margin-top:6px">
-      Auto-seed rule: use **player entries first** (EAST/WEST), dedupe players & games; then fill remaining slots from Super/Mega Hunt pools (no duplicates either).  
-      If two players requested the same game, the second will be **auto-swapped** to a free game from the pool (logged below).
+      Auto-seed rule: use <b>player entries first</b> (EAST/WEST), dedupe players & games; then fill remaining slots from Super/Mega Hunt pools (no duplicates either).
+      If two players requested the same game, the second will be <b>auto-swapped</b> to a free game from the pool (logged below).
     </div>
   </div>
 
@@ -148,11 +150,11 @@
 <script>
 (function(){
   "use strict";
-  const API = "";
+  const API = ""; // allow prefixing if this page sits behind a sub-path
   const H=document.documentElement;
   H.setAttribute("data-admin","checking");
 
-  // ----- utils
+  // ----- utilities
   const $=(s,r=document)=>r.querySelector(s);
   const $all=(s,r=document)=>Array.from(r.querySelectorAll(s));
   const up=s=>(s||"").toString().trim().toUpperCase();
@@ -166,12 +168,13 @@
   let USED_GAMES=new Set(); // case-insensitive uniqueness
   const LS_BUILDER_KEY="pv:builder:pvp";
 
-  // ----- admin gate
+  // ----- AdminGate
   function lock(){
     H.removeAttribute("data-admin");
     const wrap=document.createElement("div");
     wrap.className="lockwrap";
-    wrap.innerHTML = '<div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="/pages/dashboard/home/admin_login.html?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fpvp_admin.html">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you already logged in, your session may have expired.</div><div style="margin-top:14px"><a href="/index.html">Back to Dashboard</a></div></div>';
+    const redir = encodeURIComponent(location.pathname+location.search);
+    wrap.innerHTML = '<div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="/pages/dashboard/admin/admin_login.html?redirect='+redir+'">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you already logged in, your session may have expired.</div><div style="margin-top:14px"><a href="/index.html">Back to Dashboard</a></div></div>';
     document.body.innerHTML="";
     document.body.appendChild(wrap);
   }
@@ -189,7 +192,10 @@
 
   // == UI wiring
   function wireUI(){
-    $("#adminLogout").addEventListener("click", async ()=>{ try{ await fetch("/api/admin/gate/logout",{method:"POST",credentials:"include"});}catch{} location.href="/index.html"; });
+    $("#adminLogout").addEventListener("click", async ()=>{
+      try{ await fetch(API+"/api/admin/gate/logout",{method:"POST",credentials:"include"});}catch{}
+      location.href="/index.html";
+    });
     $("#refreshEntries").addEventListener("click", loadEntries);
     $("#entReload").addEventListener("click", loadEntries);
     $("#autoSeed").addEventListener("click", autoSeedAndBuild);
@@ -236,7 +242,6 @@
 
   // == game pools (Super/Mega Hunt) from localStorage or fallback
   function loadGamePool(){
-    // Try a bunch of likely keys you used earlier
     const tryKeys=[
       "sh:games:super","sh:games:mega",
       "bg:games:super","bg:games:mega",
@@ -247,9 +252,7 @@
       const val = lsGet(k);
       if(Array.isArray(val)) pool=pool.concat(val);
     }
-    // Normalise into {title, imageUrl, provider}
     pool = pool.map(normGame).filter(g=>g && g.title);
-    // Deduplicate by title (case-insensitive)
     const seen=new Set(); const out=[];
     for(const g of pool){
       const key = up(g.title);
@@ -271,9 +274,7 @@
     const approvedFirst = !!opts.approvedFirst;
     const includePending = !!opts.includePending;
 
-    // 1) group by side & status
     let east=[], west=[];
-    // ensure newest (by ts) wins if same username submitted multiple times
     const latestByUser = new Map();
     for(const e of raw){
       const u = up(e.username||"");
@@ -283,7 +284,6 @@
     }
     const uniq = Array.from(latestByUser.values());
 
-    // sort by status preference
     const rank = s => (s==="approved"?0:(s==="pending"?1:2));
     uniq.sort((a,b)=> rank((a.status||"pending").toLowerCase()) - rank((b.status||"pending").toLowerCase()) );
 
@@ -296,7 +296,7 @@
         name: up(e.username||""),
         side,
         game,
-        imageUrl: "", // can’t know from entry; game pools supply images
+        imageUrl: "",
         provider: "",
         from:"player"
       };
@@ -307,59 +307,49 @@
   }
 
   function uniqueFill(east, west, size, noDupGames){
-    // no duplicate players already enforced by sanitize
     USED_GAMES.clear();
 
-    // 0) ensure player games uniqueness across both sides
     if(noDupGames){
       const pool = loadGamePool();
       const nextFree = makeFreeGamePicker(pool);
       const seenGame = new Set();
       function ensureUniqueGame(seed){
         const gKey = up(seed.game||"");
-        if(!gKey){ // empty -> assign one
+        if(!gKey){
           const pick = nextFree();
           if(pick) Object.assign(seed, { game: pick.title, imageUrl: pick.imageUrl, provider: pick.provider, from: seed.from||"seed" });
           return;
         }
         if(seenGame.has(gKey)){
-          // swap to a free one
           const pick = nextFree(gKey);
           if(pick) { log("Auto-swap game for", seed.name, "→", pick.title); Object.assign(seed, { game: pick.title, imageUrl: pick.imageUrl, provider: pick.provider, autoSwap:true }); }
         }else{
-          // lock
           seenGame.add(gKey);
-          if(seed.game) USED_GAMES.add(up(seed.game));
+          USED_GAMES.add(up(seed.game));
         }
       }
       east.forEach(ensureUniqueGame);
       west.forEach(ensureUniqueGame);
     }else{
-      // still track used for fillers
       [...east, ...west].forEach(s=>{ if(s.game) USED_GAMES.add(up(s.game)); });
     }
 
-    // 1) cap to size/2 per side (we’ll shuffle first)
     shuffle(east); shuffle(west);
     const needPerSide = size/2;
     east = east.slice(0, needPerSide);
     west = west.slice(0, needPerSide);
 
-    // 2) fill from game pool (no duplicates) with SEED-Exx / SEED-Wxx
     const pool = loadGamePool();
     const nextFree = makeFreeGamePicker(pool);
     function fillSide(sideArr, sideName){
       while(sideArr.length < needPerSide){
         const pick = nextFree();
-        if(!pick){ // fallback placeholder
-          const n = sideArr.length+1;
-          const title = "SEED-"+sideName[0]+n;
+        if(!pick){
+          const title = "SEED-"+sideName[0]+(sideArr.length+1);
           if(!USED_GAMES.has(up(title))) {
             sideArr.push({ name: title, side: sideName, game:title, imageUrl:"", provider:"", from:"seed" });
             USED_GAMES.add(up(title));
-          }else{
-            break;
-          }
+          }else{ break; }
           continue;
         }
         const seedName = "SEED-"+sideName[0]+String(sideArr.length+1).padStart(2,"0");
@@ -370,22 +360,19 @@
     fillSide(east,"EAST");
     fillSide(west,"WEST");
 
-    // 3) final duplicate guard (paranoid)
     east = dedupeGamesStable(east);
     west = dedupeGamesStable(west);
-
     return { east, west };
   }
 
   function makeFreeGamePicker(pool){
-    // iterate pool in random order, handing out titles not in USED_GAMES
     const bag = pool.slice();
     shuffle(bag);
     let i=0;
-    return function(nextNotThisTitleUpper){
+    return function(notThisUpper){
       while(i<bag.length){
         const g = bag[i++], key = up(g.title);
-        if(key && !USED_GAMES.has(key) && key !== nextNotThisTitleUpper){
+        if(key && !USED_GAMES.has(key) && key !== notThisUpper){
           USED_GAMES.add(key);
           return g;
         }
@@ -423,20 +410,17 @@
 
   function buildBracketFromSeeds(){
     const size = Math.min(SEED_E.length, SEED_W.length) * 2;
-    if(size!==16 && size!==32){ $("#brInfo").textContent="—"; $("#bracket").innerHTML = '<div class="pill">Need at least 8 vs 8 (or 16 vs 16) seeds.</div>'; return; }
-
-    // Round 0 = pairings E[i] vs W[i]
-    const round0 = [];
-    for(let i=0;i<size/2;i++){
-      round0.push({
-        id: "R0M"+(i+1),
-        left:  cloneSeed(SEED_E[i]),
-        right: cloneSeed(SEED_W[i]),
-        winner: null
-      });
+    if(size!==16 && size!==32){
+      $("#brInfo").textContent="—";
+      $("#bracket").innerHTML = '<div class="pill">Need at least 8 vs 8 (or 16 vs 16) seeds.</div>';
+      return;
     }
 
-    // subsequent rounds (empty slots)
+    const round0 = [];
+    for(let i=0;i<size/2;i++){
+      round0.push({ id: "R0M"+(i+1), left: cloneSeed(SEED_E[i]), right: cloneSeed(SEED_W[i]), winner: null });
+    }
+
     const rounds=[round0];
     let m = round0.length;
     while(m>1){
@@ -463,18 +447,17 @@
     BRACKET.rounds.forEach((arr,idx)=>{
       const col=document.createElement("div");
       col.className="round";
-      const label = idx===0 ? "Round of "+BRACKET.size
-                  : idx===BRACKET.rounds.length-1 ? "Grand Final"
-                  : idx===BRACKET.rounds.length-2 ? "Semi Finals"
-                  : "Quarter Finals".replace("Quarter", idx===1 && BRACKET.size===16 ? "Quarter" : idx===1 && BRACKET.size===32 ? "Round of 16" : "Round");
+      const labels16 = ["Round of 16","Quarter Finals","Semi Finals","Grand Final"];
+      const labels32 = ["Round of 32","Round of 16","Quarter Finals","Semi Finals","Grand Final"];
+      const labels = BRACKET.size===16?labels16:labels32;
+      const label = labels[idx] || ("Round "+(idx+1));
       col.innerHTML='<h3>'+esc(label)+'</h3>';
       if(!arr.length){ col.innerHTML+='<div class="pill">—</div>'; host.appendChild(col); return; }
 
       arr.forEach((m,i)=>{
         const box=document.createElement("div");
         box.className="match";
-        box.innerHTML = slotHTML(m.left, "east") + '<div class="vs">VS</div>' + slotHTML(m.right,"west") + actionsHTML(m, idx, i);
-        // wire edit + win buttons
+        box.innerHTML = slotHTML(m.left, "east") + '<div class="vs">VS</div>' + slotHTML(m.right,"west") + actionsHTML();
         wireMatch(box, idx, i);
         col.appendChild(box);
       });
@@ -484,7 +467,7 @@
   }
 
   function slotHTML(seed, side){
-    if(!seed) return '<div class="slot '+side+'"><div class="team">—</div><div class="game">—</div></div>';
+    if(!seed) return '<div class="slot '+side+'"><div class="team">—</div><div class="game">—</div><div class="edit" title="Edit">✎</div></div>';
     const nm = esc(seed.name||"—");
     const gm = esc(seed.game||"—");
     const sd = (seed.side||side).toUpperCase()==="WEST"?"west":"east";
@@ -495,21 +478,21 @@
       <div class="edit" title="Edit">✎</div>
     </div>`;
   }
-  function actionsHTML(m, rIdx, mIdx){
-    const lw = '<button class="btn ok" data-win="left">Left Wins</button>';
-    const rw = '<button class="btn ok" data-win="right">Right Wins</button>';
-    const clr = '<button class="btn" data-clear="winner">Clear</button>';
-    return `<div class="act">${lw}${rw}${clr}</div>`;
+  function actionsHTML(){
+    return `<div class="act">
+      <button class="btn ok" data-win="left">Left Wins</button>
+      <button class="btn ok" data-win="right">Right Wins</button>
+      <button class="btn" data-clear="winner">Clear</button>
+    </div>`;
   }
 
   function wireMatch(box, rIdx, mIdx){
-    // edit handlers
-    box.querySelectorAll(".slot .edit").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        const slot = btn.closest(".slot");
-        const isLeft = slot.previousElementSibling==null ? true : slot.previousElementSibling.classList.contains("vs") ? true : slot.parentElement.querySelectorAll(".slot")[0]===slot;
-        const path = isLeft ? ["left"] : ["right"];
-        const seed = getSeed(rIdx, mIdx, path[0]);
+    // edit: reliably determine side by index (no DOM sibling tricks)
+    const slots = box.querySelectorAll(".slot");
+    slots.forEach((slot, idx)=>{
+      const side = idx===0 ? "left" : "right";
+      slot.querySelector(".edit")?.addEventListener("click", ()=>{
+        const seed = getSeed(rIdx, mIdx, side);
         if(!seed) return;
         const newName = prompt("Edit name", seed.name||"");
         if(newName==null) return;
@@ -523,7 +506,6 @@
       });
     });
 
-    // win buttons
     box.querySelectorAll("[data-win]").forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const side = btn.getAttribute("data-win")==="left" ? "left" : "right";
@@ -531,9 +513,7 @@
       });
     });
     box.querySelectorAll("[data-clear='winner']").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        clearWinner(rIdx, mIdx);
-      });
+      btn.addEventListener("click", ()=>{ clearWinner(rIdx, mIdx); });
     });
   }
 
@@ -549,12 +529,11 @@
     if(!winner){ alert("Empty slot."); return; }
     m.winner = winner;
 
-    // place into next round
     if(rIdx < BRACKET.rounds.length-1){
       const nextIdx = Math.floor(mIdx/2);
       const nextSide = (mIdx % 2 === 0) ? "left" : "right";
       BRACKET.rounds[rIdx+1][nextIdx][nextSide] = cloneSeed(winner);
-      BRACKET.rounds[rIdx+1][nextIdx].winner = null; // clear if any
+      BRACKET.rounds[rIdx+1][nextIdx].winner = null;
     }
     BRACKET.lastUpdated = Date.now();
     paintBracket(); saveLiveSilent();
@@ -580,7 +559,6 @@
   }
   function toBuilderForLive(B){
     if(!B) return { games:[], matches:[], lastUpdated: Date.now() };
-    // For the live Unified page we’ll publish the **current round** as matches list.
     const r0 = B.rounds[0] || [];
     const matches = r0.map(m=>({
       leftTitle: m.left?.name || "—",
@@ -591,14 +569,18 @@
       leftId: m.left?.game || "", rightId: m.right?.game || "",
       leftProvider: m.left?.provider || "", rightProvider: m.right?.provider || ""
     }));
-    // Optionally include entire bracket for a bracket-live page
     return { matches, bracket: B, lastUpdated: B.lastUpdated||Date.now() };
   }
 
   async function saveLiveSilent(){
     saveLiveToLocal();
     try{
-      await fetch("/api/pvp/bracket",{ method:"POST", headers:{"Content-Type":"application/json"}, credentials:"include", body: JSON.stringify({ builder: toBuilderForLive(BRACKET) }) });
+      await fetch(API+"/api/pvp/bracket",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        credentials:"include",
+        body: JSON.stringify({ builder: toBuilderForLive(BRACKET) })
+      });
       log("Saved to live (server).");
     }catch{
       log("Saved to local only (server endpoint not present).");
