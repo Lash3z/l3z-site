@@ -1,4 +1,4 @@
-// server.js — homepage-first, admin aliases, JSON+form login, + PVP API (DB or memory)
+// server.js — homepage-first, admin aliases, JSON+form login, + PVP Entries + Bracket APIs
 import fs from "fs";
 import path from "path";
 import express from "express";
@@ -73,8 +73,8 @@ const memory = {
   raffles: [],
   claims: [],
   deposits: [],
-  pvpEntries: [],       // entries fallback when DB not present
-  pvpBracket: null      // last published bracket (for unified live)
+  pvpEntries: [],       // entries (if DB not connected)
+  pvpBracket: null      // active bracket/builder (if DB not connected)
 };
 
 // ===== App
@@ -99,7 +99,7 @@ app.use(cookieParser());
 app.use("/api", (req, res, next) => {
   const origin = req.headers.origin;
   if (origin) { res.setHeader("Access-Control-Allow-Origin", origin); res.setHeader("Vary", "Origin"); }
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Access-Control-Allow-Credentials", "true");
   if (req.method === "OPTIONS") return res.sendStatus(204);
@@ -210,7 +210,7 @@ app.use(express.static(PUBLIC_DIR, {
   }
 }));
 
-// ===== Minimal APIs already present (jackpot/rules/wallet/raffles/deposits) …
+// ===== Minimal APIs already present (jackpot/rules/wallet/raffles/deposits)
 app.get("/api/jackpot", (req, res) => {
   res.json({ amount: Number(memory.jackpot.amount || 0), month: memory.jackpot.month, perSubAUD: memory.jackpot.perSubAUD });
 });
@@ -258,7 +258,7 @@ app.get("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => { const r =
 app.delete("/api/raffles/:rid/entries", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); r.entries = []; r.open = true; r.winner = null; res.json({ success:true }); });
 app.post("/api/raffles/:rid/draw", verifyAdminToken, (req, res) => { const r = memory.raffles.find(x => x.rid === req.params.rid); if (!r) return res.status(404).json({ error:"not found" }); const pool = r.entries || []; r.winner = pool.length ? pool[Math.floor(Math.random()*pool.length)].user : null; res.json({ success:true, winner:r.winner }); });
 
-// ===== PVP ENTRIES API (public submit, admin list/status/delete)
+// ===== PVP Entries (already added before)
 app.post("/api/pvp/entries", async (req, res) => {
   const username = String(req.body?.username || "").trim().toUpperCase();
   const side     = String(req.body?.side || "").trim().toUpperCase();   // "EAST"/"WEST"
@@ -290,7 +290,6 @@ app.post("/api/pvp/entries", async (req, res) => {
     return res.status(500).json({ error: "save failed" });
   }
 });
-
 app.get("/api/pvp/entries", verifyAdminToken, async (req, res) => {
   try {
     if (globalThis.__dbReady) {
@@ -306,7 +305,6 @@ app.get("/api/pvp/entries", verifyAdminToken, async (req, res) => {
     return res.status(500).json({ error: "list failed" });
   }
 });
-
 app.post("/api/pvp/entries/:id/status", verifyAdminToken, async (req, res) => {
   const status = String(req.body?.status || "").toLowerCase(); // "approved" | "rejected" | "pending"
   if (!["approved","rejected","pending"].includes(status)) return res.status(400).json({ error: "bad status" });
@@ -330,7 +328,6 @@ app.post("/api/pvp/entries/:id/status", verifyAdminToken, async (req, res) => {
     return res.status(500).json({ error: "status failed" });
   }
 });
-
 app.delete("/api/pvp/entries/:id", verifyAdminToken, async (req, res) => {
   try {
     if (globalThis.__dbReady) {
@@ -351,37 +348,254 @@ app.delete("/api/pvp/entries/:id", verifyAdminToken, async (req, res) => {
   }
 });
 
-// ===== NEW: PVP BRACKET API (for admin publish / live read)
+// ===== NEW: PVP Bracket API =====
+
+function nowMs(){ return Date.now(); }
+function emptyRound(n){
+  return Array.from({length:n}, (_,i)=>({
+    id: `m_${Math.random().toString(36).slice(2,8)}_${i}`,
+    left:  { name:"", img:"", score:null },
+    right: { name:"", img:"", score:null },
+    status: "pending", winner: null, game: ""
+  }));
+}
+function buildEmptySide(size){
+  // size is total bracket size per SIDE x2; side gets size/2 seeds only
+  const firstRound = size/4; // e.g. 32→ firstRound 8, 16→ firstRound 4
+  const r1 = emptyRound(firstRound);
+  const r2 = emptyRound(Math.max(1, firstRound/2)); // QF
+  const r3 = emptyRound(1); // SF (side final)
+  return [r1, r2, r3]; // [R16/R32, QF, SF]
+}
+function nextIndex(i){ return Math.floor(i/2); }
+function putIntoSlot(match, slot, player){
+  if (slot==="left") match.left = { ...(match.left||{}), ...player };
+  else match.right = { ...(match.right||{}), ...player };
+}
+async function getBracket(){
+  if (globalThis.__dbReady){
+    const col = globalThis.__db.collection("pvp_bracket");
+    const doc = await col.findOne({ _id: "active" });
+    return doc?.builder || null;
+  }
+  return memory.pvpBracket || null;
+}
+async function saveBracket(builder){
+  builder.lastUpdated = nowMs();
+  if (globalThis.__dbReady){
+    const col = globalThis.__db.collection("pvp_bracket");
+    await col.updateOne({ _id: "active" }, { $set: { builder } }, { upsert: true });
+  } else {
+    memory.pvpBracket = builder;
+  }
+  return builder;
+}
+
+// GET published/current bracket
 app.get("/api/pvp/bracket", async (req, res) => {
   try {
-    if (globalThis.__dbReady) {
-      const doc = await globalThis.__db.collection("pvp_bracket").findOne({ _id: "current" });
-      return res.json({ bracket: doc?.data || null });
-    } else {
-      return res.json({ bracket: memory.pvpBracket || null });
-    }
+    const builder = await getBracket();
+    res.json({ builder: builder || null });
   } catch (e) {
-    console.error("[PVP] get bracket failed", e);
-    return res.status(500).json({ error: "failed" });
+    console.error("[PVP] bracket get failed", e);
+    res.status(500).json({ error: "failed" });
   }
 });
 
-app.put("/api/pvp/bracket", verifyAdminToken, async (req, res) => {
-  const data = req.body?.bracket;
-  if (!data || typeof data !== "object") return res.status(400).json({ error: "bad payload" });
+// Create/replace a bracket (admin)
+app.post("/api/pvp/bracket", verifyAdminToken, async (req, res) => {
   try {
-    if (globalThis.__dbReady) {
-      await globalThis.__db.collection("pvp_bracket").updateOne(
-        { _id: "current" }, { $set: { data, updatedAt: new Date() } }, { upsert: true }
-      );
-      return res.json({ success: true });
-    } else {
-      memory.pvpBracket = data;
-      return res.json({ success: true });
+    const { size, eastSeeds = [], westSeeds = [], games = [], meta = {} } = req.body || {};
+    const bracketSize = (size===32||size===16) ? size : 16;
+
+    const east = buildEmptySide(bracketSize);
+    const west = buildEmptySide(bracketSize);
+    const finals = [ emptyRound(1) ]; // Grand Final only (center)
+
+    // place seeds (names/images) into side first rounds
+    const fillSide = (round0, seeds) => {
+      for (let i=0; i<round0.length; i++){
+        const L = seeds[i*2]   || { name: "" };
+        const R = seeds[i*2+1] || { name: "" };
+        round0[i].left.name  = (L.name||"").toUpperCase();
+        round0[i].left.img   = L.img||"";
+        round0[i].right.name = (R.name||"").toUpperCase();
+        round0[i].right.img  = R.img||"";
+      }
+    };
+
+    fillSide(east[0], eastSeeds);
+    fillSide(west[0], westSeeds);
+
+    // optional: assign games to first round from provided list
+    if (Array.isArray(games) && games.length){
+      const assign = (round0) => {
+        for (let i=0;i<round0.length;i++){
+          const g = games[i % games.length];
+          round0[i].game = (g && (g.title || g.name || g)) || "";
+        }
+      };
+      assign(east[0]); assign(west[0]);
     }
+
+    const builder = await saveBracket({
+      lastUpdated: nowMs(),
+      bracket: {
+        size: bracketSize,
+        east, west, finals,
+        meta: { bestOf: 1, ...meta },
+        cursor: { phase: "east", roundIndex: 0, matchIndex: 0 },
+        champion: null
+      }
+    });
+
+    res.json({ success: true, builder });
   } catch (e) {
-    console.error("[PVP] put bracket failed", e);
-    return res.status(500).json({ error: "failed" });
+    console.error("[PVP] bracket build failed", e);
+    res.status(500).json({ error: "failed" });
+  }
+});
+
+// Edit a slot (admin) — late players, typo fixes, etc.
+app.patch("/api/pvp/bracket/slot", verifyAdminToken, async (req, res) => {
+  try {
+    const { phase, roundIndex, matchIndex, side, name, img } = req.body || {};
+    const b = await getBracket();
+    if (!b || !b.bracket) return res.status(404).json({ error: "no bracket" });
+
+    const col = (phase==="east") ? b.bracket.east
+              : (phase==="west") ? b.bracket.west
+              : (phase==="finals") ? b.bracket.finals
+              : null;
+    if (!col) return res.status(400).json({ error: "bad phase" });
+    const round = col[roundIndex|0];
+    const match = round && round[matchIndex|0];
+    if (!match) return res.status(400).json({ error: "bad index" });
+
+    const slot = side==="left" ? match.left : match.right;
+    if (!slot) return res.status(400).json({ error: "bad side" });
+    if (typeof name === "string") slot.name = name.toUpperCase();
+    if (typeof img === "string")  slot.img  = img;
+
+    await saveBracket(b);
+    res.json({ success: true });
+  } catch (e) {
+    console.error("[PVP] slot patch failed", e);
+    res.status(500).json({ error: "failed" });
+  }
+});
+
+// Progress current/target match (admin) — winner auto-advances
+app.post("/api/pvp/bracket/progress", verifyAdminToken, async (req, res) => {
+  try {
+    const { phase, roundIndex, matchIndex, winner, leftScore=null, rightScore=null } = req.body || {};
+    if (!["L","R"].includes((winner||"").toUpperCase())) return res.status(400).json({ error: "winner must be L or R" });
+
+    const b = await getBracket();
+    if (!b || !b.bracket) return res.status(404).json({ error: "no bracket" });
+    const sideArr = phase==="east" ? b.bracket.east : phase==="west" ? b.bracket.west : phase==="finals" ? b.bracket.finals : null;
+    if (!sideArr) return res.status(400).json({ error: "bad phase" });
+
+    const rIdx = roundIndex|0, mIdx = matchIndex|0;
+    const round = sideArr[rIdx]; if (!round) return res.status(400).json({ error: "bad round index" });
+    const match = round[mIdx];   if (!match) return res.status(400).json({ error: "bad match index" });
+
+    // set scores + winner
+    if (leftScore !== null)  match.left.score  = Number(leftScore);
+    if (rightScore !== null) match.right.score = Number(rightScore);
+    match.winner = winner.toUpperCase();
+    match.status = "done";
+
+    // compute advancing player
+    const adv = (winner==="L") ? match.left : match.right;
+    const advPlayer = { name: adv.name || "", img: adv.img || "" };
+
+    // advance within this side or into finals
+    const lastRoundIndex = sideArr.length - 1;
+    if (rIdx < lastRoundIndex){
+      // next round inside same side
+      const nextRound = sideArr[rIdx + 1];
+      const target = nextRound[nextIndex(mIdx)];
+      const slot = (mIdx % 2 === 0) ? "left" : "right";
+      putIntoSlot(target, slot, advPlayer);
+    } else {
+      // advance to Grand Final (finals[0][0])
+      const gf = (b.bracket.finals && b.bracket.finals[0] && b.bracket.finals[0][0]) ? b.bracket.finals[0][0] : null;
+      if (gf){
+        if (phase==="east") putIntoSlot(gf, "left", advPlayer);
+        if (phase==="west") putIntoSlot(gf, "right", advPlayer);
+        if (phase==="finals"){
+          // winner of GF is champion
+          b.bracket.champion = { name: advPlayer.name };
+        }
+      }
+    }
+
+    // move cursor to next pending match if we're updating the "current" one
+    if (b.bracket.cursor
+        && b.bracket.cursor.phase===phase
+        && (b.bracket.cursor.roundIndex|0)===rIdx
+        && (b.bracket.cursor.matchIndex|0)===mIdx){
+      const nxt = findNextPending(b.bracket);
+      if (nxt) b.bracket.cursor = nxt;
+    }
+
+    await saveBracket(b);
+    res.json({ success: true, builder: b });
+  } catch (e) {
+    console.error("[PVP] progress failed", e);
+    res.status(500).json({ error: "failed" });
+  }
+});
+
+function findNextPending(br){
+  const order = [["east"],["west"],["finals"]]; // simple sweep; you can tweak ordering
+  for (const [ph] of order){
+    const sideArr = br[ph]; if (!sideArr) continue;
+    for (let r=0;r<sideArr.length;r++){
+      const round = sideArr[r] || [];
+      for (let m=0;m<round.length;m++){
+        if (round[m].status!=="done") return { phase: ph, roundIndex: r, matchIndex: m };
+      }
+    }
+  }
+  return null;
+}
+
+// Reset bracket but keep seeds (admin)
+app.post("/api/pvp/bracket/reset", verifyAdminToken, async (req, res) => {
+  try {
+    const b = await getBracket();
+    if (!b || !b.bracket) return res.status(404).json({ error: "no bracket" });
+    const resetSide = (arr) => {
+      for (let r=0;r<arr.length;r++){
+        for (let m=0;m<arr[r].length;m++){
+          const mm = arr[r][m];
+          if (r===0){
+            mm.status = "pending"; mm.winner=null;
+            mm.left.score=null; mm.right.score=null;
+          }else{
+            arr[r][m] = { ...mm, left:{name:"",img:"",score:null}, right:{name:"",img:"",score:null}, status:"pending", winner:null };
+          }
+        }
+      }
+    };
+    resetSide(b.bracket.east);
+    resetSide(b.bracket.west);
+    if (b.bracket.finals && b.bracket.finals[0] && b.bracket.finals[0][0]){
+      b.bracket.finals[0][0] = {
+        id: b.bracket.finals[0][0].id || `gf_${Math.random().toString(36).slice(2,8)}`,
+        left:{name:"",img:"",score:null}, right:{name:"",img:"",score:null},
+        status:"pending", winner:null, game: b.bracket.finals[0][0].game || ""
+      };
+    }
+    b.bracket.champion = null;
+    b.bracket.cursor = { phase:"east", roundIndex:0, matchIndex:0 };
+    await saveBracket(b);
+    res.json({ success:true });
+  } catch (e) {
+    console.error("[PVP] reset failed", e);
+    res.status(500).json({ error: "failed" });
   }
 });
 
