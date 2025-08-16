@@ -84,9 +84,23 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
 <div class="wrap">
   <h1>Battleground — Admin</h1>
 
+  <!-- Meta -->
   <div class="card">
     <div class="row">
-      <span class="pill">Tip: Use <b>Asset Path</b> for covers (e.g. <code>/assets/slot_images/duck_hunters.png</code>). These persist across refreshes. The Upload box only previews and is not persisted.</span>
+      <span class="pill">Tip: Use <b>Asset Path</b> for covers (e.g. <code>/assets/slot_images/duck_hunters.png</code>). The Upload box only helps name fields; it is not persisted.</span>
+    </div>
+    <div class="hr"></div>
+    <div class="row" style="align-items:center">
+      <label>EVENT TITLE <input id="evTitle" placeholder="BATTLEGROUND" style="min-width:260px"></label>
+      <label>BEST OF
+        <select id="bestOf">
+          <option value="1">1</option>
+          <option value="3" selected>3</option>
+          <option value="5">5</option>
+          <option value="7">7</option>
+        </select>
+      </label>
+      <span class="pill" id="evId">ID: —</span>
     </div>
     <div class="hr"></div>
     <div class="row">
@@ -139,7 +153,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     <div class="gamesHead">
       <div style="font-weight:900">Live Controls — Push / Publish</div>
       <div class="row">
-        <span id="srcBadge" class="pill" title="Where your last publish went">SRC: local</span>
+        <span id="srcBadge" class="pill" title="Where data was loaded from or published to">SRC: local</span>
         <span id="stamp" class="pill">Not pushed</span>
         <span id="msg" class="pill">Ready</span>
       </div>
@@ -158,6 +172,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
           <button id="clearAll" class="btn danger">Delete All</button>
         </div>
         <div class="row">
+          <button id="refreshServer" class="btn">Refresh from Server</button>
           <button id="pushBuilder" class="btn ok">Push (local)</button>
           <button id="publishServer" class="btn">Publish to Server</button>
           <button id="exportJson" class="btn">Export JSON</button>
@@ -185,7 +200,9 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   const ASSET_DIR = '/assets/slot_images/';
   const absPath = p => {
     if (!p) return '';
-    p = String(p).trim().replace(/slot images\//gi,'slot_images/'); // legacy fix
+    p = String(p).trim()
+      .replace(/slot images\//gi,'slot_images/')  // legacy fix
+      .replace(/^assets\/media\//i,'assets/');    // legacy fix
     p = p.replace(/^\.?\//,''); // strip leading ./ or /
     return '/' + p;
   };
@@ -196,7 +213,14 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
   const K_M='bg:matches';                       // legacy mirror for older widgets
 
   // ---------- state ----------
-  let state = read() || { games:[], matches:[], lastUpdated:0, eventId: 'battleground:'+new Date().toISOString().slice(0,10), title:'BATTLEGROUND', bestOf:3 };
+  let state = read() || {
+    games:[],
+    matches:[],
+    lastUpdated:0,
+    eventId: 'battleground:'+new Date().toISOString().slice(0,10),
+    title:'BATTLEGROUND',
+    bestOf:3
+  };
 
   function read(){ try{ const j=localStorage.getItem(K_BUILDER); return j?JSON.parse(j):null; }catch{return null;} }
   function write(){
@@ -206,6 +230,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
       // mirrors for old pages/widgets
       localStorage.setItem(K_G, JSON.stringify(state.games||[]));
       localStorage.setItem(K_M, JSON.stringify(state.matches||[]));
+      $("#evId").textContent = 'ID: '+(state.eventId||'—');
     }catch{}
   }
 
@@ -224,6 +249,96 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     });
     if(changed) write();
   })();
+
+  // ---------- server hydrate/publish ----------
+  async function tryGet(url){
+    try{
+      const r=await fetch(url,{cache:'no-store',credentials:'include'});
+      if(r.ok) return await r.json();
+    }catch{}
+    return null;
+  }
+
+  async function hydrateFromServer(){
+    // Priority: explicit builder endpoints -> fallback: matchups only
+    let src = await tryGet('/api/battleground/builder')
+           || await tryGet('/api/bg/builder')
+           || await tryGet('/assets/battleground_builder.json');
+
+    if(src){
+      const b = src.builder || src;
+      const title = b.title || state.title || 'BATTLEGROUND';
+      const eventId = b.eventId || state.eventId || ('battleground:'+new Date().toISOString().slice(0,10));
+      const bestOf = +b.bestOf || state.bestOf || 3;
+      const games = Array.isArray(b.games)? b.games.map(g=>({...g, imageUrl:g.imageUrl?absPath(g.imageUrl):''})) : (state.games||[]);
+      const matches = Array.isArray(b.matches)? b.matches.map(m=>({
+        ...m,
+        leftImg: m.leftImg?absPath(m.leftImg):m.leftImg,
+        rightImg: m.rightImg?absPath(m.rightImg):m.rightImg
+      })) : (state.matches||[]);
+      state = { ...state, title, eventId, bestOf, games, matches, lastUpdated: Date.now() };
+      write(); paintAll();
+      $("#srcBadge").textContent='SRC: server';
+      $("#stamp").textContent='Loaded @ '+new Date().toLocaleTimeString();
+      return true;
+    }
+
+    // Fallback: try matchups only APIs
+    let mx = await tryGet('/api/battleground/matchups') || await tryGet('/api/bg/matchups');
+    if(Array.isArray(mx) && mx.length){
+      state.matches = mx.map(m=>({
+        id: m.id||kid('M'),
+        leftId: m.leftId||m.AId||null,
+        rightId: m.rightId||m.BId||null,
+        leftTitle: m.leftTitle||m.aName||'LEFT',
+        rightTitle: m.rightTitle||m.bName||'RIGHT',
+        leftImg: m.leftImg?absPath(m.leftImg):'',
+        rightImg: m.rightImg?absPath(m.rightImg):'',
+        leftScore: m.leftScore||0,
+        rightScore: m.rightScore||0,
+        winnerId: m.winnerId||null,
+        status: (m.status||'OPEN').toUpperCase()
+      }));
+      write(); paintAll();
+      $("#srcBadge").textContent='SRC: server (matches)';
+      $("#stamp").textContent='Loaded @ '+new Date().toLocaleTimeString();
+      return true;
+    }
+
+    $("#srcBadge").textContent='SRC: local';
+    return false;
+  }
+
+  async function publishToServer(){
+    const payload = {
+      builder:{
+        title: state.title || 'BATTLEGROUND',
+        eventId: state.eventId || ('battleground:'+new Date().toISOString().slice(0,10)),
+        lastUpdated: Date.now(),
+        games: state.games||[],
+        matches: state.matches||[],
+        bestOf: state.bestOf||3
+      }
+    };
+    try{
+      const r = await fetch('/api/battleground/builder', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        credentials:'include',
+        body: JSON.stringify(payload)
+      });
+      if(!r.ok) throw 0;
+      $("#stamp").textContent='Published @ '+new Date().toLocaleTimeString();
+      $("#srcBadge").textContent='SRC: server';
+      toast('Published to server', true);
+    }catch{
+      // graceful fallback to local push
+      state.lastUpdated=Date.now(); write();
+      $("#stamp").textContent='Last push @ '+new Date(state.lastUpdated).toLocaleTimeString();
+      $("#srcBadge").textContent='SRC: local (server not available)';
+      toast('Server publish not available — pushed to local instead.', false);
+    }
+  }
 
   // ---------- painting ----------
   function paintGames(){
@@ -268,7 +383,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
       const GL=gMap.get(m.leftId)||{}, GR=gMap.get(m.rightId)||{};
       const row=document.createElement('div'); row.className='liveRow';
       row.innerHTML=`
-        <div class="small">${esc(m.leftTitle||GL.title||'LEFT')} vs ${esc(m.rightTitle||GR.title||'RIGHT')}</div>
+        <div class="small">${esc(m.leftTitle||GL.title||'LEFT')} vs ${esc(m.rightTitle||GR.title||'RIGHT')} · BO${state.bestOf||3}</div>
         <div class="pill">${esc(m.winnerId? (m.winnerId===m.leftId?'LEFT':'RIGHT') : '—')}</div>
         <div></div>
         <div class="score">L<input type="number" step="1" min="0" value="${+m.leftScore||0}" data-s="l${mi}"></div>
@@ -386,7 +501,7 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     write(); paintAll(); toast('Cleared');
   });
 
-  // ---- Push (local) & Publish (server) ----
+  // ---- Push (local), Publish (server), Refresh ----
   $("#pushBuilder").addEventListener('click',()=>{
     state.lastUpdated=Date.now(); write();
     $("#stamp").textContent='Last push @ '+new Date(state.lastUpdated).toLocaleTimeString();
@@ -394,36 +509,8 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     toast('Pushed to local storage (Prediction/Widget/Bets Admin will pick this up).', true);
   });
 
-  $("#publishServer").addEventListener('click', async ()=>{
-    const payload = {
-      builder:{
-        title: state.title || 'BATTLEGROUND',
-        eventId: state.eventId || ('battleground:'+new Date().toISOString().slice(0,10)),
-        lastUpdated: Date.now(),
-        games: state.games||[],
-        matches: state.matches||[],
-        bestOf: state.bestOf||3
-      }
-    };
-    try{
-      const r = await fetch('/api/battleground/builder', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        credentials:'include',
-        body: JSON.stringify(payload)
-      });
-      if(!r.ok) throw 0;
-      $("#stamp").textContent='Published @ '+new Date().toLocaleTimeString();
-      $("#srcBadge").textContent='SRC: server';
-      toast('Published to server', true);
-    }catch{
-      // graceful fallback to local push
-      state.lastUpdated=Date.now(); write();
-      $("#stamp").textContent='Last push @ '+new Date(state.lastUpdated).toLocaleTimeString();
-      $("#srcBadge").textContent='SRC: local (server not available)';
-      toast('Server publish not available — pushed to local instead.', false);
-    }
-  });
+  $("#publishServer").addEventListener('click', publishToServer);
+  $("#refreshServer").addEventListener('click', hydrateFromServer);
 
   // delegated clicks for lists
   $("#gamesList").addEventListener('click',e=>{
@@ -503,8 +590,18 @@ input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;
     }
   });
 
+  // Meta wiring
+  $("#evTitle").value = state.title||'BATTLEGROUND';
+  $("#bestOf").value = String(state.bestOf||3);
+  $("#evId").textContent = 'ID: '+(state.eventId||'—');
+
+  $("#evTitle").addEventListener('change', e=>{ state.title=(e.target.value||'BATTLEGROUND').toUpperCase(); write(); });
+  $("#bestOf").addEventListener('change', e=>{ state.bestOf=+e.target.value||3; write(); paintLiveRows(); });
+
   // boot
   paintAll();
+  // Try to hydrate once on boot (non-fatal)
+  hydrateFromServer();
 })();
 </script>
 </body>
