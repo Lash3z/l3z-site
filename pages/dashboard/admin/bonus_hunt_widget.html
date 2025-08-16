@@ -8,7 +8,7 @@
   :root{ --ink:#eaf7ff; --muted:#9fd0d6; --teal:#00ffff; --ok:#12f3d6; --warn:#ffb42d; --line:rgba(0,255,255,.16); }
   html,body{
     margin:0;height:100%;overflow:hidden;
-    background:#000 url("/assets/media/BG_page.png") center/cover fixed no-repeat;
+    background:#000 url("/assets/BG_page.png") center/cover fixed no-repeat; /* safer path */
     color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif
   }
   .wrap{
@@ -58,7 +58,10 @@
 <div class="wrap">
   <div class="topbar">
     <div class="title">BONUS HUNT — <span id="wTitle">UNTITLED</span></div>
-    <span id="wTime" class="pill">—</span>
+    <div class="row" style="gap:8px;align-items:center">
+      <span id="wSource" class="pill" title="Data source">SRC: —</span>
+      <span id="wTime" class="pill">—</span>
+    </div>
   </div>
 
   <!-- TOP stats -->
@@ -92,24 +95,69 @@
   const money = n => '$ '+Number(n||0).toFixed(2);
   const fmtX = n => Number(n||0).toFixed(2)+'×';
   const esc = s => (s??'').toString().replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-
-  // normalize any old "slot images/" paths to "slot_images/"
-  const fixPath = (u)=> typeof u==='string' ? u.replace(/slot images\//g,'slot_images/') : u;
+  const fixPath = (u)=> typeof u==='string' ? u.replace(/slot images\//gi,'slot_images/').replace(/^\/assets\/media\//i,'/assets/') : u;
 
   const MIN_ROWS=6, SPEED=22; // px/sec upward
   let offset=0, lastTs=0, paused=false, blockH=0;
+  let lastPayloadSig="";
 
   const sget=(k)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch{return null}};
 
-  function loadSource(){
-    const b=sget(K_BUILDER);
-    if(b && Array.isArray(b.games) && b.games.length){ return {title:b.title||'BONUS HUNT', games:b.games, results:b.results||[], starting:+b.startingBalance||0}; }
-    const g=sget(K_G)||[], r=sget(K_R)||[], s=+(sget(K_S)||0);
-    return {title:'BONUS HUNT', games:g, results:r, starting:s};
+  // ---------- data loading (server -> static -> localStorage)
+  async function fetchFirst(urls){
+    for(const u of urls){
+      try{
+        const r = await fetch(u, { cache:'no-store' });
+        if(r.ok){
+          const j = await r.json();
+          if(j) return {source:u, data:j};
+        }
+      }catch{}
+    }
+    return null;
   }
 
-  function calc(){
-    const src=loadSource();
+  function normalizeFromAny(src){
+    // supports shapes:
+    // { title, games, results, startingBalance }
+    // { builder:{ title, matches? (ignored), games, results, startingBalance } }
+    // { title, results:[{gameId,bet,win,x}], games:[{id,title,provider,imageUrl,betSize}] }
+    const b = src.builder || src;
+
+    const title = b.title || 'BONUS HUNT';
+    const starting = +b.startingBalance || +b.starting || 0;
+
+    const games = Array.isArray(b.games) ? b.games : [];
+    const results = Array.isArray(b.results) ? b.results : [];
+
+    return { title, games, results, starting };
+  }
+
+  function loadFromLocal(){
+    const b=sget(K_BUILDER);
+    if(b && Array.isArray(b.games) && b.games.length){
+      return { source:'localStorage:builder', ...normalizeFromAny(b) };
+    }
+    const g=sget(K_G)||[], r=sget(K_R)||[], s=+(sget(K_S)||0);
+    return { source:'localStorage:legacy', title:'BONUS HUNT', games:g, results:r, starting:s };
+  }
+
+  async function loadSource(){
+    // try server endpoints and a static json; otherwise localStorage
+    const probe = await fetchFirst([
+      '/api/bonus/live',
+      '/api/bonus/builder',
+      '/api/bonus/widget',
+      '/assets/bonus_hunt_live.json'
+    ]);
+    if (probe){
+      const norm = normalizeFromAny(probe.data);
+      return { source: probe.source, ...norm };
+    }
+    return loadFromLocal();
+  }
+
+  function calcFrom(src){
     const byId=new Map((src.results||[]).map(r=>[r.gameId,r]));
     const entries=(src.games||[]).map(g=>{
       const r=byId.get(g.id)||{};
@@ -126,8 +174,8 @@
 
     const tBet=entries.reduce((a,e)=>a+e.bet,0);
     const tWin=entries.reduce((a,e)=>a+e.win,0);
-
     const starting=+src.starting||0;
+
     return {
       title:src.title||'BONUS HUNT',
       entries,
@@ -145,6 +193,19 @@
   }
 
   function rowsHTML(entries){
+    if(!entries.length){
+      return `<div class="row">
+        <div class="idx">—</div>
+        <div class="thumb"></div>
+        <div class="slotWrap">
+          <div class="slot"><span>No games yet — waiting for admin publish…</span></div>
+          <div class="sub">Use your Bonus Hunt admin to publish.</div>
+        </div>
+        <div class="right money">$ 0.00</div>
+        <div class="right money">$ 0.00</div>
+        <div class="right x">—</div>
+      </div>`;
+    }
     return entries.map((e,i)=>`
       <div class="row">
         <div class="idx">${i+1}</div>
@@ -174,11 +235,21 @@
     });
   }
 
-  function render(){
-    const d=calc();
+  async function render(){
+    const raw = await loadSource();
+    const d = calcFrom(raw);
+
+    // simple change detection to avoid rebuilding DOM like crazy
+    const sig = JSON.stringify([raw.source, d.title, d.stats, d.entries.map(e=>[e.title,e.win,e.bet])]);
+    if(sig === lastPayloadSig){
+      document.getElementById('wTime').textContent=new Date().toLocaleTimeString();
+      return;
+    }
+    lastPayloadSig = sig;
 
     document.getElementById('wTitle').textContent=d.title.toUpperCase();
     document.getElementById('wTime').textContent=new Date().toLocaleTimeString();
+    document.getElementById('wSource').textContent='SRC: ' + (raw.source||'local');
 
     const s=d.stats;
     document.getElementById('s_start').textContent=money(s.start);
@@ -190,7 +261,6 @@
     document.getElementById('s_short').textContent=money(s.shortfall);
     document.getElementById('s_100x').textContent=s.x100;
 
-    // build seamless loop (duplicate block)
     const htmlOne = rowsHTML(d.entries);
     rowsEl.innerHTML = `<div class="inner" id="blk1">${htmlOne}</div><div class="inner" id="blk2">${htmlOne}</div>`;
 
@@ -212,7 +282,7 @@
     const hostH=rowsEl.parentElement.clientHeight;
 
     if(!paused && blockH>hostH && totalRows>=MIN_ROWS){
-      offset += 22*dt;  // SPEED
+      offset += SPEED*dt;
       if(offset >= blockH){ offset=0; }
       rowsEl.style.transform=`translateY(${-offset}px)`;
     }else{
@@ -224,8 +294,9 @@
   rowsEl.parentElement.addEventListener('mouseenter',()=>paused=true);
   rowsEl.parentElement.addEventListener('mouseleave',()=>paused=false);
 
+  // initial + polling
   render();
-  setInterval(render,1000);
+  setInterval(render, 1500); // check for updates periodically
   window.addEventListener('storage', e=>{
     if([K_BUILDER,K_G,K_R,K_S].includes(e.key)) render();
   });
