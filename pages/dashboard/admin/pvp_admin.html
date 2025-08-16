@@ -1,447 +1,622 @@
 <!DOCTYPE html>
 <html lang="en" data-admin="checking">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>PVP — Tournament Admin</title>
-<link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
-<style>
-:root{
-  --bg:#060b0d; --panel:#0b1417; --ink:#eaf7ff; --muted:#9fd0d6;
-  --line:rgba(0,255,255,.18); --teal:#00ffff; --gold:#ffb42d; --ok:#12d48a; --bad:#e25a6f;
-}
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
-h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
-h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
-.wrap{max-width:1400px;margin:0 auto;padding:0 16px 48px}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.card{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
-.pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cfffff}
-.btn{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:#0f1720;color:var(--ink);font-weight:800;cursor:pointer}
-.btn.ok{background:#103d30;border-color:#1fa37b}
-.btn.warn{background:#231b0f;border-color:#8c6926}
-.btn.bad{background:#2b1116;border-color:#7e2a3c}
-.btn[disabled]{opacity:.6;cursor:not-allowed}
-.input,textarea,select{background:#0c1519;border:1px solid var(--line);border-radius:10px;color:#eaf7ff;padding:8px}
-.hint{color:var(--muted);font-size:12px}
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta http-equiv="Cache-Control" content="no-store"/>
+  <title>PVP — Admin Tournament Builder</title>
+  <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
+  <style>
+    :root{
+      --bg:#060b0d; --panel:#0b1417; --ink:#eaf7ff; --muted:#9fd0d6;
+      --line:rgba(0,255,255,.18); --teal:#00ffff; --gold:#ffb42d;
+      --ok:#12d48a; --bad:#e25a6f; --warn:#ffca75;
+      --east:#2bb0ff; --west:#ffa94d;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+    html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
 
-/* Bracket */
-.brWrap{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;margin-top:12px}
-.side{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:10px;overflow:auto}
-.sideHead{display:flex;align-items:center;justify-content:space-between;margin:0 0 8px 0;color:#9fd0d6;font-size:13px}
-.scroller{display:flex;flex-direction:row;align-items:flex-start}
-.rcol{display:flex;flex-direction:column;gap:12px;min-width:220px;margin-right:12px}
-.rlbl{font-size:12px;color:#9fd0d6;margin:2px 0 0 2px}
-.match{background:#0c1519;border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-height:64px}
-.slot{display:flex;justify-content:space-between;gap:10px}
-.name{font-weight:900}
-.name.editable{cursor:text;border-bottom:1px dashed rgba(0,255,255,.25)}
-.game{font-size:12px;color:#9fd0d6}
-.vs{margin:4px 0 0 0;font-size:11px;opacity:.8}
-.scoreSm{font-weight:900;padding:2px 6px;border:1px solid var(--line);border-radius:8px;background:#0d1820;min-width:34px;text-align:center}
-.center{display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:flex-start;min-width:280px}
-.finalCard{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px;width:100%}
-.centerTitle{display:flex;align-items:center;justify-content:space-between;color:#9fd0d6;font-size:13px;margin:0 0 8px 0}
-.champ{display:flex;gap:10px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:12px;background:#0c161a;padding:12px}
-.champ .name{font-size:18px}
-.chip{border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:#081318;color:#cfffff;font-size:12px}
+    a.btn,button.btn{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:#0f1720;color:var(--ink);font-weight:800;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+    .btn.ok{background:#103d30;border-color:#1fa37b}
+    .btn.warn{background:#231b0f;border-color:#8c6926}
+    .btn.bad{background:#2b1116;border-color:#7e2a3c}
+    .btn[disabled]{opacity:.6;cursor:not-allowed}
 
-/* Current match */
-.cur{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px;margin-top:8px;align-items:center}
-.cur .title{font-weight:900}
-.cur .big{font-size:18px}
-.sep{font-weight:900;color:#9fe;text-align:center}
+    .wrap{max-width:1300px;margin:0 auto;padding:0 14px 40px}
+    h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
+    h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
 
-/* toast */
-.toast{position:fixed;right:16px;bottom:16px;background:#0b1f21;border:1px solid var(--line);border-radius:10px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:.2s all;pointer-events:none}
-.toast.on{opacity:1;transform:translateY(0)}
-</style>
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .panel{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
+    .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cfffff}
+    .hint{color:var(--muted);font-size:12px}
+    .badge{padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#081318;color:#bfe}
+    .right{margin-left:auto}
+
+    .tbl{width:100%;border-collapse:separate;border-spacing:0}
+    .tbl th,.tbl td{border-bottom:1px solid rgba(255,255,255,.06);padding:8px;text-align:left;font-size:13px}
+    .tbl th{color:var(--muted)}
+
+    /* bracket */
+    .bracket{
+      display:grid;gap:14px;margin-top:10px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+    .round{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px}
+    .round h3{margin:0 0 8px 0;font-size:14px;color:#cfe}
+    .match{border:1px solid var(--line);border-radius:10px;background:#0e1519;margin:10px 0;padding:8px}
+    .slot{display:flex;align-items:center;gap:8px;padding:6px;border-radius:8px}
+    .slot.east{background:rgba(43,176,255,.08);border:1px solid rgba(43,176,255,.18)}
+    .slot.west{background:rgba(255,169,77,.08);border:1px solid rgba(255,169,77,.18)}
+    .slot .team{font-weight:800}
+    .slot .game{font-size:12px;color:#cfe;opacity:.9}
+    .slot .edit{margin-left:auto;font-size:12px;opacity:.8;cursor:pointer}
+    .slot .edit:hover{opacity:1}
+    .vs{display:flex;justify-content:center;color:#9fe;font-weight:900;margin:6px 0}
+    .act{display:flex;gap:8px;justify-content:space-between;margin-top:6px}
+    .act .btn{flex:1 1 auto;justify-content:center}
+
+    .centerCard{border:1px dashed var(--line);background:#0a1215;border-radius:12px;padding:12px}
+    .log{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-size:12px;max-height:160px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px;background:#0b1216}
+
+    /* lock screen */
+    .lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff}
+    .lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75);box-shadow:0 0 18px rgba(0,255,255,.15)}
+    .lockcard h1{margin:0 0 10px;color:#cfe}
+    .lockcard a{color:#7ad7ff}
+  </style>
 </head>
 <body>
 <div class="wrap">
   <div class="row" style="justify-content:space-between;align-items:center;margin-top:8px">
-    <h1>PVP — Tournament Admin</h1>
+    <h1>PVP — Admin Tournament Builder</h1>
     <div class="row">
       <a class="btn" href="/index.html">← Back to Dashboard</a>
       <button id="adminLogout" class="btn">Log out</button>
     </div>
   </div>
 
-  <!-- Build / Seed -->
-  <div class="card">
-    <h2>Build / Seed Bracket</h2>
+  <!-- Controls -->
+  <div class="panel">
     <div class="row">
-      <label>Size
-        <select id="sizeSel" class="input">
-          <option value="16">16</option>
+      <h2 style="margin-right:10px">Auto-Seed & Build</h2>
+      <span id="entryCount" class="badge">Entries: —</span>
+      <span class="right"></span>
+      <label class="pill">Bracket Size
+        <select id="bracketSize" style="margin-left:8px;background:#0c1518;color:#eaf7ff;border:1px solid var(--line);border-radius:8px;padding:6px">
+          <option value="16" selected>16</option>
           <option value="32">32</option>
         </select>
       </label>
-      <label><input type="checkbox" id="useEntries"> Use PVP entries (approved → first)</label>
-      <label><input type="checkbox" id="useLists"> Use Super/Mega Hunt for games & fillers</label>
-      <label><input type="checkbox" id="autoGames" checked> Auto-assign games to first round</label>
-      <button id="autoSeed" class="btn">Auto-seed</button>
-      <button id="buildBtn" class="btn ok">Build / Reset</button>
-      <span id="seedCount" class="pill">Seeds: 0</span>
-    </div>
-    <div class="row" style="margin-top:8px">
-      <textarea id="manualSeeds" class="input" placeholder="Paste extra player names here (one per line)" rows="3" style="flex:1 1 520px"></textarea>
-      <textarea id="manualGames" class="input" placeholder="Optional: paste game titles here (one per line) to assign to first round" rows="3" style="flex:1 1 520px"></textarea>
+      <label class="pill"><input id="approvedOnly" type="checkbox" checked style="vertical-align:middle;margin-right:6px">Approved first (use pending if needed)</label>
+      <label class="pill"><input id="noDupGames" type="checkbox" checked style="vertical-align:middle;margin-right:6px">No duplicate games (global)</label>
+      <button id="refreshEntries" class="btn">Refresh Entries</button>
+      <button id="autoSeed" class="btn ok">Auto-seed & Build</button>
+      <button id="shuffleSeed" class="btn">Shuffle Seeds</button>
+      <button id="clearBracket" class="btn bad">Clear Bracket</button>
+      <button id="saveLive" class="btn warn">Save → Live</button>
     </div>
     <div class="hint" style="margin-top:6px">
-      Auto-seed pulls <b>approved</b> PVP entries from the server first, then fills remaining slots from your lists or manual seeds.
-      Super/Mega Hunt lists are read from localStorage (e.g. <code>bg:superhunt:list</code>, <code>bg:megahunt:list</code>, or <code>bg:builder:battleground.games</code>).
+      Auto-seed rule: use **player entries first** (EAST/WEST), dedupe players & games; then fill remaining slots from Super/Mega Hunt pools (no duplicates either).  
+      If two players requested the same game, the second will be **auto-swapped** to a free game from the pool (logged below).
     </div>
   </div>
 
-  <!-- Current Match controller -->
-  <div class="card">
-    <h2>Current Match</h2>
-    <div class="row">
-      <span id="cursorBadge" class="pill">—</span>
-      <button id="prevBtn" class="btn">Prev</button>
-      <button id="nextBtn" class="btn">Next</button>
-      <button id="resetBtn" class="btn warn">Reset Bracket (keep seeds)</button>
-      <span id="saveStamp" class="pill">—</span>
+  <!-- Entries -->
+  <div class="panel">
+    <div class="row" style="align-items:center">
+      <h2 style="margin-right:10px">Player Entries</h2>
+      <span id="entBadge" class="badge">—</span>
+      <span class="right"></span>
+      <button id="entReload" class="btn ok">Reload</button>
     </div>
-    <div id="cur" class="cur" aria-live="polite">
-      <div class="left">
-        <div class="title">Left</div>
-        <div id="curL" class="big">—</div>
-        <div class="row">
-          <label>Score <input id="curLS" class="input" type="number" step="1" style="width:100px"></label>
-        </div>
-      </div>
-      <div class="sep">VS</div>
-      <div class="right">
-        <div class="title">Right</div>
-        <div id="curR" class="big">—</div>
-        <div class="row">
-          <label>Score <input id="curRS" class="input" type="number" step="1" style="width:100px"></label>
-        </div>
-      </div>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <button id="lWin" class="btn ok">Left wins</button>
-      <button id="rWin" class="btn ok">Right wins</button>
+    <div style="max-height:280px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:8px">
+      <table class="tbl" id="entTbl" aria-label="PVP entries">
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>Username</th>
+            <th>Side</th>
+            <th>Game (Requested)</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody><tr><td colspan="5" class="hint">Loading…</td></tr></tbody>
+      </table>
     </div>
   </div>
 
-  <!-- Bracket viewer/editor -->
-  <div class="card">
-    <h2>Bracket</h2>
-    <div id="brWrap" class="brWrap"></div>
+  <!-- Bracket -->
+  <div class="panel">
+    <div class="row" style="align-items:center">
+      <h2 style="margin-right:10px">Tournament Bracket</h2>
+      <span id="brInfo" class="pill">—</span>
+      <span class="right"></span>
+      <span class="hint">Click a name or game to edit. Use “Left Wins” / “Right Wins” to advance winners.</span>
+    </div>
+
+    <div id="bracket" class="bracket"></div>
+
+    <div class="centerCard" style="margin-top:10px">
+      <div class="row"><strong>Build Log</strong><span class="right"></span><span id="logTime" class="hint">—</span></div>
+      <pre id="log" class="log">Ready.</pre>
+    </div>
   </div>
 </div>
-
-<div id="toast" class="toast">Saved.</div>
 
 <script>
 (function(){
   "use strict";
-  const API="";
-  const $=(s,r=document)=>r.querySelector(s);
-  const $$=(s,r=document)=>Array.from((r||document).querySelectorAll(s));
-  const toast=t=>{ const b=$("#toast"); b.textContent=t; b.classList.add("on"); setTimeout(()=>b.classList.remove("on"),1100); };
-
-  // ---- Admin gate ----
+  const API = "";
   const H=document.documentElement;
+  H.setAttribute("data-admin","checking");
+
+  // ----- utils
+  const $=(s,r=document)=>r.querySelector(s);
+  const $all=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const up=s=>(s||"").toString().trim().toUpperCase();
+  const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const log=(...a)=>{ const t=$("#log"); const ts=new Date().toLocaleTimeString(); t.textContent += "\\n["+ts+"] "+a.join(" "); t.scrollTop=t.scrollHeight; $("#logTime").textContent="Updated "+ts; };
+
+  // ----- state
+  let ENTRIES=[]; // from server
+  let BRACKET=null; // in-memory bracket
+  let SEED_E=[], SEED_W=[]; // current round seeding (left=E, right=W)
+  let USED_GAMES=new Set(); // case-insensitive uniqueness
+  const LS_BUILDER_KEY="pv:builder:pvp";
+
+  // ----- admin gate
   function lock(){
     H.removeAttribute("data-admin");
     const wrap=document.createElement("div");
-    wrap.style.cssText="min-height:100vh;display:flex;align-items:center;justify-content:center";
-    wrap.innerHTML='<div style="max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75)"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="/pages/dashboard/home/admin_login.html?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fpvp_admin.html">Admin Login</a> first.</div><div style="margin-top:14px"><a href="/index.html">Back to Dashboard</a></div></div>';
-    document.body.innerHTML=""; document.body.appendChild(wrap);
+    wrap.className="lockwrap";
+    wrap.innerHTML = '<div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="/pages/dashboard/home/admin_login.html?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fpvp_admin.html">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you already logged in, your session may have expired.</div><div style="margin-top:14px"><a href="/index.html">Back to Dashboard</a></div></div>';
+    document.body.innerHTML="";
+    document.body.appendChild(wrap);
   }
-  // gate check + fail-safe so you never get a black screen
-  let gateDone=false;
   fetch(API+"/api/admin/gate/check",{credentials:"include",cache:"no-store"})
-    .then(r=>r.ok?r.json():null).then(j=>{ gateDone=true; if(j&&j.admin){ H.removeAttribute("data-admin"); boot(); } else lock(); })
-    .catch(()=>{ gateDone=true; lock(); });
-  setTimeout(()=>{ if(!gateDone) lock(); }, 2000);
+    .then(r=>r.ok?r.json():null)
+    .then(j=>{ if(j&&j.admin){ H.removeAttribute("data-admin"); boot(); } else lock(); })
+    .catch(lock);
 
-  // ---- State ----
-  let builder=null;  // { lastUpdated, bracket:{ size, east[], west[], finals[], cursor, champion, meta } }
-  let seedsEast=[], seedsWest=[], gamesList=[];
-
-  // ---- Utilities ----
-  function esc(s){
-    s = String(s==null?'':s);
-    return s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  // ----- boot
+  function boot(){
+    wireUI();
+    loadEntries();
+    loadSavedBracket();
   }
-  function up(s){ return (s||"").toString().trim().toUpperCase(); }
-  function readJSON(key){
-    try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; }catch{ return null; }
-  }
-  function lines(t){ return String(t||"").split(/\r?\n/).map(s=>s.trim()).filter(Boolean); }
 
-  // ---- Seeding helpers ----
-  async function fetchApprovedEntries(){
+  // == UI wiring
+  function wireUI(){
+    $("#adminLogout").addEventListener("click", async ()=>{ try{ await fetch("/api/admin/gate/logout",{method:"POST",credentials:"include"});}catch{} location.href="/index.html"; });
+    $("#refreshEntries").addEventListener("click", loadEntries);
+    $("#entReload").addEventListener("click", loadEntries);
+    $("#autoSeed").addEventListener("click", autoSeedAndBuild);
+    $("#shuffleSeed").addEventListener("click", ()=>{ shuffle(SEED_E); shuffle(SEED_W); buildBracketFromSeeds(); saveLiveSilent(); });
+    $("#clearBracket").addEventListener("click", ()=>{ BRACKET=null; SEED_E=[]; SEED_W=[]; USED_GAMES.clear(); paintBracket(); saveLiveSilent(); log("Cleared bracket."); });
+    $("#saveLive").addEventListener("click", saveLiveExplicit);
+  }
+
+  // == entries
+  async function loadEntries(){
+    const tbody=$("#entTbl tbody");
+    tbody.innerHTML='<tr><td colspan="5" class="hint">Loading…</td></tr>';
     try{
       const r = await fetch(API+"/api/pvp/entries",{credentials:"include",cache:"no-store"});
-      if(!r.ok) return {east:[],west:[]};
+      if(!r.ok) throw 0;
       const j = await r.json();
-      const arr = (j.entries||[]).filter(e=> (e.status||"pending").toLowerCase()==="approved");
-      const east = arr.filter(e=> (e.side||"EAST").toUpperCase()==="EAST").map(e=>({name:up(e.username||e.name||""), img:""}));
-      const west = arr.filter(e=> (e.side||"WEST").toUpperCase()==="WEST").map(e=>({name:up(e.username||e.name||""), img:""}));
-      return { east, west };
-    }catch{ return { east:[], west:[] }; }
-  }
-  function gatherHuntGames(){
-    const out=[];
-    const bgBuilder = readJSON("bg:builder:battleground");
-    if(bgBuilder && Array.isArray(bgBuilder.games)){
-      for(const g of bgBuilder.games){ const t=g.title||g.name; if(t) out.push({title:String(t)}); }
+      ENTRIES = Array.isArray(j.entries)? j.entries : [];
+      $("#entryCount").textContent = "Entries: "+ENTRIES.length;
+      $("#entBadge").textContent = ENTRIES.length;
+
+      if(!ENTRIES.length){
+        tbody.innerHTML='<tr><td colspan="5" class="hint">No entries yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = ENTRIES.map(e=>{
+        const when = e.ts ? new Date(e.ts).toLocaleString() : "—";
+        const user = up(e.username||"");
+        const side = up(e.side||"EAST");
+        const game = e.game||"—";
+        const status = (e.status||"pending").toLowerCase();
+        return `<tr>
+          <td>${esc(when)}</td><td><b>${esc(user)}</b></td><td>${esc(side)}</td>
+          <td>${esc(game)}</td><td><span class="badge">${esc(status)}</span></td>
+        </tr>`;
+      }).join("");
+      log("Loaded", ENTRIES.length, "entries.");
+    }catch{
+      tbody.innerHTML='<tr><td colspan="5" class="hint">Failed to load entries.</td></tr>';
+      $("#entryCount").textContent = "Entries: —";
+      $("#entBadge").textContent = "—";
+      log("Failed to load entries.");
     }
-    const sh = readJSON("bg:superhunt:list"); if(Array.isArray(sh)) for(const t of sh){ if(t) out.push({title:String(t)}); }
-    const mh = readJSON("bg:megahunt:list"); if(Array.isArray(mh)) for(const t of mh){ if(t) out.push({title:String(t)}); }
+  }
+
+  // == game pools (Super/Mega Hunt) from localStorage or fallback
+  function loadGamePool(){
+    // Try a bunch of likely keys you used earlier
+    const tryKeys=[
+      "sh:games:super","sh:games:mega",
+      "bg:games:super","bg:games:mega",
+      "superHunt","megaHunt","superHuntList","megaHuntList"
+    ];
+    let pool=[];
+    for(const k of tryKeys){
+      const val = lsGet(k);
+      if(Array.isArray(val)) pool=pool.concat(val);
+    }
+    // Normalise into {title, imageUrl, provider}
+    pool = pool.map(normGame).filter(g=>g && g.title);
+    // Deduplicate by title (case-insensitive)
+    const seen=new Set(); const out=[];
+    for(const g of pool){
+      const key = up(g.title);
+      if(!seen.has(key)){ seen.add(key); out.push(g); }
+    }
     return out;
   }
+  function normGame(x){
+    if(!x) return null;
+    const t = x.title || x.name || x.game || x.id || "";
+    const img = x.imageUrl || x.image || x.img || "";
+    const prov = x.provider || x.vendor || "";
+    return { title: String(t), imageUrl: String(img), provider: String(prov) };
+  }
+  function lsGet(k){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch{return null;} }
 
-  async function autoSeed(){
-    seedsEast=[]; seedsWest=[]; gamesList=[];
-    const size = +$("#sizeSel").value;
-    const capacity = size/2; // per side
+  // == seeding
+  function sanitizeEntries(raw, opts){
+    const approvedFirst = !!opts.approvedFirst;
+    const includePending = !!opts.includePending;
 
-    if($("#useEntries").checked){
-      const {east,west} = await fetchApprovedEntries();
-      seedsEast = east.slice(0, capacity);
-      seedsWest = west.slice(0, capacity);
+    // 1) group by side & status
+    let east=[], west=[];
+    // ensure newest (by ts) wins if same username submitted multiple times
+    const latestByUser = new Map();
+    for(const e of raw){
+      const u = up(e.username||"");
+      if(!u) continue;
+      const prev=latestByUser.get(u);
+      if(!prev || new Date(e.ts||0) > new Date(prev.ts||0)) latestByUser.set(u, e);
     }
+    const uniq = Array.from(latestByUser.values());
 
-    const manual = lines($("#manualSeeds").value).map(n=>({name:up(n)}));
-    // backfill remaining with manual names alternating sides
-    const fillRemaining = ()=> {
-      const needE = capacity - seedsEast.length;
-      const needW = capacity - seedsWest.length;
-      let idx=0;
-      while((seedsEast.length<capacity || seedsWest.length<capacity) && idx<manual.length){
-        if(seedsEast.length<capacity){ seedsEast.push(manual[idx]); idx++; }
-        if(seedsWest.length<capacity && idx<manual.length){ seedsWest.push(manual[idx]); idx++; }
+    // sort by status preference
+    const rank = s => (s==="approved"?0:(s==="pending"?1:2));
+    uniq.sort((a,b)=> rank((a.status||"pending").toLowerCase()) - rank((b.status||"pending").toLowerCase()) );
+
+    for(const e of uniq){
+      const status = (e.status||"pending").toLowerCase();
+      if(status!=="approved" && !includePending && approvedFirst) continue;
+      const side = (e.side||"EAST").toUpperCase()==="WEST"?"WEST":"EAST";
+      const game = (e.game||"").trim();
+      const obj = {
+        name: up(e.username||""),
+        side,
+        game,
+        imageUrl: "", // can’t know from entry; game pools supply images
+        provider: "",
+        from:"player"
+      };
+      if(side==="EAST") east.push(obj);
+      else west.push(obj);
+    }
+    return { east, west };
+  }
+
+  function uniqueFill(east, west, size, noDupGames){
+    // no duplicate players already enforced by sanitize
+    USED_GAMES.clear();
+
+    // 0) ensure player games uniqueness across both sides
+    if(noDupGames){
+      const pool = loadGamePool();
+      const nextFree = makeFreeGamePicker(pool);
+      const seenGame = new Set();
+      function ensureUniqueGame(seed){
+        const gKey = up(seed.game||"");
+        if(!gKey){ // empty -> assign one
+          const pick = nextFree();
+          if(pick) Object.assign(seed, { game: pick.title, imageUrl: pick.imageUrl, provider: pick.provider, from: seed.from||"seed" });
+          return;
+        }
+        if(seenGame.has(gKey)){
+          // swap to a free one
+          const pick = nextFree(gKey);
+          if(pick) { log("Auto-swap game for", seed.name, "→", pick.title); Object.assign(seed, { game: pick.title, imageUrl: pick.imageUrl, provider: pick.provider, autoSwap:true }); }
+        }else{
+          // lock
+          seenGame.add(gKey);
+          if(seed.game) USED_GAMES.add(up(seed.game));
+        }
       }
-    };
-    fillRemaining();
-
-    if($("#useLists").checked || $("#autoGames").checked){
-      const fromLocal = gatherHuntGames();
-      const manualGames = lines($("#manualGames").value).map(t=>({title:t}));
-      gamesList = (manualGames.length? manualGames : fromLocal);
+      east.forEach(ensureUniqueGame);
+      west.forEach(ensureUniqueGame);
+    }else{
+      // still track used for fillers
+      [...east, ...west].forEach(s=>{ if(s.game) USED_GAMES.add(up(s.game)); });
     }
 
-    // if still not enough seeds, generate fillers from games
-    const filler = i => ({ name: up((gamesList[i % Math.max(1,gamesList.length)]?.title)||`BOT_${i+1}`) });
-    while(seedsEast.length < capacity){ seedsEast.push(filler(seedsEast.length)); }
-    while(seedsWest.length < capacity){ seedsWest.push(filler(seedsWest.length)); }
+    // 1) cap to size/2 per side (we’ll shuffle first)
+    shuffle(east); shuffle(west);
+    const needPerSide = size/2;
+    east = east.slice(0, needPerSide);
+    west = west.slice(0, needPerSide);
 
-    $("#seedCount").textContent = `Seeds: ${seedsEast.length + seedsWest.length}`;
-    toast("Seed list prepared");
-  }
-
-  async function buildOrReset(){
-    const size = +$("#sizeSel").value;
-    const body = {
-      size,
-      eastSeeds: seedsEast,
-      westSeeds: seedsWest,
-      games: $("#autoGames").checked ? gamesList : []
-    };
-    const r = await fetch(API+"/api/pvp/bracket",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-    if(!r.ok){ toast("Build failed"); return; }
-    const j = await r.json();
-    builder = j.builder; paintAll();
-    toast("Bracket built");
-  }
-
-  // ---- Bracket fetch/save ----
-  async function loadBracket(){
-    const r = await fetch(API+"/api/pvp/bracket",{cache:"no-store"});
-    if(!r.ok){ builder=null; return; }
-    const j = await r.json();
-    builder = j.builder || null;
-  }
-
-  function paintAll(){
-    $("#saveStamp").textContent = builder && builder.lastUpdated ? ("Saved @ "+new Date(builder.lastUpdated).toLocaleTimeString()) : "—";
-    paintCurrent();
-    paintBracket();
-  }
-
-  function phaseLabel(p){ return p==="east"?"EAST":p==="west"?"WEST":"FINALS"; }
-
-  function paintCurrent(){
-    const cur = (builder && builder.bracket && builder.bracket.cursor) || null;
-    const set = (t, l)=>{ t.textContent=l; };
-    if(!builder || !builder.bracket || !cur){ $("#cursorBadge").textContent="—"; $("#curL").textContent="—"; $("#curR").textContent="—"; return; }
-    $("#cursorBadge").textContent = `${phaseLabel(cur.phase)} • R${cur.roundIndex+1} • M${cur.matchIndex+1}`;
-    const m = getMatch(cur.phase, cur.roundIndex, cur.matchIndex);
-    set($("#curL"), m?.left?.name || "—");
-    set($("#curR"), m?.right?.name || "—");
-    $("#curLS").value = m?.left?.score ?? "";
-    $("#curRS").value = m?.right?.score ?? "";
-  }
-
-  function getMatch(phase, ri, mi){
-    const br = builder && builder.bracket; if(!br) return null;
-    const arr = phase==="east"?br.east: phase==="west"?br.west: br.finals;
-    return (arr && arr[ri|0] && arr[ri|0][mi|0]) ? arr[ri|0][mi|0] : null;
-  }
-
-  async function progress(w){
-    const cur = builder && builder.bracket && builder.bracket.cursor; if(!cur) return;
-    const body = {
-      phase: cur.phase, roundIndex: cur.roundIndex, matchIndex: cur.matchIndex,
-      winner: w,
-      leftScore: ($("#curLS").value===""? null : +$("#curLS").value),
-      rightScore: ($("#curRS").value===""? null : +$("#curRS").value)
-    };
-    const r = await fetch(API+"/api/pvp/bracket/progress",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-    if(!r.ok){ toast("Progress failed"); return; }
-    const j = await r.json();
-    builder = j.builder || builder;
-    paintAll();
-    toast("Advanced");
-  }
-
-  function roundLabelByCount(total, idx){
-    if (total<=1) return "SF";
-    if (total===2) return idx===0 ? "QF" : "SF";
-    if (total>=3){
-      if (idx===total-1) return "SF";
-      if (idx===total-2) return "QF";
-      const size = 1<<((total-idx));
-      if (size>=64) return "R64";
-      if (size>=32) return "R32";
-      if (size>=16) return "R16";
-      if (size>=8)  return "R8";
-      return "R"+size;
+    // 2) fill from game pool (no duplicates) with SEED-Exx / SEED-Wxx
+    const pool = loadGamePool();
+    const nextFree = makeFreeGamePicker(pool);
+    function fillSide(sideArr, sideName){
+      while(sideArr.length < needPerSide){
+        const pick = nextFree();
+        if(!pick){ // fallback placeholder
+          const n = sideArr.length+1;
+          const title = "SEED-"+sideName[0]+n;
+          if(!USED_GAMES.has(up(title))) {
+            sideArr.push({ name: title, side: sideName, game:title, imageUrl:"", provider:"", from:"seed" });
+            USED_GAMES.add(up(title));
+          }else{
+            break;
+          }
+          continue;
+        }
+        const seedName = "SEED-"+sideName[0]+String(sideArr.length+1).padStart(2,"0");
+        sideArr.push({ name: seedName, side: sideName, game: pick.title, imageUrl: pick.imageUrl, provider: pick.provider, from:"seed" });
+        USED_GAMES.add(up(pick.title));
+      }
     }
-    return "Round "+(idx+1);
+    fillSide(east,"EAST");
+    fillSide(west,"WEST");
+
+    // 3) final duplicate guard (paranoid)
+    east = dedupeGamesStable(east);
+    west = dedupeGamesStable(west);
+
+    return { east, west };
   }
 
-  function matchEl(m, phase, ri, mi){
-    const d=document.createElement("div"); d.className="match";
-    const lName = esc(m?.left?.name||"");
-    const rName = esc(m?.right?.name||"");
-    const game  = esc(m?.game||"");
-    d.innerHTML =
-      `<div class="slot"><div class="name editable" data-side="left">${lName||"—"}</div><div>${m.left?.score!=null?`<span class="scoreSm">${m.left.score}</span>`:""}</div></div>`+
-      `<div class="vs">vs ${game?`• <span class="game">${game}</span>`:""}</div>`+
-      `<div class="slot"><div class="name editable" data-side="right">${rName||"—"}</div><div>${m.right?.score!=null?`<span class="scoreSm">${m.right.score}</span>`:""}</div></div>`;
-    d.querySelectorAll(".name.editable").forEach(el=>{
-      el.addEventListener("click", ()=>inlineEdit(el, phase, ri, mi));
-    });
-    return d;
-  }
-
-  function inlineEdit(el, phase, ri, mi){
-    const side = el.getAttribute("data-side");
-    const old = el.textContent.trim()==="—"?"":el.textContent.trim();
-    const inp = document.createElement("input");
-    inp.className="input"; inp.value=old; inp.style.width="100%";
-    el.replaceWith(inp); inp.focus(); inp.selectionStart=inp.value.length;
-    const commit = async ()=>{
-      const name = inp.value.trim();
-      const r = await fetch(API+"/api/pvp/bracket/slot",{method:"PATCH",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({phase, roundIndex:ri, matchIndex:mi, side, name})});
-      if(!r.ok){ toast("Edit failed"); return paintAll(); }
-      await loadBracket(); paintAll();
+  function makeFreeGamePicker(pool){
+    // iterate pool in random order, handing out titles not in USED_GAMES
+    const bag = pool.slice();
+    shuffle(bag);
+    let i=0;
+    return function(nextNotThisTitleUpper){
+      while(i<bag.length){
+        const g = bag[i++], key = up(g.title);
+        if(key && !USED_GAMES.has(key) && key !== nextNotThisTitleUpper){
+          USED_GAMES.add(key);
+          return g;
+        }
+      }
+      return null;
     };
-    inp.addEventListener("blur", commit);
-    inp.addEventListener("keydown", e=>{ if(e.key==="Enter") commit(); if(e.key==="Escape") paintAll(); });
+  }
+  function dedupeGamesStable(list){
+    const seen=new Set(); const out=[];
+    for(const s of list){
+      const key=up(s.game||"");
+      if(!key || !seen.has(key)){ out.push(s); if(key) seen.add(key); }
+    }
+    return out;
+  }
+  function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=(Math.random()* (i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } }
+
+  // == build bracket
+  async function autoSeedAndBuild(){
+    const size = Number($("#bracketSize").value||16);
+    const approvedFirst = $("#approvedOnly").checked;
+    const noDupGames = $("#noDupGames").checked;
+
+    if(size!==16 && size!==32){ alert("Only 16 or 32 supported."); return; }
+
+    const { east, west } = sanitizeEntries(ENTRIES, { approvedFirst, includePending:true });
+    const seeded = uniqueFill(east, west, size, noDupGames);
+    SEED_E = seeded.east;
+    SEED_W = seeded.west;
+
+    buildBracketFromSeeds();
+    await saveLiveSilent();
+    log("Auto-seeded bracket:", size, "slots; E=", SEED_E.length, "W=", SEED_W.length);
   }
 
-  function sideCol(title, list, phase){
-    const col=document.createElement("div"); col.className="side";
-    const head=document.createElement("div"); head.className="sideHead";
-    head.innerHTML = `<div>${esc(title)}</div><div class="chip">${list.length} Rounds</div>`;
-    col.appendChild(head);
+  function buildBracketFromSeeds(){
+    const size = Math.min(SEED_E.length, SEED_W.length) * 2;
+    if(size!==16 && size!==32){ $("#brInfo").textContent="—"; $("#bracket").innerHTML = '<div class="pill">Need at least 8 vs 8 (or 16 vs 16) seeds.</div>'; return; }
 
-    const sc=document.createElement("div"); sc.className="scroller";
-    const total=list.length;
-    list.forEach((round, idx)=>{
-      const rc=document.createElement("div"); rc.className="rcol";
-      const lbl=document.createElement("div"); lbl.className="rlbl"; lbl.textContent = roundLabelByCount(total, idx);
-      rc.appendChild(lbl);
-      round.forEach((m,mi)=> rc.appendChild(matchEl(m, phase, idx, mi)));
-      sc.appendChild(rc);
-    });
-    col.appendChild(sc);
-    return col;
-  }
-
-  function paintBracket(){
-    const wrap=$("#brWrap"); wrap.innerHTML="";
-    const b = builder && builder.bracket; if(!b){ wrap.innerHTML='<div class="hint">No bracket yet. Build it above.</div>'; return; }
-    wrap.appendChild(sideCol("EAST", b.east, "east"));
-
-    const center=document.createElement("div"); center.className="center";
-    if (Array.isArray(b.finals)){
-      b.finals.forEach((round,idx)=>{
-        const f=document.createElement("div"); f.className="finalCard";
-        const lbl = (idx===b.finals.length-1 && round.length===1) ? "GRAND FINAL" : ("FINALS R"+(idx+1));
-        f.innerHTML = `<div class="centerTitle"><div>${esc(lbl)}</div><div class="chip">${esc((b.meta&&b.meta.bestOf)?("Bo"+b.meta.bestOf):"")}</div></div>`;
-        round.forEach((m,mi)=> f.appendChild(matchEl(m,"finals",idx,mi)));
-        center.appendChild(f);
+    // Round 0 = pairings E[i] vs W[i]
+    const round0 = [];
+    for(let i=0;i<size/2;i++){
+      round0.push({
+        id: "R0M"+(i+1),
+        left:  cloneSeed(SEED_E[i]),
+        right: cloneSeed(SEED_W[i]),
+        winner: null
       });
     }
-    if (b.champion && b.champion.name){
-      const c = document.createElement("div"); c.className="finalCard";
-      c.innerHTML = '<div class="centerTitle"><div>Champion</div><div class="chip">E vs W</div></div>';
-      const box = document.createElement("div"); box.className="champ";
-      box.innerHTML = `<div class="name">${esc(b.champion.name)}</div>`;
-      c.appendChild(box);
-      center.appendChild(c);
-    }
-    wrap.appendChild(center);
 
-    wrap.appendChild(sideCol("WEST", b.west, "west"));
-  }
-
-  function findAllPending(){
-    const b = builder && builder.bracket; if(!b) return [];
-    const out=[];
-    const pushPhase=(ph, arr)=>{
-      for(let r=0;r<arr.length;r++) for(let m=0;m<arr[r].length;m++){
-        if((arr[r][m].status||"pending")!=="done") out.push({phase:ph,roundIndex:r,matchIndex:m});
+    // subsequent rounds (empty slots)
+    const rounds=[round0];
+    let m = round0.length;
+    while(m>1){
+      const r=[];
+      for(let i=0;i<m/2;i++){
+        r.push({ id: "R"+rounds.length+"M"+(i+1), left:null, right:null, winner:null });
       }
-    };
-    pushPhase("east", b.east); pushPhase("west", b.west); pushPhase("finals", b.finals||[]);
-    return out;
-  }
-  async function moveCursor(offset){
-    const b = builder && builder.bracket; if(!b) return;
-    const cur = b.cursor || {phase:"east", roundIndex:0, matchIndex:0};
-    const pend = findAllPending();
-    if(!pend.length){ toast("No pending matches"); return; }
-    let idx = pend.findIndex(p=>p.phase===cur.phase && p.roundIndex===cur.roundIndex && p.matchIndex===cur.matchIndex);
-    if(idx===-1) idx = (offset>0? -1 : 0);
-    const next = pend[(idx + pend.length + offset)%pend.length];
-    b.cursor = next; paintAll();
+      rounds.push(r);
+      m=r.length;
+    }
+
+    BRACKET = { size, lastUpdated: Date.now(), rounds };
+    paintBracket();
+    $("#brInfo").textContent = "Size "+size+" • Rounds "+rounds.length;
   }
 
-  // ---- Wire buttons ----
-  function boot(){
-    $("#autoSeed").addEventListener("click", autoSeed);
-    $("#buildBtn").addEventListener("click", buildOrReset);
-    $("#lWin").addEventListener("click", ()=>progress("L"));
-    $("#rWin").addEventListener("click", ()=>progress("R"));
-    $("#prevBtn").addEventListener("click", ()=>moveCursor(-1));
-    $("#nextBtn").addEventListener("click", ()=>moveCursor(+1));
-    $("#resetBtn").addEventListener("click", async ()=>{
-      if(!confirm("Reset all progress but keep the seeded players?")) return;
-      const r = await fetch(API+"/api/pvp/bracket/reset",{method:"POST",credentials:"include"});
-      if(!r.ok){ toast("Reset failed"); return; }
-      await loadBracket(); paintAll(); toast("Bracket reset");
+  function cloneSeed(s){ return s? { name:s.name, side:s.side, game:s.game, imageUrl:s.imageUrl||"", provider:s.provider||"", from:s.from||"" } : null; }
+
+  function paintBracket(){
+    const host=$("#bracket");
+    host.innerHTML="";
+    if(!BRACKET){ host.innerHTML='<div class="pill">No bracket yet.</div>'; return; }
+
+    BRACKET.rounds.forEach((arr,idx)=>{
+      const col=document.createElement("div");
+      col.className="round";
+      const label = idx===0 ? "Round of "+BRACKET.size
+                  : idx===BRACKET.rounds.length-1 ? "Grand Final"
+                  : idx===BRACKET.rounds.length-2 ? "Semi Finals"
+                  : "Quarter Finals".replace("Quarter", idx===1 && BRACKET.size===16 ? "Quarter" : idx===1 && BRACKET.size===32 ? "Round of 16" : "Round");
+      col.innerHTML='<h3>'+esc(label)+'</h3>';
+      if(!arr.length){ col.innerHTML+='<div class="pill">—</div>'; host.appendChild(col); return; }
+
+      arr.forEach((m,i)=>{
+        const box=document.createElement("div");
+        box.className="match";
+        box.innerHTML = slotHTML(m.left, "east") + '<div class="vs">VS</div>' + slotHTML(m.right,"west") + actionsHTML(m, idx, i);
+        // wire edit + win buttons
+        wireMatch(box, idx, i);
+        col.appendChild(box);
+      });
+
+      host.appendChild(col);
+    });
+  }
+
+  function slotHTML(seed, side){
+    if(!seed) return '<div class="slot '+side+'"><div class="team">—</div><div class="game">—</div></div>';
+    const nm = esc(seed.name||"—");
+    const gm = esc(seed.game||"—");
+    const sd = (seed.side||side).toUpperCase()==="WEST"?"west":"east";
+    const mark = seed.autoSwap? ' <span class="badge" title="Game auto-swapped to remove duplicates">auto</span>' : '';
+    return `<div class="slot ${sd}">
+      <div class="team" data-edit="name">${nm}</div>
+      <div class="game" data-edit="game">${gm}${mark}</div>
+      <div class="edit" title="Edit">✎</div>
+    </div>`;
+  }
+  function actionsHTML(m, rIdx, mIdx){
+    const lw = '<button class="btn ok" data-win="left">Left Wins</button>';
+    const rw = '<button class="btn ok" data-win="right">Right Wins</button>';
+    const clr = '<button class="btn" data-clear="winner">Clear</button>';
+    return `<div class="act">${lw}${rw}${clr}</div>`;
+  }
+
+  function wireMatch(box, rIdx, mIdx){
+    // edit handlers
+    box.querySelectorAll(".slot .edit").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const slot = btn.closest(".slot");
+        const isLeft = slot.previousElementSibling==null ? true : slot.previousElementSibling.classList.contains("vs") ? true : slot.parentElement.querySelectorAll(".slot")[0]===slot;
+        const path = isLeft ? ["left"] : ["right"];
+        const seed = getSeed(rIdx, mIdx, path[0]);
+        if(!seed) return;
+        const newName = prompt("Edit name", seed.name||"");
+        if(newName==null) return;
+        const newGame = prompt("Edit game", seed.game||"");
+        if(newGame==null) return;
+        seed.name = up(newName);
+        seed.game = up(newGame);
+        seed.autoSwap = false;
+        BRACKET.lastUpdated = Date.now();
+        paintBracket(); saveLiveSilent();
+      });
     });
 
-    $("#adminLogout").addEventListener("click", async ()=>{
-      try{ await fetch("/api/admin/gate/logout",{method:"POST",credentials:"include"}); }catch{}
-      location.href="/index.html";
+    // win buttons
+    box.querySelectorAll("[data-win]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const side = btn.getAttribute("data-win")==="left" ? "left" : "right";
+        setWinner(rIdx, mIdx, side);
+      });
     });
-
-    loadBracket().then(paintAll);
+    box.querySelectorAll("[data-clear='winner']").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        clearWinner(rIdx, mIdx);
+      });
+    });
   }
+
+  function getSeed(rIdx, mIdx, side){
+    const m = BRACKET && BRACKET.rounds && BRACKET.rounds[rIdx] && BRACKET.rounds[rIdx][mIdx];
+    if(!m) return null;
+    return side==="left" ? m.left : m.right;
+  }
+
+  function setWinner(rIdx, mIdx, side){
+    const m = BRACKET.rounds[rIdx][mIdx];
+    const winner = side==="left" ? m.left : m.right;
+    if(!winner){ alert("Empty slot."); return; }
+    m.winner = winner;
+
+    // place into next round
+    if(rIdx < BRACKET.rounds.length-1){
+      const nextIdx = Math.floor(mIdx/2);
+      const nextSide = (mIdx % 2 === 0) ? "left" : "right";
+      BRACKET.rounds[rIdx+1][nextIdx][nextSide] = cloneSeed(winner);
+      BRACKET.rounds[rIdx+1][nextIdx].winner = null; // clear if any
+    }
+    BRACKET.lastUpdated = Date.now();
+    paintBracket(); saveLiveSilent();
+  }
+
+  function clearWinner(rIdx, mIdx){
+    const m = BRACKET.rounds[rIdx][mIdx];
+    m.winner = null;
+    if(rIdx < BRACKET.rounds.length-1){
+      const nextIdx = Math.floor(mIdx/2);
+      const nextSide = (mIdx % 2 === 0) ? "left" : "right";
+      BRACKET.rounds[rIdx+1][nextIdx][nextSide] = null;
+      BRACKET.rounds[rIdx+1][nextIdx].winner = null;
+    }
+    BRACKET.lastUpdated = Date.now();
+    paintBracket(); saveLiveSilent();
+  }
+
+  // == save/load
+  function saveLiveToLocal(){
+    const builder = toBuilderForLive(BRACKET);
+    localStorage.setItem(LS_BUILDER_KEY, JSON.stringify(builder));
+  }
+  function toBuilderForLive(B){
+    if(!B) return { games:[], matches:[], lastUpdated: Date.now() };
+    // For the live Unified page we’ll publish the **current round** as matches list.
+    const r0 = B.rounds[0] || [];
+    const matches = r0.map(m=>({
+      leftTitle: m.left?.name || "—",
+      rightTitle: m.right?.name || "—",
+      leftImg: m.left?.imageUrl || "",
+      rightImg: m.right?.imageUrl || "",
+      leftScore: 0, rightScore: 0,
+      leftId: m.left?.game || "", rightId: m.right?.game || "",
+      leftProvider: m.left?.provider || "", rightProvider: m.right?.provider || ""
+    }));
+    // Optionally include entire bracket for a bracket-live page
+    return { matches, bracket: B, lastUpdated: B.lastUpdated||Date.now() };
+  }
+
+  async function saveLiveSilent(){
+    saveLiveToLocal();
+    try{
+      await fetch("/api/pvp/bracket",{ method:"POST", headers:{"Content-Type":"application/json"}, credentials:"include", body: JSON.stringify({ builder: toBuilderForLive(BRACKET) }) });
+      log("Saved to live (server).");
+    }catch{
+      log("Saved to local only (server endpoint not present).");
+    }
+  }
+  async function saveLiveExplicit(){
+    await saveLiveSilent();
+    alert("Saved.");
+  }
+  function loadSavedBracket(){
+    const raw = lsGet(LS_BUILDER_KEY);
+    if(raw && raw.bracket){
+      BRACKET = raw.bracket;
+      paintBracket();
+      $("#brInfo").textContent = "Size "+BRACKET.size+" • Rounds "+BRACKET.rounds.length+" (loaded)";
+    }
+  }
+
 })();
 </script>
 </body>
