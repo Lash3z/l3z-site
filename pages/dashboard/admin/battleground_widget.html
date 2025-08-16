@@ -14,7 +14,8 @@
 
   html,body{
     margin:0;height:100%;
-    background:#000 url("/assets/media/BG_page.png") center/cover fixed no-repeat;
+    /* safer path — matches your site assets */
+    background:#000 url("/assets/BG_page.png") center/cover fixed no-repeat;
     color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif;
     user-select:none;
   }
@@ -68,6 +69,7 @@
   }
 
   .meta{margin-top:6px; text-align:center; font-size:12px; color:var(--muted)}
+  .pill{display:inline-block; margin-left:8px; padding:2px 8px; border-radius:999px; border:1px solid var(--line); background:#0b1f21; color:#cfffff; font-weight:800}
 </style>
 </head>
 <body>
@@ -75,21 +77,26 @@
     <div class="stage">
       <div id="card" class="card"><!-- runtime renders --></div>
     </div>
-    <div id="meta" class="meta">0 / 0</div>
+    <div class="meta">
+      <span id="meta">0 / 0</span>
+      <span id="srcPill" class="pill">SRC: —</span>
+    </div>
   </div>
 
 <script>
 (function(){
   "use strict";
   const BKEY='bg:builder:battleground', GKEY='bg:games', MKEY='bg:matches', IDXK='bg:widget:mx_idx';
+
   const $=s=>document.querySelector(s);
-  const cardEl=$('#card'), metaEl=$('#meta');
+  const cardEl=$('#card'), metaEl=$('#meta'), srcEl=$('#srcPill');
 
   // ===== Query options =====
   const params=new URLSearchParams(location.search);
   const startIndex = parseInt(params.get('index') ?? params.get('i') ?? '', 10);
   const autoNext   = (params.get('autonext') ?? '1') !== '0';
   const bgOverride = params.get('bg');
+  const forcedSrc  = params.get('src');     // optional: ?src=/api/battleground/live
   if (bgOverride) {
     document.documentElement.style.backgroundImage = `url("${encodeURI(bgOverride)}")`;
     document.documentElement.style.backgroundPosition = 'center';
@@ -99,12 +106,13 @@
 
   // ===== Image resolver (title → /assets/slot_images/xxxx.png) =====
   const IMG_BASES=['assets/slot_images/','../assets/slot_images/','/assets/slot_images/'];
-  const IMG_EXT=['png','webp','jpg','jpeg']; // prefer PNG
+  const IMG_EXT=['png','webp','jpg','jpeg'];
   let IMG_INDEX=null;
-  const IMG_CACHE=new Map(); // key -> url or ''
+  const IMG_CACHE=new Map();
 
-  // normalize any old "slot images/" paths to "slot_images/"
-  const fixPath = (u)=> typeof u==='string' ? u.replace(/slot images\//g,'slot_images/') : u;
+  const fixPath = (u)=> typeof u==='string'
+    ? u.replace(/slot images\//gi,'slot_images/').replace(/^\/assets\/media\//i,'/assets/')
+    : u;
 
   function slug(s){ return String(s||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
   function imgExists(url){
@@ -157,39 +165,56 @@
     IMG_CACHE.set(key,''); return '';
   }
 
-  // ===== State =====
-  let data=readBuilder(), idx=readIdx(), lastHash='';
+  // ===== Data loading (server → static → localStorage)
+  async function fetchFirst(urls){
+    for(const u of urls){
+      try{
+        const r = await fetch(u, { cache:'no-store' });
+        if(r.ok){
+          const j = await r.json();
+          if(j) return {source:u, builder: normalizeBuilder(j)};
+        }
+      }catch{}
+    }
+    return null;
+  }
 
-  function readIdx(){
-    if (Number.isFinite(startIndex) && startIndex >= 0) return startIndex|0;
-    const n=Number(localStorage.getItem(IDXK));
-    return Number.isFinite(n)&&n>=0?n:0;
+  function normalizeBuilder(src){
+    // Accept {builder:{games,matches,lastUpdated}} or flat {games,matches,...}
+    const b = src.builder || src || {};
+    return {
+      games: Array.isArray(b.games) ? b.games : [],
+      matches: Array.isArray(b.matches) ? b.matches : [],
+      lastUpdated: b.lastUpdated || Date.now()
+    };
   }
-  function saveIdx(i){ localStorage.setItem(IDXK,String(i)); }
-  function sget(k,def=null){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):def;}catch{return def;} }
-  function readBuilder(){
-    const b=sget(BKEY,null);
-    if (b && b.matches && b.games) return b;
+
+  function readLocalBuilder(){
+    const b = sget(BKEY,null);
+    if(b && b.matches && b.games) return normalizeBuilder(b);
     const games=sget(GKEY,[]); const matches=sget(MKEY,[]);
-    return {games,matches,lastUpdated:Date.now()};
+    return {games, matches, lastUpdated: Date.now()};
   }
+
+  async function loadBuilder(){
+    if (forcedSrc){
+      const forced = await fetchFirst([forcedSrc]);
+      if (forced) return forced;
+    }
+    const probe = await fetchFirst([
+      '/api/battleground/live',
+      '/api/battleground/builder',
+      '/api/bg/live',
+      '/api/bg/builder',
+      '/assets/battleground_live.json'
+    ]);
+    if (probe) return probe;
+    return { source:'localStorage', builder: readLocalBuilder() };
+  }
+
+  // ===== Helpers / state
+  function sget(k,def=null){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):def;}catch{return def;} }
   function hash(o){ try{return JSON.stringify(o);}catch{return '';} }
-  function clamp(){
-    const len = data.matches?.length||0;
-    if(!len){ idx=0; return; }
-    if(idx>=len) idx=len-1;
-    if(idx<0) idx=0;
-  }
-  function firstUnfinished(){
-    if(!data.matches) return 0;
-    const i=data.matches.findIndex(m=>!m.winnerId);
-    return i===-1 ? Math.max(0, data.matches.length-1) : i;
-  }
-  function nextUnfinished(i){
-    if(!data.matches?.length) return 0;
-    for(let k=i+1;k<data.matches.length;k++) if(!data.matches[k].winnerId) return k;
-    return Math.max(0, data.matches.length-1);
-  }
   function enc(u){ return encodeURI(String(u||'')); }
   function esc(s){
     s = String(s ?? '');
@@ -206,6 +231,36 @@
     const i=new Image(); i.src = enc(fixPath(imgUrl));
   }
 
+  // ===== Widget state
+  let data = {games:[],matches:[],lastUpdated:0};
+  let sourceLabel = '—';
+  let idx = readIdx();
+  let lastSig = '';
+
+  function readIdx(){
+    if (Number.isFinite(startIndex) && startIndex >= 0) return startIndex|0;
+    const n=Number(localStorage.getItem(IDXK));
+    return Number.isFinite(n)&&n>=0?n:0;
+  }
+  function saveIdx(i){ localStorage.setItem(IDXK,String(i)); }
+  function clamp(){
+    const len = data.matches?.length||0;
+    if(!len){ idx=0; return; }
+    if(idx>=len) idx=len-1;
+    if(idx<0) idx=0;
+  }
+  function firstUnfinished(){
+    if(!data.matches) return 0;
+    const i=data.matches.findIndex(m=>!m.winnerId);
+    return i===-1 ? Math.max(0, data.matches.length-1) : i;
+  }
+  function nextUnfinished(i){
+    if(!data.matches?.length) return 0;
+    for(let k=i+1;k<data.matches.length;k++) if(!data.matches[k].winnerId) return k;
+    return Math.max(0, data.matches.length-1);
+  }
+
+  // ===== Backfill images if missing
   async function backfillImages(){
     if(!Array.isArray(data.matches)||!data.matches.length) return;
     const gmap=new Map((data.games||[]).map(g=>[g.id,g]));
@@ -230,14 +285,19 @@
     }
   }
 
-  // ===== Render =====
+  // ===== Render
   function render(){
     clamp();
     const total = data.matches?.length||0;
     metaEl.textContent = total ? `${idx+1} / ${total} • Updated ${fmtTime(data.lastUpdated||0)}` : '0 / 0';
+    srcEl.textContent = 'SRC: ' + sourceLabel;
 
     const mx=data.matches?.[idx];
-    if(!mx){ cardEl.innerHTML='<div class="meta">No matchups published.</div>'; return; }
+    if(!mx){
+      cardEl.innerHTML='<div class="meta">No matchups published.</div>';
+      cardEl.classList.add('show');
+      return;
+    }
 
     const map=new Map((data.games||[]).map(g=>[g.id,g]));
     const L=map.get(mx.leftId)||{}, R=map.get(mx.rightId)||{};
@@ -309,19 +369,39 @@
     else render();
   }
 
+  // ===== polling + storage sync
   async function tick(){
-    const now=readBuilder(); const h=hash(now);
-    if(h!==lastHash){
-      data=now;
-      await backfillImages();
-      if(idx >= (data.matches?.length||0)) idx=firstUnfinished();
-      lastHash=h;
-      render();
+    try{
+      const probe = await loadBuilder();
+      const sig = hash([probe.source, probe.builder]);
+      if(sig !== lastSig){
+        data = probe.builder || {games:[],matches:[],lastUpdated:0};
+        sourceLabel = probe.source || 'localStorage';
+        await backfillImages();
+        if(idx >= (data.matches?.length||0)) idx=firstUnfinished();
+        lastSig = sig;
+        render();
+      }else{
+        // still update source pill time feel
+        srcEl.textContent = 'SRC: ' + (probe.source || 'localStorage');
+      }
+    }catch{
+      // Fallback to local if fetch failed
+      const lb = readLocalBuilder();
+      const sig = hash(['localStorage', lb]);
+      if(sig !== lastSig){
+        data = lb;
+        sourceLabel = 'localStorage';
+        await backfillImages();
+        if(idx >= (data.matches?.length||0)) idx=firstUnfinished();
+        lastSig = sig;
+        render();
+      }
     }
   }
 
   window.addEventListener('storage', e=>{ if([BKEY,GKEY,MKEY].includes(e.key)) tick(); });
-  setInterval(tick, 800);
+  setInterval(tick, 1200);
 
   window.addEventListener('keydown', e=>{
     if(e.key==='ArrowRight') go(idx+1,true);
@@ -332,14 +412,7 @@
   });
 
   // init
-  data=readBuilder();
-  backfillImages();
-  if(!Number.isFinite(startIndex)) {
-    if(!localStorage.getItem(IDXK)) idx=firstUnfinished();
-  }
-  saveIdx(idx);
-  lastHash=hash(data);
-  render();
+  tick();
 })();
 </script>
 </body>
