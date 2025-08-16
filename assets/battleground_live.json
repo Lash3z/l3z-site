@@ -1,0 +1,12 @@
+{
+  "builder": {
+    "games": [
+      { "id":"G1","title":"SUGAR RUSH","provider":"PRAGMATIC","imageUrl":"/assets/slot_images/sugar-rush.png" },
+      { "id":"G2","title":"BIGGER BASS BONANZA","provider":"PRAGMATIC","imageUrl":"/assets/slot_images/bigger-bass-bonanza.png" }
+    ],
+    "matches": [
+      { "leftId":"G1","rightId":"G2","leftScore":0,"rightScore":0 }
+    ],
+    "lastUpdated": 1734050000000
+  }
+}
