@@ -54,7 +54,7 @@ h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
 .cur .big{font-size:18px}
 .sep{font-weight:900;color:#9fe;text-align:center}
 
-/* small toasts */
+/* toast */
 .toast{position:fixed;right:16px;bottom:16px;background:#0b1f21;border:1px solid var(--line);border-radius:10px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:.2s all;pointer-events:none}
 .toast.on{opacity:1;transform:translateY(0)}
 </style>
@@ -91,7 +91,7 @@ h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
       <textarea id="manualGames" class="input" placeholder="Optional: paste game titles here (one per line) to assign to first round" rows="3" style="flex:1 1 520px"></textarea>
     </div>
     <div class="hint" style="margin-top:6px">
-      Auto-seed pulls **approved** PVP entries from the server first, then fills remaining slots from your lists or manual seeds.
+      Auto-seed pulls <b>approved</b> PVP entries from the server first, then fills remaining slots from your lists or manual seeds.
       Super/Mega Hunt lists are read from localStorage (e.g. <code>bg:superhunt:list</code>, <code>bg:megahunt:list</code>, or <code>bg:builder:battleground.games</code>).
     </div>
   </div>
@@ -132,9 +132,7 @@ h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
   <!-- Bracket viewer/editor -->
   <div class="card">
     <h2>Bracket</h2>
-    <div id="brWrap" class="brWrap">
-      <!-- injected -->
-    </div>
+    <div id="brWrap" class="brWrap"></div>
   </div>
 </div>
 
@@ -157,44 +155,48 @@ h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
     wrap.innerHTML='<div style="max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75)"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="/pages/dashboard/home/admin_login.html?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fpvp_admin.html">Admin Login</a> first.</div><div style="margin-top:14px"><a href="/index.html">Back to Dashboard</a></div></div>';
     document.body.innerHTML=""; document.body.appendChild(wrap);
   }
+  // gate check + fail-safe so you never get a black screen
+  let gateDone=false;
   fetch(API+"/api/admin/gate/check",{credentials:"include",cache:"no-store"})
-    .then(r=>r.ok?r.json():null).then(j=>{ if(j&&j.admin){ H.removeAttribute("data-admin"); boot(); } else lock(); })
-    .catch(lock);
+    .then(r=>r.ok?r.json():null).then(j=>{ gateDone=true; if(j&&j.admin){ H.removeAttribute("data-admin"); boot(); } else lock(); })
+    .catch(()=>{ gateDone=true; lock(); });
+  setTimeout(()=>{ if(!gateDone) lock(); }, 2000);
 
   // ---- State ----
   let builder=null;  // { lastUpdated, bracket:{ size, east[], west[], finals[], cursor, champion, meta } }
   let seedsEast=[], seedsWest=[], gamesList=[];
 
   // ---- Utilities ----
-  function esc(s){ s = String(s==null?'':s); return s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); }
+  function esc(s){
+    s = String(s==null?'':s);
+    return s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
   function up(s){ return (s||"").toString().trim().toUpperCase(); }
-  function readList(key){ try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; }catch{ return null; } }
+  function readJSON(key){
+    try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; }catch{ return null; }
+  }
   function lines(t){ return String(t||"").split(/\r?\n/).map(s=>s.trim()).filter(Boolean); }
 
   // ---- Seeding helpers ----
   async function fetchApprovedEntries(){
     try{
       const r = await fetch(API+"/api/pvp/entries",{credentials:"include",cache:"no-store"});
-      if(!r.ok) return [];
+      if(!r.ok) return {east:[],west:[]};
       const j = await r.json();
       const arr = (j.entries||[]).filter(e=> (e.status||"pending").toLowerCase()==="approved");
-      // keep side preference if provided
       const east = arr.filter(e=> (e.side||"EAST").toUpperCase()==="EAST").map(e=>({name:up(e.username||e.name||""), img:""}));
       const west = arr.filter(e=> (e.side||"WEST").toUpperCase()==="WEST").map(e=>({name:up(e.username||e.name||""), img:""}));
       return { east, west };
     }catch{ return { east:[], west:[] }; }
   }
   function gatherHuntGames(){
-    // Try a few likely keys
     const out=[];
-    const bgBuilder = readList("bg:builder:battleground");
-    if(bgBuilder && bgBuilder.games && Array.isArray(bgBuilder.games)){
+    const bgBuilder = readJSON("bg:builder:battleground");
+    if(bgBuilder && Array.isArray(bgBuilder.games)){
       for(const g of bgBuilder.games){ const t=g.title||g.name; if(t) out.push({title:String(t)}); }
     }
-    const sh = readList("bg:superhunt:list");
-    if(Array.isArray(sh)) for(const t of sh){ if(t) out.push({title:String(t)}); }
-    const mh = readList("bg:megahunt:list");
-    if(Array.isArray(mh)) for(const t of mh){ if(t) out.push({title:String(t)}); }
+    const sh = readJSON("bg:superhunt:list"); if(Array.isArray(sh)) for(const t of sh){ if(t) out.push({title:String(t)}); }
+    const mh = readJSON("bg:megahunt:list"); if(Array.isArray(mh)) for(const t of mh){ if(t) out.push({title:String(t)}); }
     return out;
   }
 
@@ -286,11 +288,6 @@ h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
     return (arr && arr[ri|0] && arr[ri|0][mi|0]) ? arr[ri|0][mi|0] : null;
   }
 
-  function setCursorToNextPending(){
-    // rely on server’s cursor after progress; but allow manual Next/Prev
-    loadBracket().then(paintAll).catch(()=>{});
-  }
-
   async function progress(w){
     const cur = builder && builder.bracket && builder.bracket.cursor; if(!cur) return;
     const body = {
@@ -313,7 +310,7 @@ h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
     if (total>=3){
       if (idx===total-1) return "SF";
       if (idx===total-2) return "QF";
-      const size = 1<<((total-idx)); // approx
+      const size = 1<<((total-idx));
       if (size>=64) return "R64";
       if (size>=32) return "R32";
       if (size>=16) return "R16";
@@ -332,7 +329,6 @@ h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
       `<div class="slot"><div class="name editable" data-side="left">${lName||"—"}</div><div>${m.left?.score!=null?`<span class="scoreSm">${m.left.score}</span>`:""}</div></div>`+
       `<div class="vs">vs ${game?`• <span class="game">${game}</span>`:""}</div>`+
       `<div class="slot"><div class="name editable" data-side="right">${rName||"—"}</div><div>${m.right?.score!=null?`<span class="scoreSm">${m.right.score}</span>`:""}</div></div>`;
-    // Inline edit
     d.querySelectorAll(".name.editable").forEach(el=>{
       el.addEventListener("click", ()=>inlineEdit(el, phase, ri, mi));
     });
@@ -347,7 +343,6 @@ h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
     el.replaceWith(inp); inp.focus(); inp.selectionStart=inp.value.length;
     const commit = async ()=>{
       const name = inp.value.trim();
-      // patch server
       const r = await fetch(API+"/api/pvp/bracket/slot",{method:"PATCH",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({phase, roundIndex:ri, matchIndex:mi, side, name})});
       if(!r.ok){ toast("Edit failed"); return paintAll(); }
       await loadBracket(); paintAll();
@@ -381,7 +376,6 @@ h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
     wrap.appendChild(sideCol("EAST", b.east, "east"));
 
     const center=document.createElement("div"); center.className="center";
-    // finals
     if (Array.isArray(b.finals)){
       b.finals.forEach((round,idx)=>{
         const f=document.createElement("div"); f.className="finalCard";
@@ -391,7 +385,6 @@ h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
         center.appendChild(f);
       });
     }
-    // champion
     if (b.champion && b.champion.name){
       const c = document.createElement("div"); c.className="finalCard";
       c.innerHTML = '<div class="centerTitle"><div>Champion</div><div class="chip">E vs W</div></div>';
@@ -405,7 +398,6 @@ h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
     wrap.appendChild(sideCol("WEST", b.west, "west"));
   }
 
-  // Navigate cursor to next/prev pending (client-side walk; server will also adjust after progress)
   function findAllPending(){
     const b = builder && builder.bracket; if(!b) return [];
     const out=[];
@@ -417,41 +409,39 @@ h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
     pushPhase("east", b.east); pushPhase("west", b.west); pushPhase("finals", b.finals||[]);
     return out;
   }
-
   async function moveCursor(offset){
     const b = builder && builder.bracket; if(!b) return;
     const cur = b.cursor || {phase:"east", roundIndex:0, matchIndex:0};
     const pend = findAllPending();
     if(!pend.length){ toast("No pending matches"); return; }
-    // find current in the pending list; if not found, go first/last by offset
     let idx = pend.findIndex(p=>p.phase===cur.phase && p.roundIndex===cur.roundIndex && p.matchIndex===cur.matchIndex);
     if(idx===-1) idx = (offset>0? -1 : 0);
     const next = pend[(idx + pend.length + offset)%pend.length];
-    // Patch the cursor by a harmless slot edit (tiny trick) or just reload (cursor is server-driven on progress; for nav we mimic client)
     b.cursor = next; paintAll();
   }
 
   // ---- Wire buttons ----
-  $("#autoSeed").addEventListener("click", autoSeed);
-  $("#buildBtn").addEventListener("click", buildOrReset);
-  $("#lWin").addEventListener("click", ()=>progress("L"));
-  $("#rWin").addEventListener("click", ()=>progress("R"));
-  $("#prevBtn").addEventListener("click", ()=>moveCursor(-1));
-  $("#nextBtn").addEventListener("click", ()=>moveCursor(+1));
-  $("#resetBtn").addEventListener("click", async ()=>{
-    if(!confirm("Reset all progress but keep the seeded players?")) return;
-    const r = await fetch(API+"/api/pvp/bracket/reset",{method:"POST",credentials:"include"});
-    if(!r.ok){ toast("Reset failed"); return; }
-    await loadBracket(); paintAll(); toast("Bracket reset");
-  });
+  function boot(){
+    $("#autoSeed").addEventListener("click", autoSeed);
+    $("#buildBtn").addEventListener("click", buildOrReset);
+    $("#lWin").addEventListener("click", ()=>progress("L"));
+    $("#rWin").addEventListener("click", ()=>progress("R"));
+    $("#prevBtn").addEventListener("click", ()=>moveCursor(-1));
+    $("#nextBtn").addEventListener("click", ()=>moveCursor(+1));
+    $("#resetBtn").addEventListener("click", async ()=>{
+      if(!confirm("Reset all progress but keep the seeded players?")) return;
+      const r = await fetch(API+"/api/pvp/bracket/reset",{method:"POST",credentials:"include"});
+      if(!r.ok){ toast("Reset failed"); return; }
+      await loadBracket(); paintAll(); toast("Bracket reset");
+    });
 
-  $("#adminLogout").addEventListener("click", async ()=>{
-    try{ await fetch("/api/admin/gate/logout",{method:"POST",credentials:"include"}); }catch{}
-    location.href="/index.html";
-  });
+    $("#adminLogout").addEventListener("click", async ()=>{
+      try{ await fetch("/api/admin/gate/logout",{method:"POST",credentials:"include"}); }catch{}
+      location.href="/index.html";
+    });
 
-  // start
-  loadBracket().then(paintAll);
+    loadBracket().then(paintAll);
+  }
 })();
 </script>
 </body>
