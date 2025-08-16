@@ -103,58 +103,45 @@
 
   const sget=(k)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch{return null}};
 
-  // ---------- data loading (server -> static -> localStorage)
-  async function fetchFirst(urls){
-    for(const u of urls){
-      try{
-        const r = await fetch(u, { cache:'no-store' });
-        if(r.ok){
-          const j = await r.json();
-          if(j) return {source:u, data:j};
-        }
-      }catch{}
-    }
-    return null;
-  }
-
-  function normalizeFromAny(src){
-    // supports shapes:
-    // { title, games, results, startingBalance }
-    // { builder:{ title, matches? (ignored), games, results, startingBalance } }
-    // { title, results:[{gameId,bet,win,x}], games:[{id,title,provider,imageUrl,betSize}] }
-    const b = src.builder || src;
-
-    const title = b.title || 'BONUS HUNT';
-    const starting = +b.startingBalance || +b.starting || 0;
-
-    const games = Array.isArray(b.games) ? b.games : [];
-    const results = Array.isArray(b.results) ? b.results : [];
-
-    return { title, games, results, starting };
-  }
-
-  function loadFromLocal(){
-    const b=sget(K_BUILDER);
-    if(b && Array.isArray(b.games) && b.games.length){
-      return { source:'localStorage:builder', ...normalizeFromAny(b) };
-    }
-    const g=sget(K_G)||[], r=sget(K_R)||[], s=+(sget(K_S)||0);
-    return { source:'localStorage:legacy', title:'BONUS HUNT', games:g, results:r, starting:s };
-  }
-
+  // ====== NEW: unified loader (supports ?src=..., then /api/bonus-hunt/live, then localStorage)
   async function loadSource(){
-    // try server endpoints and a static json; otherwise localStorage
-    const probe = await fetchFirst([
-      '/api/bonus/live',
-      '/api/bonus/builder',
-      '/api/bonus/widget',
-      '/assets/bonus_hunt_live.json'
-    ]);
-    if (probe){
-      const norm = normalizeFromAny(probe.data);
-      return { source: probe.source, ...norm };
+    const paramSrc = new URLSearchParams(location.search).get('src');
+
+    async function tryFetch(url){
+      const r = await fetch(url, { cache:'no-store' });
+      if(!r.ok) throw 0;
+      const j = await r.json();
+      const b = (j && j.builder) ? j.builder : j; // normalize server shape
+      return {
+        source: url,
+        title: b.title || 'BONUS HUNT',
+        games: Array.isArray(b.games) ? b.games : [],
+        results: Array.isArray(b.results) ? b.results : [],
+        starting: +(b.starting ?? b.startingBalance ?? 0)
+      };
     }
-    return loadFromLocal();
+
+    try {
+      if (paramSrc) return await tryFetch(paramSrc);
+    } catch {}
+
+    try {
+      return await tryFetch('/api/bonus-hunt/live');
+    } catch {}
+
+    // Fallback to localStorage (browser-only use)
+    const b = sget(K_BUILDER);
+    if (b && Array.isArray(b.games) && b.games.length) {
+      return {
+        source: 'localStorage:builder',
+        title: b.title || 'BONUS HUNT',
+        games: b.games,
+        results: b.results || [],
+        starting: +(b.startingBalance || 0)
+      };
+    }
+    const g = sget(K_G) || [], r = sget(K_R) || [], s = +(sget(K_S) || 0);
+    return { source:'localStorage:legacy', title:'BONUS HUNT', games:g, results:r, starting:s };
   }
 
   function calcFrom(src){
