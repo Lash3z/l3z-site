@@ -1,0 +1,13 @@
+{
+  "title": "BONUS HUNT",
+  "starting": 5000,
+  "games": [
+    { "id":"BH1", "title":"SUGAR RUSH", "provider":"PRAGMATIC", "imageUrl":"/assets/slot_images/sugar-rush.png", "betSize": 2.00 },
+    { "id":"BH2", "title":"RIP CITY",    "provider":"HACKSAW",   "imageUrl":"/assets/slot_images/rip-city.png",    "betSize": 2.00 }
+  ],
+  "results": [
+    { "gameId":"BH1", "bet":2.00, "win": 18.40 },
+    { "gameId":"BH2", "bet":2.00, "win":  0.00 }
+  ],
+  "lastUpdated": 1734050000000
+}
