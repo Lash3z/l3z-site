@@ -1,71 +1,186 @@
-/* L3Z — Canonical Auth Bootstrap (single source of truth)
-   Depends on: /assets/api-base.js (window.api)
+// /assets/js/bootstrap-auth.js
+// Bootstraps session state across pages.
+// Requires: /assets/api-base.js to be loaded first.
+// - Paints username + LBX balance wherever present
+// - Adds body classes: .auth-ok / .auth-missing
+// - Handles logout button (#logout) if present
+// - Optional Kick link/unlink widgets if present
+// - Redirects on 401 using data-login-url or sensible default
 
-   - Calls /api/me, stores window.__USER
-   - Paints #whoami, #walletBalance, cookie badges if present
-   - Adds body classes: auth-ok | auth-missing
-   - Public API: window.session { getUser, isAuthed, refresh, onChange }
-   - Optional: window.AUTH_REFRESH_MS (e.g. 30000), window.AUTH_DEBUG=true
-*/
-(function(){
-  const DEBUG = !!window.AUTH_DEBUG;
-  const REFRESH_MS = Number.isFinite(+window.AUTH_REFRESH_MS) ? +window.AUTH_REFRESH_MS : 0;
+(() => {
+  if (window.__BOOTSTRAP_AUTH_INSTALLED__) return;
+  window.__BOOTSTRAP_AUTH_INSTALLED__ = true;
 
-  function waitForApi(ms=2000){
-    return new Promise((resolve,reject)=>{
-      if (window.api) return resolve();
-      const t0 = Date.now();
-      const t = setInterval(()=>{ if (window.api){ clearInterval(t); resolve(); }
-        else if (Date.now()-t0>ms){ clearInterval(t); reject(new Error("api-base not loaded")); }},25);
-    });
-  }
+  const $  = (s, r=document) => r.querySelector(s);
+  const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
-  const SEL = {
-    username: ['#whoami','[data-auth="username"]'],
-    balance:  ['#walletBalance','[data-auth="balance"]'],
-    cookie:   ['#cookieState','#cookieState2','[data-auth="cookie"]'],
-  };
-  const qAll = (arr)=> arr.flatMap(sel => Array.from(document.querySelectorAll(sel)));
-  const els = { username:()=>qAll(SEL.username), balance:()=>qAll(SEL.balance), cookie:()=>qAll(SEL.cookie) };
-  const setText=(nodes,txt)=>nodes.forEach(n=>{ try{ n.textContent=String(txt??""); }catch{} });
-  const setCookieState=(ok)=> setText(els.cookie(), ok?"cookie: ok":"cookie: missing");
-  const coerceBalance=(u)=> Number((u&&u.wallet&&u.wallet.balance) ?? u?.balance ?? u?.lbx ?? 0);
+  const fmtLBX = n => `${Number(n || 0).toLocaleString()} LBX`;
+  const asNum  = v => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 
-  let _user=null; const subs=new Set(); const notify=()=>subs.forEach(fn=>{ try{fn(_user);}catch{} });
+  // allow pages to override login destination
+  const LOGIN_URL =
+    document.body.getAttribute("data-login-url")
+    || (location.pathname.includes("/admin") ? "/admin/login.html" : "/login.html");
 
-  async function fetchMe(){ const me = await window.api.get("/api/me"); if(!me||!me.user) throw new Error("not_logged_in"); return me.user; }
+  // paint helpers
+  function setText(el, text) { if (el) el.textContent = text; }
+  function toggle(els, show) { $$(els).forEach(el => { el.style.display = show ? "" : "none"; }); }
 
-  function paint(){
-    const authed=!!_user;
-    document.body.classList.toggle("auth-ok",authed);
-    document.body.classList.toggle("auth-missing",!authed);
-    if(!authed){ setText(els.username(),"(not logged in)"); setText(els.balance(),"0 LBX"); setCookieState(false); return; }
-    setText(els.username(), _user.username || "—");
-    setText(els.balance(), `${coerceBalance(_user).toLocaleString()} LBX`);
-    setCookieState(true);
-  }
+  // global-ish state
+  let currentUser = null;
+  let currentLBX  = 0;
 
-  async function refresh(){
-    try{
-      const u = await fetchMe(); _user=u; window.__USER=u; paint(); notify(); if(DEBUG) console.log("[auth] refreshed",u.username); return u;
-    }catch(e){
-      _user=null; window.__USER=null; paint(); if(DEBUG) console.warn("[auth] refresh failed", e?.message||e); return null;
+  // -- session fetchers -------------------------------------------------------
+
+  async function fetchMe() {
+    try {
+      const j = await api.get("/api/me");
+      if (!j?.ok || !j.user) throw new Error("not_logged_in");
+      currentUser = j.user;
+      // try wallet endpoint for freshest LBX; fallback to user.lbx
+      try {
+        const w = await api.get("/api/wallet");
+        currentLBX = asNum(w?.lbx);
+      } catch {
+        currentLBX = asNum(j.user?.wallet?.balance ?? j.user?.balance ?? j.user?.lbx);
+      }
+      return true;
+    } catch {
+      currentUser = null;
+      currentLBX  = 0;
+      return false;
     }
   }
 
-  window.session = {
-    getUser: ()=>_user,
-    isAuthed: ()=>!!_user,
-    refresh,
-    onChange: (fn)=>{ if(typeof fn==="function") subs.add(fn); return ()=>subs.delete(fn); }
-  };
+  // -- painters ---------------------------------------------------------------
 
-  async function boot(){
-    try{ await waitForApi(); }catch(e){ if(DEBUG) console.warn("[auth] api wait failed", e.message); }
-    await refresh();
-    if(REFRESH_MS>0) setInterval(refresh, REFRESH_MS);
-    window.addEventListener("auth:refresh", refresh);
-    window.addEventListener("storage", ev=>{ if(ev.key==="lash3z_last_user") refresh(); });
+  function paintAuth() {
+    const authed = !!currentUser;
+    document.body.classList.toggle("auth-ok", authed);
+    document.body.classList.toggle("auth-missing", !authed);
+
+    // Common IDs
+    setText($("#whoami"), authed ? currentUser.username : "(not logged in)");
+    setText($("#walletBalance"), fmtLBX(currentLBX));
+
+    // Data-binds: <span data-bind="username">, data-bind="lbx"
+    $$( '[data-bind="username"]' ).forEach(el => setText(el, authed ? currentUser.username : ""));
+    $$( '[data-bind="role"]'     ).forEach(el => setText(el, authed ? (currentUser.role || "user") : ""));
+    $$( '[data-bind="lbx"]'      ).forEach(el => setText(el, fmtLBX(currentLBX)));
+
+    // Conditional blocks
+    toggle('[data-if-auth]',  authed);
+    toggle('[data-if-guest]', !authed);
+
+    // Admin badge if present
+    const who = $("#who");
+    if (who) {
+      setText(who, authed ? `${(currentUser.role === "admin" ? "admin" : "user")}: ${currentUser.username}` : "admin: (not logged in)");
+    }
   }
-  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", boot); else boot();
+
+  // -- Kick linking (optional UI bits) ---------------------------------------
+  // Expected server routes (gracefully ignored if not present):
+  //   GET  /api/social/kick/status -> { ok, linked, profile? }
+  //   POST /api/social/kick/link_start -> { ok, url }  (redirect user to auth)
+  //   POST /api/social/kick/unlink -> { ok }
+  async function refreshKick() {
+    const badge  = $("#kickStatus");
+    const linkBtn= $("#kickLink");
+    const unBtn  = $("#kickUnlink");
+
+    if (!badge && !linkBtn && !unBtn) return; // page doesn't care
+
+    try {
+      const j = await api.get("/api/social/kick/status");
+      if (j?.linked) {
+        setText(badge, `Kick: linked${j?.profile?.username ? ` (@${j.profile.username})` : ""}`);
+        if (linkBtn)  linkBtn.style.display = "none";
+        if (unBtn)    unBtn.style.display   = "";
+      } else {
+        setText(badge, "Kick: not linked");
+        if (linkBtn)  linkBtn.style.display = "";
+        if (unBtn)    unBtn.style.display   = "none";
+      }
+    } catch {
+      setText(badge, "Kick: unavailable");
+      if (linkBtn) linkBtn.style.display = "";
+      if (unBtn)   unBtn.style.display   = "none";
+    }
+  }
+
+  async function startKickLink() {
+    try {
+      const j = await api.post("/api/social/kick/link_start", {});
+      if (j?.url) {
+        // Go complete linking; server should bounce back to site.
+        location.href = j.url;
+      }
+    } catch (e) {
+      console.warn("[kick] link_start failed", e);
+      // as a fallback, try a GET redirect if server supports it
+      location.href = "/api/social/kick/link_start";
+    }
+  }
+
+  async function unlinkKick() {
+    try {
+      await api.post("/api/social/kick/unlink", {});
+    } catch {}
+    refreshKick();
+  }
+
+  // -- events ----------------------------------------------------------------
+
+  // Redirect any page on unauthorized API calls
+  window.addEventListener("api:unauthorized", () => {
+    // don’t loop if we’re already at the login page
+    if (!location.pathname.endsWith(LOGIN_URL)) {
+      location.href = LOGIN_URL;
+    }
+  });
+
+  // Logout if a #logout button exists
+  $("#logout")?.addEventListener("click", async () => {
+    try { await api.post("/api/auth/logout", {}); } catch {}
+    // hard redirect to login; if page sets data-login-url, respect it
+    location.href = LOGIN_URL;
+  });
+
+  // Optional kick buttons
+  $("#kickLink")?.addEventListener("click", startKickLink);
+  $("#kickUnlink")?.addEventListener("click", unlinkKick);
+
+  // Listen for pages hinting a balance change and repaint quickly
+  window.addEventListener("wallet:refresh", async () => {
+    try {
+      const w = await api.get("/api/wallet");
+      currentLBX = asNum(w?.lbx);
+      paintAuth();
+    } catch {}
+  });
+
+  // Allow pushing a known balance without refetch
+  window.addEventListener("wallet:update", (e) => {
+    if (e?.detail?.lbx != null) {
+      currentLBX = asNum(e.detail.lbx);
+      paintAuth();
+    }
+  });
+
+  // -- boot ------------------------------------------------------------------
+
+  (async function boot() {
+    await fetchMe();
+    paintAuth();
+    await refreshKick();
+  })();
+
+  // expose read-only snapshot for other scripts
+  Object.defineProperty(window, "sessionUser", {
+    get() { return currentUser; }
+  });
+  Object.defineProperty(window, "sessionLBX", {
+    get() { return currentLBX; }
+  });
 })();
