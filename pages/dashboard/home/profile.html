@@ -1,36 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Profile — L3Z</title>
   <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
   <style>
-    :root{--bg:#0b0f14;--panel:#11161d;--ink:#e9f1ff;--line:rgba(0,255,255,.18);
-          --gold:#ffcc66;--ok:#12d48a;--bad:#ff8fa0;--chip:#0c141a}
-    *{box-sizing:border-box}
-    html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial,sans-serif}
-    a{color:#9bd3ff;text-decoration:none}
-    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    :root{--bg:#0b0f14;--panel:#11161d;--ink:#e9f1ff;--line:rgba(0,255,255,.18);--gold:#ffcc66;--ok:#12d48a;--bad:#ff8fa0;--chip:#0c141a}
+    *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial,sans-serif}
+    a{color:#9bd3ff;text-decoration:none}.wrap{max-width:1100px;margin:0 auto;padding:16px}
     .top{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
     .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0a1016;color:#cfe;font-weight:800}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    @media (max-width:980px){.grid{grid-template-columns:1fr}}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px} @media (max-width:980px){.grid{grid-template-columns:1fr}}
     .card{background:linear-gradient(180deg,#0f131a,#0a0f15);border:1px solid var(--line);border-radius:14px;overflow:hidden}
     .head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
     .head h2{margin:0;font-size:14px;letter-spacing:.3px;color:#ffd78a}
     .body{padding:12px 14px;display:grid;gap:10px}
-    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .row>label{min-width:120px;color:#cbd5e1}
-    input,textarea,select,button{
-      background:#0f141b;border:1px solid var(--line);color:var(--ink);
-      border-radius:10px;padding:10px 12px;font-size:14px
-    }
-    textarea{min-height:80px;width:100%}
-    button{cursor:pointer;font-weight:800}
-    button.primary{background:linear-gradient(180deg,#f5c462,#d49a2e);color:#1a1204;border:none}
-    button.ghost{background:#111a22}
-    .ok{color:var(--ok)} .err{color:var(--bad)} .muted{color:#9fb3c5}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row>label{min-width:120px;color:#cbd5e1}
+    input,textarea,select,button{background:#0f141b;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:14px}
+    textarea{min-height:80px;width:100%} button{cursor:pointer;font-weight:800}
+    button.primary{background:linear-gradient(180deg,#f5c462,#d49a2e);color:#1a1204;border:none} button.ghost{background:#111a22}
+    .ok{color:#12d48a} .err{color:#ff8fa0} .muted{color:#9fb3c5}
     .badge{display:inline-flex;align-items:center;gap:6px;background:var(--chip);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:6px 10px}
     .list{display:grid;gap:8px;max-height:280px;overflow:auto}
     .item{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;background:#0d141b;border:1px solid var(--line);border-radius:10px}
@@ -53,174 +42,73 @@
   </div>
 
   <div class="grid">
-    <!-- Profile -->
     <section class="card" id="kickSection">
       <div class="head"><h2>Kick Link</h2><div class="badge">profile</div></div>
       <div class="body">
-        <div class="row"><label>Kick URL</label><input id="kickLink" placeholder="https://kick.com/yourname" /></div>
-        <div class="row"><label>Display Name</label><input id="displayName" placeholder="(optional)" /></div>
-        <div class="row"><label>Country</label><input id="country" placeholder="(optional)" /></div>
-        <div class="row"><label>Avatar URL</label><input id="avatarUrl" placeholder="https://..." /></div>
-        <div class="row" style="gap:10px">
-          <button id="saveKick" class="primary">Save</button>
-          <button id="saveProfile" class="ghost">Save Profile</button>
-          <span id="kickStatus" class="muted"></span>
-        </div>
+        <div class="row"><label>Kick URL</label><input id="kickLink" placeholder="https://kick.com/yourname"/></div>
+        <div class="row"><label>Display Name</label><input id="displayName" placeholder="(optional)"/></div>
+        <div class="row"><label>Country</label><input id="country" placeholder="(optional)"/></div>
+        <div class="row"><label>Avatar URL</label><input id="avatarUrl" placeholder="https://..."/></div>
+        <div class="row" style="gap:10px"><button id="saveKick" class="primary">Save</button><button id="saveProfile" class="ghost">Save Profile</button><span id="kickStatus" class="muted"></span></div>
         <div class="small">Kick link is for display; no OAuth required right now.</div>
       </div>
     </section>
 
-    <!-- Wallet -->
     <section class="card">
       <div class="head"><h2>Wallet</h2><div class="badge">LBX</div></div>
       <div class="body">
         <div class="row"><label>Balance</label><div id="balanceOut">0 LBX</div></div>
-        <div class="row" style="gap:10px">
-          <button id="refreshMe" class="ghost">Refresh</button>
-          <span id="walletStatus" class="muted"></span>
-        </div>
+        <div class="row" style="gap:10px"><button id="refreshMe" class="ghost">Refresh</button><span id="walletStatus" class="muted"></span></div>
         <div class="small">LBX updates instantly when you redeem promos or place/cancel bets.</div>
       </div>
     </section>
 
-    <!-- Transactions -->
     <section class="card">
       <div class="head"><h2>Transactions</h2><div class="badge">latest</div></div>
       <div class="body">
-        <div class="row" style="justify-content:space-between">
-          <div class="small">Recent LBX movements</div>
-          <button class="ghost" id="refreshTx">Refresh</button>
-        </div>
+        <div class="row" style="justify-content:space-between"><div class="small">Recent LBX movements</div><button class="ghost" id="refreshTx">Refresh</button></div>
         <div id="txList" class="list"></div>
       </div>
     </section>
 
-    <!-- Bets -->
     <section class="card">
       <div class="head"><h2>Bets</h2><div class="badge">recent</div></div>
       <div class="body">
-        <div class="row" style="justify-content:space-between">
-          <div class="small">Your recent bets</div>
-          <button class="ghost" id="refreshBets">Refresh</button>
-        </div>
+        <div class="row" style="justify-content:space-between"><div class="small">Your recent bets</div><button class="ghost" id="refreshBets">Refresh</button></div>
         <div id="betsList" class="list"></div>
       </div>
     </section>
   </div>
 </div>
 
-<!-- API helper and (optionally) auth bootstrap for header paint -->
 <script src="/assets/api-base.js"></script>
+<script src="/assets/js/bootstrap-auth.js"></script>
 <script>
 (function(){
-  const $ = (s,r=document)=>r.querySelector(s);
+  const $=(s,r=document)=>r.querySelector(s);
   const who=$("#whoami"), bal=$("#walletBalance"), balanceOut=$("#balanceOut");
   const kickInput=$("#kickLink"), displayName=$("#displayName"), country=$("#country"), avatarUrl=$("#avatarUrl");
-  const kickStatus=$("#kickStatus"), walletStatus=$("#walletStatus");
-  const txList=$("#txList"), betsList=$("#betsList");
-
+  const kickStatus=$("#kickStatus"); const txList=$("#txList"), betsList=$("#betsList");
   function fmtLBX(n){ return `${Number(n||0).toLocaleString()} LBX`; }
-  function item(label, value, extra=""){
-    const div=document.createElement("div");
-    div.className="item";
-    div.innerHTML=`<div>${label}</div><div class="small">${value}${extra?` — ${extra}`:""}</div>`;
-    return div;
-  }
+  function item(label,value,extra=""){ const div=document.createElement("div"); div.className="item"; div.innerHTML=`<div>${label}</div><div class="small">${value}${extra?` — ${extra}`:""}</div>`; return div; }
 
   async function refreshMe(){
-    try{
-      const j = await api.get("/api/me");
-      const u = j?.user || {};
-      const balNum = Number((u.wallet && u.wallet.balance) ?? u.balance ?? u.lbx ?? 0);
-      who.textContent = u.username || "—";
-      bal.textContent = fmtLBX(balNum);
-      balanceOut.textContent = fmtLBX(balNum);
-      if (u.kickLink) kickInput.value = u.kickLink;
-      if (u.displayName) displayName.value = u.displayName;
-      if (u.country) country.value = u.country;
-      if (u.avatarUrl) avatarUrl.value = u.avatarUrl;
-
-      // if navigated with #kick, focus the field
-      if (location.hash === "#kick") kickInput.focus();
-    }catch(e){
-      who.textContent="(not logged in)";
-      bal.textContent=fmtLBX(0);
-      balanceOut.textContent=fmtLBX(0);
-      console.warn("me failed", e);
-    }
+    try{ const j=await api.get("/api/me"); const u=j?.user||{}; const balNum=Number((u.wallet&&u.wallet.balance) ?? u.balance ?? u.lbx ?? 0);
+      who.textContent=u.username||"—"; bal.textContent=fmtLBX(balNum); balanceOut.textContent=fmtLBX(balNum);
+      if(u.kickLink) kickInput.value=u.kickLink; if(u.displayName) displayName.value=u.displayName; if(u.country) country.value=u.country; if(u.avatarUrl) avatarUrl.value=u.avatarUrl;
+      if(location.hash==="#kick") kickInput.focus();
+    }catch{ who.textContent="(not logged in)"; bal.textContent=fmtLBX(0); balanceOut.textContent=fmtLBX(0); }
   }
+  async function refreshTx(){ txList.innerHTML=""; try{ const j=await api.get("/api/tx/history"); (j.tx||[]).slice(0,50).forEach(t=>{ const label=t.type.replace(/_/g," "); txList.appendChild(item(label, fmtLBX(t.amount), new Date(t.createdAt).toLocaleString()));}); }catch(e){ txList.appendChild(item("Error loading transactions", e.message||"failed")); } }
+  async function refreshBets(){ betsList.innerHTML=""; try{ const j=await api.get("/api/bets/history"); (j.bets||[]).slice(0,50).forEach(b=>{ const st=b.status+(b.payout!=null?` (${b.payout>0?"+":""}${b.payout})`:""); betsList.appendChild(item(b.game||"—", fmtLBX(b.amount), st));}); }catch(e){ betsList.appendChild(item("Error loading bets", e.message||"failed")); } }
 
-  async function refreshTx(){
-    txList.innerHTML="";
-    try{
-      const j = await api.get("/api/tx/history");
-      (j.tx||[]).slice(0,50).forEach(t=>{
-        const label = t.type.replace(/_/g," ");
-        txList.appendChild(item(label, fmtLBX(t.amount), new Date(t.createdAt).toLocaleString()));
-      });
-    }catch(e){
-      txList.appendChild(item("Error loading transactions", e.message||"failed"));
-    }
-  }
+  $("#saveKick")?.addEventListener("click", async ()=>{ kickStatus.textContent="Saving…"; kickStatus.className="muted"; try{ await api.post("/api/profile/kick_link",{ kickLink:(kickInput.value||"").trim() }); kickStatus.textContent="Saved."; kickStatus.className="ok"; await refreshMe(); }catch(e){ kickStatus.textContent=e.message||"failed"; kickStatus.className="err"; }});
+  $("#saveProfile")?.addEventListener("click", async ()=>{ kickStatus.textContent="Saving profile…"; kickStatus.className="muted"; try{ await api.post("/api/profile/update",{ displayName:(displayName.value||"").trim(), country:(country.value||"").trim(), avatarUrl:(avatarUrl.value||"").trim() }); kickStatus.textContent="Profile updated."; kickStatus.className="ok"; await refreshMe(); }catch(e){ kickStatus.textContent=e.message||"failed"; kickStatus.className="err"; }});
 
-  async function refreshBets(){
-    betsList.innerHTML="";
-    try{
-      const j = await api.get("/api/bets/history");
-      (j.bets||[]).slice(0,50).forEach(b=>{
-        const st = b.status + (b.payout!=null?` (${b.payout>0?"+":""}${b.payout})`:"");
-        betsList.appendChild(item(b.game||"—", fmtLBX(b.amount), st));
-      });
-    }catch(e){
-      betsList.appendChild(item("Error loading bets", e.message||"failed"));
-    }
-  }
+  $("#refreshMe")?.addEventListener("click", refreshMe); $("#refreshTx")?.addEventListener("click", refreshTx); $("#refreshBets")?.addEventListener("click", refreshBets);
+  $("#logoutBtn")?.addEventListener("click", async ()=>{ try{ await api.post("/api/auth/logout",{});}catch{} location.href="/pages/dashboard/home/login.html"; });
 
-  // Save Kick link only
-  $("#saveKick")?.addEventListener("click", async ()=>{
-    kickStatus.textContent="Saving…"; kickStatus.className="muted";
-    try{
-      await api.post("/api/profile/kick_link",{ kickLink: (kickInput.value||"").trim() });
-      kickStatus.textContent="Saved."; kickStatus.className="ok";
-      await refreshMe();
-    }catch(e){
-      kickStatus.textContent=e.message||"failed"; kickStatus.className="err";
-    }
-  });
-
-  // Save extended profile fields
-  $("#saveProfile")?.addEventListener("click", async ()=>{
-    kickStatus.textContent="Saving profile…"; kickStatus.className="muted";
-    try{
-      const body = {
-        displayName: (displayName.value||"").trim(),
-        country: (country.value||"").trim(),
-        avatarUrl: (avatarUrl.value||"").trim(),
-      };
-      await api.post("/api/profile/update", body);
-      kickStatus.textContent="Profile updated."; kickStatus.className="ok";
-      await refreshMe();
-    }catch(e){
-      kickStatus.textContent=e.message||"failed"; kickStatus.className="err";
-    }
-  });
-
-  // Manual refresh buttons
-  $("#refreshMe")?.addEventListener("click", refreshMe);
-  $("#refreshTx")?.addEventListener("click", refreshTx);
-  $("#refreshBets")?.addEventListener("click", refreshBets);
-
-  // Logout
-  $("#logoutBtn")?.addEventListener("click", async ()=>{
-    try{ await api.post("/api/auth/logout",{}); }catch{}
-    location.href="/pages/dashboard/home/login.html";
-  });
-
-  // Boot
-  (async function(){
-    await refreshMe();
-    await Promise.all([refreshTx(), refreshBets()]);
-  })();
+  (async function(){ await refreshMe(); await Promise.all([refreshTx(), refreshBets()]); })();
 })();
 </script>
 </body>
