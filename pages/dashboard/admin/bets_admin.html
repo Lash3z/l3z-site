@@ -1,647 +1,356 @@
 <!DOCTYPE html>
-<html lang="en" data-admin="checking">
+<html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Bets Admin — Unified (BG / Bonus / PVP)</title>
+<title>Admin • Bets Console — L3Z</title>
+<link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
 <style>
-:root{
-  --bg:#060b0d;--panel:#0b1417;--ink:#eaf7ff;--muted:#9fd0d6;
-  --line:rgba(0,255,255,.18);--teal:#00ffff;--gold:#ffb42d;--bad:#e25a6f;--ok:#12d48a
-}
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,Arial,sans-serif}
-html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
-
-.wrap{max-width:1400px;margin:0 auto;padding:16px 16px 64px}
-h1{margin:0 0 12px;color:var(--teal);text-shadow:0 0 14px rgba(0,255,255,.33)}
-.card{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
-.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.btn{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#0f1720;color:#eaf7ff;font-weight:800;cursor:pointer}
-.btn.ok{background:#103d30;border-color:#1fa37b}
-.btn.danger{background:#2b1116;border-color:#7e2a3c}
-.pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cfffff}
-input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;color:#eaf7ff;padding:10px}
-.grid{display:grid;grid-template-columns:1fr;gap:16px}
-
-/* H2H rows */
-.h2hList{display:flex;flex-direction:column;gap:12px}
-.h2h{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.side{border:1px solid var(--line);border-radius:12px;background:#0c1519;padding:10px;display:grid;grid-template-columns:80px 1fr;gap:10px;align-items:center}
-.thumb{width:80px;height:108px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#000}
-.thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.title{font-weight:900}
-.prov{font-size:12px;color:#9fd0d6}
-.oddBox{margin-top:8px}
-.small{font-size:12px;color:#9fd0d6}
-.head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
-.badge{padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#081318;color:#bfe}
-.badge.lock{background:#231519;color:#ffc0cc;border-color:#7e2a3c}
-.sectionTitle{font-weight:900;margin-bottom:8px}
-
-/* markets */
-.mkts{display:flex;flex-direction:column;gap:12px}
-.mkt{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px}
-.mTop{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-.selRow{display:grid;grid-template-columns:1fr 110px auto;gap:8px;margin:6px 0}
-.lineRow{display:flex;align-items:center;gap:8px;margin:4px 0}
-.del{border:1px solid var(--line);border-radius:10px;background:#2b1116;color:#ffd0d6;padding:8px 10px;cursor:pointer}
-.kv{display:flex;gap:8px;align-items:center}
-.kv b{color:var(--muted)}
-.hr{height:1px;background:var(--line);margin:10px 0}
-.toggleRow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.toggleRow label{display:flex;gap:6px;align-items:center}
-.subtle{font-size:12px;color:var(--muted)}
-.badline{border:1px dashed #7e2a3c;padding:6px;border-radius:8px}
-.goodline{border:1px dashed #1fa37b;padding:6px;border-radius:8px}
+  :root{
+    --bg:#0b0e13;--panel:#0f141b;--ink:#e8ecf3;--muted:#94a3b8;--line:rgba(0,255,255,.18);
+    --gold:#f0a320;--ok:#12d48a;--err:#ff7a8a;--chip:#0c141a
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  a{color:#9bd3ff;text-decoration:none}
+  .wrap{max-width:1280px;margin:0 auto;padding:14px}
+  .top{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0a1016;color:#cfe;font-weight:800}
+  .right{display:flex;gap:8px;align-items:center}
+  .grid{display:grid;grid-template-columns:1fr;gap:16px}
+  .card{background:linear-gradient(180deg,#0f131a,#0a0f15);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .head{display:flex;align-items:center;justify-content:space-between;padding:12px;border-bottom:1px solid var(--line)}
+  .head h2{margin:0;font-size:14px;letter-spacing:.3px;color:#ffd78a}
+  .body{padding:12px;display:grid;gap:10px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  input,select,button,textarea{
+    background:#0f141b;border:1px solid var(--line);color:var(--ink);
+    border-radius:10px;padding:10px 12px;font-size:14px
+  }
+  textarea{min-height:72px;width:100%}
+  button{cursor:pointer;font-weight:800}
+  button.primary{background:linear-gradient(180deg,#f5c462,#d49a2e);color:#1a1204;border:none}
+  button.ghost{background:#111a22}
+  button.danger{background:#2a1115;border-color:#7c2731}
+  .muted{color:var(--muted)} .ok{color:var(--ok)} .err{color:var(--err)}
+  .stats{display:flex;gap:8px;flex-wrap:wrap}
+  .stat{display:flex;gap:6px;align-items:center;background:#0b1117;border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+  .tableWrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
+  table{width:100%;border-collapse:separate;border-spacing:0;min-width:1040px}
+  thead th{position:sticky;top:0;background:#0b1316;border-bottom:1px solid rgba(255,255,255,.08);font-weight:800;font-size:12px;color:var(--muted);text-align:left;padding:10px}
+  tbody td{padding:10px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:middle}
+  tbody tr:hover{background:#0a1214}
+  .status{padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:#0d141b;font-size:12px}
+  .status.placed{color:#9bd3ff}
+  .status.settled{color:#12d48a}
+  .status.voided{color:#ff7a8a}
+  .mini{font-size:12px;color:#9fb3c5}
+  .pick{display:inline-block;margin-right:6px;padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:#0f171d;font-size:12px}
+  .sel{width:20px;height:20px}
+  .narrow{width:110px}
+  .payoutInput{width:100px}
 </style>
 </head>
 <body>
-
-<!-- ========= AdminGate (cookie-based, same as other pages) ========= -->
-<script>
-(function(){
-  "use strict";
-  const ADMIN_CHECK="/api/admin/gate/check", ADMIN_LOGIN="/pages/dashboard/admin/admin_login.html", DASH="/index.html";
-  const H=document.documentElement; H.setAttribute("data-admin","checking");
-  function lock(){
-    H.removeAttribute("data-admin");
-    const s=document.createElement("style");
-    s.textContent=".lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}.lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75);box-shadow:0 0 18px rgba(0,255,255,.15)}.lockcard h1{margin:0 0 10px;color:#cfe}.lockcard a{color:#7ad7ff;text-decoration:underline}";
-    document.head.appendChild(s);
-    document.body.innerHTML='<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you just logged in elsewhere, your session may have expired.</div><div style="margin-top:14px"><a href="'+DASH+'">Back to Dashboard</a></div></div></div>';
-  }
-  fetch(ADMIN_CHECK,{credentials:"include",cache:"no-store"})
-    .then(r=>r.ok?r.json():null)
-    .then(j=>{ if(j&&j.admin){ H.removeAttribute("data-admin"); } else { lock(); } })
-    .catch(lock);
-})();
-</script>
-<!-- ========= /AdminGate ========= -->
-
 <div class="wrap">
-  <h1>Bets Admin — Unified</h1>
-
-  <div class="card row" style="justify-content:space-between">
-    <div class="row">
-      <button id="btnSave" class="btn">Save</button>
-      <button id="btnPublish" class="btn ok">Publish to Players</button>
-      <button id="btnExport" class="btn">Export JSON</button>
-      <label class="btn">Import JSON <input id="btnImport" type="file" accept=".json" style="display:none"></label>
-      <button id="btnOpenAll" class="btn">Open All</button>
-      <button id="btnLockAll" class="btn">Lock All</button>
-      <button id="btnDelete" class="btn danger">Delete All</button>
+  <div class="top">
+    <div style="display:flex;align-items:center;gap:10px">
+      <img src="/assets/l3z_logo.png" alt="" style="width:36px;height:36px;border-radius:10px;border:1px solid var(--line)">
+      <div class="pill">Admin • Bets Console</div>
     </div>
-    <div class="row">
-      <span id="srcBadge" class="pill">SRC: local</span>
-      <span id="stamp" class="pill">Not published</span>
-      <span id="msg" class="pill">Ready</span>
+    <div class="right">
+      <div class="pill" id="who">admin: —</div>
+      <a class="pill" href="/admin/tools.html" style="border-color:#3a5166">Admin Hub</a>
+      <button id="logout" class="ghost">Logout</button>
     </div>
   </div>
 
-  <div class="card toggleRow">
-    <label><input id="enBG" type="checkbox"> <b>Battleground</b></label>
-    <label><input id="enBONUS" type="checkbox"> <b>Bonus Hunt</b></label>
-    <label><input id="enPVP" type="checkbox"> <b>PVP Predictions</b></label>
-    <span class="subtle">Bonus Hunt is <b>fixed</b>: six predictions auto-created & auto-settled from the Bonus Hunt page. You only set Stake/Prize.</span>
-  </div>
-
-  <div class="grid">
-    <!-- Battleground section -->
-    <div id="secBG" class="card" style="display:none">
-      <div class="head">
-        <div class="sectionTitle">Battleground</div>
-        <div class="badge" id="statusBG">OPEN</div>
+  <section class="card">
+    <div class="head">
+      <h2>Filter & Controls</h2>
+      <div class="row">
+        <span class="muted" id="state">idle</span>
       </div>
-      <div class="row" style="justify-content:space-between;align-items:center">
+    </div>
+    <div class="body">
+      <div class="row" style="justify-content:space-between">
         <div class="row">
-          <button class="btn" id="bgAddOU">+ Over/Under</button>
-          <button class="btn" id="bgAddMR">+ Multi-Range</button>
-          <button class="btn" id="bgAddYN">+ Yes/No</button>
-          <button class="btn" id="bgAddCU">+ Custom</button>
-          <button class="btn" id="bgAddCS">+ Which Matchup Clean Sweep?</button>
+          <select id="statusSel">
+            <option value="placed" selected>Placed</option>
+            <option value="settled">Settled</option>
+            <option value="voided">Voided</option>
+            <option value="">All</option>
+          </select>
+          <input id="q" placeholder="Search (user, game, pick…)" />
+          <select id="limitSel">
+            <option value="50">50</option>
+            <option value="100" selected>100</option>
+            <option value="200">200</option>
+          </select>
+          <button id="refresh" class="ghost">Refresh</button>
         </div>
         <div class="row">
-          <button class="btn" id="bgImport">Import Matchups</button>
-          <button class="btn" id="bgBuild">Build/Refresh H2H</button>
+          <div class="stat"><span class="muted">Bets</span><b id="stCount">0</b></div>
+          <div class="stat"><span class="muted">Staked</span><b id="stStaked">0 LBX</b></div>
+          <div class="stat"><span class="muted">Potential Return</span><b id="stPotential">0 LBX</b></div>
         </div>
       </div>
-      <div class="hr"></div>
-      <div class="sectionTitle">Head-to-Head</div>
-      <div id="bgH2H" class="h2hList"></div>
-      <div class="kv"><b>Debug:</b> Last Import → <span id="dbgImport">none</span></div>
-      <div class="hr"></div>
-      <div class="sectionTitle">Overall Markets</div>
-      <div id="bgMkts" class="mkts"></div>
-    </div>
 
-    <!-- Bonus Hunt section (6 fixed predictions) -->
-    <div id="secBONUS" class="card" style="display:none">
-      <div class="head" style="gap:8px">
-        <div class="sectionTitle">Bonus Hunt</div>
-        <div class="badge" id="statusBONUS">OPEN</div>
-        <span class="pill">Reads server → falls back to <code>bh:live</code>/<code>bh:draft</code></span>
-        <button class="btn" id="boSettle">Settle from Bonus Hunt</button>
-      </div>
-      <div class="subtle">No setup fields. These six are prefilled & settled from the Bonus Hunt Admin data. You only tweak <b>Stake</b> (and optional <b>Prize</b>).</div>
-      <div class="hr"></div>
-      <div id="boMkts" class="mkts"></div>
-    </div>
-
-    <!-- PVP section -->
-    <div id="secPVP" class="card" style="display:none">
-      <div class="head">
-        <div class="sectionTitle">PVP Predictions</div>
-        <div class="badge" id="statusPVP">OPEN</div>
-      </div>
-      <div class="row" style="justify-content:space-between;align-items:center">
+      <div class="row" style="justify-content:space-between">
         <div class="row">
-          <button class="btn" id="pvAddOU">+ Over/Under</button>
-          <button class="btn" id="pvAddMR">+ Multi-Range</button>
-          <button class="btn" id="pvAddYN">+ Yes/No</button>
-          <button class="btn" id="pvAddCU">+ Custom</button>
+          <label class="mini">Bulk payout</label>
+          <input id="bulkPayout" class="payoutInput" type="number" min="0" step="1" value="0"/>
+          <button id="bulkSettle" class="primary">Settle Selected</button>
+          <button id="bulkVoid"   class="danger">Void Selected</button>
         </div>
+        <div class="mini">Select rows at left; bulk actions apply to those.</div>
       </div>
-      <div class="hr"></div>
-      <div id="pvMkts" class="mkts"></div>
     </div>
-  </div>
+  </section>
+
+  <section class="card">
+    <div class="head">
+      <h2>Review Bets</h2>
+      <div class="row mini">Click “Settle” to award payout. “Void” auto-refunds stake.</div>
+    </div>
+    <div class="body">
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:44px"><input type="checkbox" id="selAll" class="sel"/></th>
+              <th style="width:160px">Placed</th>
+              <th style="width:160px">User</th>
+              <th>Game / Picks</th>
+              <th style="width:110px">Stake</th>
+              <th style="width:110px">Status</th>
+              <th style="width:120px">Payout</th>
+              <th style="width:230px">Action</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            <tr><td colspan="8" class="muted" style="padding:14px">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 </div>
 
+<script src="/assets/api-base.js"></script>
 <script>
 (function(){
-  "use strict";
+  const $=(s,r=document)=>r.querySelector(s);
+  const rows=$("#rows");
+  const who=$("#who"), state=$("#state");
+  const statusSel=$("#statusSel"), q=$("#q"), limitSel=$("#limitSel");
+  const stCount=$("#stCount"), stStaked=$("#stStaked"), stPotential=$("#stPotential");
+  const selAll=$("#selAll"), bulkPayout=$("#bulkPayout");
 
-  // ---------- helpers ----------
-  const els = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
-  const el  = (sel,root=document)=>root.querySelector(sel);
-  const enc = (u)=>encodeURI(String(u||''));
-  function sget(k){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch(_){ return null; } }
-  function sset(k,v){ localStorage.setItem(k,JSON.stringify(v)); }
-  function esc(s){ s=String(s==null?'':s); return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-  function kid(p){ return (p||'ID')+Math.random().toString(36).slice(2,10).toUpperCase(); }
-  function toast(t,ok){ const m=el('#msg'); if(!m) return; m.textContent=t; m.style.color = ok===false ? '#ff9aa7' : '#baffea'; setTimeout(()=>{ m.textContent='Ready'; m.style.color=''; }, 2200); }
-  const slug = s=> String(s||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  let data = [];           // loaded bets
+  let selected = new Set();// selected betIds
+  let me = null;
 
-  async function tryFetch(url){
+  function fmtLBX(n){ return \`\${Number(n||0).toLocaleString()} LBX\`; }
+  function asNum(n){ const x=Number(n); return Number.isFinite(x)?x:0; }
+  function pill(s){
+    const span = document.createElement("span");
+    span.className = "status " + (s||"").toLowerCase();
+    span.textContent = (s||"").toLowerCase();
+    return span.outerHTML;
+  }
+
+  async function requireAdmin(){
     try{
-      const r=await fetch(url,{cache:'no-store',credentials:'include'});
-      if(!r.ok) return null;
-      const j=await r.json();
-      return j;
-    }catch(_){ return null; }
-  }
-  async function fetchFirst(urls){
-    for(const u of urls){ const j=await tryFetch(u); if(j) return {source:u,data:j}; }
-    return null;
-  }
-
-  // ---------- storage keys ----------
-  const K_UNIFIED   = 'sb:markets:unified';
-  const K_BG_BUILDER= 'bg:builder:battleground';
-  const K_BH_LIVE   = 'bh:live';
-  const K_BH_DRAFT  = 'bh:draft';
-
-  // ---------- state ----------
-  let state = sget(K_UNIFIED) || {
-    status: 'open', lastUpdated: 0,
-    sections: {
-      battleground: { enabled:false, h2h:[], overall:[] },
-      bonus:        { enabled:false, overall:[] },
-      pvp:          { enabled:false, overall:[] }
-    }
-  };
-
-  // ---------- toggles ----------
-  function setupBonusDefaults(){
-    const b = state.sections.bonus;
-    if(!b.overall.length){
-      b.overall = [
-        {id:kid('GBAL'), code:'BAL',      type:'NUMERIC_GUESS', fixed:true, label:'Guess the Final Balance', stake:10, prize:0, final:null, winners:[]},
-        {id:kid('HPG'),  code:'HIGH_PAY', type:'TEXT_GUESS',    fixed:true, label:'Which game pays the MOST money?', stake:10, prize:0, finalText:'', winners:[]},
-        {id:kid('LPG'),  code:'LOW_PAY',  type:'TEXT_GUESS',    fixed:true, label:'Which game pays the LEAST money?', stake:10, prize:0, finalText:'', winners:[]},
-        {id:kid('HX'),   code:'HIGH_X',   type:'NUMERIC_GUESS', fixed:true, label:'Highest X payout', stake:10, prize:0, final:null, winners:[]},
-        {id:kid('LX'),   code:'LOW_X',    type:'NUMERIC_GUESS', fixed:true, label:'Lowest X payout', stake:10, prize:0, final:null, winners:[]},
-        {id:kid('C100'), code:'CNT_100X', type:'NUMERIC_GUESS', fixed:true, label:'How many 100x wins?', stake:10, prize:0, final:null, winners:[]}
-      ];
-      save();
-    }
-  }
-
-  function syncToggles(){
-    const s = state.sections;
-    el('#enBG').checked    = !!s.battleground.enabled;
-    el('#enBONUS').checked = !!s.bonus.enabled;
-    el('#enPVP').checked   = !!s.pvp.enabled;
-
-    el('#secBG').style.display    = s.battleground.enabled ? '' : 'none';
-    el('#secBONUS').style.display = s.bonus.enabled ? '' : 'none';
-    el('#secPVP').style.display   = s.pvp.enabled ? '' : 'none';
-
-    const status=(state.status||'open').toUpperCase();
-    el('#statusBG').textContent = status;
-    el('#statusBONUS').textContent = status;
-    el('#statusPVP').textContent = status;
-
-    if(s.bonus.enabled){ setupBonusDefaults(); /* optional auto sync: */ /* autoSettleFromBH(); */ }
-  }
-
-  el('#enBG').addEventListener('change',()=>{ state.sections.battleground.enabled = el('#enBG').checked; save(); syncToggles(); paintAll(); });
-  el('#enBONUS').addEventListener('change',()=>{ state.sections.bonus.enabled = el('#enBONUS').checked; save(); syncToggles(); paintAll(); });
-  el('#enPVP').addEventListener('change',()=>{ state.sections.pvp.enabled = el('#enPVP').checked; save(); syncToggles(); paintAll(); });
-
-  // ---------- painting ----------
-  function paintAll(){
-    paintH2H();
-    paintMkts('battleground', '#bgMkts');
-    paintMkts('bonus', '#boMkts');
-    paintMkts('pvp', '#pvMkts');
-  }
-
-  function paintH2H(){
-    const sec = state.sections.battleground;
-    const box = el('#bgH2H'); box.innerHTML = '';
-    if(!sec.h2h.length){ box.innerHTML = '<div class="pill">No H2H yet. Import → Build/Refresh.</div>'; return; }
-    sec.h2h.forEach((h,idx)=>{
-      const L='<div class="side">'+
-                '<div class="thumb">'+(h.leftImg?('<img src="'+esc(h.leftImg)+'" alt="">'):'')+'</div>'+
-                '<div>'+ '<div class="title">'+esc(h.leftTitle||'LEFT')+'</div>'+ '<div class="prov">'+esc(h.leftProv||'')+'</div>'+ '<div class="oddBox"><span class="small">Odds</span> <input data-k="l'+idx+'" type="number" step="0.01" value="'+esc(h.leftOdds||1.84)+'" style="width:110px"></div>' + '</div>'+
-              '</div>';
-      const R='<div class="side">'+
-                '<div class="thumb">'+(h.rightImg?('<img src="'+esc(h.rightImg)+'" alt="">'):'')+'</div>'+
-                '<div>'+ '<div class="title">'+esc(h.rightTitle||'RIGHT')+'</div>'+ '<div class="prov">'+esc(h.rightProv||'')+'</div>'+ '<div class="oddBox"><span class="small">Odds</span> <input data-k="r'+idx+'" type="number" step="0.01" value="'+esc(h.rightOdds||1.84)+'" style="width:110px"></div>' + '</div>'+
-              '</div>';
-      const row=document.createElement('div'); row.className='h2h'; row.innerHTML = L+R;
-      const lIn=row.querySelector('[data-k="l'+idx+'"]');
-      const rIn=row.querySelector('[data-k="r'+idx+'"]');
-      if(lIn) lIn.addEventListener('change',e=>{ sec.h2h[idx].leftOdds=+e.target.value||1; save(); });
-      if(rIn) rIn.addEventListener('change',e=>{ sec.h2h[idx].rightOdds=+e.target.value||1; save(); });
-      box.appendChild(row);
-    });
-  }
-
-  function paintMkts(section, mount){
-    const sec = state.sections[section];
-    const host = el(mount); host.innerHTML='';
-    if(!sec.overall.length){ host.innerHTML = '<div class="pill">No markets yet.</div>'; return; }
-
-    sec.overall.forEach((m,mi)=>{
-      const box=document.createElement('div'); box.className='mkt';
-
-      const typePart = m.fixed ? '<span class="pill">'+(m.type.replace('_',' '))+'</span>' : (
-        '<select data-x="type">'+
-          '<option '+(m.type==='OVER_UNDER'?'selected':'')+'>OVER_UNDER</option>'+
-          '<option '+(m.type==='MULTI_RANGE'?'selected':'')+'>MULTI_RANGE</option>'+
-          '<option '+(m.type==='YES_NO'?'selected':'')+'>YES_NO</option>'+
-          '<option '+(m.type==='CUSTOM'?'selected':'')+'>CUSTOM</option>'+
-          '<option '+(m.type==='NUMERIC_GUESS'?'selected':'')+'>NUMERIC_GUESS</option>'+
-          '<option '+(m.type==='TEXT_GUESS'?'selected':'')+'>TEXT_GUESS</option>'+
-        '</select>'
-      );
-
-      const top='<div class="mTop">'+
-                  typePart+
-                  '<input data-x="label" '+(m.fixed?'disabled':'')+' placeholder="Market label" value="'+esc(m.label||'')+'" style="min-width:260px">'+
-                  '<span class="pill">Stake</span><input data-x="stake" type="number" step="1" value="'+(m.stake!=null?m.stake:10)+'" style="width:110px">'+
-                  '<span class="pill">Prize</span><input data-x="prize" type="number" step="1" value="'+(m.prize||0)+'" style="width:110px">'+
-                  '<select data-x="status"><option '+(m.status!=='locked'?'selected':'')+'>OPEN</option><option '+(m.status==='locked'?'selected':'')+'>LOCKED</option></select>'+
-                  (m.fixed?'':'<button class="del" data-act="del">Delete</button>')+
-                '</div>';
-
-      const extraFixed = (section==='bonus' && m.fixed) ? (
-        '<div class="lineRow '+(m.type==='TEXT_GUESS'?'goodline':'badline')+'">'+
-          '<span class="pill">Result from Bonus Hunt</span>'+
-          (m.type==='TEXT_GUESS' ? ('<b>'+esc(m.finalText||'—')+'</b>') : ('<b>'+(m.final!=null? m.final : '—')+'</b>'))+
-          '<span class="small">Entries: <b data-x="entries">'+(getEntries(section, m.id).length)+'</b> · Winners: <b>'+(m.winners?m.winners.length:0)+'</b></span>'+
-        '</div>'
-      ) : '';
-
-      const extraOU = (!m.fixed && m.type==='OVER_UNDER')
-        ? ('<div class="lineRow"><span class="pill">LINE</span> <input data-x="line" type="number" step="0.01" value="'+(m.line!=null?m.line:'')+'" style="width:140px"></div>')
-        : '';
-
-      const sels = (!m.fixed ? (m.selections||[]).map((s,si)=> '<div class="selRow">'+
-            '<input data-sel="'+si+'" data-x="slabel" placeholder="Selection" value="'+esc(s.label||'')+'">'+
-            '<input data-sel="'+si+'" data-x="sodds" type="number" step="0.01" value="'+esc(s.odds||1.84)+'">'+
-            '<button class="del" data-act="sdel" data-sel="'+si+'">×</button>'+ '</div>' ).join('') : '' );
-
-      const addBtn = (!m.fixed ? '<div><button class="btn" data-act="addSel">+ Add Line</button></div>' : '');
-
-      box.innerHTML = top + extraFixed + extraOU + sels + addBtn;
-
-      const typeSel = box.querySelector('[data-x="type"]'); if(typeSel){ typeSel.addEventListener('change',e=>{ sec.overall[mi].type=e.target.value; save(); paintMkts(section,mount); }); }
-      const labEl=box.querySelector('[data-x="label"]'); if(labEl){ labEl.addEventListener('change',e=>{ sec.overall[mi].label=e.target.value; save(); }); }
-      const stakeEl=box.querySelector('[data-x="stake"]'); if(stakeEl){ stakeEl.addEventListener('change',e=>{ sec.overall[mi].stake=+e.target.value||0; save(); }); }
-      const prizeEl=box.querySelector('[data-x="prize"]'); if(prizeEl){ prizeEl.addEventListener('change',e=>{ sec.overall[mi].prize=+e.target.value||0; save(); }); }
-      const statEl=box.querySelector('[data-x="status"]'); if(statEl){ statEl.addEventListener('change',e=>{ sec.overall[mi].status=(e.target.value||'OPEN').toLowerCase()==='locked'?'locked':'open'; save(); }); }
-      const lineEl=box.querySelector('[data-x="line"]'); if(lineEl){ lineEl.addEventListener('change',e=>{ const v=+e.target.value; sec.overall[mi].line=v; if(sec.overall[mi].selections?.length>=2){ sec.overall[mi].selections[0].label='Over '+v; sec.overall[mi].selections[1].label='Under '+v; } save(); paintMkts(section,mount); }); }
-      const entriesEl=box.querySelector('[data-x="entries"]'); if(entriesEl){ entriesEl.textContent = getEntries(section, m.id).length; }
-
-      box.querySelectorAll('[data-x="slabel"]').forEach(n=> n.addEventListener('change',function(){ sec.overall[mi].selections[+this.dataset.sel].label=this.value; save(); }));
-      box.querySelectorAll('[data-x="sodds"]').forEach(n=> n.addEventListener('change',function(){ sec.overall[mi].selections[+this.dataset.sel].odds=+this.value||1; save(); }));
-      box.querySelectorAll('[data-act="sdel"]').forEach(b=> b.addEventListener('click',function(){ sec.overall[mi].selections.splice(+this.dataset.sel,1); save(); paintMkts(section,mount); }));
-      const addSelBtn = box.querySelector('[data-act="addSel"]'); if(addSelBtn){ addSelBtn.addEventListener('click',()=>{ (sec.overall[mi].selections||(sec.overall[mi].selections=[])).push({id:kid('SEL'),label:'',odds:1.84}); save(); paintMkts(section,mount); }); }
-
-      if(!m.fixed){
-        const delBtn = box.querySelector('[data-act="del"]');
-        if(delBtn){ delBtn.addEventListener('click',()=>{ if(!confirm('Delete market "'+(m.label||m.type)+'"?')) return; sec.overall.splice(mi,1); save(); paintMkts(section,mount); }); }
+      const j = await api.get("/api/me");
+      me = j?.user || null;
+      who.textContent = "admin: " + (me?.username || "—");
+      if (!me || me.role !== "admin"){
+        alert("Admin only. Redirecting.");
+        location.href="/admin/login.html";
       }
-
-      host.appendChild(box);
-    });
-  }
-
-  // ---------- quick creators (BG/PVP generic) ----------
-  function addOU(sec){ sec.overall.push({id:kid('OU'),type:'OVER_UNDER',label:'Over / Under',status:'open',stake:10,selections:[{id:kid('SEL'),label:'Over 65.5',odds:1.84},{id:kid('SEL'),label:'Under 65.5',odds:1.84}]}); save(); paintAll(); }
-  function addMR(sec){ sec.overall.push({id:kid('MR'),type:'MULTI_RANGE',label:'Total Games Played',status:'open',stake:10,selections:[{id:kid('SEL'),label:'48–55.5',odds:17},{id:kid('SEL'),label:'56–63.5',odds:3.4},{id:kid('SEL'),label:'64–71.5',odds:1.7},{id:kid('SEL'),label:'72–80',odds:4.25}]}); save(); paintAll(); }
-  function addYN(sec){ sec.overall.push({id:kid('YN'),type:'YES_NO',label:'Yes / No',status:'open',stake:10,selections:[{id:kid('SEL'),label:'Yes',odds:1.84},{id:kid('SEL'),label:'No',odds:1.84}]}); save(); paintAll(); }
-  function addCU(sec){ sec.overall.push({id:kid('CU'),type:'CUSTOM',label:'Custom Market',status:'open',stake:10,selections:[]}); save(); paintAll(); }
-  function addCS(sec){
-    if(!state.sections.battleground.h2h.length){ toast('Build H2H first',false); return; }
-    const m={id:kid('CS'),type:'CUSTOM',label:'Which matchup clean sweep?',status:'open',stake:10,selections:[]};
-    state.sections.battleground.h2h.forEach(h=>{
-      m.selections.push({id:kid('SEL'),label:(h.leftTitle||'LEFT')+' 3-0',odds:3.0});
-      m.selections.push({id:kid('SEL'),label:(h.rightTitle||'RIGHT')+' 3-0',odds:3.0});
-    });
-    sec.overall.push(m); save(); paintAll();
-  }
-
-  // ---------- entries & settlement helpers ----------
-  function entriesKey(section, marketId){ return 'sb:entries:'+section+':'+marketId; }
-  function getEntries(section, marketId){ return sget(entriesKey(section, marketId)) || []; }
-
-  function settleNumericGuess(section, m){
-    const entries = getEntries(section, m.id);
-    if(!entries.length || m.final==null || isNaN(m.final)) { m.winners=[]; return; }
-    let bestDiff = Infinity; let winners = [];
-    entries.forEach(e=>{
-      const diff = Math.abs((+e.guess) - (+m.final));
-      if (diff < bestDiff){ bestDiff = diff; winners = [e]; }
-      else if (diff === bestDiff){ winners.push(e); }
-    });
-    m.winners = winners.map(w => ({userId:w.userId||w.name||'anon', name:w.name||('User'+(w.userId||'')), guess:+w.guess, diff:Math.abs((+w.guess)-(+m.final))}));
-  }
-
-  function settleTextGuess(section, m){
-    const entries = getEntries(section, m.id);
-    const final = (m.finalText||'').trim();
-    if(!entries.length || !final){ m.winners=[]; return; }
-    const f = slug(final);
-    const winners = entries.filter(e => slug(e.guess) === f);
-    m.winners = winners.map(w => ({userId:w.userId||w.name||'anon', name:w.name||('User'+(w.userId||'')), guess:String(w.guess)}));
-  }
-
-  // ----- Bonus Hunt: server-first load + normalization -----
-  async function readBH(){
-    const probe = await fetchFirst([
-      '/api/bonus/live',
-      '/api/bonus/builder',
-      '/api/bonus/widget',
-      '/assets/bonus_hunt_live.json'
-    ]);
-    if (probe){
-      return normalizeBH(probe.data, probe.source);
+    }catch{
+      who.textContent = "admin: (not logged in)";
+      location.href="/admin/login.html";
     }
-    // fallback to localStorage legacy
-    const ls = sget('bh:builder:bonus');
-    if(ls){ return normalizeBH(ls, 'local:bh:builder:bonus'); }
-    const g=sget('bh:games')||[], r=sget('bh:results')||[], s=+(sget('bh:starting')||0);
-    return normalizeBH({title:'BONUS HUNT', games:g, results:r, starting:s}, 'local:legacy');
   }
 
-  function normalizeBH(src, source){
-    // Accept multiple shapes:
-    // A) { entries:[{slot,bet,payout,x,done}], start }
-    // B) { games:[{id,title,betSize,...}], results:[{gameId,bet,win,x}], starting|startingBalance }
-    // C) { builder:{...same as B} }
-    const b = src.builder || src;
+  function calcStats(list){
+    const count = list.length;
+    const staked = list.reduce((a,b)=> a + asNum(b.amount), 0);
+    const potential = list.reduce((a,b)=> a + asNum(b.potentialPayout || 0), 0);
+    stCount.textContent = String(count);
+    stStaked.textContent = fmtLBX(staked);
+    stPotential.textContent = fmtLBX(potential);
+  }
 
-    // A) Direct entries
-    if (Array.isArray(b.entries) && (b.start!=null || b.starting!=null || b.startingBalance!=null)) {
-      return { source, start:(+b.start || +b.starting || +b.startingBalance || 0), entries:b.entries };
-    }
-    // B) games+results → synthesize entries
-    const games = Array.isArray(b.games) ? b.games : [];
-    const results = Array.isArray(b.results) ? b.results : [];
-    const byId = new Map(results.map(r=>[r.gameId, r]));
-    const entries = games.map(g=>{
-      const r = byId.get(g.id)||{};
-      const bet = (r.bet!=null?+r.bet:+g.betSize)||0;
-      const win = +r.win||0;
-      const x   = (r.x!=null)? +r.x : (bet>0? (win/bet):0);
-      return { slot: g.title||'', bet, payout: win, x, done: (win>0 || x>0) };
+  function filterList(){
+    const term = (q.value||"").trim().toLowerCase();
+    const s = statusSel.value;
+    return data.filter(b=>{
+      if (s && (b.status||"") !== s) return false;
+      if (term){
+        const hay = [
+          b.username, b.game, b.type,
+          ...(Array.isArray(b.picks)? b.picks.map(p=>p.label||p.choice||p.name||"") : [])
+        ].join(" ").toLowerCase();
+        if (!hay.includes(term)) return false;
+      }
+      return true;
     });
-    const start = +b.startingBalance || +b.starting || +b.start || 0;
-    return { source, start, entries };
   }
 
-  function autoSettleFromBH(){
-    const b = state.sections.bonus;
-    if(!b.enabled){ toast('Enable Bonus Hunt first', false); return; }
-    (async ()=>{
-      const src = await readBH();
-      if(!src || !Array.isArray(src.entries)){ toast('Bonus Hunt data not found.', false); return; }
-      const opened = src.entries.filter(e=>e && (e.done || Number(e.payout||0)>0));
-      const start = Number(src.start||0);
-      const sum = (arr,fn)=>arr.reduce((a,x)=>a+Number(fn(x)||0),0);
-      const totalBet = sum(opened, e=>e.bet);
-      const totalPayout = sum(opened, e=>e.payout);
-      const finalBalance = +(start - totalBet + totalPayout).toFixed(2);
-
-      const byPayout = opened.slice().sort((a,b)=>Number(b.payout||0)-Number(a.payout||0));
-      const highestGame = byPayout[0]?.slot || '';
-      const lowestGame  = opened.slice().sort((a,b)=>Number(a.payout||0)-Number(b.payout||0))[0]?.slot || '';
-
-      const byXHigh = opened.slice().sort((a,b)=>Number(b.x||0)-Number(a.x||0));
-      const byXLow  = opened.slice().sort((a,b)=>Number(a.x||0)-Number(b.x||0));
-      const highX = byXHigh[0]?.x != null ? Number(byXHigh[0].x) : null;
-      const lowX  = byXLow[0]?.x  != null ? Number(byXLow[0].x)  : null;
-
-      const cnt100 = opened.filter(e=>Number(e.x||0) >= 100).length;
-
-      const setByCode = (code, f)=>{ const m=b.overall.find(x=>x.code===code); if(m) f(m); };
-
-      setByCode('BAL',      m=>{ m.final = finalBalance; settleNumericGuess('bonus', m); });
-      setByCode('HIGH_PAY', m=>{ m.finalText = highestGame; settleTextGuess('bonus', m); });
-      setByCode('LOW_PAY',  m=>{ m.finalText = lowestGame;  settleTextGuess('bonus', m); });
-      setByCode('HIGH_X',   m=>{ m.final = (highX!=null? +highX : null); settleNumericGuess('bonus', m); });
-      setByCode('LOW_X',    m=>{ m.final = (lowX!=null? +lowX : null);  settleNumericGuess('bonus', m); });
-      setByCode('CNT_100X', m=>{ m.final = cnt100; settleNumericGuess('bonus', m); });
-
-      save(); paintMkts('bonus','#boMkts');
-      toast('Bonus Hunt results synced.');
-    })();
-  }
-
-  // ---------- import from Battleground Admin / Server ----------
-  async function importBG(){
-    let used='';
-
-    // 1) local builder (most reliable)
-    const prefer = sget(K_BG_BUILDER);
-    if(prefer && Array.isArray(prefer.matches) && prefer.matches.length){
-      used='local:'+K_BG_BUILDER;
-      acceptMatches(prefer.matches,used,true);
+  function paint(){
+    const list = filterList();
+    calcStats(list);
+    rows.innerHTML = "";
+    if (list.length===0){
+      rows.innerHTML = '<tr><td colspan="8" class="muted" style="padding:14px">No bets.</td></tr>';
       return;
     }
-
-    // 2) server builder
-    const b = await tryFetch('/api/battleground/builder');
-    if(b && b.builder && Array.isArray(b.builder.matches) && b.builder.matches.length){
-      used='api:/api/battleground/builder';
-      acceptMatches(b.builder.matches, used, true);
-      return;
+    for (const b of list){
+      const picks = Array.isArray(b.picks) ? b.picks.map(p=>p.label||p.choice||p.name||"Pick").map(t=>\`<span class="pick">\${t}</span>\`).join(" ") : (b.pickLabel || "—");
+      const payout = (b.payout!=null) ? (b.payout>0? \`+\${b.payout}\` : String(b.payout)) : "—";
+      const isPlaced = (b.status === "placed");
+      const tr = document.createElement("tr");
+      tr.innerHTML = \`
+        <td><input type="checkbox" class="sel" data-id="\${b._id}" \${selected.has(String(b._id))?"checked":""}></td>
+        <td>\${new Date(b.createdAt || b.placedAt || Date.now()).toLocaleString()}</td>
+        <td><b>\${b.username}</b></td>
+        <td><b>\${b.game || b.type || "Bet"}</b><div class="mini">\${picks}</div></td>
+        <td>\${fmtLBX(b.amount)}</td>
+        <td>\${pill(b.status||"placed")}</td>
+        <td>\${payout}</td>
+        <td>
+          <div class="row">
+            <input type="number" min="0" step="1" class="payoutInput" placeholder="payout" data-id="\${b._id}" \${!isPlaced?"disabled":""}/>
+            <button class="ghost narrow" data-act="settle" data-id="\${b._id}" \${!isPlaced?"disabled":""}>Settle</button>
+            <button class="danger narrow" data-act="void"   data-id="\${b._id}" \${!isPlaced?"disabled":""}>Void</button>
+          </div>
+        </td>\`;
+      rows.appendChild(tr);
     }
-
-    // 3) legacy local keys
-    const scanKeys = ['BG_MATCHUPS','BATTLEGROUND_MATCHUPS','BATTLEGROUND_SELECTED','BG_SELECTED_GAMES','battleground:matches','battleground:admin:matches','bg:admin:matches','bg:matchups'];
-    for(const k of scanKeys){
-      const v=sget(k);
-      if(Array.isArray(v) && v.length){
-        used='local:'+k;
-        const norm=v.map((m,i)=>({
-          id:m.id||m.matchId||('M'+i),
-          leftId:m.leftId||m.AId||m.aId||m.left?.id||m.A?.id||null,
-          rightId:m.rightId||m.BId||m.bId||m.right?.id||m.B?.id||null,
-          leftTitle:m.leftTitle||m.aName||m.A||m.left?.title||m.left?.name||'LEFT',
-          rightTitle:m.rightTitle||m.bName||m.B||m.right?.title||m.right?.name||'RIGHT',
-          leftImg:m.leftImg||m.aImage||m.imgA||m.imageA||m.left?.image||m.left?.img||'',
-          rightImg:m.rightImg||m.bImage||m.imgB||m.imageB||m.right?.image||m.right?.img||''
-        }));
-        acceptMatches(norm,used,true);
-        return;
-      }
-    }
-
-    // 4) API matchups (if you expose one)
-    for(const url of ['/api/battleground/matchups','/api/bg/matchups']){
-      const arr=await tryFetch(url);
-      if(Array.isArray(arr) && arr.length){
-        used='api:'+url;
-        acceptMatches(arr,used,false);
-        return;
-      }
-    }
-
-    el('#dbgImport').textContent='none';
-    toast('No matchups found (Admin/local/API empty)',false);
   }
 
-  function acceptMatches(arr, used, alreadyNorm){
-    const matches = arr.map((mx,i)=> alreadyNorm ? mx : ({
-      id: mx.id||mx.matchId||('M'+i),
-      leftId: mx.leftId||mx.AId||mx.aId||null,
-      rightId: mx.rightId||mx.BId||mx.bId||null,
-      leftTitle: mx.leftTitle||mx.aName||mx.A||'LEFT',
-      rightTitle: mx.rightTitle||mx.bName||mx.B||'RIGHT',
-      leftImg: mx.leftImg||mx.aImage||mx.imgA||mx.imageA||'',
-      rightImg: mx.rightImg||mx.bImage||mx.imgB||mx.imageB||''
-    }));
-    const builder = sget(K_BG_BUILDER)||{games:[],matches:[]};
-    builder.matches=matches; sset(K_BG_BUILDER,builder);
-    el('#dbgImport').textContent = used+' ('+matches.length+')';
-    toast('Imported '+matches.length+' matchups',true);
-  }
+  rows.addEventListener("change", (ev)=>{
+    const id = ev.target?.getAttribute?.("data-id");
+    if (!id) return;
+    if (ev.target.type === "checkbox"){
+      if (ev.target.checked) selected.add(String(id));
+      else selected.delete(String(id));
+    }
+  });
 
-  function buildH2H(){
-    const builder = sget(K_BG_BUILDER);
-    if(!builder || !Array.isArray(builder.matches) || !builder.matches.length){ toast('No matches to build',false); return; }
-    const prev={}; (state.sections.battleground.h2h||[]).forEach(o=>prev[o.matchId]=o);
-    state.sections.battleground.h2h = builder.matches.map(mx=>({
-      matchId: mx.id,
-      leftId: mx.leftId||null, rightId: mx.rightId||null,
-      leftTitle: mx.leftTitle||'LEFT', rightTitle: mx.rightTitle||'RIGHT',
-      leftImg: mx.leftImg||'', rightImg: mx.rightImg||'',
-      leftProv: mx.leftProv||'', rightProv: mx.rightProv||'',
-      leftOdds: (prev[mx.id]?.leftOdds)||1.84, rightOdds: (prev[mx.id]?.rightOdds)||1.84
-    }));
-    save(); paintH2H(); toast('H2H built');
-  }
+  selAll.addEventListener("change", ()=>{
+    const list = filterList();
+    if (selAll.checked){
+      list.forEach(b => selected.add(String(b._id)));
+    } else {
+      list.forEach(b => selected.delete(String(b._id)));
+    }
+    paint();
+  });
 
-  // ---------- save/publish ----------
-  function save(){ sset(K_UNIFIED,state); }
-  async function publish(){
-    state.lastUpdated=Date.now(); save();
-    // Attempt server publish, then fall back
-    const payload = { markets: state, lastUpdated: state.lastUpdated };
-    let serverOK=false;
+  rows.addEventListener("click", async (ev)=>{
+    const act = ev.target?.getAttribute?.("data-act");
+    const id  = ev.target?.getAttribute?.("data-id");
+    if (!act || !id) return;
+
+    if (act === "settle"){
+      const input = rows.querySelector(\`input.payoutInput[data-id="\${id}"]\`);
+      const payout = Number(input?.value || 0);
+      if (!Number.isFinite(payout) || payout < 0){ alert("Enter a non-negative payout."); return; }
+      ev.target.disabled = true; state.textContent = "settling…";
+      try{
+        const j = await api.post("/api/admin/bets/settle", { betId:id, payout });
+        await api.post("/api/admin/audit/track", { evt:"bets.settle", payload:{ betId:id, payout } });
+        state.textContent = "settled";
+        await load(); // refresh list
+      }catch(e){
+        state.textContent = (e.message||"failed").replace(/_/g," ");
+      }finally{ ev.target.disabled=false; }
+    }
+
+    if (act === "void"){
+      const reason = prompt("Reason for void?");
+      ev.target.disabled = true; state.textContent = "voiding…";
+      try{
+        const j = await api.post("/api/admin/bets/void", { betId:id, reason: reason || null });
+        await api.post("/api/admin/audit/track", { evt:"bets.void", payload:{ betId:id, reason: reason || null } });
+        state.textContent = "voided";
+        await load();
+      }catch(e){
+        state.textContent = (e.message||"failed").replace(/_/g," ");
+      }finally{ ev.target.disabled=false; }
+    }
+  });
+
+  $("#bulkSettle")?.addEventListener("click", async ()=>{
+    const payout = Number(bulkPayout.value || 0);
+    if (!Number.isFinite(payout) || payout < 0){ alert("Enter a non-negative payout."); return; }
+    const decisions = Array.from(selected).map(id => ({ betId:id, payout }));
+    if (decisions.length === 0){ alert("Select at least one bet."); return; }
+    state.textContent = "bulk settling…";
     try{
-      const r = await fetch('/api/markets/unified', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        credentials:'include', body: JSON.stringify(payload)
-      });
-      serverOK = r.ok;
-    }catch(_){}
-    el('#srcBadge').textContent = 'SRC: ' + (serverOK ? 'server' : 'local');
-    const stamp=el('#stamp'); if(stamp){ const d=new Date(state.lastUpdated); stamp.textContent=(serverOK?'Published':'Last publish')+' @ '+d.toLocaleString(); }
-    toast(serverOK?'Published to server':'Server not available — saved locally', serverOK);
+      const j = await api.post("/api/admin/bets/settle_bulk", { decisions });
+      await api.post("/api/admin/audit/track", { evt:"bets.settle_bulk", payload:{ n: decisions.length, payout } });
+      state.textContent = "bulk settled";
+      selected.clear(); selAll.checked = false;
+      await load();
+    }catch(e){
+      state.textContent = (e.message||"failed").replace(/_/g," ");
+    }
+  });
+
+  $("#bulkVoid")?.addEventListener("click", async ()=>{
+    if (selected.size === 0){ alert("Select at least one bet."); return; }
+    const reason = prompt("Reason for void (applies to all)?") || null;
+    state.textContent = "bulk void…";
+    try{
+      // settle_bulk with payout=0 isn't the same as void w/refund. Use per-bet void.
+      // Fire sequentially to keep it simple client-side.
+      for (const id of Array.from(selected)){
+        await api.post("/api/admin/bets/void", { betId:id, reason });
+      }
+      await api.post("/api/admin/audit/track", { evt:"bets.void_bulk", payload:{ n: selected.size, reason } });
+      state.textContent = "bulk voided";
+      selected.clear(); selAll.checked = false;
+      await load();
+    }catch(e){
+      state.textContent = (e.message||"failed").replace(/_/g," ");
+    }
+  });
+
+  async function load(){
+    state.textContent = "loading…";
+    rows.innerHTML = '<tr><td colspan="8" class="muted" style="padding:14px">Loading…</td></tr>';
+    try{
+      const url = new URL("/api/admin/bets/list", location.origin);
+      const s = statusSel.value; const lim = Number(limitSel.value||100); const term = (q.value||"").trim();
+      if (s) url.searchParams.set("status", s);
+      if (lim) url.searchParams.set("limit", String(lim));
+      if (term) url.searchParams.set("q", term);
+      const j = await api.get(url.pathname + url.search);
+      data = Array.isArray(j?.bets) ? j.bets : [];
+      state.textContent = `loaded ${data.length}`;
+      paint();
+    }catch(e){
+      state.textContent = (e.message||"failed").replace(/_/g," ");
+      rows.innerHTML = `<tr><td colspan="8" class="err" style="padding:14px">${(e.message||"failed").replace(/_/g," ")}</td></tr>`;
+    }
   }
 
-  // ---------- export / import ----------
-  el('#btnExport').addEventListener('click', ()=>{
-    const blob = new Blob([JSON.stringify({markets:state}, null, 2)], {type:'application/json'});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download = `unified_markets_${new Date().toISOString().slice(0,10)}.json`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
-  });
-  el('#btnImport').addEventListener('change', async (e)=>{
-    const f=e.target.files?.[0]; if(!f) return;
-    try{
-      const j = JSON.parse(await f.text());
-      const m = j.markets || j;
-      if(!m || !m.sections) throw 0;
-      state = m; save(); syncToggles(); paintAll(); toast('Imported markets JSON', true);
-    }catch{ toast('Import failed (invalid JSON)', false); }
-    finally{ e.target.value=''; }
-  });
+  $("#refresh")?.addEventListener("click", load);
+  statusSel.addEventListener("change", load);
+  limitSel.addEventListener("change", load);
+  q.addEventListener("input", ()=> { /* live filter */ paint(); });
 
-  // ---------- wire buttons ----------
-  el('#btnSave').addEventListener('click',()=>{ save(); toast('Saved'); });
-  el('#btnPublish').addEventListener('click',publish);
+  $("#logout")?.addEventListener("click", async ()=>{ try{ await api.post("/api/auth/logout",{});}catch{} location.href="/admin/login.html"; });
 
-  el('#btnOpenAll').addEventListener('click',()=>{
-    state.status='open';
-    Object.values(state.sections).forEach(sec=>{
-      (sec.overall||[]).forEach(m=>m.status='open');
-    });
-    save(); syncToggles(); paintAll();
-  });
-  el('#btnLockAll').addEventListener('click',()=>{
-    state.status='locked';
-    Object.values(state.sections).forEach(sec=>{
-      (sec.overall||[]).forEach(m=>m.status='locked');
-    });
-    save(); syncToggles(); paintAll();
-  });
-  el('#btnDelete').addEventListener('click',()=>{
-    if(!confirm('Delete ALL markets (BG/BONUS/PVP)?')) return;
-    state={status:'open',lastUpdated:0,sections:{battleground:{enabled:false,h2h:[],overall:[]},bonus:{enabled:false,overall:[]},pvp:{enabled:false,overall:[]}}};
-    save(); syncToggles(); paintAll(); toast('Cleared');
-  });
-
-  // BG buttons
-  el('#bgAddOU').addEventListener('click',()=>addOU(state.sections.battleground));
-  el('#bgAddMR').addEventListener('click',()=>addMR(state.sections.battleground));
-  el('#bgAddYN').addEventListener('click',()=>addYN(state.sections.battleground));
-  el('#bgAddCU').addEventListener('click',()=>addCU(state.sections.battleground));
-  el('#bgAddCS').addEventListener('click',()=>addCS(state.sections.battleground));
-  el('#bgImport').addEventListener('click',importBG);
-  el('#bgBuild').addEventListener('click',buildH2H);
-
-  // Bonus buttons
-  el('#boSettle').addEventListener('click',autoSettleFromBH);
-
-  // PVP buttons
-  el('#pvAddOU').addEventListener('click',()=>addOU(state.sections.pvp));
-  el('#pvAddMR').addEventListener('click',()=>addMR(state.sections.pvp));
-  el('#pvAddYN').addEventListener('click',()=>addYN(state.sections.pvp));
-  el('#pvAddCU').addEventListener('click',()=>addCU(state.sections.pvp));
-
-  // ---------- boot ----------
-  syncToggles(); paintAll();
-  if(state.lastUpdated){ el('#stamp').textContent='Last publish @ '+new Date(state.lastUpdated).toLocaleString(); }
+  (async function boot(){
+    await requireAdmin();
+    await load();
+  })();
 })();
 </script>
 </body>
