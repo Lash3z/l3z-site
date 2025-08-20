@@ -1,7 +1,7 @@
+<script>
 // /assets/api-base.js
-// Small helper so the client can call your API consistently.
 (function () {
-  window.API_BASE = window.API_BASE || "";
+  window.API_BASE = window.API_BASE || ""; // set this on each page if API is on a different origin
   const u = (p) => (window.API_BASE || "") + p;
 
   async function get(p) {
@@ -23,3 +23,4 @@
 
   window.api = { u, get, post };
 })();
+</script>
