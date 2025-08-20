@@ -22,6 +22,13 @@
   .msg{ margin-top:8px; font-size:13px; }
   .ok{ color:var(--ok); }
   .err{ color:var(--bad); }
+
+  /* Kick verification row */
+  .kickBox{ margin-top:12px; padding:10px; border:1px solid rgba(0,255,255,.18); border-radius:12px; background:#0b1417; }
+  .kickRow{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .kickTitle{ font-size:13px; color:#cfe; }
+  .kickBtn{ margin-left:auto; padding:10px 12px; border:1px solid rgba(0,255,255,.25); border-radius:12px; background:#0e1a1f; color:#eaf7ff; font-weight:800; cursor:pointer; }
+  .kickBtn:hover{ border-color:#18e4ff; }
 </style>
 </head>
 <body>
@@ -43,6 +50,15 @@
       </div>
 
       <button class="btn" id="signupBtn">Create Account</button>
+
+      <!-- Kick verification -->
+      <div class="kickBox">
+        <div class="kickRow">
+          <div class="kickTitle">Kick verification (optional but recommended)</div>
+          <button class="kickBtn" id="kickLinkBtn">Verify with Kick</button>
+        </div>
+        <div class="mini">Links your Kick account to unlock extras and avoid imposters.</div>
+      </div>
 
       <div class="note">Already have an account? <a href="/pages/dashboard/home/login.html">Log in</a></div>
       <div id="msg" class="msg"></div>
@@ -168,6 +184,11 @@
 
   btn.addEventListener('click', signup);
   pcEl.addEventListener('keydown', e=>{ if(e.key==='Enter') signup(); });
+
+  // Kick verification button
+  document.getElementById("kickLinkBtn")?.addEventListener("click", ()=>{
+    location.href = "/pages/dashboard/home/kick_oauth_start.html";
+  });
 })();
 </script>
 </body>
