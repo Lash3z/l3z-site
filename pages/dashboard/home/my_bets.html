@@ -1,60 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>My Bets — L3Z</title>
 <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
 <style>
-  :root{
-    --bg:#0b0e13;--panel:#0f141b;--ink:#e8ecf3;--muted:#94a3b8;--line:rgba(0,255,255,.18);
-    --gold:#f0a320;--ok:#12d48a;--err:#ff7a8a;--chip:#0c141a
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-  a{color:#9bd3ff;text-decoration:none}
-  .wrap{max-width:1200px;margin:0 auto;padding:14px}
+  :root{--bg:#0b0e13;--panel:#0f141b;--ink:#e8ecf3;--muted:#94a3b8;--line:rgba(0,255,255,.18);--gold:#f0a320;--ok:#12d48a;--err:#ff7a8a;--chip:#0c141a}
+  *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  a{color:#9bd3ff;text-decoration:none}.wrap{max-width:1200px;margin:0 auto;padding:14px}
   .top{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
   .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0a1016;color:#cfe;font-weight:800}
   .grid{display:grid;grid-template-columns:1fr;gap:16px}
   .card{background:linear-gradient(180deg,#0f131a,#0a0f15);border:1px solid var(--line);border-radius:14px;overflow:hidden}
   .head{display:flex;align-items:center;justify-content:space-between;padding:12px;border-bottom:1px solid var(--line)}
   .head h2{margin:0;font-size:14px;letter-spacing:.3px;color:#ffd78a}
-  .body{padding:12px;display:grid;gap:10px}
-  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  input,select,button{
-    background:#0f141b;border:1px solid var(--line);color:var(--ink);
-    border-radius:10px;padding:10px 12px;font-size:14px
-  }
-  button{cursor:pointer;font-weight:800}
-  button.primary{background:linear-gradient(180deg,#f5c462,#d49a2e);color:#1a1204;border:none}
-  button.ghost{background:#111a22}
-  button.danger{background:#2a1115;border-color:#7c2731}
+  .body{padding:12px;display:grid;gap:10px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  input,select,button{background:#0f141b;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:14px}
+  button{cursor:pointer;font-weight:800} button.primary{background:linear-gradient(180deg,#f5c462,#d49a2e);color:#1a1204;border:none} button.ghost{background:#111a22} button.danger{background:#2a1115;border-color:#7c2731}
   .muted{color:var(--muted)} .ok{color:var(--ok)} .err{color:var(--err)}
   .tableWrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
   table{width:100%;border-collapse:separate;border-spacing:0;min-width:860px}
   thead th{position:sticky;top:0;background:#0b1316;border-bottom:1px solid rgba(255,255,255,.08);font-weight:800;font-size:12px;color:var(--muted);text-align:left;padding:10px}
-  tbody td{padding:10px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:middle}
-  tbody tr:hover{background:#0a1214}
+  tbody td{padding:10px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:middle} tbody tr:hover{background:#0a1214}
   .right{display:flex;gap:8px;align-items:center}
   .stat{display:flex;gap:8px;align-items:center;background:#0b1117;border:1px solid var(--line);border-radius:12px;padding:8px 10px}
   .stat b{font-size:16px}
   .status{padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:#0d141b;font-size:12px}
-  .status.placed{color:#9bd3ff}
-  .status.settled{color:#12d48a}
-  .status.voided{color:#ff7a8a}
+  .status.placed{color:#9bd3ff} .status.settled{color:#12d48a} .status.voided{color:#ff7a8a}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="top">
-    <div style="display:flex;align-items:center;gap:10px">
-      <img src="/assets/l3z_logo.png" alt="" style="width:36px;height:36px;border-radius:10px;border:1px solid var(--line)">
-      <div class="pill">My Bets</div>
-    </div>
+    <div style="display:flex;align-items:center;gap:10px"><img src="/assets/l3z_logo.png" alt="" style="width:36px;height:36px;border-radius:10px;border:1px solid var(--line)"><div class="pill">My Bets</div></div>
     <div style="display:flex;gap:8px;align-items:center">
-      <div class="pill" id="whoami">—</div>
-      <div class="pill"><span id="walletBalance">0 LBX</span></div>
+      <div class="pill" id="whoami">—</div><div class="pill"><span id="walletBalance">0 LBX</span></div>
       <a class="pill" href="/pages/dashboard/home/lash3z_bets.html" style="border-color:#3a5166">Place Bets</a>
       <a class="pill" href="/pages/dashboard/home/profile.html" style="border-color:#3a5166">Profile</a>
     </div>
@@ -64,44 +44,17 @@
     <section class="card">
       <div class="head">
         <h2>History</h2>
-        <div class="right">
-          <span id="state" class="muted">idle</span>
-          <button id="refresh" class="ghost">Refresh</button>
-        </div>
+        <div class="right"><span id="state" class="muted">idle</span><button id="refresh" class="ghost">Refresh</button></div>
       </div>
       <div class="body">
         <div class="row" style="justify-content:space-between">
-          <div class="row">
-            <select id="statusSel">
-              <option value="">All statuses</option>
-              <option value="placed">Placed</option>
-              <option value="settled">Settled</option>
-              <option value="voided">Voided</option>
-            </select>
-            <input id="q" placeholder="Search (game, pick…)" />
-          </div>
-          <div class="row">
-            <div class="stat"><span class="muted">Staked</span><b id="stStaked">0 LBX</b></div>
-            <div class="stat"><span class="muted">Returns</span><b id="stReturn">0 LBX</b></div>
-            <div class="stat"><span class="muted">Net</span><b id="stNet">0 LBX</b></div>
-          </div>
+          <div class="row"><select id="statusSel"><option value="">All statuses</option><option value="placed">Placed</option><option value="settled">Settled</option><option value="voided">Voided</option></select><input id="q" placeholder="Search (game, pick…)"/></div>
+          <div class="row"><div class="stat"><span class="muted">Staked</span><b id="stStaked">0 LBX</b></div><div class="stat"><span class="muted">Returns</span><b id="stReturn">0 LBX</b></div><div class="stat"><span class="muted">Net</span><b id="stNet">0 LBX</b></div></div>
         </div>
-
         <div class="tableWrap">
           <table>
-            <thead>
-              <tr>
-                <th style="width:120px">Placed</th>
-                <th>Game / Picks</th>
-                <th style="width:120px">Stake</th>
-                <th style="width:120px">Status</th>
-                <th style="width:120px">Payout</th>
-                <th style="width:130px">Action</th>
-              </tr>
-            </thead>
-            <tbody id="rows">
-              <tr><td colspan="6" class="muted" style="padding:14px">Loading…</td></tr>
-            </tbody>
+            <thead><tr><th style="width:120px">Placed</th><th>Game / Picks</th><th style="width:120px">Stake</th><th style="width:120px">Status</th><th style="width:120px">Payout</th><th style="width:130px">Action</th></tr></thead>
+            <tbody id="rows"><tr><td colspan="6" class="muted" style="padding:14px">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -110,131 +63,27 @@
 </div>
 
 <script src="/assets/api-base.js"></script>
+<script src="/assets/js/bootstrap-auth.js"></script>
 <script>
 (function(){
   const $=(s,r=document)=>r.querySelector(s);
-  const rows=$("#rows"), state=$("#state");
-  const who=$("#whoami"), bal=$("#walletBalance");
-  const q=$("#q"), statusSel=$("#statusSel");
+  const rows=$("#rows"), state=$("#state"), q=$("#q"), statusSel=$("#statusSel");
   const stStaked=$("#stStaked"), stReturn=$("#stReturn"), stNet=$("#stNet");
+  function fmtLBX(n){ return `${Number(n||0).toLocaleString()} LBX`; } const asNum=(n)=>{ const x=Number(n); return Number.isFinite(x)?x:0; };
 
-  function fmtLBX(n){ return \`\${Number(n||0).toLocaleString()} LBX\`; }
-  function asNum(n){ const x=Number(n); return Number.isFinite(x)?x:0; }
+  let allBets=[];
 
-  let allBets = [];
+  function pillStatus(s){ const span=document.createElement("span"); span.className="status "+(s||"").toLowerCase(); span.textContent=(s||"").toLowerCase(); return span.outerHTML; }
+  function calcStats(list){ const staked=list.reduce((a,b)=>a+asNum(b.amount),0); const ret=list.reduce((a,b)=>a+asNum(b.payout||0),0); const net=ret-staked; stStaked.textContent=fmtLBX(staked); stReturn.textContent=fmtLBX(ret); stNet.textContent=fmtLBX(net); }
+  function passesFilter(b){ const term=(q.value||"").trim().toLowerCase(); const s=statusSel.value; let ok=true; if(s){ if(s==="settled") ok=ok&&b.status==="settled"; else if(s==="placed") ok=ok&&b.status==="placed"; else if(s==="voided") ok=ok&&b.status==="voided"; } if(term){ const hay=[b.game,b.type,...(Array.isArray(b.picks)?b.picks.map(p=>p.label||p.choice||p.name||""):[])].join(" ").toLowerCase(); ok=ok&&hay.includes(term); } return ok; }
+  function paint(){ rows.innerHTML=""; const list=allBets.filter(passesFilter); if(list.length===0){ rows.innerHTML='<tr><td colspan="6" class="muted" style="padding:14px">No bets.</td></tr>'; calcStats([]); return; } calcStats(list);
+    for(const b of list){ const tr=document.createElement("tr"); const picks=Array.isArray(b.picks)?b.picks.map(p=>p.label||p.choice||p.name).join(", "):(b.pickLabel||"—"); const cancelBtn=b.status==="placed"?`<button class="ghost" data-cancel="${b._id}">Cancel</button>`:""; const payout=(b.payout!=null)?(b.payout>0?`+${b.payout}`:`${b.payout}`):"—";
+      tr.innerHTML=`<td>${new Date(b.createdAt||b.placedAt||Date.now()).toLocaleString()}</td><td><b>${b.game||b.type||"Bet"}</b><br><span class="muted">${picks}</span></td><td>${fmtLBX(b.amount)}</td><td>${pillStatus(b.status||"placed")}</td><td>${payout}</td><td>${cancelBtn}</td>`; rows.appendChild(tr); } }
+  rows.addEventListener("click", async (ev)=>{ const id=ev.target?.getAttribute?.("data-cancel"); if(!id) return; ev.target.disabled=true; try{ await api.post("/api/bets/cancel",{ betId:id }); state.textContent="bet cancelled"; await load(); await session.refresh(); }catch(e){ state.textContent=(e.message||"failed").replace(/_/g," "); }finally{ ev.target.disabled=false; } });
 
-  async function refreshMe(){
-    try{
-      const j = await api.get("/api/me");
-      const u = j?.user || {};
-      who.textContent = u.username || "—";
-      const b = Number((u.wallet&&u.wallet.balance) ?? u.balance ?? u.lbx ?? 0);
-      bal.textContent = fmtLBX(b);
-    }catch{ who.textContent="(not logged in)"; bal.textContent=fmtLBX(0); }
-  }
-
-  function pillStatus(s){
-    const span = document.createElement("span");
-    span.className = "status " + (s || "").toLowerCase();
-    span.textContent = (s||"").toLowerCase();
-    return span.outerHTML;
-  }
-
-  function calcStats(list){
-    const staked = list.reduce((a,b)=> a + asNum(b.amount), 0);
-    const ret = list.reduce((a,b)=> a + asNum(b.payout || 0), 0);
-    const net = ret - staked;
-    stStaked.textContent = fmtLBX(staked);
-    stReturn.textContent = fmtLBX(ret);
-    stNet.textContent = fmtLBX(net);
-  }
-
-  function passesFilter(b){
-    const term = (q.value||"").trim().toLowerCase();
-    const s = statusSel.value;
-    let ok = true;
-    if (s) {
-      if (s === "settled") ok = ok && b.status === "settled";
-      else if (s === "placed") ok = ok && b.status === "placed";
-      else if (s === "voided") ok = ok && b.status === "voided";
-    }
-    if (term){
-      const hay = [
-        b.game, b.type,
-        ...(Array.isArray(b.picks)? b.picks.map(p=>p.label || p.choice || p.name || ""):[])
-      ].join(" ").toLowerCase();
-      ok = ok && hay.includes(term);
-    }
-    return ok;
-  }
-
-  function paint(){
-    rows.innerHTML = "";
-    const list = allBets.filter(passesFilter);
-    if (list.length === 0){
-      rows.innerHTML = '<tr><td colspan="6" class="muted" style="padding:14px">No bets.</td></tr>';
-      calcStats([]);
-      return;
-    }
-    calcStats(list);
-
-    for (const b of list){
-      const tr = document.createElement("tr");
-      const picks = Array.isArray(b.picks) ? b.picks.map(p=>p.label || p.choice || p.name).join(", ") : (b.pickLabel || "—");
-      const cancelBtn = b.status === "placed" ? `<button class="ghost" data-cancel="${b._id}">Cancel</button>` : "";
-      const payout = (b.payout!=null) ? (b.payout>0?`+${b.payout}`:`${b.payout}`) : "—";
-      tr.innerHTML = `
-        <td>${new Date(b.createdAt || b.placedAt || Date.now()).toLocaleString()}</td>
-        <td><b>${b.game || b.type || "Bet"}</b><br><span class="muted">${picks}</span></td>
-        <td>${fmtLBX(b.amount)}</td>
-        <td>${pillStatus(b.status || "placed")}</td>
-        <td>${payout}</td>
-        <td>${cancelBtn}</td>
-      `;
-      rows.appendChild(tr);
-    }
-  }
-
-  rows.addEventListener("click", async (ev)=>{
-    const id = ev.target?.getAttribute?.("data-cancel");
-    if (!id) return;
-    ev.target.disabled = true;
-    try{
-      await api.post("/api/bets/cancel", { betId:id });
-      state.textContent = "bet cancelled";
-      await load();
-      await refreshMe();
-    }catch(e){
-      state.textContent = (e.message||"failed").replace(/_/g," ");
-    }finally{
-      ev.target.disabled = false;
-    }
-  });
-
-  async function load(){
-    state.textContent = "loading…";
-    rows.innerHTML = '<tr><td colspan="6" class="muted" style="padding:14px">Loading…</td></tr>';
-    try{
-      const j = await api.get("/api/bets/history");  // { bets: [...] }
-      allBets = Array.isArray(j?.bets) ? j.bets : [];
-      state.textContent = `loaded ${allBets.length}`;
-      paint();
-    }catch(e){
-      state.textContent = "error";
-      rows.innerHTML = `<tr><td colspan="6" class="err" style="padding:14px">${(e.message||"failed").replace(/_/g," ")}</td></tr>`;
-    }
-  }
-
-  $("#refresh")?.addEventListener("click", async ()=>{
-    await Promise.all([load(), refreshMe()]);
-  });
-  q.addEventListener("input", paint);
-  statusSel.addEventListener("change", paint);
-
-  (async function boot(){
-    await refreshMe();
-    await load();
-  })();
+  async function load(){ state.textContent="loading…"; rows.innerHTML='<tr><td colspan="6" class="muted" style="padding:14px">Loading…</td></tr>'; try{ const j=await api.get("/api/bets/history"); allBets=Array.isArray(j?.bets)?j.bets:[]; state.textContent=`loaded ${allBets.length}`; paint(); }catch(e){ state.textContent="error"; rows.innerHTML=`<tr><td colspan="6" class="err" style="padding:14px">${(e.message||"failed").replace(/_/g," ")}</td></tr>`; } }
+  $("#refresh")?.addEventListener("click", async ()=>{ await Promise.all([load(), session.refresh()]); }); q.addEventListener("input", paint); statusSel.addEventListener("change", paint);
+  (async function(){ await session.refresh(); await load(); })();
 })();
 </script>
 </body>
