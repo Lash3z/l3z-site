@@ -1,115 +1,249 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bets — L3Z</title>
-  <style>
-    body{background:#0b0e13;color:#e8ecf3;font-family:Segoe UI,system-ui,Arial,sans-serif;margin:0}
-    .wrap{max-width:1200px;margin:0 auto;padding:14px}
-    .pill{padding:6px 10px;border:1px solid rgba(0,255,255,.18);border-radius:999px;background:#0a1016}
-    .panel{background:linear-gradient(180deg,#0e1319,#0b1016);border:1px solid rgba(0,255,255,.18);border-radius:14px}
-    .slip{position:sticky;top:10px;display:flex;flex-direction:column}
-    .btn{border:none;border-radius:12px;padding:12px 16px;font-weight:900;cursor:pointer;background:linear-gradient(180deg,#f2b64a,#d49a2e);color:#1a1204}
-    .msg{font-size:12px}.ok{color:#9ff1c7}.err{color:#ffb5be}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>L3Z — Player HUD</title>
+<style>
+  :root{--bg:#0b0e13;--panel:#11151d;--ink:#e8ecf3;--muted:#94a3b8;--line:rgba(0,255,255,.18);
+        --gold:#f0a320;--ok:#12d48a;--err:#ff7a8a;--chip:#1b2330}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  a{color:#9bd3ff;text-decoration:none}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px}
+  .top{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0a1016;color:#cfe;font-weight:800}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:980px){.grid{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,#0f131a,#0a0f15);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .head h2{margin:0;font-size:14px;letter-spacing:.3px;color:#ffd78a}
+  .body{padding:12px 14px;display:grid;gap:10px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .row>label{min-width:120px;color:#cbd5e1}
+  input,select,button,textarea{
+    background:#0f141b;border:1px solid var(--line);color:var(--ink);
+    border-radius:10px;padding:10px 12px;font-size:14px
+  }
+  input[type="number"]{width:140px}
+  textarea{width:100%;min-height:80px}
+  button{cursor:pointer;font-weight:800}
+  button.primary{background:linear-gradient(180deg,#f5c462,#d49a2e);color:#1a1204;border:none}
+  button.ghost{background:#111a22}
+  .ok{color:var(--ok)} .err{color:var(--err)} .muted{color:var(--muted)}
+  .badge{display:inline-flex;align-items:center;gap:6px;background:var(--chip);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:6px 10px}
+  .list{display:grid;gap:8px;max-height:260px;overflow:auto}
+  .item{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;background:#0d141b;border:1px solid var(--line);border-radius:10px}
+  .small{font-size:12px;color:#9fb3c5}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <h1>Bets</h1>
-      <div class="pill" id="who">Welcome</div>
-      <div class="pill" id="bal">LBX 0</div>
-    </header>
-
-    <div style="display:grid;grid-template-columns:1fr 380px;gap:16px">
-      <div class="panel" id="markets" style="min-height:240px;padding:12px">
-        <!-- populate from localStorage 'sb:markets:unified' (unchanged) -->
-        <div class="msg">Markets are published from the Admin Hub.</div>
-      </div>
-
-      <div class="panel slip" style="height:calc(100dvh - 110px)">
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px">
-          <div><b>Picks</b> <span class="pill" id="slipCount">0</span></div>
-          <button id="clearSlip" class="btn" style="opacity:.8">Clear</button>
-        </div>
-        <div id="slipBody" style="flex:1;overflow:auto;padding:8px 12px"></div>
-        <div style="padding:12px;display:grid;gap:8px">
-          <label>Stake <input id="stake" type="number" min="1" max="100" step="1" value="10" style="width:110px"/></label>
-          <div>Estimated Winnings: <b id="payout">0</b> LBX</div>
-          <div id="warn" class="msg"></div>
-          <button id="submit" class="btn" disabled>Place Bet</button>
-        </div>
-      </div>
+<div class="wrap">
+  <div class="top">
+    <div style="display:flex;align-items:center;gap:10px">
+      <img src="/assets/l3z_logo.png" alt="" style="width:36px;height:36px;border-radius:10px;border:1px solid var(--line)">
+      <div class="pill">Player HUD</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="pill" id="whoami">—</div>
+      <div class="pill"><span id="walletBalance">0 LBX</span></div>
+      <a class="pill" href="/admin/tools.html" style="border-color:#3a5166">Admin</a>
     </div>
   </div>
 
+  <div class="grid">
+    <!-- Profile -->
+    <section class="card">
+      <div class="head"><h2>Profile</h2><div class="badge">session</div></div>
+      <div class="body">
+        <div class="row"><label>Kick link</label><input id="kickLink" placeholder="https://kick.com/yourname"/></div>
+        <div class="row" style="gap:10px">
+          <button id="btnSaveKick" class="primary">Save Kick</button>
+          <span id="kickStatus" class="muted"></span>
+        </div>
+        <div class="small">This links your profile for display. No OAuth needed right now.</div>
+      </div>
+    </section>
+
+    <!-- Promo redeem -->
+    <section class="card">
+      <div class="head"><h2>Promo Code</h2><div class="badge">LBX</div></div>
+      <div class="body">
+        <div class="row"><label>Code</label><input id="promoCode" placeholder="ENTER CODE"/></div>
+        <div class="row" style="gap:10px">
+          <button id="btnRedeem" class="primary">Redeem</button>
+          <span id="promoStatus" class="muted"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Place bet -->
+    <section class="card">
+      <div class="head"><h2>Place Bet</h2><div class="badge">LBX → wager</div></div>
+      <div class="body">
+        <div class="row">
+          <label>Game</label>
+          <select id="betGame">
+            <option value="Lucky7">Lucky7</option>
+            <option value="Battleground">Battleground</option>
+            <option value="BonusHunt">Bonus Hunt</option>
+          </select>
+          <label>Amount</label>
+          <input id="betAmount" type="number" step="1" placeholder="LBX"/>
+        </div>
+        <div class="row" style="gap:10px">
+          <button id="btnBet" class="primary">Place Bet</button>
+          <span id="betStatus" class="muted"></span>
+        </div>
+        <div class="small">Bet placement immediately deducts LBX; admins settle later. You can cancel while status = placed.</div>
+      </div>
+    </section>
+
+    <!-- Bets & Transactions -->
+    <section class="card">
+      <div class="head"><h2>History</h2><div class="badge">latest</div></div>
+      <div class="body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <div class="row" style="justify-content:space-between">
+              <div class="small">Your Bets</div>
+              <button id="btnRefreshBets" class="ghost">Refresh</button>
+            </div>
+            <div id="betsList" class="list"></div>
+          </div>
+          <div>
+            <div class="row" style="justify-content:space-between">
+              <div class="small">Transactions</div>
+              <button id="btnRefreshTx" class="ghost">Refresh</button>
+            </div>
+            <div id="txList" class="list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- API helper then auth bootstrap -->
+<script src="/assets/api-base.js"></script>
+<script src="/assets/js/bootstrap-auth.js"></script>
 <script>
-(function(){
-  "use strict";
-  const $=(q,r)=> (r||document).querySelector(q);
-  const $$=(q,r)=> Array.from((r||document).querySelectorAll(q));
-  const esc=s=>String(s??'').replace(/[&<>\"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
-  const bux=n=> (Number(n)||0).toLocaleString(undefined,{maximumFractionDigits:0});
-  const kid=(p='ID')=> p+Math.random().toString(36).slice(2,10).toUpperCase();
+const $ = (s,r=document)=>r.querySelector(s);
+const elWho=$("#whoami"), elBal=$("#walletBalance");
+const elKick=$("#kickLink"), kickStatus=$("#kickStatus");
+const elCode=$("#promoCode"), promoStatus=$("#promoStatus");
+const betGame=$("#betGame"), betAmount=$("#betAmount"), betStatus=$("#betStatus");
+const betsList=$("#betsList"), txList=$("#txList");
 
-  let slip = []; // {marketId,label,odds,...}
-  let slipMode = 'single';
+function fmtLBX(n){ return `${Number(n||0).toLocaleString()} LBX`; }
+function item(label, value, extra=""){
+  const div=document.createElement("div");
+  div.className="item";
+  div.innerHTML=`<div>${label}</div><div class="small">${value}${extra?` — ${extra}`:""}</div>`;
+  return div;
+}
 
-  // Server wallet only
-  async function api(path, opts){ const res = await fetch(path, { credentials:"include", cache:"no-store", ...(opts||{}) }); const j=await res.json(); if(!res.ok) throw j; return j; }
-  async function refreshBal(){
-    try{ const j=await api("/api/wallet/me"); $("#who").textContent = "Welcome, "+(j.username||"PLAYER"); $("#bal").textContent = "LBX "+bux(j.wallet?.balance||0); }
-    catch(e){ console.warn("balance load failed", e); }
+async function refreshMe(){
+  try{
+    const j = await api.get("/api/me");
+    const u = j?.user || {};
+    elWho.textContent = u.username || "—";
+    elBal.textContent = fmtLBX((u.wallet&&u.wallet.balance) ?? u.balance ?? u.lbx ?? 0);
+    if (elKick && u.kickLink) elKick.value = u.kickLink;
+  }catch(e){
+    elWho.textContent="(not logged in)";
+    elBal.textContent=fmtLBX(0);
+    console.warn("me failed", e);
   }
+}
 
-  function addToSlip(item){ slip.push(item); updateSlipUI(); }
-  function updateSlipUI(){
-    $("#slipCount").textContent = slip.length;
-    const body=$("#slipBody"); body.innerHTML='';
-    slip.forEach((t,i)=>{
-      const row=document.createElement('div'); row.style.border='1px solid rgba(0,255,255,.18)'; row.style.borderRadius='10px'; row.style.padding='8px 10px'; row.style.margin='6px 0';
-      row.innerHTML = `<div style="display:flex;justify-content:space-between"><div><b>${esc(t.label)}</b></div><a href="#" data-i="${i}">✖</a></div>`
-                    + (t.odds ? `<div style="opacity:.8">Odds ${Number(t.odds).toFixed(2)}×</div>` : '');
-      row.querySelector('a')?.addEventListener('click', (ev)=>{ ev.preventDefault(); slip.splice(i,1); updateSlipUI(); });
-      body.appendChild(row);
+async function refreshBets(){
+  betsList.innerHTML="";
+  try{
+    const j = await api.get("/api/bets/history");
+    (j.bets||[]).forEach(b=>{
+      const st = b.status+(b.payout!=null?` (${b.payout>0?"+":""}${b.payout})`:"");
+      const btn = (b.status==="placed") ? `<button class="ghost" data-cancel="${b._id}">Cancel</button>` : "";
+      const node = document.createElement("div");
+      node.className="item";
+      node.innerHTML = `<div>${b.game||"—"} — ${fmtLBX(b.amount)}</div><div class="small">${st} ${btn}</div>`;
+      betsList.appendChild(node);
     });
-    updateTotals();
+  }catch(e){
+    betsList.appendChild(item("Error loading bets", e.message||"failed"));
   }
-  function updateTotals(){
-    const stake = Number($("#stake")?.value||0) || 0;
-    let est=0; if (slipMode==='single'){ est = slip.reduce((a,x)=> a + (stake * (x.odds||1)), 0); } else { est = stake * slip.reduce((p,x)=> p*(x.odds||1), 1); }
-    $("#payout").textContent = bux(est);
-    const totalStake = (slipMode==='single') ? stake * slip.length : stake;
-    let warn='';
-    if(!slip.length) warn='Add a selection.';
-    else if(!stake) warn='Enter stake.';
-    else if(totalStake>100) warn='Max 100 LBX.';
-    $("#warn").textContent = warn; $("#warn").className='msg '+(warn?'err':'ok');
-    $("#submit").disabled = !!warn;
+}
+
+betsList.addEventListener("click", async (ev)=>{
+  const id = ev.target?.getAttribute?.("data-cancel");
+  if (!id) return;
+  ev.target.disabled=true;
+  try{
+    const j = await api.post("/api/bets/cancel",{ betId:id });
+    betStatus.textContent = "Bet cancelled.";
+    await refreshMe(); await refreshBets(); await refreshTx();
+  }catch(e){
+    betStatus.textContent = e.message||"failed";
+  }finally{ ev.target.disabled=false; }
+});
+
+async function refreshTx(){
+  txList.innerHTML="";
+  try{
+    const j = await api.get("/api/tx/history");
+    (j.tx||[]).forEach(t=>{
+      const label = t.type.replace(/_/g," ");
+      txList.appendChild(item(label, fmtLBX(t.amount), new Date(t.createdAt).toLocaleString()));
+    });
+  }catch(e){
+    txList.appendChild(item("Error loading transactions", e.message||"failed"));
   }
+}
 
-  $("#stake")?.addEventListener('input', updateTotals);
-  $("#clearSlip")?.addEventListener('click', ()=>{ slip=[]; updateSlipUI(); });
-  $("#submit")?.addEventListener('click', async ()=>{
-    const stake = Number($("#stake")?.value||0) || 0;
-    const totalStake = (slipMode==='single') ? stake * slip.length : stake;
-    if(!slip.length || !stake || totalStake>100){ updateTotals(); return; }
-    try{
-      const resp = await api("/api/bets/place", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ mode: slipMode, stake, legs: slip })
-      });
-      $("#warn").textContent = `Bet placed. New balance: ${resp.balance} LBX`; $("#warn").className='msg ok';
-      slip=[]; updateSlipUI(); await refreshBal();
-    }catch(e){
-      $("#warn").textContent = `Bet failed: ${e?.error || 'error'}`; $("#warn").className='msg err';
-    }
-  });
+/* actions */
+$("#btnSaveKick")?.addEventListener("click", async ()=>{
+  kickStatus.textContent="Saving…";
+  try{
+    const j = await api.post("/api/profile/kick_link",{ kickLink: (elKick.value||"").trim() });
+    kickStatus.textContent="Saved."; kickStatus.className="ok";
+    await refreshMe();
+  }catch(e){
+    kickStatus.textContent=e.message||"failed"; kickStatus.className="err";
+  }
+});
 
-  // Boot
-  refreshBal(); updateSlipUI();
+$("#btnRedeem")?.addEventListener("click", async ()=>{
+  promoStatus.textContent="Redeeming…"; promoStatus.className="muted";
+  try{
+    const j = await api.post("/api/code/redeem",{ code: (elCode.value||"").trim() });
+    promoStatus.textContent=`Success! New balance: ${fmtLBX(j.lbx)}`; promoStatus.className="ok";
+    elCode.value="";
+    await refreshMe(); await refreshTx();
+  }catch(e){
+    promoStatus.textContent=(e.message||"failed").replace(/_/g," "); promoStatus.className="err";
+  }
+});
+
+$("#btnBet")?.addEventListener("click", async ()=>{
+  betStatus.textContent="Placing…"; betStatus.className="muted";
+  try{
+    const amount = Number(betAmount.value||0);
+    if (!Number.isFinite(amount) || amount<=0) throw new Error("Enter a positive LBX amount");
+    const j = await api.post("/api/bets/place",{ amount, game: betGame.value });
+    betStatus.textContent=`Bet placed. New balance: ${fmtLBX(j.balance)}`; betStatus.className="ok";
+    betAmount.value="";
+    await refreshBets(); await refreshTx();
+    await refreshMe();
+  }catch(e){
+    betStatus.textContent=(e.message||"failed").replace(/_/g," "); betStatus.className="err";
+  }
+});
+
+/* boot */
+(async function boot(){
+  await refreshMe();
+  await refreshBets();
+  await refreshTx();
 })();
 </script>
 </body>
