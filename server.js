@@ -1,9 +1,32 @@
-// server.js — homepage-first, admin aliases, JSON+form login
-// + Wallet (Mongo + file/memory fallback) with ledger + daily reward
-// + Viewer session (cookie) + optional signup bonus
-// + Promo codes (initPromo/promoRoutes)
-// + Production hardening (CORS, secrets, cookies)
-// NOTE: All "server sync" balance resets/deductions have been removed.
+// server.js — server-backed wallet + bets + promo + admin audit
+// Mongo → file → memory fallback. NO localStorage balances anywhere.
+//
+// Features
+// - Wallet APIs (with ledger), signup bonus (optional), daily reward
+// - Viewer session (cookie-based)
+// - Bets: place + list (deduct from wallet, store tickets)
+// - Promo: init + routes (via ./promo.js)
+// - Admin audit tracking + bulk promo expire
+// - Static hosting + CORS + hardened cookies/headers
+//
+// ENV (examples)
+// HOST=0.0.0.0
+// PORT=3000
+// NODE_ENV=production
+// ADMIN_USER=lash3z
+// ADMIN_PASS=***
+// ADMIN_SECRET=***
+// SECRET=***           # JWT secret (falls back to ADMIN_SECRET)
+// MONGO_URI=mongodb+srv://...
+// MONGO_DB=lash3z
+// ALLOW_MEMORY_FALLBACK=true
+// ALLOWED_ORIGINS=https://your-site.com,https://admin.your-site.com
+// SIGNUP_BONUS=0
+// DAILY_REWARD_AMOUNT=5
+// STATE_PERSIST=true
+// STATE_FILE=/app/.data/lash3z-state.json
+// PUBLIC_DIR=/app/public
+// HOME_INDEX=index.html
 
 import fs from "fs";
 import os from "os";
@@ -39,7 +62,7 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
   .split(",").map(s=>s.trim()).filter(Boolean);
 
 // Wallet/rewards
-const SIGNUP_BONUS = Number(process.env.SIGNUP_BONUS || 0); // 0 to disable
+const SIGNUP_BONUS = Number(process.env.SIGNUP_BONUS || 0); // 0 disables
 const DAILY_REWARD_AMOUNT = Number(process.env.DAILY_REWARD_AMOUNT || 5);
 const DAILY_REWARD_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -94,7 +117,10 @@ const ADMIN_HUB_FILE = resolveFirstExisting([
 
 /* ===================== In-memory state ===================== */
 const memory = {
-  wallets: {}, // { USER: { balance, ledger[], signupBonusGrantedAt, lastDailyClaimAt } }
+  wallets: {},    // { USER: { balance, ledger[], signupBonusGrantedAt, lastDailyClaimAt } }
+  tickets: [],    // server-backed tickets when no DB
+  audit: [],      // admin audit when no DB
+  promoCodes: [], // promo stub if no DB (promo.js handles Mongo)
 };
 
 /* ===================== File persistence helpers ===================== */
@@ -175,7 +201,7 @@ app.use("/api", (req, res, next) => {
   next();
 });
 
-/* ===================== JWT helpers (admin) ===================== */
+/* ===================== Auth helpers ===================== */
 function generateAdminToken(username) {
   return jwt.sign({ username }, JWT_SECRET, { expiresIn: "12h" });
 }
@@ -188,6 +214,8 @@ function verifyAdminToken(req, res, next) {
 
 /* ===================== Viewer helpers ===================== */
 const U = (s) => String(s || "").trim().toUpperCase();
+const nowISO = () => new Date().toISOString();
+
 function requireViewer(req, res, next) {
   const cookieName = String(req.cookies?.viewer || "").toUpperCase();
   const qName = String(req.query.viewer || "").toUpperCase();
@@ -197,7 +225,6 @@ function requireViewer(req, res, next) {
   req.viewer = name;
   next();
 }
-const nowISO = () => new Date().toISOString();
 
 /* ===================== Admin auth (JSON or form) ===================== */
 const loginHits = new Map();
@@ -236,7 +263,7 @@ app.get(["/api/admin/gate/check", "/api/admin/me"], verifyAdminToken, (req, res)
   res.json({ success: true, admin: true, username: req.adminUser });
 });
 
-/* ===================== Health/Home pages ===================== */
+/* ===================== Health / Static ===================== */
 app.get("/api/health", (req, res) => {
   res.json({
     ok: true,
@@ -267,7 +294,6 @@ app.get("/admin/hub", (req, res) => {
   res.status(404).send("Admin hub page not found.");
 });
 
-// Static
 app.use(express.static(PUBLIC_DIR, {
   setHeaders(res, filePath) {
     if (/\.(png|jpe?g|gif|webp|svg|woff2?|mp3|mp4)$/i.test(filePath)) {
@@ -283,10 +309,9 @@ app.use(express.static(PUBLIC_DIR, {
 }));
 
 /* =================================================================== */
-/* ===================== WALLET / VIEWER SESSION ===================== */
+/* ========================= WALLET & LEDGER ========================= */
 /* =================================================================== */
 
-// DB-backed (fallback to memory/file) wallet — unified on `username`
 async function getWallet(username) {
   const user = U(username);
   if (!user) return { username: "", balance: 0, ledger: [], signupBonusGrantedAt: null, lastDailyClaimAt: null };
@@ -318,7 +343,8 @@ async function getWallet(username) {
     lastDailyClaimAt: w.lastDailyClaimAt || null
   };
 }
-async function adjustWallet(username, delta, reason = "admin_adjust") {
+
+async function adjustWallet(username, delta, reason = "adjust") {
   const user = U(username);
   const amount = Number(delta || 0);
   if (!user || !Number.isFinite(amount)) return { ok: false, error: "bad_params" };
@@ -349,6 +375,7 @@ async function adjustWallet(username, delta, reason = "admin_adjust") {
   scheduleSave();
   return { ok: true, balance: w.balance };
 }
+
 async function grantSignupBonusIfNeeded(username) {
   const user = U(username);
   const bonus = SIGNUP_BONUS;
@@ -384,7 +411,7 @@ async function grantSignupBonusIfNeeded(username) {
   return { ok: true, balance: w.balance };
 }
 
-// Viewer session
+/* ===================== Viewer session ===================== */
 app.post("/api/viewer/register", async (req, res) => {
   try {
     const name = U(req.body?.username || req.body?.user || "");
@@ -448,7 +475,7 @@ app.post("/api/viewer/logout", (req, res) => {
   res.json({ success: true });
 });
 
-// Public wallet read (uses viewer cookie or ?viewer=)
+/* ===================== Wallet public read ===================== */
 app.get("/api/wallet/me", async (req, res) => {
   const cookieName = String(req.cookies?.viewer || "").toUpperCase();
   const qName      = String(req.query.viewer || "").toUpperCase();
@@ -468,10 +495,9 @@ app.get("/api/wallet/me", async (req, res) => {
   });
 });
 
-// ===== Admin wallet ops (accepts username/user/name) =====
+/* ===================== Admin wallet ops ===================== */
 function parseUserFromBody(b){ return U(b?.username || b?.user || b?.name || ""); }
 
-// new routes
 app.post("/api/wallet/adjust", verifyAdminToken, async (req, res) => {
   const u = parseUserFromBody(req.body);
   const delta = Number(req.body?.delta || req.body?.amount || 0);
@@ -503,12 +529,7 @@ app.get("/api/wallet/balance", verifyAdminToken, async (req, res) => {
   res.json({ balance: Number(w.balance || 0) });
 });
 
-// legacy aliases (many Admin HUDs use these paths)
-app.post("/api/admin/wallet/adjust", verifyAdminToken, (req, res) => app._router.handle({ ...req, url: "/api/wallet/adjust", method:"POST" }, res, () => {}));
-app.post("/api/admin/wallet/credit", verifyAdminToken, (req, res) => app._router.handle({ ...req, url: "/api/wallet/credit", method:"POST" }, res, () => {}));
-app.get ("/api/admin/wallet/balance", verifyAdminToken, (req, res) => app._router.handle({ ...req, url: "/api/wallet/balance", method:"GET" }, res, () => {}));
-
-// Daily reward
+/* ===================== Daily reward ===================== */
 async function claimDailyReward(username) {
   const user = U(username);
   if (!user) return { ok: false, error: "LOGIN_REQUIRED" };
@@ -562,7 +583,146 @@ app.post("/api/rewards/daily", requireViewer, async (req, res) => {
 });
 
 /* =================================================================== */
-/* ============================= PROMO ================================ */
+/* =============================== BETS ============================== */
+/* =================================================================== */
+// Minimal server-backed tickets so the client doesn't use localStorage.
+//
+// Ticket shape:
+// {
+//   id, user, at, mode: 'single'|'multi',
+//   stake, odds, legs: [ { section, marketId, type, selIdx?, selLabel?, guess?, odds } ]
+// }
+//
+// POST /api/bets/place    (viewer cookie required)
+// GET  /api/bets/me       (viewer cookie OR ?viewer=)
+// GET  /api/admin/bets    (admin; optional ?user=)
+
+const MAX_SINGLE_STAKE = 100; // Max per submission (match your UI)
+
+function newId(prefix="TK") { return `${prefix}-${Math.random().toString(36).slice(2,10).toUpperCase()}`; }
+
+async function storeTickets(tickets = []) {
+  if (globalThis.__dbReady) {
+    const col = globalThis.__db.collection("tickets");
+    await col.insertMany(tickets);
+    return true;
+  }
+  memory.tickets.push(...tickets);
+  scheduleSave();
+  return true;
+}
+
+async function fetchTicketsByUser(user) {
+  const u = U(user);
+  if (globalThis.__dbReady) {
+    const col = globalThis.__db.collection("tickets");
+    return await col.find({ user: u }).sort({ at: -1 }).limit(500).toArray();
+  }
+  return (memory.tickets || []).filter(t => t.user === u).sort((a,b)=>b.at-a.at).slice(0,500);
+}
+
+app.post("/api/bets/place", requireViewer, async (req, res) => {
+  try {
+    const USER = req.viewer;
+    const body = req.body || {};
+    const { slipMode, stake, legs } = body;
+
+    const mode = (slipMode || body.mode || "single").toLowerCase() === "multi" ? "multi" : "single";
+    const s = Math.floor(Number(stake || 0));
+    if (!(s > 0)) return res.status(400).json({ ok:false, error:"bad_stake" });
+    if (!Array.isArray(legs) || legs.length < 1) return res.status(400).json({ ok:false, error:"no_legs" });
+
+    const legsNorm = legs.map(l => ({
+      section: String(l.section||"").toLowerCase(),
+      marketId: String(l.marketId||""),
+      type: String(l.type||"selection"),
+      selIdx: Number.isFinite(l.selIdx) ? Number(l.selIdx) : undefined,
+      selLabel: l.selLabel ? String(l.selLabel) : undefined,
+      guess: l.guess !== undefined ? l.guess : undefined,
+      odds: Number(l.odds||1)
+    }));
+
+    // compute required total stake + combined odds
+    const totalStake = mode === "single" ? s * legsNorm.length : s;
+    if (totalStake > MAX_SINGLE_STAKE) return res.status(400).json({ ok:false, error:"stake_limit" });
+
+    const w = await getWallet(USER);
+    if (Number(w.balance || 0) < totalStake) return res.status(400).json({ ok:false, error:"insufficient_funds" });
+
+    let tickets = [];
+    if (mode === "single") {
+      tickets = legsNorm.map(leg => ({
+        id: newId("TK"),
+        user: USER,
+        at: Date.now(),
+        mode: "single",
+        stake: s,
+        odds: Number(leg.odds || 1),
+        leg
+      }));
+    } else {
+      const prod = legsNorm.reduce((p,x)=> p * Number(x.odds || 1), 1);
+      tickets = [{
+        id: newId("TK"),
+        user: USER,
+        at: Date.now(),
+        mode: "multi",
+        stake: s,
+        odds: Number(prod),
+        legs: legsNorm
+      }];
+    }
+
+    // Deduct from wallet (+ ledger)
+    await adjustWallet(USER, -totalStake, "BET_STAKE");
+
+    // Store tickets
+    await storeTickets(tickets);
+
+    res.json({ ok: true, tickets, balanceAfter: (await getWallet(USER)).balance });
+  } catch (e) {
+    console.error("[bets/place]", e);
+    res.status(500).json({ ok:false, error:"server" });
+  }
+});
+
+app.get("/api/bets/me", async (req, res) => {
+  try {
+    const cookieName = String(req.cookies?.viewer || "").toUpperCase();
+    const qName      = String(req.query.viewer || "").toUpperCase();
+    const user       = cookieName || qName || "";
+    if (!user) return res.status(401).json({ ok:false, error:"LOGIN_REQUIRED" });
+
+    const list = await fetchTicketsByUser(user);
+    res.json({ ok:true, tickets: list });
+  } catch (e) {
+    console.error("[bets/me]", e);
+    res.status(500).json({ ok:false, error:"server" });
+  }
+});
+
+app.get("/api/admin/bets", verifyAdminToken, async (req, res) => {
+  try {
+    const u = U(req.query.user || req.query.username || "");
+    if (!u) {
+      // list latest across users (limited)
+      if (globalThis.__dbReady) {
+        const col = globalThis.__db.collection("tickets");
+        const list = await col.find({}).sort({ at: -1 }).limit(200).toArray();
+        return res.json({ ok:true, tickets: list });
+      }
+      return res.json({ ok:true, tickets: (memory.tickets||[]).slice(-200).reverse() });
+    }
+    const list = await fetchTicketsByUser(u);
+    res.json({ ok:true, tickets: list });
+  } catch (e) {
+    console.error("[admin/bets]", e);
+    res.status(500).json({ ok:false, error:"server" });
+  }
+});
+
+/* =================================================================== */
+/* ============================== PROMO ============================== */
 /* =================================================================== */
 
 function wirePromoOrStub(app) {
@@ -585,6 +745,58 @@ function wirePromoOrStub(app) {
     console.log("[Promo] stubbed (no DB).");
   }
 }
+
+// Bulk expire-all active promo codes (for your "reset" button)
+app.post("/api/admin/promo/expire-all", verifyAdminToken, async (req, res) => {
+  try {
+    if (globalThis.__dbReady) {
+      const r = await globalThis.__db.collection("promo_codes").updateMany(
+        { status: "active" },
+        { $set: { status: "expired", expiredAt: new Date(), note: "bulk_expire" } }
+      );
+      return res.json({ ok:true, modified: r.modifiedCount });
+    }
+    // memory fallback
+    let n = 0;
+    memory.promoCodes = (memory.promoCodes||[]).map(p => {
+      if (p.status === "active") { n++; return { ...p, status:"expired", expiredAt: new Date() }; }
+      return p;
+    });
+    scheduleSave();
+    res.json({ ok:true, modified: n });
+  } catch (e) {
+    console.error("[promo/expire-all]", e);
+    res.status(500).json({ ok:false, error:"server" });
+  }
+});
+
+/* =================================================================== */
+/* ============================ ADMIN AUDIT ========================== */
+/* =================================================================== */
+// Admin HUD calls this to "track" actions (who did what).
+// POST /api/admin/audit/track  body: { action, meta? }
+
+app.post("/api/admin/audit/track", verifyAdminToken, async (req, res) => {
+  try {
+    const doc = {
+      action: String(req.body?.action || "").toUpperCase(),
+      meta: req.body?.meta ?? null,
+      actor: String(req.adminUser || "admin"),
+      ip: req.ip || null,
+      ts: Date.now()
+    };
+    if (globalThis.__dbReady) {
+      await globalThis.__db.collection("admin_audit").insertOne(doc);
+    } else {
+      memory.audit.push(doc);
+      scheduleSave();
+    }
+    res.json({ ok:true });
+  } catch (e) {
+    console.error("[admin/audit/track]", e);
+    res.status(500).json({ ok:false, error:"server" });
+  }
+});
 
 /* =================================================================== */
 /* =================== 404 / Error + Start / DB Boot ================= */
