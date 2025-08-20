@@ -1,47 +1,40 @@
-// assets/js/bootstrap-auth.js
-// Runs on every page, syncs the server session into localStorage + patches UI.
+// /assets/js/bootstrap-auth.js — bootstraps session & profile for HUD
+// Depends on /assets/api-base.js being loaded first
+// Paints user info, balance, login state across pages.
 
-(function () {
-  async function refreshSession() {
-    try {
-      const r = await fetch("/api/wallet/me", {
-        credentials: "include",
-        cache: "no-store",
-      });
-      if (!r.ok) throw new Error("not logged in");
-      const me = await r.json();
+(async () => {
+  const $ = (s, r=document) => r.querySelector(s);
+  const say = (el, msg, ok) => {
+    if (!el) return;
+    el.textContent = msg || "";
+    el.className = (ok === undefined) ? "muted" : (ok ? "ok" : "err");
+  };
 
-      const name =
-        String(me.username || me.user || me.name || "").toUpperCase() || "PLAYER";
-      const balance = Number(me.balance ?? me.lbx ?? 0);
+  const userEl = $("#whoami");
+  const balEl  = $("#walletBalance");
 
-      // Write to several legacy keys so *any* old page can see it
-      localStorage.setItem("auth:username", name);
-      localStorage.setItem("lash3z_last_user", name);
-      localStorage.setItem("user:name", name);
+  try {
+    // Try fetch /api/me with credentials
+    const me = await window.api.get("/api/me");
 
-      localStorage.setItem("lbx_balance", String(balance));
-      localStorage.setItem("wallet:balance", String(balance));
-      localStorage.setItem(
-        "lbx_wallet",
-        JSON.stringify({ user: name, balance, ts: Date.now() })
-      );
+    if (!me?.ok || !me.user) throw new Error("not_logged_in");
 
-      // Optional: patch common placeholders if present
-      const u = document.querySelector("#usernameDisplay");
-      if (u) u.textContent = "Welcome, " + name;
+    const u = me.user;
+    const balance = Number(
+      (u && u.wallet && u.wallet.balance) ??
+      u.balance ??
+      u.lbx ??
+      0
+    );
 
-      const buxBadges = document.querySelectorAll("[data-bux]");
-      buxBadges.forEach((el) => (el.textContent = String(balance)));
+    if (userEl) userEl.textContent = u.username;
+    if (balEl)  balEl.textContent  = `${balance.toLocaleString()} LBX`;
 
-      // Expose for manual refresh from console if needed
-      window.session = { name, balance, raw: me };
-    } catch (e) {
-      // leave defaults in place
-      // console.debug("[bootstrap-auth] no session:", e?.message || e);
-    }
+    document.body.classList.add("auth-ok");
+  } catch (e) {
+    if (userEl) userEl.textContent = "(not logged in)";
+    if (balEl)  balEl.textContent  = "0 LBX";
+    document.body.classList.add("auth-missing");
+    console.warn("[auth] bootstrap failed", e);
   }
-
-  document.addEventListener("DOMContentLoaded", refreshSession);
-  window.refreshSession = refreshSession;
 })();
