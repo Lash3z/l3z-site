@@ -1,82 +1,77 @@
-// /assets/api-base.js — unified API helper for live & local
-// Provides:
-//   - window.API_BASE (optional, set per page if API is on another origin)
-//   - window.apiFetch(path, options)  // always sends cookies
-//   - window.api.{u,get,post,put,del} // convenience JSON wrappers
-//
-// Usage (same-origin API):
-//   <script src="/assets/api-base.js"></script>
-//
-// Usage (cross-origin API):
-//   <script>window.API_BASE = "https://api.your-domain.com";</script>
-//   <script src="/assets/api-base.js"></script>
-//
-// All requests use credentials:"include" so your auth cookie flows cross-origin
-// as long as CORS is correctly allowlisted on the server.
+/* L3Z — Minimal API client (cookies + base URL + nice errors)
+   Usage:
+     await api.get("/api/me")
+     await api.post("/api/auth/login", { username, password })
 
-(() => {
-  // Allow pages to override API base; default is same-origin.
-  if (typeof window.API_BASE !== "string") window.API_BASE = "";
+   Optional:
+     <script>window.API_BASE = "https://your-api.example.com";</script>
+   Put the tag BEFORE loading this file if your API is on another origin.
+*/
+(function(){
+  const BASE = String(window.API_BASE || "").replace(/\/+$/,""); // "" means same-origin
 
-  function join(base, p) {
-    if (!base) return p;
-    if (/^https?:\/\//i.test(p)) return p;
-    const b = base.endsWith("/") ? base.slice(0, -1) : base;
-    const s = p.startsWith("/") ? p : `/${p}`;
-    return `${b}${s}`;
+  function toURL(path){
+    if (!path) return BASE || "/";
+    if (/^https?:\/\//i.test(path)) return path;
+    if (!BASE) return path;
+    return `${BASE}${path.startsWith("/") ? path : "/"+path}`;
   }
 
-  const u = (p) => join(window.API_BASE, p);
-
-  function isFormData(x) {
-    return typeof FormData !== "undefined" && x instanceof FormData;
-  }
-
-  async function apiFetch(path, opts = {}) {
-    const url = u(path);
-    const init = {
-      method: opts.method || "GET",
-      credentials: "include",        // include cookies for auth
-      cache: opts.cache || "no-store",
-      headers: { ...(opts.headers || {}) },
-      body: opts.body,
-      signal: opts.signal,
+  async function handle(res){
+    const type = res.headers.get("content-type") || "";
+    const parse = async () => {
+      if (type.includes("application/json")) {
+        try { return await res.json(); } catch { return {}; }
+      }
+      const t = await res.text().catch(()=> "");
+      return t || {};
     };
 
-    // Auto-JSON encode plain objects
-    if (init.body && typeof init.body === "object" && !isFormData(init.body)) {
-      if (!init.headers["Content-Type"]) init.headers["Content-Type"] = "application/json";
-      init.body = JSON.stringify(init.body);
+    if (res.ok) return parse();
+
+    const payload = await parse();
+    const msg =
+      (payload && (payload.error || payload.detail || payload.message)) ||
+      `HTTP ${res.status}`;
+    const err = new Error(typeof msg === "string" ? msg : "Request failed");
+    err.status = res.status;
+    err.payload = payload;
+    throw err;
+  }
+
+  async function req(method, path, body, opts){
+    const url = toURL(path);
+    const init = {
+      method,
+      credentials: "include",
+      cache: "no-store",
+      headers: { "Accept": "application/json" },
+      ...opts
+    };
+
+    if (body !== undefined && body !== null) {
+      if (body instanceof FormData) {
+        init.body = body; // let browser set multipart boundary
+      } else {
+        init.headers["Content-Type"] = "application/json";
+        init.body = JSON.stringify(body);
+      }
     }
 
     const res = await fetch(url, init);
-
-    const ct = (res.headers.get("content-type") || "").toLowerCase();
-    const isJson = ct.includes("application/json");
-    const data = isJson ? await res.json().catch(() => ({})) : await res.text().catch(() => "");
-
-    if (!res.ok) {
-      // Normalize common API error shapes
-      const msg =
-        (isJson && (data.error || data.message || data.detail)) ||
-        (typeof data === "string" && data) ||
-        `HTTP ${res.status}`;
-      const err = new Error(String(msg));
-      err.status = res.status;
-      err.payload = data;
-      throw err;
-    }
-
-    return data;
+    return handle(res);
   }
 
-  // Convenience wrappers
-  const get  = (p)       => apiFetch(p, { method: "GET" });
-  const post = (p, body) => apiFetch(p, { method: "POST", body });
-  const put  = (p, body) => apiFetch(p, { method: "PUT", body });
-  const del  = (p, body) => apiFetch(p, { method: "DELETE", body });
+  const api = {
+    base: BASE,
+    url: toURL,
+    get:  (p, o)=> req("GET",  p, undefined, o),
+    post: (p, b, o)=> req("POST", p, b, o),
+    put:  (p, b, o)=> req("PUT",  p, b, o),
+    patch:(p, b, o)=> req("PATCH",p, b, o),
+    del:  (p, b, o)=> req("DELETE",p, b, o),
+  };
 
   // Expose globally
-  window.apiFetch = apiFetch;
-  window.api = { u, get, post, put, del };
+  window.api = api;
 })();
