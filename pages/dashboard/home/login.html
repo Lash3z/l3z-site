@@ -2,34 +2,52 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Admin Login • L3Z</title>
+  <title>Sign in — LASH3Z</title>
   <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
   <style>
-    :root{ --glass:rgba(0,0,0,.72); --line:rgba(0,255,255,.2); --ink:#eaf7ff; --cyan:#00ffff; --ok:#12d48a; --err:#ff7a8a; }
-    *{box-sizing:border-box} html,body{margin:0;min-height:100vh;background:#0b1113;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-    .card{width:360px;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 0 18px rgba(0,255,255,.15)}
-    h1{font-size:18px;margin:0 0 12px;color:var(--cyan)}
-    label{display:block;font-size:12px;opacity:.9;margin:10px 0 6px}
-    input{width:100%;padding:10px;border-radius:10px;border:1px solid #1b1b1b;background:#061214;color:var(--ink)}
-    input:focus{outline:1px solid rgba(0,255,255,.25);box-shadow:0 0 0 3px rgba(0,255,255,.12)}
-    button{margin-top:14px;width:100%;padding:11px;border-radius:10px;border:1px solid rgba(0,0,0,.3);cursor:pointer;font-weight:800;color:#102b2b;background:linear-gradient(180deg,#f5c462,#d49a2e)}
-    .meta{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
-    .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#091116;color:#cfe;font-weight:800;font-size:12px}
-    .muted{opacity:.85;font-size:12px}.ok{color:var(--ok)} .err{color:var(--err)} .hint{font-size:11px;color:#a7c7d6;margin-top:8px}
+    :root{--bg:#0b0f14;--panel:#11161d;--ink:#e9f1ff;--line:rgba(0,255,255,.18);--gold:#ffcc66;--ok:#12d48a;--bad:#ff8fa0;--chip:#0c141a}
+    *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial,sans-serif}
+    a{color:#9bd3ff;text-decoration:none}.wrap{display:grid;place-items:center;min-height:100vh;padding:16px}
+    .card{width:100%;max-width:460px;background:linear-gradient(180deg,#0f131a,#0a0f15);border:1px solid var(--line);border-radius:14px;padding:18px 18px 20px;box-shadow:0 0 18px rgba(0,255,255,.08)}
+    h1{margin:0 0 6px;font-size:18px;letter-spacing:.3px;color:#ffd78a}
+    .tabs{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:10px 0 12px}
+    .tab{flex:1;text-align:center;padding:10px 12px;cursor:pointer;background:#0b1015}.tab.on{background:#152029;font-weight:700}
+    label{display:block;margin:10px 0 6px}
+    input{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:#0c1218;color:var(--ink)}
+    button{width:100%;margin-top:14px;padding:12px;border:0;border-radius:10px;cursor:pointer;font-weight:800;color:#1a1304;background:linear-gradient(180deg,#ffd27a,#e3a93b)}
+    button[disabled]{opacity:.6;cursor:not-allowed}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .msg{margin-top:10px;font-size:12px;min-height:16px;color:#9fb1c7}.msg.ok{color:#12d48a}.msg.bad{color:#ff8fa0}
+    .hint{margin-top:10px;color:#9fb1c7;font-size:12px}.meta{display:flex;align-items:center;gap:8px;margin-top:8px}
+    .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#091319;color:#cfe;font-size:12px}
+    .kickBox{margin-top:14px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--chip)}
+    .kickRow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.kickTitle{font-size:13px;color:#cfe}
+    .kickBtn{padding:8px 10px;border-radius:10px;border:1px solid rgba(0,0,0,.3);cursor:pointer;font-weight:800;color:#102b2b;background:linear-gradient(180deg,#98f7e1,#49d5b3)}
   </style>
 </head>
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>Admin Login</h1>
-    <form id="form" novalidate>
-      <label for="u">Username</label><input id="u" autocomplete="username" required>
-      <label for="p">Password</label><input id="p" type="password" autocomplete="current-password" required>
-      <button id="loginBtn" type="submit">Sign in</button>
-      <div class="meta"><div class="pill" id="cookieState">cookie: checking…</div><div class="muted" id="status"></div></div>
-      <div class="hint">For cross-origin APIs, set <code>window.API_BASE</code> before loading scripts.</div>
+    <h1>Welcome back</h1>
+    <div class="tabs"><div class="tab on" id="tabLogin">Sign in</div><div class="tab" id="tabSignup">Create account</div></div>
+
+    <form id="formLogin">
+      <label for="lu">Username</label><input id="lu" autocomplete="username" required>
+      <label for="lp">Password</label><input id="lp" type="password" autocomplete="current-password" required>
+      <button id="btnLogin" type="submit">Sign in</button>
+      <div class="meta"><div class="pill" id="cookieState">cookie: checking…</div><div id="loginMsg" class="msg"></div></div>
+      <div class="kickBox"><div class="kickRow"><div class="kickTitle">Link your Kick after login for profile display</div><button type="button" class="kickBtn" id="kickLinkBtn1">Go to Kick Link</button></div></div>
     </form>
+
+    <form id="formSignup" style="display:none">
+      <label for="su">Username</label><input id="su" autocomplete="username" required placeholder="3-20 chars, letters/numbers . _ -">
+      <label for="se">Email (optional)</label><input id="se" type="email" autocomplete="email" placeholder="you@example.com">
+      <label for="sp">Password</label><input id="sp" type="password" autocomplete="new-password" required>
+      <button id="btnSignup" type="submit">Create account</button>
+      <div class="meta"><div class="pill" id="cookieState2">cookie: —</div><div id="signupMsg" class="msg"></div></div>
+      <div class="kickBox"><div class="kickRow"><div class="kickTitle">After sign up, link your Kick for profile display</div><button type="button" class="kickBtn" id="kickLinkBtn2">Go to Kick Link</button></div></div>
+    </form>
+
+    <div class="hint">This page uses cookies via <code>/assets/api-base.js</code>. If your API is cross-origin, set <code>window.API_BASE</code> first.</div>
   </div>
 </div>
 
@@ -38,23 +56,40 @@
 <script>
 (function(){
   const $=(s,r=document)=>r.querySelector(s);
-  const form=$("#form"), U=$("#u"), P=$("#p"), status=$("#status"), cookieState=$("#cookieState"), btn=$("#loginBtn");
-  function say(el,msg,cls){ if(!el)return; el.textContent=msg||""; el.className=(cls?cls:"muted"); }
-  async function checkStatus(redirect=false){ try{ const me=await api.get("/api/me"); const role=me?.user?.role||"user"; say(cookieState,"cookie: ok","pill"); if(redirect && role==="admin") location.href="/admin/tools.html"; return role; }catch{ say(cookieState,"cookie: missing","pill"); return "guest"; } }
-  form.addEventListener("submit", async (ev)=>{
-    ev.preventDefault(); const username=(U.value||"").trim().toLowerCase(); const password=(P.value||"");
-    if(!username||!password){ say(status,"Enter username and password.","err"); return; }
-    btn.disabled=true; say(status,"Signing in…");
-    try{
-      const j=await api.post("/api/auth/login",{ username,password });
-      localStorage.setItem("lash3z_last_user", username);
-      const me=await api.get("/api/me"); const role=me?.user?.role || j?.user?.role || "user";
-      if(role!=="admin"){ say(status,"Logged in, but not an admin.","err"); btn.disabled=false; return; }
-      say(status,"Welcome, admin.","ok"); location.href="/admin/tools.html";
-    }catch(e){ const msg=(e?.payload&&(e.payload.error||e.payload.detail))||e.message||"login failed"; say(status,String(msg).replace(/_/g," "),"err"); btn.disabled=false; }
+  const tabLogin=$("#tabLogin"), tabSignup=$("#tabSignup");
+  const formLogin=$("#formLogin"), formSignup=$("#formSignup");
+  const loginMsg=$("#loginMsg"), signupMsg=$("#signupMsg");
+  const cookieState=$("#cookieState"), cookieState2=$("#cookieState2");
+  function msg(el,text,good){ if(!el) return; el.textContent=text||""; el.className="msg"+(good===true?" ok":good===false?" bad":""); }
+  function showLogin(){ tabLogin.classList.add("on"); tabSignup.classList.remove("on"); formLogin.style.display="block"; formSignup.style.display="none"; }
+  function showSignup(){ tabSignup.classList.add("on"); tabLogin.classList.remove("on"); formLogin.style.display="none"; formSignup.style.display="block"; }
+  tabLogin.addEventListener("click", showLogin); tabSignup.addEventListener("click", showSignup);
+  async function probe(){ try{ await api.get("/api/me"); cookieState.textContent="cookie: ok"; cookieState2.textContent="cookie: ok"; }catch{ cookieState.textContent="cookie: missing"; cookieState2.textContent="cookie: missing"; } }
+
+  formLogin.addEventListener("submit", async (ev)=>{
+    ev.preventDefault(); const u=$("#lu").value.trim().toLowerCase(); const p=$("#lp").value;
+    if(!u||!p){ msg(loginMsg,"Enter username & password.",false); return; }
+    $("#btnLogin").disabled=true; msg(loginMsg,"Signing in…");
+    try{ await api.post("/api/auth/login",{ username:u, password:p }); msg(loginMsg,"Signed in. Redirecting…",true); localStorage.setItem("lash3z_last_user",u); setTimeout(()=>location.replace("/pages/dashboard/home/profile.html"),150); }
+    catch(e){ msg(loginMsg,(e.payload&&(e.payload.error||e.payload.detail))||e.message,false); }
+    finally{ $("#btnLogin").disabled=false; probe(); }
   });
-  try{ const last=localStorage.getItem("lash3z_last_user"); if(last&&!U.value) U.value=last; }catch{}
-  checkStatus(true);
+
+  formSignup.addEventListener("submit", async (ev)=>{
+    ev.preventDefault(); const u=$("#su").value.trim().toLowerCase(); const e=$("#se").value.trim(); const p=$("#sp").value;
+    if(!u||!p){ msg(signupMsg,"Username and password required.",false); return; }
+    if(!/^[a-z0-9_.-]{3,20}$/i.test(u)){ msg(signupMsg,"Username format invalid.",false); return; }
+    $("#btnSignup").disabled=true; msg(signupMsg,"Creating…");
+    try{ await api.post("/api/auth/signup",{ username:u, email:e||null, password:p }); msg(signupMsg,"Account created. Redirecting…",true); localStorage.setItem("lash3z_last_user",u); setTimeout(()=>location.replace("/pages/dashboard/home/profile.html"),150); }
+    catch(e){ msg(signupMsg,(e.payload&&(e.payload.error||e.payload.detail))||e.message,false); }
+    finally{ $("#btnSignup").disabled=false; probe(); }
+  });
+
+  document.getElementById("kickLinkBtn1")?.addEventListener("click", ()=>{ location.href="/pages/dashboard/home/profile.html#kick"; });
+  document.getElementById("kickLinkBtn2")?.addEventListener("click", ()=>{ location.href="/pages/dashboard/home/profile.html#kick"; });
+
+  try{ const last=localStorage.getItem("lash3z_last_user"); if(last&&!$("#lu").value) $("#lu").value=last; if(last&&!$("#su").value) $("#su").value=last; }catch{}
+  probe();
 })();
 </script>
 </body>
