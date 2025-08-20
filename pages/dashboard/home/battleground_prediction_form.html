@@ -2,271 +2,207 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Battleground — Prediction Form</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Predictions — L3Z</title>
+<link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
 <style>
-  :root{
-    --ink:#eaf7ff; --muted:#8fbfc4; --teal:#00ffff; --gold:#ffb42d;
-    --bg:#050a0c; --panel:rgba(5,10,12,.78); --line:rgba(0,255,255,.16);
-    --ok:#12f3d6; --danger:#ff5a73;
+  :root{--bg:#0b0f14;--panel:#11161d;--ink:#e9f1ff;--line:rgba(0,255,255,.18);
+        --gold:#ffcc66;--ok:#12d48a;--bad:#ff8fa0;--chip:#0c141a}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial,sans-serif}
+  a{color:#9bd3ff;text-decoration:none}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px}
+  .top{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0a1016;color:#cfe;font-weight:800}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:980px){.grid{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,#0f131a,#0a0f15);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
+  .head h2{margin:0;font-size:14px;letter-spacing:.3px;color:#ffd78a}
+  .body{padding:12px 14px;display:grid;gap:10px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .row>label{min-width:140px;color:#cbd5e1}
+  input,select,button,textarea{
+    background:#0f141b;border:1px solid var(--line);color:var(--ink);
+    border-radius:10px;padding:10px 12px;font-size:14px
   }
-  html,body{margin:0;height:100%;background:#000 url("/assets/media/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-  .wrap{max-width:1100px;margin:24px auto;padding:16px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,rgba(5,10,12,.70),rgba(5,10,12,.78));box-shadow:0 8px 30px rgba(0,0,0,.45)}
-  .topbar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
-  h1{margin:0;font-size:22px;letter-spacing:.02em;text-shadow:0 0 12px rgba(0,255,255,.35)}
-  .pill{padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:#0b1f21;color:#cfffff;font-weight:800}
-  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  .controls input{background:#061417;border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:8px 10px;outline:none}
-  .hint{color:var(--muted);font-size:12px}
-  .match{display:grid;grid-template-columns:1fr 52px 60px 52px 1fr;gap:14px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:rgba(0,0,0,.35)}
-  .match + .match{margin-top:12px}
-  .desc{min-width:0}
-  .name{font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .prov{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .thumb{width:52px;height:68px;border:1px solid var(--line);border-radius:8px;background:#000;overflow:hidden}
-  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
-  .vs{font-weight:900;text-align:center;opacity:.9;display:flex;flex-direction:column;gap:6px;align-items:center}
-  .badge{font-size:11px;padding:2px 6px;border:1px solid var(--line);border-radius:999px;background:#0b1f21;color:#9ff8ff}
-  .pick-left{grid-column:1 / span 2}.pick-right{grid-column:4 / span 2}
-  .pick{display:grid;gap:10px;align-items:center}
-  .pick-left .pick{grid-template-columns:1fr 52px}
-  .pick-right .pick{grid-template-columns:52px 1fr}
-  .pick-left .desc{text-align:right}
-  .pick-right .desc{text-align:left}
-  .card{border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:8px;transition:.15s all}
-  .card.active{outline:2px solid var(--ok);box-shadow:0 0 0 3px rgba(18,243,214,.15) inset}
-  .card.locked{opacity:.5;pointer-events:none}
-  .section{margin-top:18px}
-  .scoreGrid{display:grid;grid-template-columns:1fr 52px 60px 52px 1fr;gap:14px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:rgba(0,0,0,.35)}
-  .scoreTitle{grid-column:1 / -1;font-weight:900;margin-bottom:4px}
-  .scoreInput{display:flex;gap:8px;align-items:center}
-  .scoreInput input{width:70px;text-align:center;font-weight:900;background:#061417;border:1px solid var(--line);border-radius:8px;color:var(--ink);padding:8px}
-  .lblL{justify-self:end}.lblR{justify-self:start}.colon{font-weight:900;text-align:center;opacity:.85}
-  .hintRow{grid-column:1 / -1;color:var(--muted);font-size:12px;margin-top:4px}
-  .err{color:var(--danger);font-size:12px;margin-top:4px}
-  .submitbar{display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-top:16px}
-  button{background:#0b1f21;border:1px solid var(--line);color:#fff;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}
-  button.primary{background:linear-gradient(180deg,#0ef,#12f3d6);-webkit-background-clip:text;background-clip:text;color:transparent;border-color:var(--ok)}
-  button[disabled]{opacity:.4;cursor:not-allowed}
-  .toast{position:fixed;right:16px;bottom:16px;background:#0b1f21;border:1px solid var(--line);border-radius:8px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:.2s all}
-  .toast.on{opacity:1;transform:translateY(0)}
+  textarea{min-height:80px;width:100%}
+  button{cursor:pointer;font-weight:800}
+  button.primary{background:linear-gradient(180deg,#f5c462,#d49a2e);color:#1a1204;border:none}
+  button.ghost{background:#111a22}
+  .ok{color:var(--ok)} .err{color:var(--bad)} .muted{color:#9fb3c5}
+  .badge{display:inline-flex;align-items:center;gap:6px;background:var(--chip);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:6px 10px}
+  .small{font-size:12px;color:#9fb3c5}
+  .list{display:grid;gap:8px;max-height:260px;overflow:auto}
+  .item{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;background:#0d141b;border:1px solid var(--line);border-radius:10px}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="topbar"><h1>Battleground — Prediction Form</h1><div class="pill" id="evtInfo">—</div></div>
-  <div class="controls">
-    <label>Player&nbsp;Name <input id="user" placeholder="USERNAME"/></label>
-    <span class="hint">Pick LEFT or RIGHT for each matchup. Bonus: predict the exact final score.</span>
-  </div>
-  <div id="list"></div>
-
-  <div class="section">
-    <div class="scoreGrid">
-      <div class="scoreTitle">Final Score</div>
-      <div class="lblL"><span id="leftLbl">Left</span></div>
-      <div class="scoreInput" style="grid-column:2"><input id="scoreL" type="number" min="0" step="1" value="0"/></div>
-      <div class="colon">:</div>
-      <div class="scoreInput" style="grid-column:4"><input id="scoreR" type="number" min="0" step="1" value="0"/></div>
-      <div class="lblR"><span id="rightLbl">Right</span></div>
-      <div class="hintRow" id="scoreHint">Must add up to 3 (e.g., 2–1 or 3–0).</div>
+  <div class="top">
+    <div style="display:flex;align-items:center;gap:10px">
+      <img src="/assets/l3z_logo.png" alt="" style="width:36px;height:36px;border-radius:10px;border:1px solid var(--line)">
+      <div class="pill">Predictions</div>
     </div>
-    <div class="err" id="scoreErr"></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="pill" id="whoami">—</div>
+      <div class="pill"><span id="walletBalance">0 LBX</span></div>
+      <a class="pill" href="/pages/dashboard/home/profile.html" style="border-color:#3a5166">Profile</a>
+      <a class="pill" href="/pages/dashboard/home/leaderboard.html" style="border-color:#3a5166">Leaderboard</a>
+    </div>
   </div>
 
-  <div class="submitbar">
-    <button id="clearBtn">Clear</button>
-    <button id="submitBtn" class="primary" disabled>Submit Predictions</button>
+  <div class="grid">
+    <!-- Prediction form -->
+    <section class="card">
+      <div class="head"><h2>Submit Prediction</h2><div class="badge">server-backed</div></div>
+      <div class="body">
+        <div class="row">
+          <label>Hunt Type</label>
+          <select id="huntType">
+            <option value="Mega">Mega Hunt</option>
+            <option value="Super">Super Hunt</option>
+            <option value="Player">Player Hunt</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <label>Top Game</label>
+          <select id="topGame">
+            <option value="Gates of Olympus">Gates of Olympus</option>
+            <option value="Sweet Bonanza">Sweet Bonanza</option>
+            <option value="Wanted Dead or a Wild">Wanted Dead or a Wild</option>
+            <option value="Sugar Rush">Sugar Rush</option>
+            <option value="Dog House Megaways">Dog House Megaways</option>
+          </select>
+        </div>
+
+        <div class="row">
+          <label>Hit 100x?</label>
+          <input id="hundredX" type="number" step="1" min="0" placeholder="0 = no, 1+ = yes (closest guess)"/>
+        </div>
+
+        <div class="row">
+          <label>Profit Overall?</label>
+          <select id="profitYesNo">
+            <option value="true">Yes — profit</option>
+            <option value="false">No — loss</option>
+            <option value="">(skip)</option>
+          </select>
+        </div>
+
+        <div class="row" style="gap:10px">
+          <button id="btnSubmit" class="primary">Submit</button>
+          <span id="predStatus" class="muted"></span>
+        </div>
+        <div class="small">Submits to <code>/api/predictions/submit</code>. Points are awarded by mods later and reflected on the leaderboard.</div>
+      </div>
+    </section>
+
+    <!-- Recent activity (optional visibility) -->
+    <section class="card">
+      <div class="head"><h2>Your Recent Activity</h2><div class="badge">latest</div></div>
+      <div class="body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <div class="row" style="justify-content:space-between">
+              <div class="small">Transactions</div>
+              <button id="btnTx" class="ghost">Refresh</button>
+            </div>
+            <div id="txList" class="list"></div>
+          </div>
+          <div>
+            <div class="row" style="justify-content:space-between">
+              <div class="small">Bets</div>
+              <button id="btnBets" class="ghost">Refresh</button>
+            </div>
+            <div id="betsList" class="list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 </div>
-<div class="toast" id="toast">Saved.</div>
 
+<!-- API helper then inline logic -->
+<script src="/assets/api-base.js"></script>
 <script>
-(() => {
-  "use strict";
-  const K_PUBLISHED='sb:markets:battleground';
-  const K_BUILDER='bg:builder:battleground';
-  const K_BETS='lash3z_bets';                // legacy per-match entries (kept)
-  const MYBETS_KEY = u => 'sb:mybets:'+u;    // compact “My Bets” feed
+(function(){
+  const $=(s,r=document)=>r.querySelector(s);
+  const who=$("#whoami"), bal=$("#walletBalance");
+  const huntType=$("#huntType"), topGame=$("#topGame"), hundredX=$("#hundredX"), profitYesNo=$("#profitYesNo");
+  const predStatus=$("#predStatus");
+  const txList=$("#txList"), betsList=$("#betsList");
 
-  const $=s=>document.querySelector(s);
-  const listEl=$('#list'), userEl=$('#user'), evtInfoEl=$('#evtInfo');
-  const scoreLEl=$('#scoreL'), scoreREl=$('#scoreR'), scoreErrEl=$('#scoreErr');
-  const leftLblEl=$('#leftLbl'), rightLblEl=$('#rightLbl'), scoreHintEl=$('#scoreHint');
-  const submitBtn=$('#submitBtn'), clearBtn=$('#clearBtn'), toast=$('.toast');
-
-  let eventId='battleground:'+new Date().toISOString().slice(0,10);
-  let eventTitle='BATTLEGROUND';
-  let matchups=[]; let picks=new Map();
-  let leftSeriesName='Left', rightSeriesName='Right';
-  let seriesTotal=3;
-
-  const read=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch{return null}};
-  const esc=s=>(s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-
-  function normalizeFromPublished(o){
-    if(!o||typeof o!=='object') return null;
-    const m=Array.isArray(o.h2h)?o.h2h:[];
-    return {
-      source:'published',
-      lastUpdated:Number(o.lastUpdated||o.ts||0)||0,
-      eventId:o.eventId||eventId,
-      title:o.title||eventTitle,
-      matchups:m.map((x,i)=>({
-        id:x.id||('M'+(i+1)),
-        left:{title:x.left?.title||x.leftTitle||'LEFT', provider:x.left?.provider||x.leftProv||'', img:x.left?.img||x.leftImg||''},
-        right:{title:x.right?.title||x.rightTitle||'RIGHT', provider:x.right?.provider||x.rightProv||'', img:x.right?.img||x.rightImg||''},
-        status:(x.status||'OPEN').toUpperCase()
-      })),
-      seriesTotal:Number(o.seriesTotal||o.bestOf||3)
-    };
-  }
-  function normalizeFromBuilder(o){
-    if(!o||typeof o!=='object') return null;
-    const gById=new Map((o.games||[]).map(g=>[g.id,g]));
-    const ms=Array.isArray(o.matches)?o.matches:[];
-    const M=ms.map((m,i)=>{
-      const L=gById.get(m.leftId||m.leftGameId)||{};
-      const R=gById.get(m.rightId||m.rightGameId)||{};
-      return {
-        id:m.id||('M'+(i+1)),
-        left:{ title:L.title||L.name||m.leftTitle||'LEFT', provider:L.provider||m.leftProv||'', img:L.imageUrl||L.image||m.leftImg||'' },
-        right:{ title:R.title||R.name||m.rightTitle||'RIGHT', provider:R.provider||m.rightProv||'', img:R.imageUrl||R.image||m.rightImg||'' },
-        status:(m.status||'OPEN').toUpperCase()
-      };
-    });
-    return { source:'builder', lastUpdated:Number(o.lastUpdated||0)||0, eventId:o.eventId||eventId, title:o.title||eventTitle, matchups:M, seriesTotal:Number(o.seriesTotal||o.bestOf||3) };
-  }
-  function chooseDataset(){
-    const pub=normalizeFromPublished(read(K_PUBLISHED));
-    const bld=normalizeFromBuilder(read(K_BUILDER));
-    const pc=pub?.matchups?.length||0, bc=bld?.matchups?.length||0;
-    if(bld && bc && bc>=pc) return bld;
-    if(pub && pc) return pub;
-    return bld || pub || {source:'none',eventId,title:eventTitle,matchups:[],seriesTotal:3,lastUpdated:0};
+  function fmtLBX(n){ return \`\${Number(n||0).toLocaleString()} LBX\`; }
+  function item(label, value, extra=""){
+    const div=document.createElement("div");
+    div.className="item";
+    div.innerHTML=\`<div>\${label}</div><div class="small">\${value}\${extra?\` — \${extra}\`:""}</div>\`;
+    return div;
   }
 
-  function loadData(){
-    const norm=chooseDataset();
-    eventId=norm.eventId||eventId;
-    eventTitle=(norm.title||'BATTLEGROUND').toString().toUpperCase();
-    matchups=[...(norm.matchups||[])];
-    seriesTotal=Number(norm.seriesTotal||3)||3;
-    const when = norm.lastUpdated ? (' @ '+new Date(norm.lastUpdated).toLocaleString()) : '';
-    evtInfoEl.textContent=`${eventTitle} — ${eventId}  [${norm.source.toUpperCase()}${when}]`;
-    if(matchups.length){
-      leftSeriesName=matchups[0].left?.title||'Left';
-      rightSeriesName=matchups[0].right?.title||'Right';
-      leftLblEl.textContent=leftSeriesName;
-      rightLblEl.textContent=rightSeriesName;
+  async function refreshMe(){
+    try{
+      const j = await api.get("/api/me");
+      const u = j?.user || {};
+      who.textContent = u.username || "—";
+      const balance = Number((u.wallet&&u.wallet.balance) ?? u.balance ?? u.lbx ?? 0);
+      bal.textContent = fmtLBX(balance);
+    }catch(e){
+      who.textContent="(not logged in)";
+      bal.textContent=fmtLBX(0);
     }
-    scoreLEl.max=seriesTotal; scoreREl.max=seriesTotal;
-    scoreHintEl.textContent=`Must add up to ${seriesTotal} (e.g., ${seriesTotal-1}–1 or ${seriesTotal}–0).`;
   }
 
-  function render(){
-    const html=matchups.map(m=>`
-      <div class="match" data-id="${esc(m.id)}">
-        <div class="pick-left">
-          <div class="card pick ${picks.get(m.id)==='left'?'active':''} ${m.status!=='OPEN'?'locked':''}" data-pick="left">
-            <div class="desc"><div class="name">${esc(m.left.title||'—')}</div><div class="prov">${esc(m.left.provider||'')}</div></div>
-            <div class="thumb">${m.left.img?`<img src="${esc(m.left.img)}" alt="">`:''}</div>
-          </div>
-        </div>
-        <div class="vs">VS <span class="badge">${m.status}</span></div>
-        <div class="pick-right">
-          <div class="card pick ${picks.get(m.id)==='right'?'active':''} ${m.status!=='OPEN'?'locked':''}" data-pick="right">
-            <div class="thumb">${m.right.img?`<img src="${esc(m.right.img)}" alt="">`:''}</div>
-            <div class="desc"><div class="name">${esc(m.right.title||'—')}</div><div class="prov">${esc(m.right.provider||'')}</div></div>
-          </div>
-        </div>
-      </div>`).join('');
-    $('#list').innerHTML=html||`<div class="hint">No published matchups yet. Hit “Push → Prediction + Live + Bets” in BG Admin.</div>`;
-    $('#list').querySelectorAll('.match').forEach(row=>{
-      const id=row.getAttribute('data-id');
-      row.querySelectorAll('.card.pick').forEach(card=>{
-        card.addEventListener('click',()=>{
-          if(card.classList.contains('locked'))return;
-          picks.set(id,card.getAttribute('data-pick'));
-          row.querySelectorAll('.card.pick').forEach(c=>c.classList.remove('active'));
-          card.classList.add('active');
-          validate();
-        });
+  async function refreshTx(){
+    txList.innerHTML="";
+    try{
+      const j = await api.get("/api/tx/history");
+      (j.tx||[]).slice(0,30).forEach(t=>{
+        txList.appendChild(item(t.type.replace(/_/g," "), (t.amount>0?"+":"")+t.amount, new Date(t.createdAt).toLocaleString()));
       });
-    });
-    validate();
+    }catch(e){ txList.appendChild(item("Error", e.message||"failed")); }
   }
 
-  function validate(){
-    const uname=(userEl.value||'').trim().toUpperCase();
-    const allPicked=matchups.length && matchups.every(m=>['left','right'].includes(picks.get(m.id)));
-    const sl=Number(scoreLEl.value||0), sr=Number(scoreREl.value||0);
-    const sumOk=(sl+sr)===seriesTotal;
-    const within=sl>=0 && sr>=0 && sl<=seriesTotal && sr<=seriesTotal;
-    scoreErrEl.textContent=(sumOk&&within)?'':`Final score must add up to ${seriesTotal}.`;
-    submitBtn.disabled=!(uname && allPicked && sumOk && within);
+  async function refreshBets(){
+    betsList.innerHTML="";
+    try{
+      const j = await api.get("/api/bets/history");
+      (j.bets||[]).slice(0,30).forEach(b=>{
+        const st = b.status + (b.payout!=null? \` (\${b.payout>0?"+":""}\${b.payout})\` : "");
+        betsList.appendChild(item(b.game||"—", b.amount, st));
+      });
+    }catch(e){ betsList.appendChild(item("Error", e.message||"failed")); }
   }
 
-  // legacy per-match write (kept, no UI change)
-  function upsertBets(records){
-    const now=Date.now();
-    const existing=(()=>{try{return JSON.parse(localStorage.getItem(K_BETS)||'[]')}catch{return []}})();
-    const uname=(userEl.value||'').trim().toUpperCase();
-    const filtered=existing.filter(r=>!(r.mode==='battleground' && r.user===uname && r.eventId===eventId && (r.type==='prediction'||r.type==='series_score')));
-    const next=filtered.concat(records.map(r=>({ts:now,...r})));
-    localStorage.setItem(K_BETS,JSON.stringify(next));
-  }
+  $("#btnSubmit")?.addEventListener("click", async ()=>{
+    predStatus.textContent="Submitting…"; predStatus.className="muted";
+    try{
+      const body = {
+        huntType: huntType.value,
+        hundredX: Number(hundredX.value||0),
+        topGame: topGame.value,
+        profitYesNo: profitYesNo.value==="" ? null : (profitYesNo.value==="true")
+      };
+      // validation
+      if(!body.huntType || !body.topGame) throw new Error("Missing hunt type or top game.");
+      await api.post("/api/predictions/submit", body);
+      predStatus.textContent="Prediction submitted."; predStatus.className="ok";
+      // soft reset
+      hundredX.value="0"; profitYesNo.value="";
+    }catch(e){
+      predStatus.textContent=(e.message||"failed").replace(/_/g," "); predStatus.className="err";
+    }
+  });
 
-  // NEW: minimal “My Bets” record for display
-  function writeMyBets(){
-    const uname=(userEl.value||'').trim().toUpperCase();
-    const sl=Number(scoreLEl.value||0), sr=Number(scoreREl.value||0);
-    const rec={
-      ts: Date.now(),
-      user: uname,
-      eventId,
-      eventTitle,
-      picks: matchups.map(m=>{
-        const side=picks.get(m.id);
-        const pickName = side==='left' ? (m.left.title||'LEFT') : (m.right.title||'RIGHT');
-        return { matchId:m.id, left:m.left.title||'LEFT', right:m.right.title||'RIGHT', pick:side, pickName };
-      }),
-      final: { leftName:leftSeriesName, rightName:rightSeriesName, left:sl, right:sr, total:seriesTotal }
-    };
-    const k=MYBETS_KEY(uname);
-    let arr=[]; try{ arr=JSON.parse(localStorage.getItem(k)||'[]')||[]; }catch{}
-    arr.push(rec);
-    localStorage.setItem(k, JSON.stringify(arr.slice(-20)));
-  }
+  $("#btnTx")?.addEventListener("click", refreshTx);
+  $("#btnBets")?.addEventListener("click", refreshBets);
 
-  function submit(){
-    const uname=(userEl.value||'').trim().toUpperCase();
-    const recs=[];
-    matchups.forEach(m=>{
-      const pick=picks.get(m.id);
-      const pickName=pick==='left'?(m.left.title||'LEFT'):(m.right.title||'RIGHT');
-      recs.push({mode:'battleground',type:'prediction',user:uname,eventId,matchId:m.id,pick,pickName});
-    });
-    const sl=Number(scoreLEl.value||0), sr=Number(scoreREl.value||0);
-    recs.push({mode:'battleground',type:'series_score',user:uname,eventId,leftName:leftSeriesName,rightName:rightSeriesName,left:sl,right:sr,total:seriesTotal});
-    upsertBets(recs);     // keep legacy feed
-    writeMyBets();        // new compact feed
-    toast.textContent=`Saved ${recs.length-1} picks + final score for ${uname}.`;
-    toast.classList.add('on'); setTimeout(()=>toast.classList.remove('on'),1400);
-  }
-
-  function clearAll(){ picks.clear(); scoreLEl.value=0; scoreREl.value=0; render(); }
-
-  // init
-  userEl.value=(localStorage.getItem('lash3z_last_user')||'').toUpperCase();
-  userEl.addEventListener('input',()=>{localStorage.setItem('lash3z_last_user',(userEl.value||'').toUpperCase()); validate();});
-  scoreLEl.addEventListener('input',validate);
-  scoreREl.addEventListener('input',validate);
-  submitBtn.addEventListener('click',submit);
-  clearBtn.addEventListener('click',clearAll);
-
-  loadData(); render();
-  window.addEventListener('storage',e=>{ if([K_PUBLISHED,K_BUILDER].includes(e.key)){ loadData(); render(); } });
+  (async function boot(){
+    await refreshMe();
+    await Promise.all([refreshTx(), refreshBets()]);
+  })();
 })();
 </script>
 </body>
