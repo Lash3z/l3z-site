@@ -1,8 +1,9 @@
 // server.js — homepage-first, admin aliases, JSON+form login
-// + Wallet (Mongo + file fallback) with ledger + daily reward
-// + Viewer session (cookie) + signup bonus
-// + Promo codes via external module (initPromo/promoRoutes)
+// + Wallet (Mongo + file/memory fallback) with ledger + daily reward
+// + Viewer session (cookie) + optional signup bonus
+// + Promo codes (initPromo/promoRoutes)
 // + Production hardening (CORS, secrets, cookies)
+// NOTE: All "server sync" balance resets/deductions have been removed.
 
 import fs from "fs";
 import os from "os";
@@ -15,7 +16,7 @@ import { fileURLToPath } from "url";
 import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
 
-// ⬇️ promo module
+// Promo module
 import { initPromo, promoRoutes } from "./promo.js";
 
 dotenv.config();
@@ -38,11 +39,11 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
   .split(",").map(s=>s.trim()).filter(Boolean);
 
 // Wallet/rewards
-const SIGNUP_BONUS = Number(process.env.SIGNUP_BONUS || 0);
+const SIGNUP_BONUS = Number(process.env.SIGNUP_BONUS || 0); // 0 to disable
 const DAILY_REWARD_AMOUNT = Number(process.env.DAILY_REWARD_AMOUNT || 5);
 const DAILY_REWARD_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-// File persistence fallback (so balances persist even without DB)
+// File persistence fallback (so balances persist without DB)
 const STATE_PERSIST = (process.env.STATE_PERSIST ?? "true") === "true";
 const STATE_CANDIDATES = [
   process.env.STATE_FILE && path.resolve(process.env.STATE_FILE),
@@ -51,6 +52,7 @@ const STATE_CANDIDATES = [
 ].filter(Boolean);
 let STATE_FILE = STATE_CANDIDATES[0];
 
+// Fail fast in production if secrets are missing
 if (NODE_ENV === "production" && (!ADMIN_USER || !ADMIN_PASS || !ADMIN_SECRET || !JWT_SECRET)) {
   console.error("[SECURITY] Missing required admin credentials/secrets in production.");
   process.exit(1);
@@ -93,7 +95,6 @@ const ADMIN_HUB_FILE = resolveFirstExisting([
 /* ===================== In-memory state ===================== */
 const memory = {
   wallets: {}, // { USER: { balance, ledger[], signupBonusGrantedAt, lastDailyClaimAt } }
-  // other light state can live here if needed
 };
 
 /* ===================== File persistence helpers ===================== */
@@ -104,7 +105,8 @@ function ensureWritableStatePath() {
       const dir = path.dirname(cand);
       fs.mkdirSync(dir, { recursive: true });
       const t = path.join(dir, ".write-test");
-      fs.writeFileSync(t, "ok"); fs.rmSync(t);
+      fs.writeFileSync(t, "ok");
+      fs.rmSync(t);
       STATE_FILE = cand;
       return true;
     } catch {}
@@ -234,7 +236,7 @@ app.get(["/api/admin/gate/check", "/api/admin/me"], verifyAdminToken, (req, res)
   res.json({ success: true, admin: true, username: req.adminUser });
 });
 
-/* ===================== Health/Home/Admin pages ===================== */
+/* ===================== Health/Home pages ===================== */
 app.get("/api/health", (req, res) => {
   res.json({
     ok: true,
@@ -284,7 +286,7 @@ app.use(express.static(PUBLIC_DIR, {
 /* ===================== WALLET / VIEWER SESSION ===================== */
 /* =================================================================== */
 
-// DB-backed (fallback to memory/file) wallet
+// DB-backed (fallback to memory/file) wallet — unified on `username`
 async function getWallet(username) {
   const user = U(username);
   if (!user) return { username: "", balance: 0, ledger: [], signupBonusGrantedAt: null, lastDailyClaimAt: null };
@@ -316,7 +318,7 @@ async function getWallet(username) {
     lastDailyClaimAt: w.lastDailyClaimAt || null
   };
 }
-async function adjustWallet(username, delta, reason = "adjust") {
+async function adjustWallet(username, delta, reason = "admin_adjust") {
   const user = U(username);
   const amount = Number(delta || 0);
   if (!user || !Number.isFinite(amount)) return { ok: false, error: "bad_params" };
@@ -466,6 +468,46 @@ app.get("/api/wallet/me", async (req, res) => {
   });
 });
 
+// ===== Admin wallet ops (accepts username/user/name) =====
+function parseUserFromBody(b){ return U(b?.username || b?.user || b?.name || ""); }
+
+// new routes
+app.post("/api/wallet/adjust", verifyAdminToken, async (req, res) => {
+  const u = parseUserFromBody(req.body);
+  const delta = Number(req.body?.delta || req.body?.amount || 0);
+  const why = String(req.body?.reason || "admin_adjust");
+  if (!u) return res.status(400).json({ error: "username required" });
+  try {
+    const r = await adjustWallet(u, delta, why);
+    return r?.ok ? res.json({ success: true, balance: r.balance }) : res.status(500).json({ error: r.error || "failed" });
+  } catch (e) {
+    console.error("[/api/wallet/adjust] error:", e);
+    res.status(500).json({ error: "server_error" });
+  }
+});
+app.post("/api/wallet/credit", verifyAdminToken, async (req, res) => {
+  const u = parseUserFromBody(req.body);
+  const amount = Number(req.body?.amount || req.body?.delta || 0);
+  if (!u) return res.status(400).json({ error: "username required" });
+  try {
+    const r = await adjustWallet(u, amount, "admin_credit");
+    res.json({ success: true, balance: r.balance });
+  } catch (e) {
+    console.error("[/api/wallet/credit] error:", e);
+    res.status(500).json({ error: "failed" });
+  }
+});
+app.get("/api/wallet/balance", verifyAdminToken, async (req, res) => {
+  const u = U(req.query.user || req.query.username || "");
+  const w = await getWallet(u);
+  res.json({ balance: Number(w.balance || 0) });
+});
+
+// legacy aliases (many Admin HUDs use these paths)
+app.post("/api/admin/wallet/adjust", verifyAdminToken, (req, res) => app._router.handle({ ...req, url: "/api/wallet/adjust", method:"POST" }, res, () => {}));
+app.post("/api/admin/wallet/credit", verifyAdminToken, (req, res) => app._router.handle({ ...req, url: "/api/wallet/credit", method:"POST" }, res, () => {}));
+app.get ("/api/admin/wallet/balance", verifyAdminToken, (req, res) => app._router.handle({ ...req, url: "/api/wallet/balance", method:"GET" }, res, () => {}));
+
 // Daily reward
 async function claimDailyReward(username) {
   const user = U(username);
@@ -525,10 +567,17 @@ app.post("/api/rewards/daily", requireViewer, async (req, res) => {
 
 function wirePromoOrStub(app) {
   if (globalThis.__dbReady && globalThis.__db) {
-    promoRoutes(app, globalThis.__db);
-    console.log("[Promo] routes mounted.");
+    initPromo(globalThis.__db).then(() => {
+      promoRoutes(app, globalThis.__db);
+      console.log("[Promo] indexes ensured + routes mounted.");
+    }).catch(e => {
+      console.error("[Promo] init error:", e?.message || e);
+      app.post("/api/promo/redeem", (req,res)=> res.status(503).json({ ok:false, error:"promo_init_failed" }));
+      app.get ("/api/promo/my",      (req,res)=> res.status(503).json({}));
+      app.post("/api/promo/issue",   (req,res)=> res.status(503).json({ ok:false, error:"promo_init_failed" }));
+      app.post("/api/promo/expire",  (req,res)=> res.status(503).json({ ok:false, error:"promo_init_failed" }));
+    });
   } else {
-    // graceful stub so UI gets a useful error when DB is missing
     app.post("/api/promo/redeem", (req,res)=> res.status(503).json({ ok:false, error:"db_required" }));
     app.get ("/api/promo/my",      (req,res)=> res.status(503).json({}));
     app.post("/api/promo/issue",   (req,res)=> res.status(503).json({ ok:false, error:"db_required" }));
@@ -563,13 +612,13 @@ app.listen(PORT, HOST, () => {
     if (!ALLOW_MEMORY_FALLBACK) console.warn("[DB] No MONGO_URI; memory mode disabled.");
     else console.warn("[DB] No MONGO_URI; using FILE PERSIST (if available) or MEMORY.");
     if (STATE_PERSIST && fileOk) {
-      globalThis.storageMode = "file";
+      storageMode = "file";
       loadStateIfPresent();
       scheduleSave?.();
     } else {
-      globalThis.storageMode = "memory";
+      storageMode = "memory";
     }
-    wirePromoOrStub(app); // mount stubbed promo when no DB
+    wirePromoOrStub(app);
     return;
   }
 
@@ -578,10 +627,9 @@ app.listen(PORT, HOST, () => {
     await client.connect();
     globalThis.__db = client.db(MONGO_DB);
     globalThis.__dbReady = true;
-    globalThis.storageMode = "mongo";
+    storageMode = "mongo";
     console.log(`[DB] Connected to MongoDB: ${MONGO_DB}`);
 
-    // initialize promo indexes, then mount routes
     await initPromo(globalThis.__db);
     promoRoutes(app, globalThis.__db);
     console.log("[Promo] indexes ensured + routes mounted.");
@@ -590,12 +638,12 @@ app.listen(PORT, HOST, () => {
     if (!ALLOW_MEMORY_FALLBACK) { console.error("[DB] ALLOW_MEMORY_FALLBACK=false — exiting"); process.exit(1); }
     console.warn("[DB] Continuing without Mongo.");
     if (STATE_PERSIST && fileOk) {
-      globalThis.storageMode = "file";
+      storageMode = "file";
       loadStateIfPresent();
       scheduleSave?.();
     } else {
-      globalThis.storageMode = "memory";
+      storageMode = "memory";
     }
-    wirePromoOrStub(app); // mount stubbed promo when DB down
+    wirePromoOrStub(app);
   }
 })();
