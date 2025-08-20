@@ -1,145 +1,295 @@
 <!DOCTYPE html>
-<html lang="en" data-admin="checking">
+<html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<meta http-equiv="Cache-Control" content="no-store"/>
-<title>L3Z — Admin Hub</title>
-<style>
-  :root{ --bg:#060b0d; --panel:#0b1417; --ink:#eaf7ff; --muted:#9fd0d6;
-         --line:rgba(0,255,255,.18); --teal:#00ffff; --gold:#ffb42d;
-         --ok:#12d48a; --bad:#e25a6f; --ink2:#cfffff; }
-  *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-  html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
-  h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
-  h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
-  .wrap{max-width:1300px;margin:0 auto;padding:0 16px 48px}
-  .toprow{display:flex;gap:10px;align-items:center;justify-content:space-between}
-  .toprow .right{display:flex;gap:10px;align-items:center}
-  .gate{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
-  .panel{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;min-height:220px}
-  .full{grid-column:1 / -1}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:var(--ink2)}
-  input,select,textarea{border-radius:10px;border:1px solid var(--line);background:#0c1519;color:var(--ink);padding:8px}
-  textarea{width:100%;min-height:80px}
-  button{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:#0f1720;color:var(--ink);font-weight:800;cursor:pointer}
-  button.ok{background:#103d30;border-color:#1fa37b}
-  button.danger{background:#2b1116;border-color:#7e2a3c}
-  button.warn{background:#231b0f;border-color:#8c6926}
-  button[disabled]{opacity:.5;cursor:not-allowed}
-  .hr{height:1px;background:var(--line);margin:10px 0}
-  .tbl{width:100%;border-collapse:separate;border-spacing:0;overflow:auto}
-  .tbl th,.tbl td{border-bottom:1px solid rgba(255,255,255,.06);padding:8px;text-align:left;font-size:13px}
-  .tbl th{color:var(--muted)}
-  .right{margin-left:auto}
-  .hint{color:var(--muted);font-size:12px}
-  .mini{font-size:12px;color:var(--muted)}
-  .badge{padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#081318;color:#bfe}
-  .toast{position:fixed;right:16px;bottom:16px;background:#0b1f21;border:1px solid var(--line);border-radius:10px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:.2s all;pointer-events:none}
-  .toast.on{opacity:1;transform:translateY(0)}
-  a.linkbtn{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:#0f1720;color:#9fd0d6;text-decoration:none;font-weight:800}
-  a.linkbtn:hover{filter:brightness(1.1)}
-  @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
-</style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Sign in — LASH3Z</title>
+  <style>
+    :root{--bg:#0b0f14;--panel:#11161d;--ink:#e9f1ff;--line:rgba(0,255,255,.18);--gold:#ffcc66;--ok:#12d48a;--bad:#ff8fa0}
+    html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial,sans-serif}
+    .wrap{display:grid;place-items:center;min-height:100vh;padding:16px}
+    .card{width:100%;max-width:440px;background:#0e141a;border:1px solid var(--line);border-radius:14px;padding:18px 18px 20px;box-shadow:0 0 18px rgba(0,255,255,.08)}
+    h2{margin:0 0 8px}
+    .tabs{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+    .tab{flex:1;text-align:center;padding:10px 12px;cursor:pointer;background:#0b1015}
+    .tab.on{background:#152029;font-weight:700}
+    label{display:block;margin:10px 0 6px}
+    input{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:#0c1218;color:var(--ink)}
+    button{width:100%;margin-top:14px;padding:12px;border:0;border-radius:12px;background:linear-gradient(180deg,#ffd27a,#e3a93b);color:#1a1304;font-weight:800;cursor:pointer}
+    button[disabled]{opacity:.6;cursor:not-allowed}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .msg{margin-top:10px;font-size:12px;min-height:16px}
+    .msg.ok{color:var(--ok)} .msg.bad{color:var(--bad)}
+    .hint{margin-top:10px;color:#9fb1c7;font-size:12px}
+    .pill{margin-left:auto;padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:#091319;color:#cfe;font-size:12px}
+
+    /* Kick verification box */
+    .kickBox{ margin-top:12px; padding:10px; border:1px solid rgba(0,255,255,.18); border-radius:12px; background:#0b1417; }
+    .kickRow{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .kickTitle{ font-size:13px; color:#cfe; }
+    .kickBtn{ margin-left:auto; padding:10px 12px; border:1px solid rgba(0,255,255,.25); border-radius:12px; background:#0e1a1f; color:#eaf7ff; font-weight:800; cursor:pointer; width:auto; }
+    .kickBtn:hover{ border-color:#18e4ff; }
+  </style>
 </head>
 <body>
-
-<!-- Admin cookie check -->
-<script>
-(function(){
-  const ADMIN_CHECK="/api/admin/gate/check";
-  const ADMIN_LOGIN="/pages/dashboard/home/admin_login.html";
-  const DASHBOARD="/index.html";
-  const H=document.documentElement;
-  H.setAttribute("data-admin","checking");
-  function lock(){
-    H.removeAttribute("data-admin");
-    document.body.innerHTML='<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'?redirect=%2Fpages%2Fdashboard%2Fadmin%2Fadmin_hub.html">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you already logged in, your session may have expired.</div><div style="margin-top:14px"><a href="'+DASHBOARD+'">Back to Dashboard</a></div></div></div>';
-  }
-  fetch(ADMIN_CHECK,{credentials:"include",cache:"no-store"})
-    .then(r=>r.ok?r.json():null)
-    .then(j=>{ if(j&&j.admin){ try{localStorage.setItem("l3z:admin:unlocked","1");}catch{} H.removeAttribute("data-admin"); } else lock(); })
-    .catch(lock);
-})();
-</script>
-
 <div class="wrap">
-
-  <div class="toprow">
-    <h1>Admin Hub</h1>
-    <div class="right">
-      <a class="linkbtn" href="/index.html">← Back</a>
-      <a id="adminLogout" class="linkbtn" href="#">Log out</a>
+  <div class="card">
+    <div class="row" style="margin-bottom:10px">
+      <h2 style="margin-right:8px">Account</h2>
+      <span id="env" class="pill">—</span>
     </div>
-  </div>
 
-  <!-- Local unlock -->
-  <div id="gate" class="gate">
-    <div class="row">
-      <span class="pill">Unlock Panels</span>
-      <input id="gate-u" placeholder="Username" style="width:160px">
-      <input id="gate-p" placeholder="Password" type="password" style="width:160px">
-      <button id="gate-unlock" class="ok">Unlock</button>
-      <button id="gate-lock" class="danger">Lock</button>
-      <span id="gate-status" class="pill">Locked</span>
+    <div class="tabs" role="tablist">
+      <div class="tab on"  id="tab-signin" role="tab" aria-selected="true">Sign in</div>
+      <div class="tab"      id="tab-create" role="tab" aria-selected="false">Create account</div>
     </div>
-  </div>
 
-  <div id="grid" class="grid" style="display:none">
+    <!-- Sign in -->
+    <form id="form-signin" style="margin-top:12px">
+      <label>Username or Email</label>
+      <input id="si-user" autocomplete="username" required/>
+      <label>Password</label>
+      <input id="si-pass" type="password" autocomplete="current-password" required/>
+      <button id="btn-signin" type="submit">Sign in</button>
+      <div id="si-msg" class="msg"></div>
+      <div class="hint">Admins and players both sign in here. New players: use the “Create account” tab.</div>
 
-    <!-- CODE GENERATOR -->
-    <div class="panel">
-      <h2>Promo Code</h2>
-      <div class="row">
-        <button id="btnGetCode" class="ok">Get Code</button>
-        <span id="codeOut" class="pill">—</span>
+      <!-- Kick verification (sign-in tab too, because some folks go here first) -->
+      <div class="kickBox">
+        <div class="kickRow">
+          <div class="kickTitle">Kick verification (optional)</div>
+          <button class="kickBtn" type="button" id="kickLinkBtn1">Verify with Kick</button>
+        </div>
+        <div class="hint">Links your Kick account to your L3Z profile.</div>
       </div>
-      <div class="hint">Code only created once you press the button. Re-pressing will just return your existing one.</div>
-    </div>
+    </form>
 
-    <!-- … existing panels below unchanged … -->
-    <!-- Raffles, Prize Claims, Wallet Adjust, etc. -->
+    <!-- Create -->
+    <form id="form-create" style="display:none;margin-top:12px">
+      <label>Username</label>
+      <input id="cr-user" autocomplete="username" minlength="3" required/>
+      <label>Email (optional)</label>
+      <input id="cr-email" type="email" autocomplete="email" placeholder="you@example.com"/>
+      <label>Password</label>
+      <input id="cr-pass" type="password" autocomplete="new-password" minlength="6" required/>
+      <button id="btn-create" type="submit">Create account</button>
+      <div id="cr-msg" class="msg"></div>
+      <div class="hint">If an account already exists, just sign in instead.</div>
+
+      <!-- Kick verification (signup tab as well) -->
+      <div class="kickBox">
+        <div class="kickRow">
+          <div class="kickTitle">Kick verification (optional)</div>
+          <button class="kickBtn" type="button" id="kickLinkBtn2">Verify with Kick</button>
+        </div>
+        <div class="hint">Use this after creating your account if you want the link right away.</div>
+      </div>
+    </form>
   </div>
 </div>
-
-<div id="toast" class="toast">Saved.</div>
 
 <script>
 (function(){
   "use strict";
-  const $=(s,r=document)=>r.querySelector(s);
-  const toast=t=>{const b=$("#toast");b.textContent=t;b.classList.add("on");setTimeout(()=>b.classList.remove("on"),1400);};
 
-  // logout
-  $("#adminLogout").addEventListener("click",async e=>{
-    e.preventDefault();
-    try{await fetch("/api/admin/gate/logout",{method:"POST",credentials:"include"});}catch{}
-    localStorage.removeItem("l3z:admin:unlocked");
-    location.href="/index.html";
-  });
+  // If your index injector sets window.API_BASE, we’ll use it (same-origin otherwise)
+  const API_BASE = (typeof window.API_BASE === "string" ? window.API_BASE : "") || "";
+  const WEEK = 7*24*60*60*1000;
 
-  // unlock toggle
-  const unlocked=()=>localStorage.getItem("l3z:admin:unlocked")==="1";
-  function syncGate(){ $("#gate-status").textContent=unlocked()?"Unlocked":"Locked"; $("#grid").style.display=unlocked()?"":"none"; }
-  $("#gate-unlock").addEventListener("click",()=>{ if($("#gate-u").value&&$("#gate-p").value){ localStorage.setItem("l3z:admin:unlocked","1"); syncGate(); toast("Unlocked"); } else toast("Enter credentials"); });
-  $("#gate-lock").addEventListener("click",()=>{ localStorage.removeItem("l3z:admin:unlocked"); syncGate(); });
+  // Endpoints we’ll try in order (first that returns ok wins)
+  const ADMIN_LOGIN_PATHS  = ["/api/admin/gate/login"];
+  const PLAYER_LOGIN_PATHS = ["/api/auth/login", "/api/login", "/api/users/login", "/api/player/login"];
+  const PLAYER_ME_PATHS    = ["/api/me", "/api/users/me", "/api/player/me", "/api/wallet/me"];
+  const PLAYER_SIGNUP_PATHS= ["/api/auth/register", "/api/register", "/api/users", "/api/player/register"];
 
-  // CODE GENERATOR (manual only)
-  $("#btnGetCode").addEventListener("click",async()=>{
-    $("#btnGetCode").disabled=true;
+  function loginPayloads(username, password){
+    return [
+      {username, password},
+      {user: username, pass: password},
+      {email: username, password},
+    ];
+  }
+  function signupPayloads(username, email, password){
+    const body = {username, password};
+    if(email) body.email = email;
+    return [
+      body,
+      {user: username, pass: password, email: email || undefined},
+    ];
+  }
+
+  const $ = s => document.querySelector(s);
+  function msg(el, text, ok){
+    el.textContent = text || "";
+    el.className = "msg " + (ok===true ? "ok" : ok===false ? "bad" : "");
+  }
+  function saveUXSession(user, isAdmin){
     try{
-      const res=await fetch("/api/promo/issue",{method:"POST",credentials:"include"});
-      const j=await res.json();
-      if(j.ok) $("#codeOut").textContent=j.code;
-      else $("#codeOut").textContent="Error";
-    }catch{ $("#codeOut").textContent="Error"; }
-    $("#btnGetCode").disabled=false;
+      localStorage.setItem("l3z:session", JSON.stringify({user, isAdmin: !!isAdmin, expiresAt: Date.now()+WEEK}));
+      if(isAdmin){
+        localStorage.setItem("admin:token", JSON.stringify({by:user, ts:Date.now(), expiresAt: Date.now()+12*60*60*1000}));
+      }
+    }catch(_){}
+  }
+  function api(path){ return API_BASE + path; }
+
+  async function tryLogin(paths, payloads){
+    for(const p of paths){
+      for(const body of payloads){
+        try{
+          const res = await fetch(api(p), {
+            method: "POST",
+            credentials: "include",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify(body)
+          });
+          const j = await res.json().catch(()=> ({}));
+          if(res.ok && (j.ok === true || j.success === true)){
+            return {ok:true, data: j, path: p};
+          }
+        }catch(_){}
+      }
+    }
+    return {ok:false};
+  }
+
+  async function tryGet(paths){
+    for(const p of paths){
+      try{
+        const res = await fetch(api(p), {credentials:"include", cache:"no-store"});
+        if(!res.ok) continue;
+        const j = await res.json().catch(()=> ({}));
+        return {ok:true, data:j, path:p};
+      }catch(_){}
+    }
+    return {ok:false};
+  }
+
+  // Tabs
+  const tabSI = $("#tab-signin"), tabCR = $("#tab-create");
+  const formSI = $("#form-signin"), formCR = $("#form-create");
+  function switchTab(which){
+    if(which==="si"){
+      tabSI.classList.add("on"); tabCR.classList.remove("on");
+      formSI.style.display=""; formCR.style.display="none";
+    }else{
+      tabCR.classList.add("on"); tabSI.classList.remove("on");
+      formCR.style.display=""; formSI.style.display="none";
+    }
+  }
+  tabSI.addEventListener("click", ()=>switchTab("si"));
+  tabCR.addEventListener("click", ()=>switchTab("cr"));
+
+  // Env pill
+  try{
+    const host = location.host || "localhost";
+    $("#env").textContent = (API_BASE ? new URL(API_BASE, location.origin).origin : location.origin) + " • " + host;
+  }catch{ $("#env").textContent = location.origin; }
+
+  // Sign in flow
+  formSI.addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    const u = ($("#si-user").value||"").trim();
+    const p = $("#si-pass").value||"";
+    const out = $("#si-msg");
+    if(u.length<3 || p.length<3){ msg(out, "Please enter a valid username/email and password.", false); return; }
+
+    $("#btn-signin").disabled = true; msg(out, "Signing in…");
+
+    // 1) Admin first
+    let r = await tryLogin(ADMIN_LOGIN_PATHS, loginPayloads(u,p));
+    if(r.ok){
+      const who = (r.data.user || r.data.username || u).toString().toUpperCase();
+      saveUXSession(who, true);
+      msg(out, "Welcome, admin. Redirecting…", true);
+      return doRedirect();
+    }
+
+    // 2) Player login
+    r = await tryLogin(PLAYER_LOGIN_PATHS, loginPayloads(u,p));
+    if(r.ok){
+      const me = await tryGet(PLAYER_ME_PATHS);
+      const who = (me.ok && (me.data.username || me.data.user || me.data.name)) ? (me.data.username || me.data.user || me.data.name) : u;
+      saveUXSession(who.toString().toUpperCase(), false);
+      msg(out, "Welcome back! Redirecting…", true);
+      return doRedirect();
+    }
+
+    msg(out, "Login failed. Check your details, or create a new account.", false);
+    $("#btn-signin").disabled = false;
   });
 
-  syncGate();
+  // Create account flow
+  formCR.addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    const u = ($("#cr-user").value||"").trim();
+    const em= ($("#cr-email").value||"").trim();
+    const p = $("#cr-pass").value||"";
+    const out = $("#cr-msg");
+    if(u.length<3 || p.length<6){ msg(out, "Username ≥ 3 chars, password ≥ 6.", false); return; }
+
+    $("#btn-create").disabled = true; msg(out, "Creating account…");
+
+    const attempts = (function signupPayloads(username, email, password){
+      const body = {username, password};
+      if(email) body.email = email;
+      return [ body, {user: username, pass: password, email: email || undefined} ];
+    })(u, em, p);
+
+    let ok=false;
+    for(const path of ["/api/auth/register", "/api/register", "/api/users", "/api/player/register"]){
+      for(const body of attempts){
+        try{
+          const res = await fetch(api(path), {
+            method:"POST",
+            credentials:"include",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify(body)
+          });
+          const j = await res.json().catch(()=> ({}));
+          if(res.ok && (j.ok===true || j.success===true || j.created===true)){
+            ok=true; break;
+          }
+        }catch(_){}
+      }
+      if(ok) break;
+    }
+
+    if(!ok){
+      msg(out, "Sign-up failed here. If you already have an account, try signing in.", false);
+      $("#btn-create").disabled = false;
+      return;
+    }
+
+    msg(out, "Account created. Finishing sign-in…");
+    let r = await tryLogin( ["/api/auth/login", "/api/login", "/api/users/login", "/api/player/login"], [{username:u,password:p},{user:u,pass:p},{email:u,password:p}] );
+    if(!r.ok){
+      msg(out, "Account created. Please sign in with your new password.", true);
+      switchTab("si");
+      $("#si-user").value = u;
+      $("#si-pass").focus();
+      $("#btn-create").disabled = false;
+      return;
+    }
+
+    saveUXSession(u.toUpperCase(), false);
+    msg(out, "Welcome! Redirecting…", true);
+    doRedirect();
+  });
+
+  function doRedirect(){
+    const params = new URLSearchParams(location.search);
+    const next = params.get("next") || params.get("redirect") || "/index.html";
+    setTimeout(()=> location.replace(next), 200);
+  }
+
+  // Kick verification buttons (both tabs)
+  document.getElementById("kickLinkBtn1")?.addEventListener("click", ()=>{
+    location.href = "/pages/dashboard/home/kick_oauth_start.html";
+  });
+  document.getElementById("kickLinkBtn2")?.addEventListener("click", ()=>{
+    location.href = "/pages/dashboard/home/kick_oauth_start.html";
+  });
 })();
 </script>
 </body>
