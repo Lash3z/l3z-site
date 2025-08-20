@@ -6,8 +6,7 @@
 <title>Admin Hub — L3Z</title>
 <link rel="stylesheet" href="/assets/admin.css"/>
 <style>
-  :root{--bg:#0b0e13;--panel:#11151d;--ink:#e8ecf3;--muted:#94a3b8;--line:rgba(0,255,255,.18);
-        --gold:#f0a320;--ok:#12d48a;--err:#ff7a8a;--chip:#1b2330}
+  :root{--bg:#0b0e13;--panel:#11151d;--ink:#e8ecf3;--muted:#94a3b8;--line:rgba(0,255,255,.18);--gold:#f0a320;--ok:#12d48a;--err:#ff7a8a;--chip:#1b2330}
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
   .wrap{max-width:1200px;margin:0 auto;padding:16px}
@@ -21,16 +20,11 @@
   .body{padding:12px 14px;display:grid;gap:10px}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .row>label{min-width:110px;color:#cbd5e1}
-  input,select,button,textarea{
-    background:#0f141b;border:1px solid var(--line);color:var(--ink);
-    border-radius:10px;padding:10px 12px;font-size:14px
-  }
-  input[type="number"]{width:140px}
-  textarea{width:100%;min-height:80px}
+  input,select,button,textarea{background:#0f141b;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:14px}
+  input[type="number"]{width:140px} textarea{width:100%;min-height:80px}
   button{cursor:pointer;font-weight:800}
   button.primary{background:linear-gradient(180deg,#f5c462,#d49a2e);color:#1a1204;border:none}
-  button.ghost{background:#111a22}
-  button.danger{background:#2a1115;border-color:#7c2731}
+  button.ghost{background:#111a22} button.danger{background:#2a1115;border-color:#7c2731}
   .ok{color:var(--ok)} .err{color:var(--err)} .muted{color:var(--muted)}
   .badge{display:inline-flex;align-items:center;gap:6px;background:var(--chip);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:6px 10px}
   .audit{max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:#0c1117;padding:8px}
@@ -54,14 +48,11 @@
   <div class="grid">
     <!-- Wallet -->
     <section class="card">
-      <div class="head">
-        <h2>Wallet — Credit / Debit</h2>
-        <div class="badge">cookie: <span id="cookieState" class="muted">checking…</span></div>
-      </div>
+      <div class="head"><h2>Wallet — Credit / Debit</h2><div class="badge">cookie: <span id="cookieState" class="muted">checking…</span></div></div>
       <div class="body">
-        <div class="row"><label>Username</label><input id="wUser" placeholder="PLAYER NAME" /></div>
-        <div class="row"><label>Amount</label><input id="wAmt" type="number" step="1" placeholder="Amount" /></div>
-        <div class="row"><label>Reason</label><input id="wReason" placeholder="admin_credit / admin_debit" /></div>
+        <div class="row"><label>Username</label><input id="wUser" placeholder="PLAYER NAME"/></div>
+        <div class="row"><label>Amount</label><input id="wAmt" type="number" step="1" placeholder="Amount"/></div>
+        <div class="row"><label>Reason</label><input id="wReason" placeholder="admin_credit / admin_debit"/></div>
         <div class="row" style="gap:10px">
           <button id="btnCredit" class="primary">Credit ( + )</button>
           <button id="btnDebit"  class="ghost">Debit ( − )</button>
@@ -76,22 +67,10 @@
     <section class="card">
       <div class="head"><h2>Promo Codes</h2><div class="badge" id="promoBadge">checking…</div></div>
       <div class="body">
-        <div class="row">
-          <label>LBX amount</label><input id="pcLbx" type="number" step="1" value="5" />
-          <label>TTL (hours)</label><input id="pcTtl" type="number" step="1" value="24" />
-        </div>
-        <div class="row" style="gap:10px">
-          <button id="pcIssue" class="primary">Issue Code</button>
-          <span id="pcStatus" class="muted"></span>
-        </div>
-
-        <div class="row">
-          <label>Redeem for user</label>
-          <input id="pcUser" placeholder="USERNAME" />
-          <input id="pcCode" placeholder="CODE" />
-          <button id="pcSubmit" class="ghost">Redeem</button>
-          <span id="pcRedeemStatus" class="muted"></span>
-        </div>
+        <div class="row"><label>LBX amount</label><input id="pcLbx" type="number" step="1" value="5"/>
+          <label>TTL (hours)</label><input id="pcTtl" type="number" step="1" value="24"/></div>
+        <div class="row" style="gap:10px"><button id="pcIssue" class="primary">Issue Code</button><span id="pcStatus" class="muted"></span></div>
+        <div class="row"><label>Redeem for user</label><input id="pcUser" placeholder="USERNAME"/><input id="pcCode" placeholder="CODE"/><button id="pcSubmit" class="ghost">Redeem</button><span id="pcRedeemStatus" class="muted"></span></div>
         <div class="help">Admin endpoints: <code>/api/admin/code/current</code>, <code>/api/code/create</code>, <code>/api/admin/code/redeem_for</code>.</div>
       </div>
     </section>
@@ -111,7 +90,6 @@
           <button id="flagsEnableAll"  class="ghost">Enable All</button>
           <span id="flagsStatus" class="muted"></span>
         </div>
-        <div class="help">Backed by <code>/api/admin/flags/get</code>, <code>/api/admin/flags/set</code>.</div>
       </div>
     </section>
 
@@ -131,81 +109,66 @@
   </div>
 </div>
 
-<script src="/assets/api-base.js"></script>
+<script src="/assets/api-base.js?v=5"></script>
 <script>
 const $ = (s,r=document)=>r.querySelector(s);
-const say=(el,msg,ok)=>{if(!el)return;el.textContent=msg||"";el.className=(ok===undefined)?"muted":(ok?"ok":"err");};
+const say=(el,msg,ok)=>{ if(!el) return; el.textContent=msg||""; el.className=(ok===undefined)?"muted":(ok?"ok":"err"); };
 
-// session check
 (async function boot(){
   const who=$("#who"), cookieState=$("#cookieState");
-  try{
-    const me = await api.get("/api/me");
-    who.textContent=`admin: ${me.user?.username||"—"}`;
-    say(cookieState,"ok",true);
-  }catch{
-    who.textContent="admin: (not logged in)";
-    say(cookieState,"missing",false);
-  }
+  try{ const me = await api.get("/api/me"); who.textContent=`admin: ${me.user?.username||"—"}`; say(cookieState,"ok",true); }
+  catch{ who.textContent="admin: (not logged in)"; say(cookieState,"missing",false); }
   refreshCurrentPromo();
 })();
-$("#logout")?.addEventListener("click", async ()=>{try{await api.post("/api/auth/logout",{});}catch{}location.reload();});
+$("#logout")?.addEventListener("click", async ()=>{ try{ await api.post("/api/auth/logout",{});}catch{} location.reload(); });
 
-// wallet actions
+// ---- Wallet
 const wUser=$("#wUser"), wAmt=$("#wAmt"), wReason=$("#wReason"), wStatus=$("#wStatus");
-
-function uname(){ return String((wUser.value||"").trim()).toLowerCase(); }
-function broadcastWalletPoke(u){
-  try{ localStorage.setItem("l3z:wallet-poke", JSON.stringify({u, t:Date.now()})); }catch{}
-}
+const uname = () => String((wUser.value||"").trim()).toLowerCase();
+const poke = (u) => { try{ localStorage.setItem("l3z:wallet-poke", JSON.stringify({u, t:Date.now()})); }catch{} };
 
 $("#btnCredit")?.addEventListener("click", async ()=>{
-  const u = uname(); if(!u) return say(wStatus,"enter username",false);
+  const u = uname(); if(!u) return say(wStatus, "enter username", false);
   try{
     say(wStatus,"Working…");
-    const res = await api.post("/api/wallet/credit",{username:u,amount:Number(wAmt.value||0),reason:wReason.value||"admin_credit"});
+    const res = await api.post("/api/wallet/credit",{ username:u, amount:Number(wAmt.value||0), reason:wReason.value||"admin_credit" });
     say(wStatus,`Credited. ${res.user?.username}: ${Number(res.user?.lbx||0).toLocaleString()} LBX`,true);
-    await api.post("/api/admin/audit/track",{evt:"wallet.credit",payload:{username:u,amount:Number(wAmt.value||0)}});
-    broadcastWalletPoke(u);
-  }catch(e){ say(wStatus,e.message||"failed",false); }
+    await api.post("/api/admin/audit/track",{ evt:"wallet.credit", payload:{ username:u, amount:Number(wAmt.value||0) } });
+    poke(u);
+  }catch(e){ say(wStatus, e.message||"failed", false); }
 });
 
 $("#btnDebit")?.addEventListener("click", async ()=>{
-  const u = uname(); if(!u) return say(wStatus,"enter username",false);
+  const u = uname(); if(!u) return say(wStatus, "enter username", false);
   try{
     say(wStatus,"Working…");
-    const res = await api.post("/api/wallet/debit",{username:u,amount:Number(wAmt.value||0),reason:wReason.value||"admin_debit"});
+    const res = await api.post("/api/wallet/debit",{ username:u, amount:Number(wAmt.value||0), reason:wReason.value||"admin_debit" });
     say(wStatus,`Debited. ${res.user?.username}: ${Number(res.user?.lbx||0).toLocaleString()} LBX`,true);
-    await api.post("/api/admin/audit/track",{evt:"wallet.debit",payload:{username:u,amount:Number(wAmt.value||0)}});
-    broadcastWalletPoke(u);
-  }catch(e){ say(wStatus,e.message||"failed",false); }
+    await api.post("/api/admin/audit/track",{ evt:"wallet.debit", payload:{ username:u, amount:Number(wAmt.value||0) } });
+    poke(u);
+  }catch(e){ say(wStatus, e.message||"failed", false); }
 });
 
 $("#btnBal")?.addEventListener("click", async ()=>{
-  const u = uname(); if(!u) return say(wStatus,"enter username",false);
+  const u = uname(); if(!u) return say(wStatus, "enter username", false);
   try{
     say(wStatus,"Checking…");
     const r = await api.get(`/api/admin/wallet/balance?user=${encodeURIComponent(u)}`);
     say(wStatus,`Balance: ${Number(r.balance||0).toLocaleString()} LBX`,true);
-  }catch(e){ say(wStatus,e.message||"failed",false); }
+  }catch(e){ say(wStatus, e.message||"failed", false); }
 });
 
-// promo
+// ---- Promo
 const pcLbx=$("#pcLbx"), pcTtl=$("#pcTtl"), pcStatus=$("#pcStatus"), promoBadge=$("#promoBadge");
-async function refreshCurrentPromo(){
-  try{
-    const j = await api.get("/api/admin/code/current");
-    promoBadge.textContent = j?.code ? `active: ${j.code}` : "no active code";
-  }catch{ promoBadge.textContent = "promo unavailable"; }
-}
+async function refreshCurrentPromo(){ try{ const j=await api.get("/api/admin/code/current"); promoBadge.textContent=j?.code?`active: ${j.code}`:"no active code"; }catch{ promoBadge.textContent="promo unavailable"; } }
 $("#pcIssue")?.addEventListener("click", async ()=>{
   try{
     say(pcStatus,"Issuing…");
-    const j = await api.post("/api/code/create",{code:Math.random().toString(36).slice(2,8).toUpperCase(),lbx:Number(pcLbx.value||5),expiresHours:Number(pcTtl.value||24)});
+    const j = await api.post("/api/code/create", { code:Math.random().toString(36).slice(2,8).toUpperCase(), lbx:Number(pcLbx.value||5), expiresHours:Number(pcTtl.value||24) });
     say(pcStatus,`Issued ${j.code} (+${j.lbx} LBX)`,true);
     promoBadge.textContent=`active: ${j.code}`;
-    await api.post("/api/admin/audit/track",{evt:"promo.issue",payload:j});
-  }catch(e){ say(pcStatus,e.message||"failed",false); }
+    await api.post("/api/admin/audit/track",{ evt:"promo.issue", payload:j });
+  }catch(e){ say(pcStatus, e.message||"failed", false); }
 });
 
 const pcUser=$("#pcUser"), pcCode=$("#pcCode"), pcSubmit=$("#pcSubmit"), pcRedeemStatus=$("#pcRedeemStatus");
@@ -213,59 +176,49 @@ pcSubmit?.addEventListener("click", async ()=>{
   const u = String((pcUser.value||"").trim()).toLowerCase();
   const c = (pcCode.value||"").trim().toUpperCase();
   if(!u || !c) return say(pcRedeemStatus,"Enter username + code.",false);
-  pcSubmit.disabled = true; say(pcRedeemStatus,"Redeeming…");
+  pcSubmit.disabled=true; say(pcRedeemStatus,"Redeeming…");
   try{
-    const j = await api.post("/api/admin/code/redeem_for",{username:u, code:c});
+    const j = await api.post("/api/admin/code/redeem_for",{ username:u, code:c });
     say(pcRedeemStatus,`Success! New balance: ${Number(j.lbx||0).toLocaleString()} LBX`,true);
-    await api.post("/api/admin/audit/track",{evt:"promo.redeem_for",payload:{username:u,code:c,lbx:j.lbx}});
-    broadcastWalletPoke(u);
+    await api.post("/api/admin/audit/track",{ evt:"promo.redeem_for", payload:{ username:u, code:c, lbx:j.lbx } });
+    poke(u);
     pcCode.value="";
-  }catch(e){
-    say(pcRedeemStatus,(e.message||"failed").replace(/_/g," "),false);
-  }finally{ pcSubmit.disabled=false; }
+  }catch(e){ say(pcRedeemStatus,(e.message||"failed").replace(/_/g," "),false); }
+  finally{ pcSubmit.disabled=false; }
 });
 
-// flags
+// ---- Flags
 async function loadFlags(){
   const badge=$("#flagsBadge");
   try{
-    const j=await api.get("/api/admin/flags/get");
+    const j = await api.get("/api/admin/flags/get");
     $("#fBattleground").checked=!!j.flags?.battleground;
     $("#fBonus").checked=!!j.flags?.bonus;
     $("#fPvP").checked=!!j.flags?.pvp;
     $("#fRaffles").checked=!!j.flags?.raffles;
     $("#fPromos").checked=!!j.flags?.promos;
     badge.textContent="loaded";
-  }catch(e){ badge.textContent="error"; }
+  }catch{ badge.textContent="error"; }
 }
 $("#flagsSave")?.addEventListener("click", async ()=>{
-  const flags={battleground:$("#fBattleground").checked,bonus:$("#fBonus").checked,pvp:$("#fPvP").checked,raffles:$("#fRaffles").checked,promos:$("#fPromos").checked};
-  try{
-    await api.post("/api/admin/flags/set",{flags});
-    say($("#flagsStatus"),"Saved.",true);
-    await api.post("/api/admin/audit/track",{evt:"flags.save",payload:flags});
-  }catch(e){ say($("#flagsStatus"),e.message||"failed",false); }
+  const flags={ battleground:$("#fBattleground").checked, bonus:$("#fBonus").checked, pvp:$("#fPvP").checked, raffles:$("#fRaffles").checked, promos:$("#fPromos").checked };
+  try{ await api.post("/api/admin/flags/set",{ flags }); say($("#flagsStatus"),"Saved.",true); await api.post("/api/admin/audit/track",{ evt:"flags.save", payload:flags }); }
+  catch(e){ say($("#flagsStatus"),e.message||"failed",false); }
 });
 $("#flagsDisableAll")?.addEventListener("click", async ()=>{ try{ await api.post("/api/admin/flags/disable_all",{}); loadFlags(); }catch{} });
 $("#flagsEnableAll") ?.addEventListener("click", async ()=>{ try{ await api.post("/api/admin/flags/enable_all",{});  loadFlags(); }catch{} });
 loadFlags();
 
-// audit
+// ---- Audit
 async function paintAudit(){
-  try{
-    const j=await api.get("/api/admin/audit/list");
-    $("#auditOut").textContent=JSON.stringify(j.records||[],null,2);
-    say($("#auditStatus"),`Loaded ${j.records?.length||0}`,true);
-  }catch(e){
-    $("#auditOut").textContent="[]";
-    say($("#auditStatus"),e.message||"failed",false);
-  }
+  try{ const j=await api.get("/api/admin/audit/list"); $("#auditOut").textContent=JSON.stringify(j.records||[],null,2); say($("#auditStatus"), `Loaded ${j.records?.length||0}`, true); }
+  catch(e){ $("#auditOut").textContent="[]"; say($("#auditStatus"), e.message||"failed", false); }
 }
 $("#auditRefresh")?.addEventListener("click", paintAudit);
 $("#auditExport") ?.addEventListener("click", async ()=>{
   try{
-    const r = await fetch("/api/admin/audit/export",{credentials:"include"});
-    const blob = await r.blob(); const url = URL.createObjectURL(blob);
+    const r=await fetch("/api/admin/audit/export",{credentials:"include"});
+    const blob=await r.blob(); const url=URL.createObjectURL(blob);
     const a=document.createElement("a"); a.href=url; a.download=`l3z_admin_audit_${Date.now()}.json`; a.click();
     setTimeout(()=>URL.revokeObjectURL(url),5000);
   }catch{}
