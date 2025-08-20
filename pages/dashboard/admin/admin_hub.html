@@ -4,6 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Admin Hub — L3Z</title>
+<link rel="stylesheet" href="/assets/admin.css"/>
 <style>
   :root{--bg:#0b0e13;--panel:#11151d;--ink:#e8ecf3;--muted:#94a3b8;--line:rgba(0,255,255,.18);
         --gold:#f0a320;--ok:#12d48a;--err:#ff7a8a;--chip:#1b2330}
@@ -53,18 +54,18 @@
   <div class="grid">
     <!-- Wallet -->
     <section class="card">
-      <div class="head"><h2>Wallet — Credit / Adjust</h2><div class="badge">cookie: <span id="cookieState" class="muted">checking…</span></div></div>
+      <div class="head"><h2>Wallet — Credit / Debit</h2><div class="badge">cookie: <span id="cookieState" class="muted">checking…</span></div></div>
       <div class="body">
         <div class="row"><label>Username</label><input id="wUser" placeholder="PLAYER NAME" /></div>
         <div class="row"><label>Amount</label><input id="wAmt" type="number" step="1" placeholder="Amount" /></div>
-        <div class="row"><label>Reason</label><input id="wReason" placeholder="admin_credit / admin_adjust" /></div>
+        <div class="row"><label>Reason</label><input id="wReason" placeholder="admin_credit / admin_debit" /></div>
         <div class="row" style="gap:10px">
           <button id="btnCredit" class="primary">Credit ( + )</button>
-          <button id="btnAdjust" class="ghost">Adjust (±)</button>
-          <button id="btnBal" class="ghost">Check Balance</button>
+          <button id="btnDebit"  class="ghost">Debit ( − )</button>
+          <button id="btnBal"    class="ghost">Check Balance</button>
           <span id="wStatus" class="muted"></span>
         </div>
-        <div class="help">Uses <code>/api/wallet/credit</code> and <code>/api/wallet/adjust</code> (credentials included).</div>
+        <div class="help">Uses <code>/api/wallet/credit</code>, <code>/api/wallet/debit</code>.</div>
       </div>
     </section>
 
@@ -75,11 +76,9 @@
         <div class="row"><label>LBX amount</label>
           <input id="pcLbx" type="number" step="1" value="5" />
           <label>TTL (hours)</label><input id="pcTtl" type="number" step="1" value="24" />
-          <label>Replace current</label><input id="pcReplace" type="checkbox" checked />
         </div>
         <div class="row" style="gap:10px">
           <button id="pcIssue" class="primary">Issue Code</button>
-          <button id="pcExpire" class="danger">Expire Current</button>
           <span id="pcStatus" class="muted"></span>
         </div>
 
@@ -92,28 +91,22 @@
       </div>
     </section>
 
-    <!-- Feature switches (server-backed) -->
+    <!-- Feature switches -->
     <section class="card">
       <div class="head"><h2>Feature Switches (Server)</h2><div class="badge" id="flagsBadge">loading…</div></div>
       <div class="body">
-        <div class="row"><label>Battleground</label>
-          <input type="checkbox" id="fBattleground"/></div>
-        <div class="row"><label>Bonus Hunt</label>
-          <input type="checkbox" id="fBonus"/></div>
-        <div class="row"><label>PvP</label>
-          <input type="checkbox" id="fPvP"/></div>
-        <div class="row"><label>Raffles</label>
-          <input type="checkbox" id="fRaffles"/></div>
-        <div class="row"><label>Promo Claims</label>
-          <input type="checkbox" id="fPromos"/></div>
-
+        <div class="row"><label>Battleground</label><input type="checkbox" id="fBattleground"/></div>
+        <div class="row"><label>Bonus Hunt</label><input type="checkbox" id="fBonus"/></div>
+        <div class="row"><label>PvP</label><input type="checkbox" id="fPvP"/></div>
+        <div class="row"><label>Raffles</label><input type="checkbox" id="fRaffles"/></div>
+        <div class="row"><label>Promo Claims</label><input type="checkbox" id="fPromos"/></div>
         <div class="row" style="gap:10px">
           <button id="flagsSave" class="primary">Save</button>
           <button id="flagsDisableAll" class="danger">Disable All</button>
           <button id="flagsEnableAll"  class="ghost">Enable All</button>
           <span id="flagsStatus" class="muted"></span>
         </div>
-        <div class="help">Backed by <code>/api/admin/flags/get</code>, <code>/api/admin/flags/set</code>, <code>/api/admin/flags/disable_all</code>, <code>/api/admin/flags/enable_all</code>.</div>
+        <div class="help">Backed by <code>/api/admin/flags/get</code>, <code>/api/admin/flags/set</code>.</div>
       </div>
     </section>
 
@@ -133,185 +126,91 @@
   </div>
 </div>
 
+<script src="/assets/api-base.js"></script>
 <script>
-const $ = (s, r)=> (r||document).querySelector(s);
-const say = (el, msg, ok)=> { if(!el) return; el.textContent=msg||""; el.className = (ok===undefined) ? "muted" : (ok ? "ok" : "err"); };
-async function getJSON(url){
-  const r = await fetch(url, { credentials:"include", cache:"no-store" });
-  const j = await r.json().catch(()=> ({}));
-  if(!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-  return j;
-}
-async function postJSON(url, body){
-  const r = await fetch(url, {
-    method:"POST",
-    credentials:"include",
-    headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify(body||{})
-  });
-  const j = await r.json().catch(()=> ({}));
-  if(!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
-  return j;
-}
+const $ = (s,r=document)=>r.querySelector(s);
+const say=(el,msg,ok)=>{if(!el)return;el.textContent=msg||"";el.className=(ok===undefined)?"muted":(ok?"ok":"err");};
 
-/* session */
+// session check
 (async function boot(){
-  const who = $("#who"), cookieState=$("#cookieState");
+  const who=$("#who"), cookieState=$("#cookieState");
   try{
-    const me = await getJSON("/api/admin/gate/check");
-    who.textContent = `admin: ${me.username||"—"}`;
+    const me = await api.get("/api/me");
+    who.textContent=`admin: ${me.user?.username||"—"}`;
     say(cookieState,"ok",true);
-  }catch{ who.textContent="admin: (not logged in)"; say(cookieState,"missing",false); }
+  }catch{who.textContent="admin: (not logged in)";say(cookieState,"missing",false);}
 })();
-$("#logout")?.addEventListener("click", async ()=>{ try{ await postJSON("/api/admin/gate/logout",{});}catch{} location.reload(); });
+$("#logout")?.addEventListener("click", async ()=>{try{await api.post("/api/auth/logout",{});}catch{}location.reload();});
 
-/* wallet */
+// wallet actions
 const wUser=$("#wUser"), wAmt=$("#wAmt"), wReason=$("#wReason"), wStatus=$("#wStatus");
 $("#btnCredit")?.addEventListener("click", async ()=>{
-  try{ say(wStatus,"Working…");
-    const res = await postJSON("/api/wallet/credit",{ username:wUser.value, amount:Number(wAmt.value), reason:wReason.value||"admin_credit" });
-    say(wStatus,`Credited. New balance: ${Number(res.balance||0).toLocaleString()} LBX`,true);
-    await postJSON("/api/admin/audit/track",{ evt:"wallet.credit", payload:{user:wUser.value,amount:Number(wAmt.value),reason:wReason.value||"admin_credit"} });
-  }catch(e){ say(wStatus,e.message||"failed",false); }
+  try{
+    say(wStatus,"Working…");
+    const res=await api.post("/api/wallet/credit",{username:wUser.value,amount:Number(wAmt.value),reason:wReason.value||"admin_credit"});
+    say(wStatus,`Credited. ${res.user?.username}: ${res.user?.lbx||0} LBX`,true);
+    await api.post("/api/admin/audit/track",{evt:"wallet.credit",payload:res});
+  }catch(e){say(wStatus,e.message||"failed",false);}
 });
-$("#btnAdjust")?.addEventListener("click", async ()=>{
-  try{ say(wStatus,"Working…");
-    const res = await postJSON("/api/wallet/adjust",{ username:wUser.value, delta:Number(wAmt.value), reason:wReason.value||"admin_adjust" });
-    say(wStatus,`Adjusted. New balance: ${Number(res.balance||0).toLocaleString()} LBX`,true);
-    await postJSON("/api/admin/audit/track",{ evt:"wallet.adjust", payload:{user:wUser.value,delta:Number(wAmt.value),reason:wReason.value||"admin_adjust"} });
-  }catch(e){ say(wStatus,e.message||"failed",false); }
+$("#btnDebit")?.addEventListener("click", async ()=>{
+  try{
+    say(wStatus,"Working…");
+    const res=await api.post("/api/wallet/debit",{username:wUser.value,amount:Number(wAmt.value),reason:wReason.value||"admin_debit"});
+    say(wStatus,`Debited. ${res.user?.username}: ${res.user?.lbx||0} LBX`,true);
+    await api.post("/api/admin/audit/track",{evt:"wallet.debit",payload:res});
+  }catch(e){say(wStatus,e.message||"failed",false);}
 });
 $("#btnBal")?.addEventListener("click", async ()=>{
-  try{ say(wStatus,"Checking…");
-    const j = await getJSON(`/api/wallet/balance?user=${encodeURIComponent(String(wUser.value||"").toUpperCase())}`);
-    say(wStatus,`Balance: ${Number(j.balance||0).toLocaleString()} LBX`,true);
-  }catch(e){ say(wStatus,e.message||"failed",false); }
+  try{
+    say(wStatus,"Checking…");
+    const r=await api.get(`/api/wallet?username=${encodeURIComponent(wUser.value)}`);
+    say(wStatus,`Balance: ${r.lbx} LBX`,true);
+  }catch(e){say(wStatus,e.message||"failed",false);}
 });
 
-/* promo */
-const pcLbx=$("#pcLbx"), pcTtl=$("#pcTtl"), pcReplace=$("#pcReplace"), pcIssue=$("#pcIssue"), pcExpire=$("#pcExpire"),
-      pcStatus=$("#pcStatus"), promoBadge=$("#promoBadge");
-async function refreshCurrentPromo(){
-  try{ const j = await getJSON("/api/promo/my");
-       promoBadge.textContent = j?.code ? `active: ${j.code} (exp ${new Date(j.expiresAt).toLocaleString()})` : "no active code";
-  }catch{ promoBadge.textContent = "promo unavailable"; }
-}
-pcIssue?.addEventListener("click", async ()=>{
+// promo
+const pcLbx=$("#pcLbx"), pcTtl=$("#pcTtl"), pcStatus=$("#pcStatus"), promoBadge=$("#promoBadge");
+$("#pcIssue")?.addEventListener("click", async ()=>{
   try{
     say(pcStatus,"Issuing…");
-    const j = await postJSON("/api/promo/issue",{ lbx:Number(pcLbx.value||5), ttlHours:Number(pcTtl.value||24), replace:!!pcReplace.checked });
+    const j=await api.post("/api/code/create",{code:Math.random().toString(36).slice(2,8).toUpperCase(),lbx:Number(pcLbx.value),expiresHours:Number(pcTtl.value||24)});
     say(pcStatus,`Issued ${j.code} (+${j.lbx} LBX)`,true);
-    await postJSON("/api/admin/audit/track",{ evt:"promo.issue", payload:j });
-    refreshCurrentPromo();
-  }catch(e){ say(pcStatus,e.message||"failed",false); }
-});
-pcExpire?.addEventListener("click", async ()=>{
-  try{ say(pcStatus,"Expiring…");
-    const j = await postJSON("/api/promo/expire",{});
-    say(pcStatus,`Expired (${j.n||0} updated)`,true);
-    await postJSON("/api/admin/audit/track",{ evt:"promo.expire", payload:j });
-    refreshCurrentPromo();
-  }catch(e){ say(pcStatus,e.message||"failed",false); }
+    promoBadge.textContent=`active: ${j.code}`;
+    await api.post("/api/admin/audit/track",{evt:"promo.issue",payload:j});
+  }catch(e){say(pcStatus,e.message||"failed",false);}
 });
 const pcUser=$("#pcUser"), pcCode=$("#pcCode"), pcSubmit=$("#pcSubmit"), pcRedeemStatus=$("#pcRedeemStatus");
 pcSubmit?.addEventListener("click", async ()=>{
-  const username = (pcUser.value||"").trim(), code=(pcCode.value||"").trim();
-  if(!username || !code){ return say(pcRedeemStatus,"Enter username + code."); }
-  pcSubmit.disabled=true; say(pcRedeemStatus,"Submitting…");
   try{
-    const j = await postJSON("/api/promo/redeem",{ username, code });
-    say(pcRedeemStatus,`Success! +${j.lbx} LBX added.`,true);
-    await postJSON("/api/admin/audit/track",{ evt:"promo.redeem", payload:{ username, code, lbx:j.lbx } });
-    pcCode.value="";
-  }catch(e){ say(pcRedeemStatus,(e.message||"failed").replace(/_/g," "),false); }
-  finally{ pcSubmit.disabled=false; }
+    const j=await api.post("/api/code/redeem",{code:pcCode.value});
+    say(pcRedeemStatus,`Redeemed +${j.lbx} LBX`,true);
+    await api.post("/api/admin/audit/track",{evt:"promo.redeem",payload:j});
+  }catch(e){say(pcRedeemStatus,e.message||"failed",false);}
 });
-refreshCurrentPromo();
 
-/* flags (server) */
-const ids = { battleground:"#fBattleground", bonus:"#fBonus", pvp:"#fPvP", raffles:"#fRaffles", promos:"#fPromos" };
-function uiReadFlags(){
-  return {
-    battleground: $(ids.battleground).checked,
-    bonus:        $(ids.bonus).checked,
-    pvp:          $(ids.pvp).checked,
-    raffles:      $(ids.raffles).checked,
-    promos:       $(ids.promos).checked,
-  };
-}
-function uiWriteFlags(f){
-  $(ids.battleground).checked = !!f.battleground;
-  $(ids.bonus).checked        = !!f.bonus;
-  $(ids.pvp).checked          = !!f.pvp;
-  $(ids.raffles).checked      = !!f.raffles;
-  $(ids.promos).checked       = !!f.promos;
-}
+// flags
 async function loadFlags(){
-  const badge = $("#flagsBadge");
-  try{
-    const j = await getJSON("/api/admin/flags/get");
-    uiWriteFlags(j?.flags || {});
-    badge.textContent="loaded";
-  }catch(e){ badge.textContent="error"; }
+  const badge=$("#flagsBadge");
+  try{const j=await api.get("/api/admin/flags/get");for(const k in j.flags){$("#f"+k.charAt(0).toUpperCase()+k.slice(1)).checked=!!j.flags[k];}badge.textContent="loaded";}
+  catch(e){badge.textContent="error";}
 }
 $("#flagsSave")?.addEventListener("click", async ()=>{
-  const status=$("#flagsStatus");
-  try{
-    say(status,"Saving…");
-    const flags = uiReadFlags();
-    await postJSON("/api/admin/flags/set",{ flags });
-    say(status,"Saved.",true);
-    await postJSON("/api/admin/audit/track",{ evt:"flags.save", payload:flags });
-  }catch(e){ say(status,e.message||"failed",false); }
+  const flags={battleground:$("#fBattleground").checked,bonus:$("#fBonus").checked,pvp:$("#fPvP").checked,raffles:$("#fRaffles").checked,promos:$("#fPromos").checked};
+  try{await api.post("/api/admin/flags/set",{flags});say($("#flagsStatus"),"Saved.",true);await api.post("/api/admin/audit/track",{evt:"flags.save",payload:flags});}
+  catch(e){say($("#flagsStatus"),e.message||"failed",false);}
 });
-$("#flagsDisableAll")?.addEventListener("click", async ()=>{
-  const status=$("#flagsStatus");
-  try{
-    say(status,"Disabling…");
-    const j = await postJSON("/api/admin/flags/disable_all",{});
-    uiWriteFlags(j.flags||{});
-    say(status,"All disabled.",true);
-    await postJSON("/api/admin/audit/track",{ evt:"flags.disable_all" });
-  }catch(e){ say(status,e.message||"failed",false); }
-});
-$("#flagsEnableAll")?.addEventListener("click", async ()=>{
-  const status=$("#flagsStatus");
-  try{
-    say(status,"Enabling…");
-    const j = await postJSON("/api/admin/flags/enable_all",{});
-    uiWriteFlags(j.flags||{});
-    say(status,"All enabled.",true);
-    await postJSON("/api/admin/audit/track",{ evt:"flags.enable_all" });
-  }catch(e){ say(status,e.message||"failed",false); }
-});
+$("#flagsDisableAll")?.addEventListener("click", async ()=>{try{await api.post("/api/admin/flags/disable_all",{});loadFlags();}catch{}});
+$("#flagsEnableAll")?.addEventListener("click", async ()=>{try{await api.post("/api/admin/flags/enable_all",{});loadFlags();}catch{}});
 loadFlags();
 
-/* audit (server) */
+// audit
 async function paintAudit(){
-  try{
-    const j = await getJSON("/api/admin/audit/list");
-    $("#auditOut").textContent = JSON.stringify(j.records||[], null, 2);
-    say($("#auditStatus"), `Loaded ${j.records?.length||0}`, true);
-  }catch(e){
-    $("#auditOut").textContent = "[]";
-    say($("#auditStatus"), e.message||"failed", false);
-  }
+  try{const j=await api.get("/api/admin/audit/list");$("#auditOut").textContent=JSON.stringify(j.records||[],null,2);say($("#auditStatus"),`Loaded ${j.records?.length||0}`,true);}
+  catch(e){$("#auditOut").textContent="[]";say($("#auditStatus"),e.message||"failed",false);}
 }
 $("#auditRefresh")?.addEventListener("click", paintAudit);
-$("#auditExport")?.addEventListener("click", async ()=>{
-  try{
-    const r = await fetch("/api/admin/audit/export", { credentials:"include" });
-    const blob = await r.blob(); const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href=url; a.download=`l3z_admin_audit_${Date.now()}.json`; a.click();
-    setTimeout(()=>URL.revokeObjectURL(url),5000);
-  }catch{}
-});
-$("#auditClear")?.addEventListener("click", async ()=>{
-  try{
-    await postJSON("/api/admin/audit/clear",{});
-    paintAudit();
-  }catch{}
-});
+$("#auditExport")?.addEventListener("click", async ()=>{try{const r=await fetch("/api/admin/audit/export",{credentials:"include"});const b=await r.blob();const url=URL.createObjectURL(b);const a=document.createElement("a");a.href=url;a.download=`l3z_admin_audit_${Date.now()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);}catch{}});
+$("#auditClear")?.addEventListener("click", async ()=>{try{await api.post("/api/admin/audit/clear",{});paintAudit();}catch{}});
 paintAudit();
 </script>
 </body>
