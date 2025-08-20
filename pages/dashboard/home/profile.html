@@ -1,211 +1,496 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Profile — L3Z</title>
-<link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>My Profile — L3Z</title>
 <style>
-  :root{--bg:#0b0e13;--panel:#0f141b;--ink:#e8ecf3;--muted:#94a3b8;--line:rgba(0,255,255,.18);--ok:#12d48a;--err:#ff7a8a;--chip:#0c141a}
-  *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-  a{color:#9bd3ff;text-decoration:none}
-  .wrap{max-width:1100px;margin:0 auto;padding:14px}
-  .top{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
-  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0a1016;color:#cfe;font-weight:800}
-  .card{background:linear-gradient(180deg,#0f131a,#0a0f15);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
-  .head{display:flex;align-items:center;justify-content:space-between;padding:12px;border-bottom:1px solid var(--line)}
-  .head h2{margin:0;font-size:14px;letter-spacing:.3px;color:#ffd78a}
-  .body{padding:12px;display:grid;gap:10px}
-  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .muted{color:var(--muted)} .ok{color:var(--ok)} .err{color:var(--err)}
-  input,button{background:#0f141b;border:1px solid var(--line);color:#e8ecf3;border-radius:10px;padding:10px 12px;font-size:14px}
-  input{min-width:180px} button{cursor:pointer;font-weight:800}
-  .primary{background:linear-gradient(180deg,#f5c462,#d49a2e);color:#1a1204;border:none}
-  .ghost{background:#111a22}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-  @media (max-width:980px){.grid{grid-template-columns:1fr}}
-  .badge{display:inline-flex;align-items:center;gap:6px;background:var(--chip);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:6px 10px}
+  :root{
+    --bg:#0b0f10; --ink:#eaf7ff; --muted:#9bc; --panel:#0f1416; --ring:rgba(0,255,255,.22);
+    --gold:#ffb42d; --cyan:#00ffff; --ok:#12f3d6; --bad:#ff5a73;
+  }
+  *,*:before,*:after{box-sizing:border-box}
+  html,body{
+    margin:0;
+    background:#000 url("/assets/BG_page.png") center/cover fixed no-repeat;
+    color:var(--ink);
+    font-family:Segoe UI,system-ui,Arial,sans-serif
+  }
+  html[data-auth="checking"] body { opacity:0; transition:opacity .12s ease; }
 
-  /* debug panel */
-  .dbg{position:fixed;right:10px;bottom:10px;background:#0c141a;border:1px dashed #2a3e50;color:#cfe;border-radius:10px;padding:8px 10px;max-width:360px;z-index:9999;font-size:12px}
-  .dbg pre{margin:6px 0 0 0;max-height:130px;overflow:auto;background:#0a1218;padding:8px;border-radius:8px}
+  .topbar{
+    position:sticky;top:0;z-index:50;
+    display:flex;align-items:center;gap:16px;
+    padding:12px;background:rgba(0,0,0,.7);border-bottom:1px solid var(--ring)
+  }
+  .title{font-weight:900;letter-spacing:.4px;color:var(--gold);text-shadow:0 0 14px rgba(255,180,45,.35)}
+  .grow{flex:1}
+  .pill{padding:6px 10px;border-radius:999px;border:1px solid var(--ring);background:#0b1f21;color:#cfffff;font-weight:800}
+
+  .wrap{
+    max-width:1100px;margin:18px auto;padding:0 12px;
+    display:grid;grid-template-columns:2fr 1fr;gap:16px
+  }
+
+  .card{
+    background:linear-gradient(180deg,#0f1416,#0a1113);
+    border:1px solid var(--ring);border-radius:14px;
+    box-shadow:0 8px 24px rgba(0,0,0,.35);
+    padding:16px; overflow:hidden;
+  }
+  h2{margin:0 0 10px}
+  .muted{color:var(--muted);font-size:13px}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+  .big{font-size:28px;font-weight:900;margin:0}
+  .stat{display:flex;align-items:center;gap:10px;background:#0a1518;border:1px solid var(--ring);border-radius:12px;padding:10px 12px}
+  .stat .val{font-size:22px;font-weight:900}
+  .btn{height:42px;border-radius:10px;border:1px solid var(--ring);background:#0a1719;color:var(--ink);padding:8px 12px;font-weight:800;cursor:pointer}
+  .btn.ok{border-color:#0ef;background:linear-gradient(180deg,#0ef,#00dfc6);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .btn[disabled]{opacity:.55;cursor:not-allowed}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
+  th{color:#bfe}
+  .right{text-align:right}
+  input,select{height:40px;border-radius:10px;border:1px solid var(--ring);background:#0a1719;color:#eaf7ff;padding:8px 12px;outline:none}
+  .copy{cursor:pointer;border:1px dashed var(--ring);border-radius:8px;padding:6px 8px}
+  .toast{position:fixed;right:16px;bottom:16px;background:#0b1f21;border:1px solid var(--ring);border-radius:10px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:.18s}
+  .toast.on{opacity:1;transform:translateY(0)}
+
+  @media (max-width:1100px){ .wrap{padding:0 10px;} }
+  @media (max-width:980px){ .wrap{grid-template-columns:1fr} }
 </style>
-</head>
-<body data-login-url="/login.html">
-<div class="wrap">
-  <div class="top">
-    <div class="row">
-      <img src="/assets/l3z_logo.png" alt="" style="width:36px;height:36px;border-radius:10px;border:1px solid var(--line)">
-      <div class="pill" id="titlePill">Profile</div>
-    </div>
-    <div class="row">
-      <div class="pill">user: <b id="whoami">—</b></div>
-      <div class="pill">balance: <b id="walletBalance">0 LBX</b></div>
-      <button id="logout" class="ghost">Logout</button>
-    </div>
-  </div>
 
-  <div class="grid">
-    <section class="card">
-      <div class="head"><h2>Wallet</h2><div class="badge" id="viewBadge">LBX</div></div>
-      <div class="body">
-        <div class="row">
-          <button id="refreshBal" class="ghost">Refresh Balance</button>
-          <span id="balStatus" class="muted"></span>
-        </div>
-        <div class="row muted">Auto-updates on admin actions and every 10s.</div>
-      </div>
-    </section>
-
-    <section class="card">
-      <div class="head"><h2>Redeem Promo Code</h2><div class="badge">per-user</div></div>
-      <div class="body">
-        <div class="row">
-          <input id="promoCode" placeholder="ENTER CODE"/>
-          <button id="redeem" class="primary">Redeem</button>
-          <span id="promoStatus" class="muted"></span>
-        </div>
-        <div class="row muted">Uses <code>/api/code/redeem</code>. Balance updates on success.</div>
-      </div>
-    </section>
-  </div>
-
-  <section class="card">
-    <div class="head"><h2>Kick Account</h2><div class="badge" id="kickStatus">checking…</div></div>
-    <div class="body"><div class="row"><button id="kickLink" class="primary">Link Kick</button><button id="kickUnlink" class="ghost">Unlink</button><span class="muted">Link your Kick account for drops, badges, and verified entries.</span></div></div>
-  </section>
-
-  <section class="card">
-    <div class="head"><h2>Account</h2><div class="badge">basic</div></div>
-    <div class="body">
-      <div class="row">Username: <b data-bind="username"></b></div>
-      <div class="row">Role: <b data-bind="role"></b></div>
-      <div class="row">LBX: <b data-bind="lbx"></b></div>
-      <div class="row muted" id="createdAtRow" style="display:none">Joined: <span id="createdAt"></span></div>
-    </div>
-  </section>
-</div>
-
-<!-- Debug panel -->
-<div class="dbg" id="dbg" style="display:none">
-  <div><b>Diag:</b>
-    <label><input type="checkbox" id="dbgToggle"/> log HTTP</label>
-    <label style="margin-left:8px">view user <input id="dbgUser" placeholder="(self)"></label>
-    <button id="dbgApply" class="ghost" style="margin-left:6px">Apply</button>
-  </div>
-  <pre id="dbgOut"></pre>
-</div>
-
-<script src="/assets/api-base.js?v=6"></script>
+<!-- AUTH GATE -->
 <script>
-(() => {
-  const $  = (s,r=document)=>r.querySelector(s);
-  const say= (el,msg,ok)=>{ if(!el) return; el.textContent=msg||""; el.className=(ok===undefined)?"muted":(ok?"ok":"err"); };
-  const qs = new URLSearchParams(location.search);
-  const viewUser = (qs.get("user")||"").trim().toLowerCase(); // admin view-as
+(function(){
+  "use strict";
+  const LOGIN="/pages/dashboard/home/login.html";
+  const SESSION_KEY="l3z:session", PROFILE_KEY="l3z:user", UNAME_KEY="user:username", LAST_KEY="lash3z_last_user";
+  const WALLET = u=>`lbx:wallet:${(u||'').toUpperCase()}`, LEDGER=u=>`lbx:ledger:${(u||'').toUpperCase()}`;
+  const now=()=>Date.now(); const DAY=86400000; const up=s=>(s||"").toString().trim().toUpperCase();
+  function sget(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch{ return null; } }
+  function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+  function redirectToLogin(){ const back=encodeURIComponent(location.pathname+location.search+location.hash); location.replace(`${LOGIN}?redirect=${back}`); }
 
-  const who = $("#whoami"), titlePill=$("#titlePill"), viewBadge=$("#viewBadge");
-  const balEl = $("#walletBalance"), balStatus=$("#balStatus"), promoStatus=$("#promoStatus");
-  const promoCode=$("#promoCode");
-  const dbg=$("#dbg"), dbgOut=$("#dbgOut"), dbgToggle=$("#dbgToggle"), dbgUser=$("#dbgUser");
-  let me = null;
+  document.documentElement.setAttribute("data-auth","checking");
+  const sess=sget(SESSION_KEY);
+  if(!sess || !sess.user || Number(sess.expiresAt)<=now()){ redirectToLogin(); throw new Error("no session"); }
+  const USER=up(sess.user);
+  localStorage.setItem(UNAME_KEY,USER); localStorage.setItem(LAST_KEY,USER); sset(PROFILE_KEY,{username:USER});
 
-  function dbgShow(msg,obj){ try{ dbg.style.display="block"; const line = msg + (obj?(" " + JSON.stringify(obj)):""); dbgOut.textContent = (line + "\n" + dbgOut.textContent).slice(0,8000);}catch{} }
-  function setBalance(v){
-    const n = Number(v||0);
-    balEl.textContent = `${n.toLocaleString()} LBX`;
-    const bind = document.querySelector('[data-bind="lbx"]'); if (bind) bind.textContent = n.toLocaleString();
+  function ensureWallet(u){
+    let w=sget(WALLET(u));
+    if(!w){
+      w={balance:50,created:now(),lastDaily:0};
+      sset(WALLET(u),w);
+      sset(LEDGER(u),[{ts:now(),delta:+50,reason:"WELCOME_BONUS",balance:50}]);
+    }
+    return w;
+  }
+  window.__L3Z__ = { USER, WALLET, LEDGER, ensureWallet, now, DAY };
+  window.addEventListener("DOMContentLoaded",()=> document.documentElement.removeAttribute("data-auth"));
+})();
+</script>
+</head>
+<body>
+  <div class="topbar">
+    <div class="title">My Profile</div>
+    <div class="grow"></div>
+    <div class="pill">Welcome, <span id="welcomeName">PLAYER</span></div>
+  </div>
+
+  <div class="wrap">
+    <!-- LEFT: Overview + Daily + Rewards + Ledger -->
+    <div class="card">
+      <h2>Overview</h2>
+      <div class="row" style="margin-bottom:12px">
+        <div class="stat"><div>Balance</div><div class="val" id="bal">0.00</div><div class="pill">LBX</div></div>
+        <div class="stat"><div>Leaderboard</div><div class="val" id="rank">#—</div><div class="muted" id="rankSub">—</div></div>
+      </div>
+
+      <div class="cols">
+        <div class="card" style="padding:12px">
+          <h2 style="font-size:18px;margin:0 0 8px">Daily Reward</h2>
+          <div class="muted" style="margin-bottom:8px">Claim <b>+5 LBX</b> once every 24 hours.</div>
+          <div class="row">
+            <button class="btn ok" id="claimBtn">Claim +5 LBX</button>
+            <span id="claimStatus" class="pill">Ready</span>
+          </div>
+        </div>
+
+        <div class="card" style="padding:12px">
+          <h2 style="font-size:18px;margin:0 0 8px">Unclaimed Rewards</h2>
+          <div class="muted" style="margin-bottom:8px">Prizes pushed from Admin.</div>
+          <div id="rewardsList" class="row"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <h2>Ledger</h2>
+        <div class="muted" style="margin-bottom:8px">Your last 50 transactions.</div>
+        <table id="ledger">
+          <thead><tr><th>When</th><th>Reason</th><th class="right">Δ LBX</th><th class="right">Balance</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RIGHT: Top 10 + BUY LBX -->
+    <div class="card">
+      <h2>Top 10 Leaderboard</h2>
+      <div class="muted" style="margin-bottom:8px">Local wallets on this device (server leaderboard TBD).</div>
+      <table id="lbTable">
+        <thead><tr><th>#</th><th>User</th><th class="right">LBX</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="card" style="margin-top:16px">
+        <h2>Buy LBX</h2>
+        <div class="muted" style="margin-bottom:8px">Max 30 LBX per 24 hours. Pick a package, choose a crypto, send funds, paste TXID, submit.</div>
+
+        <div class="row" id="pkgRow" style="margin-bottom:8px"></div>
+
+        <div class="row" style="margin-bottom:8px">
+          <select id="assetSel">
+            <option value="BTC">BTC (Bitcoin)</option>
+            <option value="ETH">ETH (Ethereum)</option>
+            <option value="USDT">USDT (TRC20)</option>
+            <option value="SOL">SOL (Solana)</option>
+            <option value="LTC">LTC (Litecoin)</option>
+          </select>
+          <input id="usdDue" type="text" placeholder="USD due" readonly style="width:130px"/>
+        </div>
+
+        <div class="muted">Send to this address:</div>
+        <div class="row" style="margin:6px 0">
+          <div id="addr" class="copy">—</div>
+          <button class="btn" id="copyAddr">Copy</button>
+        </div>
+
+        <div class="muted">Reference code (put in TX memo/notes if your wallet supports it):</div>
+        <div class="row" style="margin:6px 0">
+          <div id="ref" class="copy">—</div>
+          <button class="btn" id="copyRef">Copy</button>
+        </div>
+
+        <div class="row" style="margin:6px 0">
+          <input id="txid" placeholder="Paste TXID / transaction hash"/>
+        </div>
+
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <div class="muted" id="limitNote">You can buy up to 30 LBX today.</div>
+          <button class="btn ok" id="submitOrder" disabled>Submit for Review</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">Saved.</div>
+
+<script>
+(function(){
+  "use strict";
+  const $=s=>document.querySelector(s);
+  const esc=s=>(s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+  const fmt=n=> (+n).toFixed(2);
+  const up=s=>(s||'').toString().trim().toUpperCase();
+
+  const { USER, WALLET, LEDGER, ensureWallet, now, DAY } = window.__L3Z__;
+
+  const welcomeName=$("#welcomeName"), balEl=$("#bal"), rankEl=$("#rank"), rankSub=$("#rankSub");
+  const claimBtn=$("#claimBtn"), claimStatus=$("#claimStatus");
+  const ledgerBody=$("#ledger tbody"), lbTableBody=$("#lbTable tbody");
+  const rewardsList=$("#rewardsList"), toast=$("#toast");
+
+  // ---- BUY LBX UI ----
+  const pkgRow=$("#pkgRow"), assetSel=$("#assetSel"), usdDue=$("#usdDue");
+  const addrEl=$("#addr"), refEl=$("#ref"), txidEl=$("#txid"), submitBtn=$("#submitOrder"), limitNote=$("#limitNote");
+
+  const CRYPTO_ADDR = {
+    "BTC":"bc1q0l428lsymjqrksxrnlx4m9jahzjjrnvns5a6ah",
+    "ETH":"0xc59Ab6F4f71ba573F7435fA3fb730EdEdAF26884",
+    "USDT":"TVfWLpQBG5m5Px7K7so3yqdiAC21o7cEub",
+    "SOL":"tS4aS93waE4sPRjVVagkSaZ3wQyhfir3GzL1Lhm2eJ4",
+    "LTC":"ltc1qn6klwjdalpfk8g252ypht03tktr4em7x367vm7"
+  };
+
+  const PRICE_USD = {5:2.50, 10:5.00, 15:7.00, 20:9.00, 25:10.50, 30:12.00};
+  const PKGS=[5,10,15,20,25,30];
+  let selectedPkg=0;
+
+  const ORDERS_KEY="lbx:orders";
+  function sget(k,def=null){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch{ return def; } }
+  function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+  function toastMsg(t){ toast.textContent=t; toast.classList.add('on'); setTimeout(()=>toast.classList.remove('on'),1400); }
+
+  function readWallet(u){ return ensureWallet(u); }
+  function writeWallet(u,w){ sset(WALLET(u),w); }
+  function readLedger(u){ return sget(LEDGER(u),[]) }
+  function pushLedger(u,delta,reason){
+    const w = readWallet(u);
+    w.balance = +(w.balance||0) + (+delta||0);
+    writeWallet(u,w);
+    const list = readLedger(u);
+    list.push({ ts: now(), delta:+delta, reason:String(reason||'ADJUSTMENT'), balance:w.balance });
+    sset(LEDGER(u), list.slice(-200));
+    paintWallet(); paintLedger(); paintLeaderboard();
   }
 
-  async function fetchMyWallet(){ const j = await api.get("/api/wallet"); return Number(j?.lbx||0); }
-  async function fetchUserWallet(u){ const j = await api.get(`/api/admin/wallet/balance?user=${encodeURIComponent(u)}`); return Number(j?.balance||0); }
-
-  async function loadMe(){
-    const j = await api.get("/api/me");
-    if (!j?.ok) throw new Error("not_logged_in");
-    me = j.user;
-    who.textContent = me.username;
-    document.querySelector('[data-bind="username"]').textContent = me.username;
-    document.querySelector('[data-bind="role"]').textContent = me.role||"user";
-    if (me.createdAt){ $("#createdAt").textContent = new Date(me.createdAt).toLocaleString(); $("#createdAtRow").style.display=""; }
-  }
-
-  async function refreshWallet(){
+  /* === NEW: Sync from server so awards given via admin reflect here === */
+  async function syncFromServer(){
     try{
-      say(balStatus,"Refreshing…");
-      let lbx;
-      if (viewUser && me?.role === "admin"){
-        lbx = await fetchUserWallet(viewUser);
-        titlePill.textContent = `Profile — viewing ${viewUser}`;
-        viewBadge.textContent = "ADMIN VIEW";
-        dbgShow("GET /api/admin/wallet/balance", {user:viewUser,lbx});
-      } else {
-        lbx = await fetchMyWallet();
-        titlePill.textContent = "Profile";
-        viewBadge.textContent = "LBX";
-        dbgShow("GET /api/wallet", {lbx});
+      const r = await fetch("/api/wallet/me?viewer="+encodeURIComponent(USER), { credentials:"include" });
+      if(!r.ok) return;
+      const j = await r.json();
+      const serverBal = Number(j?.wallet?.balance ?? NaN);
+      if (!Number.isFinite(serverBal)) return;
+
+      const w = readWallet(USER);
+      const current = Number(w.balance||0);
+      const delta = serverBal - current;
+
+      if (Math.abs(delta) > 1e-9) {
+        // Update local wallet to match server and create a reconciling ledger entry.
+        w.balance = serverBal;
+        writeWallet(USER, w);
+        const L = readLedger(USER);
+        L.push({ ts: now(), delta: +delta, reason: "SERVER_SYNC", balance: serverBal });
+        sset(LEDGER(USER), L.slice(-200));
       }
-      setBalance(lbx);
-      say(balStatus,"Up to date.",true);
-    }catch(e){
-      say(balStatus,(e.message||"failed").replace(/_/g," "),false);
-      dbgShow("ERR refreshWallet", {msg:e.message});
+      paintWallet(); paintLedger(); paintLeaderboard();
+    } catch(_e) {
+      // ignore if server not reachable; local fallback stays
     }
   }
 
-  // promo redeem
-  $("#redeem")?.addEventListener("click", async ()=>{
-    const code = (promoCode.value||"").trim().toUpperCase();
-    if(!code) return say(promoStatus,"Enter a code.",false);
-    $("#redeem").disabled=true; say(promoStatus,"Submitting…");
-    try{
-      const j = await api.post("/api/code/redeem",{ code });
-      setBalance(j?.lbx || 0);
-      say(promoStatus,`Success! New balance: ${Number(j?.lbx||0).toLocaleString()} LBX`,true);
-      promoCode.value="";
-      dbgShow("POST /api/code/redeem", j);
-    }catch(e){
-      say(promoStatus,(e.message||"failed").replace(/_/g," "),false);
-      dbgShow("ERR redeem", {msg:e.message});
-    }finally{ $("#redeem").disabled=false; }
-  });
+  function msToHMS(ms){
+    if(ms<=0) return "ready";
+    const h=Math.floor(ms/3600000), m=Math.floor((ms%3600000)/60000), s=Math.floor((ms%60000)/1000);
+    return `${h}h ${m}m ${s}s`;
+  }
 
-  // storage “poke” from Admin Hub (same origin)
-  window.addEventListener("storage",(ev)=>{
-    if (ev.key!=="l3z:wallet-poke") return;
-    try{
-      const data = JSON.parse(ev.newValue||"{}");
-      const target = String(data?.u||"").toLowerCase();
-      if (!target) return;
-      if ((viewUser && target===viewUser) || (!viewUser && me && target===String(me.username).toLowerCase())){
-        dbgShow("poke received", data);
-        refreshWallet();
+  // Daily reward (local only)
+  function updateDailyUI(){
+    const w = readWallet(USER);
+    const next = (w.lastDaily||0) + DAY;
+    const remain = next - now();
+    if(remain <= 0){ claimBtn.disabled=false; claimStatus.textContent="Ready"; }
+    else{ claimBtn.disabled=true; claimStatus.textContent="Next in " + msToHMS(remain); }
+  }
+  claimBtn.addEventListener('click', ()=>{
+    const w = readWallet(USER); const next=(w.lastDaily||0)+DAY;
+    if(now() < next){ toastMsg("Too soon — come back later"); return; }
+    w.lastDaily = now(); writeWallet(USER,w);
+    pushLedger(USER, +5, "DAILY_REWARD"); toastMsg("+5 LBX claimed"); updateDailyUI();
+  });
+  setInterval(updateDailyUI, 1000);
+
+  // Rewards (local awards scan)
+  function listAwards(){
+    const out=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(!k || !k.startsWith("bux:awards:")) continue;
+      const arr=sget(k,[]);
+      if(Array.isArray(arr)) arr.forEach((a,idx)=>{
+        const uname=up(a.userId||a.name||'');
+        if(uname===USER) out.push({id:`${k}::${idx}`, key:k, idx, label:a.label||'Reward', amount:+(a.amount||0)});
+      });
+    }
+    return out;
+  }
+  function isClaimed(id){ return localStorage.getItem("lbx:award:claimed:"+id)==="1"; }
+  function setClaimed(id){ localStorage.setItem("lbx:award:claimed:"+id,"1"); }
+  function paintRewards(){
+    const items=listAwards();
+    if(!items.length){ rewardsList.innerHTML=`<span class="muted">No rewards pending.</span>`; return; }
+    rewardsList.innerHTML="";
+    items.forEach(it=>{
+      const wrap=document.createElement('div'); wrap.className="row"; wrap.style.marginBottom="6px";
+      const claimed=isClaimed(it.id);
+      wrap.innerHTML=`<div class="pill">${esc(it.label)}</div><div class="pill">${claimed?'CLAIMED':('+'+fmt(it.amount)+' LBX')}</div><button class="btn" data-claim="${it.id}" ${claimed?'disabled':''}>Claim</button>`;
+      rewardsList.appendChild(wrap);
+    });
+    rewardsList.querySelectorAll('[data-claim]').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const id=btn.getAttribute('data-claim');
+        const it=listAwards().find(x=>x.id===id);
+        if(!it||isClaimed(id)) return;
+        pushLedger(USER, +it.amount, `AWARD:${it.label}`);
+        setClaimed(id); toastMsg(`+${fmt(it.amount)} LBX added`); paintRewards();
+      });
+    });
+  }
+
+  // Leaderboard (local scan)
+  function collectWallets(){
+    const res=[];
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k && k.startsWith("lbx:wallet:")){
+        const u=k.split(":").pop();
+        const w=sget(k);
+        if(w) res.push({user:u,balance:+(w.balance||0)});
       }
-    }catch{}
+    }
+    return res;
+  }
+  function paintLeaderboard(){
+    const all=collectWallets().sort((a,b)=>b.balance-a.balance);
+    const meIndex=all.findIndex(x=>x.user===up(USER));
+    rankEl.textContent = "#"+(meIndex>=0?meIndex+1:"—");
+    rankSub.textContent = all.length?`of ${all.length}`:"—";
+    const top=all.slice(0,10);
+    lbTableBody.innerHTML =
+      top.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.user)} ${r.user===up(USER)?'<span class="pill">you</span>':''}</td><td class="right">${fmt(r.balance)}</td></tr>`).join('')
+      || `<tr><td colspan="3" class="muted">No data yet.</td></tr>`;
+  }
+
+  // Ledger + wallet painters
+  function paintLedger(){
+    const L=(sget(LEDGER(USER),[])).slice(-50).reverse();
+    ledgerBody.innerHTML = L.map(row=>
+      `<tr><td>${new Date(row.ts).toLocaleString()}</td><td>${esc(row.reason||'')}</td><td class="right ${row.delta>=0?'':'bad'}">${row.delta>=0?'+':''}${fmt(row.delta||0)}</td><td class="right">${fmt(row.balance||0)}</td></tr>`
+    ).join('') || `<tr><td colspan="4" class="muted">No transactions yet.</td></tr>`;
+  }
+  function paintWallet(){ const w=sget(WALLET(USER)); welcomeName.textContent=USER; balEl.textContent=fmt((w&&w.balance)||0); }
+
+  // ----- Purchase UI -----
+  function renderPkgs(){
+    pkgRow.innerHTML = PKGS.map(n=>`<button class="btn" data-pkg="${n}">${n} LBX</button>`).join("");
+    pkgRow.querySelectorAll("[data-pkg]").forEach(b=> b.addEventListener("click", ()=>{
+      selectedPkg = +b.getAttribute("data-pkg");
+      pkgRow.querySelectorAll("button").forEach(x=>x.classList.remove("ok")); b.classList.add("ok");
+      usdDue.value = "$" + (PRICE_USD[selectedPkg] ? PRICE_USD[selectedPkg].toFixed(2) : "0.00");
+      refreshAddrRef();
+      validateLimit();
+    }));
+  }
+  function refreshAddrRef(){
+    const asset = assetSel.value;
+    addrEl.textContent = CRYPTO_ADDR[asset] || "—";
+    const code = "L3Z-"+ up(USER) +"-"+ Math.random().toString(36).slice(2,8).toUpperCase();
+    refEl.textContent = code;
+  }
+  function copy(el){ navigator.clipboard.writeText(el.textContent||"").then(()=>toastMsg("Copied")); }
+
+  document.getElementById("copyAddr").addEventListener("click", ()=>copy(addrEl));
+  document.getElementById("copyRef").addEventListener("click", ()=>copy(refEl));
+  assetSel.addEventListener("change", ()=>refreshAddrRef());
+
+  function lbxBoughtLast24h(){
+    const orders = sget(ORDERS_KEY,[]).filter(o=> up(o.user)===up(USER) );
+    const since = now()-DAY;
+    return orders.filter(o=>Number(o.ts)>=since).reduce((a,o)=> a + (+o.amount||0), 0);
+  }
+  function validateLimit(){
+    const used = lbxBoughtLast24h();
+    const remain = Math.max(0, 30 - used);
+    limitNote.textContent = `You can buy up to ${remain} LBX today.`;
+    submitBtn.disabled = !(selectedPkg && remain >= selectedPkg && addrEl.textContent!=="—" && (txidEl.value||"").trim().length>=8);
+  }
+  txidEl.addEventListener("input", validateLimit);
+
+  async function submitOrder(){
+    const asset = assetSel.value;
+    const o = {
+      id: "ORD-" + Math.random().toString(36).slice(2,10).toUpperCase(),
+      user: up(USER),
+      amount: selectedPkg,
+      usd: PRICE_USD[selectedPkg]||0,
+      asset, address: addrEl.textContent, ref: refEl.textContent, txid: (txidEl.value||"").trim(),
+      status: "pending", ts: now()
+    };
+    const all = sget(ORDERS_KEY,[]); all.push(o); sset(ORDERS_KEY, all);
+    try{ await fetch("/api/lbx/orders", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(o) }); }catch(_){ }
+    toastMsg("Submitted for review. We'll approve after confirming on-chain.");
+    txidEl.value=""; validateLimit();
+  }
+  submitBtn.addEventListener("click", submitOrder);
+
+  // Boot sequence
+  ensureWallet(USER);
+  renderPkgs(); refreshAddrRef(); validateLimit();
+  paintWallet(); paintLedger(); paintLeaderboard(); paintRewards(); updateDailyUI();
+
+  // NEW: Sync with server after initial paint (and again after 1s for safety)
+  syncFromServer();
+  setTimeout(syncFromServer, 1000);
+
+  // Cross-tab update listeners
+  window.addEventListener('storage', (e)=>{
+    if(!e.key) return;
+    if(e.key.startsWith("lbx:wallet:") || e.key.startsWith("lbx:ledger:")){ paintWallet(); paintLedger(); paintLeaderboard(); }
+    if(e.key===ORDERS_KEY){ validateLimit(); }
+    if(e.key.startsWith("bux:awards:") || e.key.startsWith("lbx:award:claimed:")){ paintRewards(); }
   });
+})();
+</script>
 
-  // manual refresh + poller
-  $("#refreshBal")?.addEventListener("click", refreshWallet);
-  setInterval(()=>{ if(!document.hidden) refreshWallet(); }, 10000);
+<!-- viewer glue v2 -->
+<script id="viewer-glue">
+(function(){
+  const S = (sel) => document.querySelector(sel);
+  const SS = (sel) => Array.from(document.querySelectorAll(sel));
+  const set = (sel, val) => { const n=S(sel); if(n){ n.textContent = val; n.title = val; }};
 
-  // logout
-  $("#logout")?.addEventListener("click", async ()=>{ try{ await api.post("/api/auth/logout",{});}catch{} location.href="/login.html"; });
+  function readCookie(name){
+    const m = document.cookie.match(new RegExp('(?:^|; )'+name+'=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : '';
+  }
 
-  // debug controls
-  dbgToggle.checked = (localStorage.getItem("l3z:debug-http")==="1");
-  $("#dbgApply")?.addEventListener("click", ()=>{
-    localStorage.setItem("l3z:debug-http", dbgToggle.checked ? "1" : "0");
-    const u = (dbgUser.value||"").trim().toLowerCase();
-    const params = new URLSearchParams(location.search);
-    if (u) params.set("user", u); else params.delete("user");
-    params.set("diag","1");
-    location.search = params.toString();
-  });
+  async function loadMe(){
+    const viewerCookie = readCookie('viewer');
+    let me = { username: (viewerCookie||'').toUpperCase(), wallet:{balance:0}, anon: !viewerCookie };
+    try{
+      const r = await fetch('/api/viewer/me', { credentials: 'include' });
+      if(r.ok){ me = await r.json(); if(!me || typeof me !== 'object') throw 0; }
+    }catch(_){}
 
-  (async function boot(){
-    if (qs.has("diag")) dbg.style.display="block";
-    await loadMe();
-    await refreshWallet();
-  })();
+    const user = (me.username||'').toUpperCase();
+    set('#helloName', user);
+    set('#welcomeName', user);
+    set('#usernameDisplay', user);
+    set('#ubName', user);
+    set('#playerName', user);
+    set('#who', user);
+    if (S('#guestChipLabel')) S('#guestChipLabel').textContent = user;
+
+    // balance
+    let bal = (me.wallet && typeof me.wallet.balance==='number') ? me.wallet.balance : 0;
+    if ((!bal || isNaN(bal)) && user){
+      try{
+        const wr = await fetch('/api/wallet/me?viewer='+encodeURIComponent(user), { credentials:'include' });
+        if (wr.ok){ const wj = await wr.json(); bal = Number((wj.wallet&&wj.wallet.balance)||0) || 0; }
+      }catch(_){}
+    }
+    const pretty = (Number(bal)||0).toFixed(0);
+    set('#headerLbx', pretty+' LBX');
+    set('#navLbx',    pretty);
+    set('#ubBal',     pretty);
+    set('#playerBalance', pretty);
+    set('#walletBalance', pretty);
+    set('#walletBalanceTop', pretty);
+
+    // Hide or disable "Switch name" controls
+    const kill = ['#btnSwitch','.btnSwitchName','#switchName','.switch-name','.switchName']
+      .map(S).filter(Boolean);
+    kill.forEach(n => n.style.display='none');
+    SS('button').forEach(b=>{
+      const t = (b.textContent||'').toLowerCase();
+      if (t.includes('switch name')) b.style.display='none';
+    });
+
+    // update LBX pill usually in header (span like "LBX 0")
+    SS('.lbx-pill,.lbx,.pill-lbx').forEach(n=>{
+      const m = String(n.textContent||'').match(/\b(\d+)\b/);
+      if (m) n.textContent = (n.textContent||'').replace(m[1], pretty);
+    });
+  }
+  loadMe();
+  window.addEventListener('focus', loadMe);
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) loadMe(); });
 })();
 </script>
 </body>
