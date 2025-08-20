@@ -1,223 +1,115 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>My Bets — LASH3Z</title>
-<meta name="description" content="Your placed bets and predictions."/>
-<style>
-  :root{
-    --bg:#0b0e13; --panel:#12151c; --ink:#e8ecf3; --muted:#9fb3c5;
-    --line:rgba(0,255,255,.18); --gold:#f0a320; --teal:#00ffff; --danger:#e85c6b; --ok:#12d48a;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;background:#000 url("/assets/media/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-  .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
-
-  .topbar{height:64px;background:rgba(0,0,0,.7);backdrop-filter:saturate(140%) blur(6px);
-    border:1px solid var(--line);border-radius:14px;display:flex;align-items:center;justify-content:space-between;padding:0 14px}
-  .brand{display:flex;align-items:center;gap:10px}
-  .brand h1{margin:0;font-size:18px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
-  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0a1016;color:#cfe;font-weight:800}
-  .pill.bad{color:#ffb7c1;border-color:#ffb7c166}
-  .pill.ok{color:#bff7db;border-color:#bff7db66}
-
-  .toolbar{display:flex;align-items:center;gap:8px;margin:12px 0}
-  .btn{padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#0f1a1f;color:#cfe;font-weight:800;cursor:pointer}
-  .btn:hover{filter:brightness(1.06)}
-  .search{flex:1;min-width:180px;background:#0f141b;border:1px solid var(--line);border-radius:10px;color:#e8ecf3;padding:9px 12px}
-  .small{font-size:12px;color:var(--muted)}
-
-  .list{margin-top:16px;display:flex;flex-direction:column;gap:12px}
-  .card{background:linear-gradient(180deg,#0e1319,#0b1016);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-  .head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px}
-  .head .title{font-weight:900}
-  .body{padding:10px 14px;display:flex;flex-direction:column;gap:8px}
-  .row{display:flex;justify-content:space-between;gap:10px}
-  .meta{font-size:12px;color:var(--muted)}
-  .legs{display:flex;flex-direction:column;gap:6px}
-  .empty{margin:16px 0;border:1px dashed var(--line);border-radius:12px;padding:16px;text-align:center;color:#cfe;background:#0f151c}
-  .footer{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bets — L3Z</title>
+  <style>
+    body{background:#0b0e13;color:#e8ecf3;font-family:Segoe UI,system-ui,Arial,sans-serif;margin:0}
+    .wrap{max-width:1200px;margin:0 auto;padding:14px}
+    .pill{padding:6px 10px;border:1px solid rgba(0,255,255,.18);border-radius:999px;background:#0a1016}
+    .panel{background:linear-gradient(180deg,#0e1319,#0b1016);border:1px solid rgba(0,255,255,.18);border-radius:14px}
+    .slip{position:sticky;top:10px;display:flex;flex-direction:column}
+    .btn{border:none;border-radius:12px;padding:12px 16px;font-weight:900;cursor:pointer;background:linear-gradient(180deg,#f2b64a,#d49a2e);color:#1a1204}
+    .msg{font-size:12px}.ok{color:#9ff1c7}.err{color:#ffb5be}
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="topbar">
-    <div class="brand">
-      <img src="/assets/l3z_logo.png" alt="LASH3Z" onerror="this.src='/assets/lash3zbux_pp.png'" style="width:36px;height:36px;border-radius:10px;border:1px solid var(--line);object-fit:cover;background:#000">
-      <h1>My Bets</h1>
-    </div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <div id="bal" class="pill">0 LBX</div>
-      <div id="who" class="pill">—</div>
+  <div class="wrap">
+    <header style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h1>Bets</h1>
+      <div class="pill" id="who">Welcome</div>
+      <div class="pill" id="bal">LBX 0</div>
+    </header>
+
+    <div style="display:grid;grid-template-columns:1fr 380px;gap:16px">
+      <div class="panel" id="markets" style="min-height:240px;padding:12px">
+        <!-- populate from localStorage 'sb:markets:unified' (unchanged) -->
+        <div class="msg">Markets are published from the Admin Hub.</div>
+      </div>
+
+      <div class="panel slip" style="height:calc(100dvh - 110px)">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px">
+          <div><b>Picks</b> <span class="pill" id="slipCount">0</span></div>
+          <button id="clearSlip" class="btn" style="opacity:.8">Clear</button>
+        </div>
+        <div id="slipBody" style="flex:1;overflow:auto;padding:8px 12px"></div>
+        <div style="padding:12px;display:grid;gap:8px">
+          <label>Stake <input id="stake" type="number" min="1" max="100" step="1" value="10" style="width:110px"/></label>
+          <div>Estimated Winnings: <b id="payout">0</b> LBX</div>
+          <div id="warn" class="msg"></div>
+          <button id="submit" class="btn" disabled>Place Bet</button>
+        </div>
+      </div>
     </div>
   </div>
-
-  <div class="toolbar">
-    <input id="q" class="search" placeholder="Filter by event, game, pick, or status…">
-    <button id="refresh" class="btn">Refresh</button>
-    <span class="small" id="count"></span>
-  </div>
-
-  <div id="list" class="list"></div>
-</div>
 
 <script>
 (function(){
   "use strict";
+  const $=(q,r)=> (r||document).querySelector(q);
+  const $$=(q,r)=> Array.from((r||document).querySelectorAll(q));
+  const esc=s=>String(s??'').replace(/[&<>\"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
+  const bux=n=> (Number(n)||0).toLocaleString(undefined,{maximumFractionDigits:0});
+  const kid=(p='ID')=> p+Math.random().toString(36).slice(2,10).toUpperCase();
 
-  // ---------- helpers ----------
-  const up  = s => String(s||'').trim().toUpperCase();
-  const esc = s => String(s??'').replace(/[&<>"']/g,m=>m==="&"?"&amp;":m==="<"?"&lt;":m===">"?"&gt;":"&quot;");
-  const sget= k => { try{ return JSON.parse(localStorage.getItem(k)||"null"); }catch{ return null; } };
-  const sset= (k,v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} };
-  const fmtL = n => (Number(n)||0).toLocaleString(undefined,{maximumFractionDigits:0})+" LBX";
+  let slip = []; // {marketId,label,odds,...}
+  let slipMode = 'single';
 
-  async function json(url, opt={}){
-    const ctrl = new AbortController();
-    const t = setTimeout(()=>ctrl.abort(), opt.timeout||8000);
+  // Server wallet only
+  async function api(path, opts){ const res = await fetch(path, { credentials:"include", cache:"no-store", ...(opts||{}) }); const j=await res.json(); if(!res.ok) throw j; return j; }
+  async function refreshBal(){
+    try{ const j=await api("/api/wallet/me"); $("#who").textContent = "Welcome, "+(j.username||"PLAYER"); $("#bal").textContent = "LBX "+bux(j.wallet?.balance||0); }
+    catch(e){ console.warn("balance load failed", e); }
+  }
+
+  function addToSlip(item){ slip.push(item); updateSlipUI(); }
+  function updateSlipUI(){
+    $("#slipCount").textContent = slip.length;
+    const body=$("#slipBody"); body.innerHTML='';
+    slip.forEach((t,i)=>{
+      const row=document.createElement('div'); row.style.border='1px solid rgba(0,255,255,.18)'; row.style.borderRadius='10px'; row.style.padding='8px 10px'; row.style.margin='6px 0';
+      row.innerHTML = `<div style="display:flex;justify-content:space-between"><div><b>${esc(t.label)}</b></div><a href="#" data-i="${i}">✖</a></div>`
+                    + (t.odds ? `<div style="opacity:.8">Odds ${Number(t.odds).toFixed(2)}×</div>` : '');
+      row.querySelector('a')?.addEventListener('click', (ev)=>{ ev.preventDefault(); slip.splice(i,1); updateSlipUI(); });
+      body.appendChild(row);
+    });
+    updateTotals();
+  }
+  function updateTotals(){
+    const stake = Number($("#stake")?.value||0) || 0;
+    let est=0; if (slipMode==='single'){ est = slip.reduce((a,x)=> a + (stake * (x.odds||1)), 0); } else { est = stake * slip.reduce((p,x)=> p*(x.odds||1), 1); }
+    $("#payout").textContent = bux(est);
+    const totalStake = (slipMode==='single') ? stake * slip.length : stake;
+    let warn='';
+    if(!slip.length) warn='Add a selection.';
+    else if(!stake) warn='Enter stake.';
+    else if(totalStake>100) warn='Max 100 LBX.';
+    $("#warn").textContent = warn; $("#warn").className='msg '+(warn?'err':'ok');
+    $("#submit").disabled = !!warn;
+  }
+
+  $("#stake")?.addEventListener('input', updateTotals);
+  $("#clearSlip")?.addEventListener('click', ()=>{ slip=[]; updateSlipUI(); });
+  $("#submit")?.addEventListener('click', async ()=>{
+    const stake = Number($("#stake")?.value||0) || 0;
+    const totalStake = (slipMode==='single') ? stake * slip.length : stake;
+    if(!slip.length || !stake || totalStake>100){ updateTotals(); return; }
     try{
-      const r = await fetch(url, { credentials:"include", cache:"no-store", ...opt, signal:ctrl.signal });
-      clearTimeout(t);
-      if(!r.ok) throw new Error(r.status);
-      return await r.json();
-    }catch(e){ clearTimeout(t); throw e; }
-  }
-
-  // ---------- header: who + balance from SERVER (falls back to local) ----------
-  const whoEl = document.getElementById("who");
-  const balEl = document.getElementById("bal");
-  let USER = up(localStorage.getItem("user:username") || localStorage.getItem("lash3z_last_user") || "");
-
-  async function loadHeader(){
-    try{
-      // server canonical (cookie-based)
-      const me = await json("/api/wallet/me");
-      const u  = up(me.username || "");
-      const b  = Number(me?.wallet?.balance || 0);
-      if(u){ USER = u; localStorage.setItem("user:username", USER); localStorage.setItem("lash3z_last_user", USER); }
-      if(whoEl) whoEl.textContent = USER || "Guest";
-      if(balEl) balEl.textContent = fmtL(b);
-      return { user: USER, balance: b };
-    }catch{
-      // fallback to local markers
-      if(!USER){ USER = up(localStorage.getItem("auth:username") || ""); }
-      if(whoEl) whoEl.textContent = USER || "Guest";
-      if(balEl) balEl.textContent = fmtL( Number(sget(`lbx:wallet:${USER}`)?.balance || 0) );
-      return { user: USER, balance: Number(sget(`lbx:wallet:${USER}`)?.balance || 0) };
+      const resp = await api("/api/bets/place", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ mode: slipMode, stake, legs: slip })
+      });
+      $("#warn").textContent = `Bet placed. New balance: ${resp.balance} LBX`; $("#warn").className='msg ok';
+      slip=[]; updateSlipUI(); await refreshBal();
+    }catch(e){
+      $("#warn").textContent = `Bet failed: ${e?.error || 'error'}`; $("#warn").className='msg err';
     }
-  }
-
-  // ---------- source of truth for bets ----------
-  // 1) Try server: /api/bets/me → { ok:true, items:[ ... ] }
-  //    Each item shape (flexible): { id, at, mode:'single'|'multi', stake, potential, status, legs:[{label, odds, meta:{...}}] }
-  // 2) Fallback: localStorage 'sb:tickets' filtered by USER (from lash3z_bets.html)
-  async function loadBets(){
-    try{
-      const j = await json("/api/bets/me");
-      if(Array.isArray(j?.items)) return j.items;
-      throw new Error("bad");
-    }catch{
-      const all = sget("sb:tickets") || [];
-      return all.filter(t => up(t.user||"") === USER).map(t => ({
-        id: t.id || ("LOC-"+Math.random().toString(36).slice(2,8)),
-        at: t.at || Date.now(),
-        mode: t.mode || "single",
-        stake: Number(t.stake||0),
-        potential: Number(t.potential || (t.mode==='multi'
-          ? (t.stake * ( (t.odds||1) ))
-          : ( (t.leg ? t.stake*(t.leg.odds||1) : 0) )) ),
-        status: t.status || "PENDING",
-        legs: t.legs || (t.leg ? [t.leg] : [])
-      }));
-    }
-  }
-
-  // ---------- render ----------
-  const listEl  = document.getElementById("list");
-  const qEl     = document.getElementById("q");
-  const countEl = document.getElementById("count");
-
-  function match(entry, q){
-    if(!q) return true;
-    q = q.toLowerCase();
-    if((entry.status||"").toLowerCase().includes(q)) return true;
-    if((entry.mode||"").toLowerCase().includes(q)) return true;
-    for(const lg of entry.legs||[]){
-      if((lg.label||"").toLowerCase().includes(q)) return true;
-      if((lg.meta?.marketId||"").toLowerCase().includes(q)) return true;
-      if((lg.meta?.type||"").toLowerCase().includes(q)) return true;
-    }
-    return false;
-  }
-
-  function statusPill(status){
-    const s = String(status||"PENDING").toUpperCase();
-    const cls = s==="WIN"||s==="WON" ? "ok" : (s==="LOSE"||s==="LOST"||s==="VOID" ? "bad" : "");
-    return `<span class="pill ${cls}">${esc(s)}</span>`;
-  }
-
-  function render(items){
-    const q = (qEl.value||"").trim();
-    const rows = items.slice().sort((a,b)=>(b.at||0)-(a.at||0)).filter(x=>match(x,q));
-    countEl.textContent = rows.length ? rows.length+" bet"+(rows.length===1?"":"s") : "";
-
-    if(!rows.length){
-      listEl.innerHTML = '<div class="empty">No bets found yet.'+(USER?'':' Please sign in.')+'</div>';
-      return;
-    }
-
-    listEl.innerHTML = rows.map(t=>{
-      const when = new Date(t.at||Date.now()).toLocaleString();
-      const legs = (t.legs||[]).map((lg,i)=>`
-        <div class="row">
-          <div>${i+1}. ${esc(lg.label||"")}</div>
-          <div class="meta">${lg.odds ? ("Odds "+Number(lg.odds).toFixed(2)+"×") : ""}</div>
-        </div>
-      `).join("");
-
-      return `
-      <article class="card">
-        <div class="head">
-          <div class="title">Ticket <span class="meta">#${esc(t.id||"—")}</span></div>
-          <div class="meta">${esc(when)}</div>
-        </div>
-        <div class="body">
-          <div class="legs">${legs || '<div class="meta">No legs</div>'}</div>
-          <div class="footer">
-            <span class="pill">Mode: ${esc((t.mode||'single').toUpperCase())}</span>
-            <span class="pill">Stake: ${fmtL(t.stake||0)}</span>
-            <span class="pill">Potential: ${fmtL(t.potential||0)}</span>
-            ${statusPill(t.status)}
-          </div>
-        </div>
-      </article>`;
-    }).join("");
-  }
-
-  // ---------- boot / events ----------
-  document.getElementById("refresh").addEventListener("click", async ()=>{
-    await loadHeader();
-    const items = await loadBets();
-    render(items);
-  });
-  qEl.addEventListener("input", async ()=>{
-    const items = await loadBets();
-    render(items);
   });
 
-  (async function boot(){
-    await loadHeader();
-    const items = await loadBets();
-    render(items);
-  })();
-
-  // keep header balance fresh if another tab changes it
-  window.addEventListener("storage", e=>{
-    if(e.key==="user:username" || e.key==="lash3z_last_user" || (e.key||"").startsWith("lbx:wallet:")){
-      loadHeader();
-    }
-  });
+  // Boot
+  refreshBal(); updateSlipUI();
 })();
 </script>
 </body>
