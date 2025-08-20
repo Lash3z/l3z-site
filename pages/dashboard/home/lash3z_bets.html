@@ -1,516 +1,223 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bets — LASH3Z</title>
-  <style>
-    :root{
-      --bg:#0b0e13;--panel:#12151c;--ink:#e8ecf3;--soft:#aeb7c6;--line:rgba(0,255,255,.18);
-      --gold:#f0a320;--muted:#7d8596;--danger:#e85c6b;--ok:#12d48a;
-      --card:#0f1319;--chip:#1a202b;--chipLine:rgba(240,163,32,.35);
-    }
-    *{box-sizing:border-box}
-    html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,Arial,sans-serif}
-    a{color:inherit;text-decoration:none}
-    html[data-auth="checking"] body{opacity:0;transition:opacity .12s ease}
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>My Bets — LASH3Z</title>
+<meta name="description" content="Your placed bets and predictions."/>
+<style>
+  :root{
+    --bg:#0b0e13; --panel:#12151c; --ink:#e8ecf3; --muted:#9fb3c5;
+    --line:rgba(0,255,255,.18); --gold:#f0a320; --teal:#00ffff; --danger:#e85c6b; --ok:#12d48a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#000 url("/assets/media/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
 
-    .wrap{max-width:1400px;margin:0 auto;padding:14px}
-    .top{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:12px}
-    .tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .tab{padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;cursor:pointer;font-weight:700;color:#ffd78a}
-    .tab.active{background:linear-gradient(180deg,#181d26,#141923);border-color:rgba(255,187,0,.35);box-shadow:0 10px 18px rgba(0,0,0,.35) inset,0 0 0 1px rgba(255,187,0,.08)}
+  .topbar{height:64px;background:rgba(0,0,0,.7);backdrop-filter:saturate(140%) blur(6px);
+    border:1px solid var(--line);border-radius:14px;display:flex;align-items:center;justify-content:space-between;padding:0 14px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand h1{margin:0;font-size:18px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
+  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0a1016;color:#cfe;font-weight:800}
+  .pill.bad{color:#ffb7c1;border-color:#ffb7c166}
+  .pill.ok{color:#bff7db;border-color:#bff7db66}
 
-    .layout{display:grid;grid-template-columns:1fr 380px;gap:16px}
-    @media (max-width:1100px){.layout{grid-template-columns:1fr}}
+  .toolbar{display:flex;align-items:center;gap:8px;margin:12px 0}
+  .btn{padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#0f1a1f;color:#cfe;font-weight:800;cursor:pointer}
+  .btn:hover{filter:brightness(1.06)}
+  .search{flex:1;min-width:180px;background:#0f141b;border:1px solid var(--line);border-radius:10px;color:#e8ecf3;padding:9px 12px}
+  .small{font-size:12px;color:var(--muted)}
 
-    .panel{background:linear-gradient(180deg,#0e1319,#0b1016);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
-    .sectionTitle{padding:14px 16px;border-bottom:1px solid var(--line);font-weight:900;color:#ffd589}
-    .markets{display:flex;flex-direction:column;gap:12px;padding:12px}
-
-    .mkt{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-    .mHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px}
-    .mLabel{display:flex;gap:10px;align-items:center;font-weight:800}
-    .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0a1016;color:#ffd589;font-size:12px}
-
-    .options{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 8px 12px}
-    .opt{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#10151d;border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
-    .opt.active{outline:2px solid rgba(240,163,32,.6);box-shadow:0 0 0 3px rgba(240,163,32,.15)}
-    .odd{font-weight:900;color:#ffd78a}
-
-    .numBox,.textBox{padding:12px;border-top:1px dashed var(--line);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-    .numBox input,.textBox input{background:#0f141b;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--ink)}
-
-    .chips{display:flex;flex-wrap:wrap;gap:8px}
-    .chip{background:var(--chip);border:1px solid var(--chipLine);border-radius:999px;padding:8px 12px;cursor:pointer}
-    .chip.active{background:#2b3545;border-color:rgba(240,163,32,.8)}
-
-    /* Slip */
-    .slip{position:sticky;top:10px;display:flex;flex-direction:column;height:calc(100dvh - 24px)}
-    .slipHead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px}
-    .slipTabs{display:flex;gap:12px;padding:0 16px 10px}
-    .slipTab{font-weight:800;border-bottom:2px solid transparent;padding:6px 2px;cursor:pointer;color:#ffd589}
-    .slipTab.active{border-bottom-color:var(--gold)}
-    .slipBody{flex:1;overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
-    .ticket{border:1px solid var(--line);border-radius:10px;background:#0f151c;padding:10px 12px}
-    .tTop{display:flex;justify-content:space-between;gap:10px}
-    .tMeta{font-size:12px;color:#7d8596}
-    .trash{cursor:pointer;color:#ffb5be}
-    .totals{border-top:1px solid var(--line);padding:12px 16px;display:grid;gap:8px}
-    .row{display:flex;justify-content:space-between;align-items:center}
-    .amt{display:flex;gap:8px;align-items:center}
-    .amt input{width:120px;background:#0f141b;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:#1ce2ff}
-    .btn{border:none;border-radius:12px;padding:12px 16px;font-weight:900;cursor:pointer;background:linear-gradient(180deg,#f2b64a,#d49a2e);color:#1a1204;box-shadow:inset 0 -2px 0 #9a6a13,0 8px 24px rgba(0,0,0,.35)}
-    .btn:disabled{opacity:.5;cursor:not-allowed}
-    .ghost{display:flex;align-items:center;gap:8px;color:#7d8596;font-size:12px}
-    .note{padding:8px 12px;color:#c7d0e4;font-size:12px;border-left:3px solid #2d3648;background:#0f151d;border-radius:8px;margin:6px 12px}
-    .msg{font-size:12px}
-    .msg.ok{color:#9ff1c7}
-    .msg.err{color:#ffb5be}
-  </style>
-
-  <!-- Viewer + wallet from SERVER -->
-  <script>
-  (function(){
-    "use strict";
-    const up = s => String(s||"").trim().toUpperCase();
-    const sget = k => { try{ return JSON.parse(localStorage.getItem(k)||"null"); }catch{ return null; } };
-    const sset = (k,v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} };
-
-    document.documentElement.setAttribute("data-auth","checking");
-
-    async function fetchMe(){
-      // canonical: /api/viewer/me
-      try{
-        const r = await fetch("/api/viewer/me", { credentials:"include", cache:"no-store" });
-        if(r.ok){ return await r.json(); }
-      }catch{}
-      return { username:"", wallet:{ balance:0 } };
-    }
-
-    async function boot(){
-      const me = await fetchMe();
-      const USER = up(me.username||"");
-      if(!USER){
-        // bounce to login (same path as your project uses)
-        const back = encodeURIComponent(location.pathname+location.search+location.hash);
-        location.replace(`/pages/dashboard/home/login.html?redirect=${back}`);
-        return;
-      }
-      // make username globally discoverable by other pages
-      localStorage.setItem("user:username", USER);
-      localStorage.setItem("lash3z_last_user", USER);
-
-      // header paint
-      const who = document.getElementById("who");
-      const bal = document.getElementById("bal");
-      if(who) who.textContent = USER;
-      if(bal) bal.textContent = (Number(me?.wallet?.balance||0)).toLocaleString(undefined,{maximumFractionDigits:0}) + " LBX";
-
-      // expose minimal bridge
-      window.__L3Z__ = {
-        USER,
-        balance: ()=> Number(me?.wallet?.balance||0),
-        async refreshBalance(){
-          const j = await fetchMe();
-          const b = Number(j?.wallet?.balance||0);
-          const balEl = document.getElementById("bal");
-          if(balEl) balEl.textContent = b.toLocaleString(undefined,{maximumFractionDigits:0}) + " LBX";
-          return b;
-        },
-        sget, sset
-      };
-
-      document.documentElement.removeAttribute("data-auth");
-      window.dispatchEvent(new Event("l3z:ready"));
-    }
-    boot();
-  })();
-  </script>
+  .list{margin-top:16px;display:flex;flex-direction:column;gap:12px}
+  .card{background:linear-gradient(180deg,#0e1319,#0b1016);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px}
+  .head .title{font-weight:900}
+  .body{padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+  .row{display:flex;justify-content:space-between;gap:10px}
+  .meta{font-size:12px;color:var(--muted)}
+  .legs{display:flex;flex-direction:column;gap:6px}
+  .empty{margin:16px 0;border:1px dashed var(--line);border-radius:12px;padding:16px;text-align:center;color:#cfe;background:#0f151c}
+  .footer{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="top">
-      <div class="tabs">
-        <div class="tab active" data-tab="battleground">Battleground</div>
-        <div class="tab" data-tab="bonus">Bonus Hunt</div>
-        <div class="tab" data-tab="pvp">PVP</div>
-      </div>
-      <div class="pill" id="who">—</div>
-      <div class="pill" id="bal">0 LBX</div>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand">
+      <img src="/assets/l3z_logo.png" alt="LASH3Z" onerror="this.src='/assets/lash3zbux_pp.png'" style="width:36px;height:36px;border-radius:10px;border:1px solid var(--line);object-fit:cover;background:#000">
+      <h1>My Bets</h1>
     </div>
-
-    <div class="layout">
-      <!-- LEFT: Markets -->
-      <div class="panel">
-        <div class="sectionTitle" id="sectionLabel">Battleground — Custom Markets</div>
-        <div id="markets" class="markets"></div>
-        <div id="hint" class="note" style="display:none"></div>
-      </div>
-
-      <!-- RIGHT: Slip -->
-      <div class="panel slip">
-        <div class="slipHead">
-          <div style="font-weight:900;color:#ffd589">Picks <span id="slipCount" class="pill">0</span></div>
-          <div class="trash" id="clearSlip" title="Clear">🗑</div>
-        </div>
-        <div class="slipTabs">
-          <div class="slipTab active" data-mode="single">Single</div>
-          <div class="slipTab" data-mode="multi">Multi</div>
-        </div>
-        <div id="slipBody" class="slipBody"></div>
-        <div class="totals">
-          <div class="row"><div>Bet Amount</div><div class="amt"><input id="stake" type="number" min="1" max="100" step="1" value="10"/><span>LBX</span></div></div>
-          <div class="row"><div>Estimated Return</div><div id="payout">0 LBX</div></div>
-          <div id="warn" class="msg"></div>
-          <button id="submit" class="btn" disabled>Place Bet</button>
-          <div class="row" style="justify-content:space-between">
-            <div class="ghost"><label><input id="ghost" type="checkbox"/> Ghost Mode</label></div>
-            <div class="ghost">Max 100 LBX per bet.</div>
-          </div>
-        </div>
-      </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div id="bal" class="pill">0 LBX</div>
+      <div id="who" class="pill">—</div>
     </div>
   </div>
+
+  <div class="toolbar">
+    <input id="q" class="search" placeholder="Filter by event, game, pick, or status…">
+    <button id="refresh" class="btn">Refresh</button>
+    <span class="small" id="count"></span>
+  </div>
+
+  <div id="list" class="list"></div>
+</div>
 
 <script>
 (function(){
   "use strict";
-  const $=(q,r)=> (r||document).querySelector(q);
-  const $$=(q,r)=> Array.from((r||document).querySelectorAll(q));
-  const esc=s=>String(s??'').replace(/[&<>\"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
-  const kid=(p='ID')=> p+Math.random().toString(36).slice(2,10).toUpperCase();
-  const fmtLbx=n=> (Number(n)||0).toLocaleString(undefined,{maximumFractionDigits:0})+' LBX';
 
-  // wait for viewer bootstrap
-  if(!window.__L3Z__){
-    window.addEventListener("l3z:ready", init, { once:true });
-  } else { init(); }
+  // ---------- helpers ----------
+  const up  = s => String(s||'').trim().toUpperCase();
+  const esc = s => String(s??'').replace(/[&<>"']/g,m=>m==="&"?"&amp;":m==="<"?"&lt;":m===">"?"&gt;":"&quot;");
+  const sget= k => { try{ return JSON.parse(localStorage.getItem(k)||"null"); }catch{ return null; } };
+  const sset= (k,v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} };
+  const fmtL = n => (Number(n)||0).toLocaleString(undefined,{maximumFractionDigits:0})+" LBX";
 
-  function init(){
-    const { USER, sget, sset, balance, refreshBalance } = window.__L3Z__;
+  async function json(url, opt={}){
+    const ctrl = new AbortController();
+    const t = setTimeout(()=>ctrl.abort(), opt.timeout||8000);
+    try{
+      const r = await fetch(url, { credentials:"include", cache:"no-store", ...opt, signal:ctrl.signal });
+      clearTimeout(t);
+      if(!r.ok) throw new Error(r.status);
+      return await r.json();
+    }catch(e){ clearTimeout(t); throw e; }
+  }
 
-    // ===== Keys =====
-    const K_UNIFIED='sb:markets:unified';
-    const K_SUBS='sb:submitted:'+USER;     // submissions tied to logged-in user
+  // ---------- header: who + balance from SERVER (falls back to local) ----------
+  const whoEl = document.getElementById("who");
+  const balEl = document.getElementById("bal");
+  let USER = up(localStorage.getItem("user:username") || localStorage.getItem("lash3z_last_user") || "");
 
-    // ===== State =====
-    let submitted = sget(K_SUBS) || {};    // marketId -> {leg, at, section}
-    let unified   = hydrateUnified();
-    let lastSeen  = unified.lastUpdated || 0;
-    let activeTab ='battleground';
-    let slipMode  ='single';
-    let slip      = []; // {marketId, type, odds, ...}
-    let bhFilter  = {providers:[], q:''};
+  async function loadHeader(){
+    try{
+      // server canonical (cookie-based)
+      const me = await json("/api/wallet/me");
+      const u  = up(me.username || "");
+      const b  = Number(me?.wallet?.balance || 0);
+      if(u){ USER = u; localStorage.setItem("user:username", USER); localStorage.setItem("lash3z_last_user", USER); }
+      if(whoEl) whoEl.textContent = USER || "Guest";
+      if(balEl) balEl.textContent = fmtL(b);
+      return { user: USER, balance: b };
+    }catch{
+      // fallback to local markers
+      if(!USER){ USER = up(localStorage.getItem("auth:username") || ""); }
+      if(whoEl) whoEl.textContent = USER || "Guest";
+      if(balEl) balEl.textContent = fmtL( Number(sget(`lbx:wallet:${USER}`)?.balance || 0) );
+      return { user: USER, balance: Number(sget(`lbx:wallet:${USER}`)?.balance || 0) };
+    }
+  }
 
-    // Live sync with Admin publish
-    window.addEventListener('storage', (e)=>{
-      if(e.key===K_UNIFIED){
-        unified = hydrateUnified();
-        lastSeen = unified.lastUpdated||0;
-        paintTabLabels();
-        paintMarkets();
-      }
-    });
-    setInterval(()=>{
-      const latest = (sget(K_UNIFIED)||{}).lastUpdated||0;
-      if(latest && latest!==lastSeen){
-        unified = hydrateUnified();
-        lastSeen = latest;
-        paintTabLabels();
-        paintMarkets();
-      }
-    }, 2000);
+  // ---------- source of truth for bets ----------
+  // 1) Try server: /api/bets/me → { ok:true, items:[ ... ] }
+  //    Each item shape (flexible): { id, at, mode:'single'|'multi', stake, potential, status, legs:[{label, odds, meta:{...}}] }
+  // 2) Fallback: localStorage 'sb:tickets' filtered by USER (from lash3z_bets.html)
+  async function loadBets(){
+    try{
+      const j = await json("/api/bets/me");
+      if(Array.isArray(j?.items)) return j.items;
+      throw new Error("bad");
+    }catch{
+      const all = sget("sb:tickets") || [];
+      return all.filter(t => up(t.user||"") === USER).map(t => ({
+        id: t.id || ("LOC-"+Math.random().toString(36).slice(2,8)),
+        at: t.at || Date.now(),
+        mode: t.mode || "single",
+        stake: Number(t.stake||0),
+        potential: Number(t.potential || (t.mode==='multi'
+          ? (t.stake * ( (t.odds||1) ))
+          : ( (t.leg ? t.stake*(t.leg.odds||1) : 0) )) ),
+        status: t.status || "PENDING",
+        legs: t.legs || (t.leg ? [t.leg] : [])
+      }));
+    }
+  }
 
-    function hydrateUnified(){
-      const base = sget(K_UNIFIED) || {status:'open',lastUpdated:0,sections:{battleground:{overall:[]},bonus:{overall:[]},pvp:{overall:[]}}};
-      base.sections = base.sections||{};
-      base.sections.battleground = base.sections.battleground||{overall:[]};
-      base.sections.bonus        = base.sections.bonus||{overall:[]};
-      base.sections.pvp          = base.sections.pvp||{overall:[]};
-      return base;
+  // ---------- render ----------
+  const listEl  = document.getElementById("list");
+  const qEl     = document.getElementById("q");
+  const countEl = document.getElementById("count");
+
+  function match(entry, q){
+    if(!q) return true;
+    q = q.toLowerCase();
+    if((entry.status||"").toLowerCase().includes(q)) return true;
+    if((entry.mode||"").toLowerCase().includes(q)) return true;
+    for(const lg of entry.legs||[]){
+      if((lg.label||"").toLowerCase().includes(q)) return true;
+      if((lg.meta?.marketId||"").toLowerCase().includes(q)) return true;
+      if((lg.meta?.type||"").toLowerCase().includes(q)) return true;
+    }
+    return false;
+  }
+
+  function statusPill(status){
+    const s = String(status||"PENDING").toUpperCase();
+    const cls = s==="WIN"||s==="WON" ? "ok" : (s==="LOSE"||s==="LOST"||s==="VOID" ? "bad" : "");
+    return `<span class="pill ${cls}">${esc(s)}</span>`;
+  }
+
+  function render(items){
+    const q = (qEl.value||"").trim();
+    const rows = items.slice().sort((a,b)=>(b.at||0)-(a.at||0)).filter(x=>match(x,q));
+    countEl.textContent = rows.length ? rows.length+" bet"+(rows.length===1?"":"s") : "";
+
+    if(!rows.length){
+      listEl.innerHTML = '<div class="empty">No bets found yet.'+(USER?'':' Please sign in.')+'</div>';
+      return;
     }
 
-    // Wire UI
-    $$('.tab').forEach(t=> t.addEventListener('click',()=> setTab(t.dataset.tab)));
-    $$('.slipTab').forEach(t=> t.addEventListener('click',()=>{ slipMode=t.dataset.mode; updateSlipUI(); }));
-    $('#clearSlip')?.addEventListener('click',()=>{ slip=[]; updateSlipUI(); });
-    $('#stake')?.addEventListener('input', updateTotals);
-    $('#submit')?.addEventListener('click', submitBet);
+    listEl.innerHTML = rows.map(t=>{
+      const when = new Date(t.at||Date.now()).toLocaleString();
+      const legs = (t.legs||[]).map((lg,i)=>`
+        <div class="row">
+          <div>${i+1}. ${esc(lg.label||"")}</div>
+          <div class="meta">${lg.odds ? ("Odds "+Number(lg.odds).toFixed(2)+"×") : ""}</div>
+        </div>
+      `).join("");
 
-    setTab(activeTab);
-    paintTabLabels();
-    paintMarkets();
-    refreshBalance();
+      return `
+      <article class="card">
+        <div class="head">
+          <div class="title">Ticket <span class="meta">#${esc(t.id||"—")}</span></div>
+          <div class="meta">${esc(when)}</div>
+        </div>
+        <div class="body">
+          <div class="legs">${legs || '<div class="meta">No legs</div>'}</div>
+          <div class="footer">
+            <span class="pill">Mode: ${esc((t.mode||'single').toUpperCase())}</span>
+            <span class="pill">Stake: ${fmtL(t.stake||0)}</span>
+            <span class="pill">Potential: ${fmtL(t.potential||0)}</span>
+            ${statusPill(t.status)}
+          </div>
+        </div>
+      </article>`;
+    }).join("");
+  }
 
-    // Tabs
-    function setTab(tab){
-      activeTab=tab;
-      $$('.tab').forEach(x=> x.classList.toggle('active', x.dataset.tab===tab));
-      $('#sectionLabel').textContent=(tab==='battleground'?'Battleground':tab==='bonus'?'Bonus Hunt':'PVP')+' — Custom Markets';
-      paintMarkets();
+  // ---------- boot / events ----------
+  document.getElementById("refresh").addEventListener("click", async ()=>{
+    await loadHeader();
+    const items = await loadBets();
+    render(items);
+  });
+  qEl.addEventListener("input", async ()=>{
+    const items = await loadBets();
+    render(items);
+  });
+
+  (async function boot(){
+    await loadHeader();
+    const items = await loadBets();
+    render(items);
+  })();
+
+  // keep header balance fresh if another tab changes it
+  window.addEventListener("storage", e=>{
+    if(e.key==="user:username" || e.key==="lash3z_last_user" || (e.key||"").startsWith("lbx:wallet:")){
+      loadHeader();
     }
-
-    // Bonus Hunt slot list (optional TEXT_GUESS support)
-    function bhSlotList(){
-      const src = sget('bh:live') || sget('bh:draft');
-      const arr=[];
-      if(src && Array.isArray(src.entries)){
-        src.entries.forEach(e=>{
-          const name = e.slot || e.name || e.game || ''; if(!name) return;
-          const prov = e.provider || e.gameProvider || e.vendor || '';
-          arr.push({name, provider:prov});
-        });
-      }
-      const seen={}, res=[]; arr.forEach(x=>{ if(!seen[x.name]){ seen[x.name]=1; res.push(x); }});
-      return res;
-    }
-
-    // Painting
-    function paintTabLabels(){
-      const counts={
-        battleground:(unified.sections.battleground.overall||[]).length,
-        bonus:(unified.sections.bonus.overall||[]).length,
-        pvp:(unified.sections.pvp.overall||[]).length
-      };
-      $$('.tab').forEach(t=>{
-        const key=t.dataset.tab;
-        const n=counts[key]||0;
-        t.innerHTML = (key==='bonus'?'Bonus Hunt':key.toUpperCase()[0]+key.slice(1)) + (n?` <span class="pill">${n}</span>`:'');
-      });
-    }
-
-    function paintMarkets(){
-      const host=$('#markets'); host.innerHTML='';
-      const sec=(unified.sections[activeTab]||{overall:[]});
-      const mkts=sec.overall||[];
-
-      const hint=$('#hint');
-      if(!mkts.length){
-        hint.style.display='';
-        hint.textContent = 'No markets here yet. Hit “Publish to Players” in Admin for this tab.';
-      }else{
-        hint.style.display='none';
-      }
-      mkts.forEach(m=> host.appendChild(marketCard(m)));
-    }
-
-    const isLocked=m=> String(m.status||'open').toLowerCase()==='locked';
-    const isSubmitted=marketId=> !!submitted[marketId];
-    const saveSubmitted=()=> sset(K_SUBS, submitted);
-
-    function marketCard(m){
-      const card=document.createElement('div'); card.className='mkt';
-      const locked=isLocked(m); const already=isSubmitted(m.id);
-
-      const head=document.createElement('div'); head.className='mHead';
-      head.innerHTML='<div class="mLabel">'+(locked?'🔒 ':'📦 ')+'<span>'+esc(m.label||m.type)+'</span></div>'
-                    +'<div class="pill">'+esc((m.status||'open').toUpperCase())+'</div>';
-      card.appendChild(head);
-
-      if(already){
-        const bar=document.createElement('div'); bar.className='numBox';
-        bar.innerHTML='<span class="pill">Submitted ✓</span>'+(locked?'':' <button class="chip" data-act="undo">Undo</button>');
-        if(!locked){ bar.querySelector('[data-act="undo"]')?.addEventListener('click',()=>undoSubmit(m.id)); }
-        card.appendChild(bar);
-      }
-
-      if(['OVER_UNDER','YES_NO','MULTI_RANGE','CUSTOM'].includes(m.type)){
-        const box=document.createElement('div'); box.className='options';
-        (m.selections||[]).forEach((s,idx)=>{
-          const o=document.createElement('div'); o.className='opt'; o.dataset.idx=idx;
-          if(locked||already) o.style.pointerEvents='none';
-          o.classList.toggle('active', slip.some(x=> x.marketId===m.id && x.selIdx==idx));
-          o.innerHTML='<div>'+esc(s.label||'Option')+'</div><div class="odd">'+Number(s.odds||1).toFixed(2)+'×</div>';
-          o.addEventListener('click',()=> togglePick(m,{ idx, label:s.label, odds:Number(s.odds||1) }, o));
-          box.appendChild(o);
-        });
-        card.appendChild(box);
-      }
-
-      if(m.type==='NUMERIC_GUESS'){
-        const nb=document.createElement('div'); nb.className='numBox';
-        nb.innerHTML='<span class="pill">Enter your guess</span><input type="number" step="0.01" placeholder="0" style="width:180px" '+(locked||already?'disabled':'')+' />'
-                    +'<button class="chip" type="button" '+(locked||already?'disabled':'')+'>Add to Slip</button>';
-        const input=nb.querySelector('input'); const btn=nb.querySelector('button');
-        btn?.addEventListener('click',()=>{ const v=input?.value.trim(); if(!v) return; addToSlip(m,{type:'guess',guess:Number(v)}); if(input) input.value=''; });
-        card.appendChild(nb);
-      }
-
-      if(m.type==='TEXT_GUESS'){
-        const list = activeTab==='bonus' ? bhSlotList() : [];
-        const box=document.createElement('div'); box.className='textBox';
-        if(list.length){
-          const provs=[]; list.forEach(x=>{ if(x.provider && !provs.includes(x.provider)) provs.push(x.provider); });
-          const filterBar=document.createElement('div'); filterBar.className='chips';
-          const allBtn=document.createElement('div'); allBtn.className='chip active'; allBtn.textContent='All';
-          filterBar.appendChild(allBtn);
-          provs.forEach(p=>{
-            const b=document.createElement('div'); b.className='chip'; b.textContent=p;
-            b.addEventListener('click',()=>{ $$('.chip',filterBar).forEach(x=>x.classList.remove('active')); b.classList.add('active'); bhFilter.providers=[p]; renderChips(); });
-            filterBar.appendChild(b);
-          });
-          const q=document.createElement('input'); q.placeholder='Search slot'; q.style.minWidth='200px';
-          q.addEventListener('input',()=>{ bhFilter.q=q.value.toLowerCase(); renderChips(); });
-          filterBar.appendChild(q);
-          box.appendChild(filterBar);
-
-          const wrap=document.createElement('div'); wrap.className='chips'; box.appendChild(wrap);
-          if(locked||already) wrap.style.pointerEvents='none';
-
-          function renderChips(){
-            wrap.innerHTML='';
-            const filtered=list.filter(x=>{
-              const passProv=!bhFilter.providers.length || (x.provider && bhFilter.providers.includes(x.provider));
-              const passQ=!bhFilter.q || x.name.toLowerCase().includes(bhFilter.q);
-              return passProv && passQ;
-            });
-            filtered.forEach(o=>{
-              const c=document.createElement('div'); c.className='chip'; c.textContent=o.name;
-              c.addEventListener('click',()=>{ $$('.chip',wrap).forEach(x=>x.classList.remove('active')); c.classList.add('active'); addToSlip(m,{type:'text',guess:o.name}); });
-              wrap.appendChild(c);
-            });
-          }
-          allBtn.addEventListener('click',()=>{ bhFilter.providers=[]; $$('.chip',filterBar).forEach(x=>x.classList.remove('active')); allBtn.classList.add('active'); renderChips(); });
-          renderChips();
-        }else{
-          box.innerHTML='<span class="pill">Your pick</span><input placeholder="Type the slot name" style="min-width:240px" '+(locked||already?'disabled':'')+' />'
-                       +'<button class="chip" type="button" '+(locked||already?'disabled':'')+'>Add</button>';
-          const ti=box.querySelector('input'), tb=box.querySelector('button');
-          tb?.addEventListener('click',()=>{ const v=ti?.value.trim(); if(!v) return; addToSlip(m,{type:'text',guess:v}); if(ti) ti.value=''; });
-        }
-        card.appendChild(box);
-      }
-
-      return card;
-    }
-
-    // Picks / slip
-    function addToSlip(m, payload){
-      if(isLocked(m) || isSubmitted(m.id)) return;
-      const item={ id:kid('T'), section:activeTab, marketId:m.id, label:m.label||m.type, mtype:m.type };
-      if(payload.type==='selection'){ item.type='selection'; item.selIdx=payload.idx; item.selLabel=payload.label; item.odds=Number(payload.odds||1); }
-      if(payload.type==='guess'){ item.type='guess'; item.guess=payload.guess; item.odds=Number(m.fixedOdds||1.84); }
-      if(payload.type==='text'){ item.type='text'; item.guess=String(payload.guess); item.odds=Number(m.fixedOdds||1.84); }
-      if(slipMode==='single'){ slip = slip.filter(x=> x.marketId!==item.marketId); }
-      slip.push(item); updateSlipUI();
-    }
-    function togglePick(m, sel, node){
-      if(isLocked(m) || isSubmitted(m.id)) return;
-      const i=slip.findIndex(x=> x.marketId===m.id && x.type==='selection' && x.selIdx===sel.idx);
-      if(i>=0){ slip.splice(i,1); node?.classList.remove('active'); }
-      else{ addToSlip(m,{type:'selection',idx:sel.idx,label:sel.label,odds:sel.odds}); node?.classList.add('active'); }
-      updateSlipUI();
-    }
-    function undoSubmit(marketId){
-      if(!submitted[marketId]) return;
-      delete submitted[marketId]; saveSubmitted();
-      paintMarkets(); updateSlipUI();
-      setMsg('Submission undone.', true);
-    }
-
-    function updateSlipUI(){
-      const body=$('#slipBody'); body.innerHTML='';
-      $('#slipCount').textContent=slip.length;
-      if(!slip.length){ body.innerHTML='<div class="note">Your selections will appear here.</div>'; }
-      slip.forEach((t,i)=>{
-        const row=document.createElement('div'); row.className='ticket';
-        const subtitle = t.type==='selection' ? esc(t.selLabel||'') : (t.type==='guess' ? ('Guess: '+esc(t.guess)) : ('Pick: '+esc(t.guess)));
-        row.innerHTML='<div class="tTop"><div><div style="font-weight:800">'+esc(t.label)+'</div><div class="tMeta">'+subtitle+'</div></div>'
-                     +'<div class="trash" data-i="'+i+'">✖</div></div>'
-                     +(t.odds?'<div class="tMeta" style="margin-top:6px">Odds ~ '+Number(t.odds).toFixed(2)+'×</div>':'');
-        row.querySelector('.trash')?.addEventListener('click',()=>{ slip.splice(i,1); updateSlipUI(); });
-        body.appendChild(row);
-      });
-
-      const multiTab=$$('.slipTab').find(x=> x.dataset.mode==='multi');
-      const hasNoOdds=slip.some(x=> !x.odds);
-      if(hasNoOdds && slipMode==='multi') slipMode='single';
-      if(multiTab){ multiTab.style.opacity=hasNoOdds ? .4 : 1; multiTab.style.pointerEvents=hasNoOdds?'none':'auto'; }
-
-      updateTotals();
-    }
-
-    function updateTotals(){
-      const stakeEl=$('#stake');
-      const stake = Number(stakeEl?.value||0) || 0;
-      const bal = balance();
-
-      let est=0;
-      if(slipMode==='single'){ est = slip.reduce((a,x)=> a + (stake * (x.odds||1)), 0); }
-      else{ est = stake * slip.reduce((p,x)=> p*(x.odds||1), 1); }
-      $('#payout').textContent=fmtLbx(est);
-
-      const totalStake = (slipMode==='single') ? stake * slip.length : stake;
-
-      let warn='';
-      if(!slip.length) warn='Add at least one selection.';
-      else if(!(stake>0)) warn='Enter your bet amount.';
-      else if(totalStake>100) warn='Max 100 LBX per bet.';
-      else if(totalStake>bal) warn='Insufficient balance ('+fmtLbx(bal)+').';
-
-      setMsg(warn||'', !warn);
-      const btn=$('#submit'); if(btn) btn.disabled=!!warn;
-    }
-
-    function setMsg(text, ok){
-      const w=$('#warn'); if(!w) return;
-      w.textContent=text||''; w.className='msg'+(text?(ok?' ok':' err'):'');
-    }
-
-    // ---- SERVER: place bet ----
-    async function submitBet(){
-      const stakeEl=$('#stake');
-      const stake = Number(stakeEl?.value||0) || 0;
-      const totalStake = (slipMode==='single') ? stake * slip.length : stake;
-      const bal = balance();
-      if(!(slip.length && stake>0 && totalStake<=100 && totalStake<=bal)){ updateTotals(); return; }
-      if($('#ghost')?.checked){ setMsg('Ghost mode: not placing on server.', true); return; }
-
-      try{
-        const legs = (slipMode==='single')
-          ? slip.map(x=>({ label:x.selLabel || x.label || '', odds:+(x.odds||1), kind:x.mtype||'', meta:{ marketId:x.marketId, type:x.type, guess:x.guess??null, selIdx:x.selIdx??null } }))
-          : slip.map(x=>({ label:x.selLabel || x.label || '', odds:+(x.odds||1), kind:x.mtype||'', meta:{ marketId:x.marketId, type:x.type, guess:x.guess??null, selIdx:x.selIdx??null } }));
-
-        const potential = (slipMode==='single')
-          ? slip.reduce((a,x)=> a + (stake * (x.odds||1)), 0)
-          : stake * slip.reduce((p,x)=> p*(x.odds||1), 1);
-
-        const r = await fetch('/api/bets/place', {
-          method:'POST',
-          headers:{'content-type':'application/json'},
-          credentials:'include',
-          cache:'no-store',
-          body: JSON.stringify({
-            mode: activeTab,
-            type: slipMode,
-            stake: totalStake,
-            potential: Math.round(potential),
-            legs
-          })
-        });
-        const j = await r.json();
-        if(!r.ok || !j.ok){
-          if(j.error === 'INSUFFICIENT'){ setMsg('Insufficient LBX to place this bet.', false); return; }
-          throw new Error(j.error||'Failed');
-        }
-
-        // reflect server balance
-        await refreshBalance();
-
-        // mark submitted (per market)
-        const at=Date.now();
-        slip.forEach(leg=>{ if(!submitted[leg.marketId]) submitted[leg.marketId]={leg, at, section:leg.section}; });
-        sset(K_SUBS, submitted);
-
-        // reset UI
-        slip=[]; updateSlipUI(); paintMarkets(); if(stakeEl) stakeEl.value=10; updateTotals();
-        setMsg('Bet placed for '+fmtLbx(totalStake)+'!', true);
-      }catch(e){
-        setMsg('Could not place bet: '+(e.message||'network error'), false);
-      }
-    }
-  } // init
+  });
 })();
 </script>
 </body>
