@@ -1,261 +1,227 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>My Profile — L3Z</title>
-<style>
-  :root{
-    --bg:#0b0e13;--panel:#12151c;--ink:#e8ecf3;--muted:#9fb3c5;--line:rgba(0,255,255,.18);
-    --ok:#12d48a;--warn:#f0a320;--bad:#ff8aa0;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;background:#000 url("/assets/media/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-
-  .wrap{max-width:1100px;margin:22px auto;padding:0 16px}
-  .top{display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,.6);
-       border:1px solid var(--line);border-radius:14px;padding:10px 14px}
-  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0b1016;color:#cfe;font-weight:800}
-  h1{margin:0;font-size:18px}
-
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
-  @media (max-width:900px){.grid{grid-template-columns:1fr}}
-
-  .card{background:linear-gradient(180deg,#0e1319,#0b1016);border:1px solid var(--line);
-        border-radius:14px;overflow:hidden}
-  .card h2{margin:0;padding:12px 14px;border-bottom:1px solid var(--line);font-size:15px}
-  .body{padding:12px 14px}
-
-  .row{display:flex;align-items:center;justify-content:space-between;margin:6px 0}
-  .muted{color:var(--muted)}
-  .hint{font-size:12px;color:#cfe;background:#0e141b;border-left:3px solid #263447;border-radius:8px;padding:8px 10px}
-
-  .btn{padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#0f1a1f;color:#cfe;font-weight:800;cursor:pointer}
-  .btn[disabled]{opacity:.6;cursor:not-allowed}
-  .btn.ok{background:linear-gradient(180deg,#30e0a1,#17b77e);color:#07261b;border-color:#1bb984}
-  .btn.warn{background:linear-gradient(180deg,#ffd37a,#f0a320);color:#231600;border-color:#f0a320}
-
-  table{width:100%;border-collapse:collapse}
-  th,td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.06);text-align:left}
-  th{font-size:12px;color:#a9b8c8}
-  td.pos{color:#bff7db}
-  td.neg{color:#ffb7c1}
-
-  .krow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-</style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Profile — L3Z</title>
+  <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
+  <style>
+    :root{--bg:#0b0f14;--panel:#11161d;--ink:#e9f1ff;--line:rgba(0,255,255,.18);
+          --gold:#ffcc66;--ok:#12d48a;--bad:#ff8fa0;--chip:#0c141a}
+    *{box-sizing:border-box}
+    html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial,sans-serif}
+    a{color:#9bd3ff;text-decoration:none}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    .top{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0a1016;color:#cfe;font-weight:800}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media (max-width:980px){.grid{grid-template-columns:1fr}}
+    .card{background:linear-gradient(180deg,#0f131a,#0a0f15);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+    .head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
+    .head h2{margin:0;font-size:14px;letter-spacing:.3px;color:#ffd78a}
+    .body{padding:12px 14px;display:grid;gap:10px}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .row>label{min-width:120px;color:#cbd5e1}
+    input,textarea,select,button{
+      background:#0f141b;border:1px solid var(--line);color:var(--ink);
+      border-radius:10px;padding:10px 12px;font-size:14px
+    }
+    textarea{min-height:80px;width:100%}
+    button{cursor:pointer;font-weight:800}
+    button.primary{background:linear-gradient(180deg,#f5c462,#d49a2e);color:#1a1204;border:none}
+    button.ghost{background:#111a22}
+    .ok{color:var(--ok)} .err{color:var(--bad)} .muted{color:#9fb3c5}
+    .badge{display:inline-flex;align-items:center;gap:6px;background:var(--chip);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:6px 10px}
+    .list{display:grid;gap:8px;max-height:280px;overflow:auto}
+    .item{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;background:#0d141b;border:1px solid var(--line);border-radius:10px}
+    .small{font-size:12px;color:#9fb3c5}
+  </style>
 </head>
 <body>
 <div class="wrap">
   <div class="top">
-    <h1>Welcome, <span id="welcomeName">PLAYER</span></h1>
-    <div class="pill">LBX <span id="bal">0</span></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <img src="/assets/l3z_logo.png" alt="" style="width:36px;height:36px;border-radius:10px;border:1px solid var(--line)">
+      <div class="pill">Profile</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="pill" id="whoami">—</div>
+      <div class="pill"><span id="walletBalance">0 LBX</span></div>
+      <a class="pill" href="/admin/tools.html" style="border-color:#3a5166">Admin</a>
+      <button class="ghost" id="logoutBtn">Logout</button>
+    </div>
   </div>
 
   <div class="grid">
-    <!-- Overview / Rewards -->
-    <div class="card">
-      <h2>Overview</h2>
+    <!-- Profile -->
+    <section class="card" id="kickSection">
+      <div class="head"><h2>Kick Link</h2><div class="badge">profile</div></div>
       <div class="body">
-        <div class="row">
-          <div class="muted">Balance</div>
-          <div><b id="bal2">0</b> LBX</div>
-        </div>
+        <div class="row"><label>Kick URL</label><input id="kickLink" placeholder="https://kick.com/yourname" /></div>
+        <div class="row"><label>Display Name</label><input id="displayName" placeholder="(optional)" /></div>
+        <div class="row"><label>Country</label><input id="country" placeholder="(optional)" /></div>
+        <div class="row"><label>Avatar URL</label><input id="avatarUrl" placeholder="https://..." /></div>
         <div class="row" style="gap:10px">
-          <div>
-            <div class="muted">Daily Reward</div>
-            <div id="dailyNote" class="muted" style="font-size:12px"></div>
-          </div>
-          <div>
-            <button id="dailyBtn" class="btn ok">Claim +5 LBX</button>
-          </div>
+          <button id="saveKick" class="primary">Save</button>
+          <button id="saveProfile" class="ghost">Save Profile</button>
+          <span id="kickStatus" class="muted"></span>
         </div>
-        <div id="msg" class="hint" style="display:none"></div>
+        <div class="small">Kick link is for display; no OAuth required right now.</div>
       </div>
-    </div>
+    </section>
 
-    <!-- Connected accounts (placeholder glue-friendly) -->
-    <div class="card">
-      <h2>Connected Accounts</h2>
+    <!-- Wallet -->
+    <section class="card">
+      <div class="head"><h2>Wallet</h2><div class="badge">LBX</div></div>
       <div class="body">
-        <div class="krow">
-          <span class="muted">Kick</span>
-          <button id="kickLinkBtn" class="btn">Link Kick</button>
-          <span id="kickStatus" class="muted">No account linked</span>
+        <div class="row"><label>Balance</label><div id="balanceOut">0 LBX</div></div>
+        <div class="row" style="gap:10px">
+          <button id="refreshMe" class="ghost">Refresh</button>
+          <span id="walletStatus" class="muted"></span>
         </div>
+        <div class="small">LBX updates instantly when you redeem promos or place/cancel bets.</div>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <!-- Ledger -->
-  <div class="card" style="margin-top:14px">
-    <h2>Ledger</h2>
-    <div class="body" style="padding:0">
-      <table id="ledger">
-        <thead>
-          <tr><th style="width:180px">When</th><th>Reason</th><th style="width:120px">Δ LBX</th><th style="width:120px">Balance</th></tr>
-        </thead>
-        <tbody>
-          <tr><td colspan="4" class="muted" style="padding:14px">Loading…</td></tr>
-        </tbody>
-      </table>
-    </div>
+    <!-- Transactions -->
+    <section class="card">
+      <div class="head"><h2>Transactions</h2><div class="badge">latest</div></div>
+      <div class="body">
+        <div class="row" style="justify-content:space-between">
+          <div class="small">Recent LBX movements</div>
+          <button class="ghost" id="refreshTx">Refresh</button>
+        </div>
+        <div id="txList" class="list"></div>
+      </div>
+    </section>
+
+    <!-- Bets -->
+    <section class="card">
+      <div class="head"><h2>Bets</h2><div class="badge">recent</div></div>
+      <div class="body">
+        <div class="row" style="justify-content:space-between">
+          <div class="small">Your recent bets</div>
+          <button class="ghost" id="refreshBets">Refresh</button>
+        </div>
+        <div id="betsList" class="list"></div>
+      </div>
+    </section>
   </div>
 </div>
 
+<!-- API helper and (optionally) auth bootstrap for header paint -->
+<script src="/assets/api-base.js"></script>
 <script>
 (function(){
-  "use strict";
-  const $  = (s, r) => (r || document).querySelector(s);
-  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
-  const fmt = (n) => Number(n || 0).toLocaleString(undefined,{maximumFractionDigits:0});
-  const fmtTs = (ts) => { try { return new Date(ts).toLocaleString(); } catch { return "—"; } };
+  const $ = (s,r=document)=>r.querySelector(s);
+  const who=$("#whoami"), bal=$("#walletBalance"), balanceOut=$("#balanceOut");
+  const kickInput=$("#kickLink"), displayName=$("#displayName"), country=$("#country"), avatarUrl=$("#avatarUrl");
+  const kickStatus=$("#kickStatus"), walletStatus=$("#walletStatus");
+  const txList=$("#txList"), betsList=$("#betsList");
 
-  // Resolve username from cookie-backed API; fall back to local markers
-  let USER = (window.__L3Z__?.USER || localStorage.getItem("user:username") || localStorage.getItem("lash3z_last_user") || "").toUpperCase();
-
-  const welcomeName = $("#welcomeName");
-  const balEl  = $("#bal");
-  const balEl2 = $("#bal2");
-  const tbody  = $("#ledger tbody");
-  const msgEl  = $("#msg");
-  const dailyBtn  = $("#dailyBtn");
-  const dailyNote = $("#dailyNote");
-
-  async function api(path, opt){
-    const r = await fetch(path, { credentials:"include", cache:"no-store", ...(opt||{}) });
-    if(!r.ok) throw new Error("HTTP "+r.status);
-    return r.json();
+  function fmtLBX(n){ return `${Number(n||0).toLocaleString()} LBX`; }
+  function item(label, value, extra=""){
+    const div=document.createElement("div");
+    div.className="item";
+    div.innerHTML=`<div>${label}</div><div class="small">${value}${extra?` — ${extra}`:""}</div>`;
+    return div;
   }
 
-  function setMsg(text, show=true){
-    if(!msgEl) return;
-    msgEl.textContent = text || "";
-    msgEl.style.display = show && text ? "" : "none";
-  }
-
-  function withRunningBalances(ledger, currentBalance){
-    const rows = Array.isArray(ledger) ? [...ledger] : [];
-    rows.sort((a,b)=> new Date(b.ts) - new Date(a.ts));
-    let running = Number(currentBalance || 0);
-    return rows.map(r => {
-      const delta = Number(r.delta || 0);
-      const row = { ts:r.ts, reason:String(r.reason||"").toUpperCase(), delta, balance: running };
-      running -= delta;
-      return row;
-    });
-  }
-
-  function renderLedger(rows){
-    if (!tbody) return;
-    if (!rows.length){
-      tbody.innerHTML = '<tr><td colspan="4" class="muted" style="padding:14px">No transactions yet.</td></tr>';
-      return;
-    }
-    tbody.innerHTML = rows.map(r => `
-      <tr>
-        <td>${fmtTs(r.ts)}</td>
-        <td>${r.reason || "—"}</td>
-        <td class="${r.delta >= 0 ? 'pos' : 'neg'}">${r.delta >= 0 ? '+' : ''}${fmt(r.delta)}</td>
-        <td>${fmt(r.balance)}</td>
-      </tr>
-    `).join("");
-  }
-
-  function paintHeader(name, balance){
-    if (welcomeName) welcomeName.textContent = (name || USER || "PLAYER");
-    if (balEl)  balEl.textContent  = fmt(balance);
-    if (balEl2) balEl2.textContent = fmt(balance);
-  }
-
-  function setDailyUI(remainingMs){
-    if (remainingMs > 0){
-      dailyBtn.disabled = true;
-      dailyBtn.classList.remove("ok"); dailyBtn.classList.add("warn");
-      dailyBtn.textContent = "Ready";
-      // simple countdown text
-      const hrs = Math.floor(remainingMs/3600000);
-      const mins = Math.floor((remainingMs%3600000)/60000);
-      dailyNote.textContent = `Next claim in ${hrs}h ${mins}m`;
-    } else {
-      dailyBtn.disabled = false;
-      dailyBtn.classList.remove("warn"); dailyBtn.classList.add("ok");
-      dailyBtn.textContent = "Claim +5 LBX";
-      dailyNote.textContent = "Claim once every 24 hours.";
-    }
-  }
-
-  async function loadWallet(){
-    try {
-      const j = await api("/api/wallet/me");
-      USER = (j?.username || USER || "").toUpperCase();
-      localStorage.setItem("user:username", USER);
-      localStorage.setItem("lash3z_last_user", USER);
-
-      const balance = Number(j?.wallet?.balance || 0);
-      const ledger  = Array.isArray(j?.wallet?.ledger) ? j.wallet.ledger : [];
-      const remainingMs = Number(j?.rewards?.daily?.remainingMs || 0);
-
-      paintHeader(USER, balance);
-      setDailyUI(remainingMs);
-
-      const rows = withRunningBalances(ledger, balance);
-      renderLedger(rows);
-      setMsg(""); // clear
-    } catch (e) {
-      console.error("Wallet load failed", e);
-      setMsg("Failed to load wallet from server. Showing cached info if available.");
-      // fallback to cached local (if any)
-      const lw = JSON.parse(localStorage.getItem(`lbx:wallet:${USER}`) || "null");
-      paintHeader(USER, Number(lw?.balance || 0));
-      if (tbody){
-        tbody.innerHTML = '<tr><td colspan="4" class="muted" style="padding:14px">No server connection.</td></tr>';
-      }
-    }
-  }
-
-  async function claimDaily(){
+  async function refreshMe(){
     try{
-      dailyBtn.disabled = true;
-      const r = await api("/api/rewards/daily", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({}) });
-      if(r?.ok){
-        setMsg(`+${r.added} LBX added!`, true);
-        await loadWallet();
-      }else if(r?.error === "NOT_YET"){
-        setMsg("Daily already claimed. Try again later.");
-        await loadWallet();
-      }else{
-        throw new Error("claim_failed");
-      }
+      const j = await api.get("/api/me");
+      const u = j?.user || {};
+      const balNum = Number((u.wallet && u.wallet.balance) ?? u.balance ?? u.lbx ?? 0);
+      who.textContent = u.username || "—";
+      bal.textContent = fmtLBX(balNum);
+      balanceOut.textContent = fmtLBX(balNum);
+      if (u.kickLink) kickInput.value = u.kickLink;
+      if (u.displayName) displayName.value = u.displayName;
+      if (u.country) country.value = u.country;
+      if (u.avatarUrl) avatarUrl.value = u.avatarUrl;
+
+      // if navigated with #kick, focus the field
+      if (location.hash === "#kick") kickInput.focus();
     }catch(e){
-      console.error(e);
-      setMsg("Could not claim right now.");
-      dailyBtn.disabled = false;
+      who.textContent="(not logged in)";
+      bal.textContent=fmtLBX(0);
+      balanceOut.textContent=fmtLBX(0);
+      console.warn("me failed", e);
     }
   }
 
-  // events
-  dailyBtn?.addEventListener("click", claimDaily);
+  async function refreshTx(){
+    txList.innerHTML="";
+    try{
+      const j = await api.get("/api/tx/history");
+      (j.tx||[]).slice(0,50).forEach(t=>{
+        const label = t.type.replace(/_/g," ");
+        txList.appendChild(item(label, fmtLBX(t.amount), new Date(t.createdAt).toLocaleString()));
+      });
+    }catch(e){
+      txList.appendChild(item("Error loading transactions", e.message||"failed"));
+    }
+  }
 
-  // boot + keep balance fresh when other tabs change it
-  loadWallet();
-  window.addEventListener("storage", (e)=>{
-    if(!e.key) return;
-    if(e.key==="user:username" || e.key==="lash3z_last_user" || e.key.startsWith("lbx:wallet:")){
-      loadWallet();
+  async function refreshBets(){
+    betsList.innerHTML="";
+    try{
+      const j = await api.get("/api/bets/history");
+      (j.bets||[]).slice(0,50).forEach(b=>{
+        const st = b.status + (b.payout!=null?` (${b.payout>0?"+":""}${b.payout})`:"");
+        betsList.appendChild(item(b.game||"—", fmtLBX(b.amount), st));
+      });
+    }catch(e){
+      betsList.appendChild(item("Error loading bets", e.message||"failed"));
+    }
+  }
+
+  // Save Kick link only
+  $("#saveKick")?.addEventListener("click", async ()=>{
+    kickStatus.textContent="Saving…"; kickStatus.className="muted";
+    try{
+      await api.post("/api/profile/kick_link",{ kickLink: (kickInput.value||"").trim() });
+      kickStatus.textContent="Saved."; kickStatus.className="ok";
+      await refreshMe();
+    }catch(e){
+      kickStatus.textContent=e.message||"failed"; kickStatus.className="err";
     }
   });
 
-  // stub for Kick link (wire into your verifier later)
-  $("#kickLinkBtn")?.addEventListener("click", ()=> {
-    // open your OAuth flow or local bridge
-    window.location.href = "/pages/dashboard/home/kick_oauth_start.html";
+  // Save extended profile fields
+  $("#saveProfile")?.addEventListener("click", async ()=>{
+    kickStatus.textContent="Saving profile…"; kickStatus.className="muted";
+    try{
+      const body = {
+        displayName: (displayName.value||"").trim(),
+        country: (country.value||"").trim(),
+        avatarUrl: (avatarUrl.value||"").trim(),
+      };
+      await api.post("/api/profile/update", body);
+      kickStatus.textContent="Profile updated."; kickStatus.className="ok";
+      await refreshMe();
+    }catch(e){
+      kickStatus.textContent=e.message||"failed"; kickStatus.className="err";
+    }
   });
-})();
-</script>
 
-<!-- viewer glue (your existing script can live here if needed) -->
-<script id="viewer-glue">
-  /* left intentionally blank to keep your existing glue compatible */
+  // Manual refresh buttons
+  $("#refreshMe")?.addEventListener("click", refreshMe);
+  $("#refreshTx")?.addEventListener("click", refreshTx);
+  $("#refreshBets")?.addEventListener("click", refreshBets);
+
+  // Logout
+  $("#logoutBtn")?.addEventListener("click", async ()=>{
+    try{ await api.post("/api/auth/logout",{}); }catch{}
+    location.href="/pages/dashboard/home/login.html";
+  });
+
+  // Boot
+  (async function(){
+    await refreshMe();
+    await Promise.all([refreshTx(), refreshBets()]);
+  })();
+})();
 </script>
 </body>
 </html>
