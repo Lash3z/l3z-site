@@ -323,7 +323,6 @@ app.use(express.static(PUBLIC_DIR, {
     }
   }
 }));
-
 /* =================================================================== */
 /* ===================== WALLET / VIEWER SESSION ===================== */
 /* =================================================================== */
@@ -751,1039 +750,129 @@ app.post("/api/admin/promo/create", verifyAdminToken, async (req, res) => {
     res.status(500).json({ ok:false, error:"SERVER" });
   }
 });
+// ===== Wallet: welcome bonus + daily LBX claim =====
 
-// Batch generate
-app.post("/api/admin/promo/generate", verifyAdminToken, async (req, res) => {
-  try {
-    let { prefix = "L3Z", amount, count, maxRedemptions=1, perUserLimit=1, expiresAt=null, notes="" } = req.body || {};
-    amount = Number(amount);
-    count = Math.min(5000, Number(count || 1));
-    if (!PROMO_ALLOWED_AMOUNTS.has(amount)) return res.status(400).json({ ok:false, error:"INVALID_AMOUNT" });
-    if (count < 1) return res.status(400).json({ ok:false, error:"COUNT_INVALID" });
+// helper: get or init wallet
+async function getWallet(username) {
+  username = String(username || "").toUpperCase();
+  if (!username) return { balance: 0, ledger: [] };
 
-    const now = new Date();
-    const mkCode = () => `${normCode(prefix)}-${amount}-${crypto.randomBytes(6).toString("base64").replace(/[^A-Z0-9]/gi,"").slice(0,7).toUpperCase()}`;
-
-    if (globalThis.__dbReady) {
-      const pc = globalThis.__db.collection("promo_codes");
-      const docs = Array.from({ length: count }).map(() => ({
-        code: mkCode(),
-        amount,
-        maxRedemptions: Number(maxRedemptions),
-        perUserLimit: Number(perUserLimit),
-        redeemedCount: 0,
-        active: true,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-        createdBy: req.adminUser || "admin",
-        notes: String(notes || ""),
-        createdAt: now,
-        updatedAt: now,
-      }));
-      await pc.insertMany(docs, { ordered: false });
-      return res.json({ ok:true, generated: docs.length, sample: docs.slice(0,5).map(d=>d.code) });
-    } else {
-      const docs = [];
-      for (let i=0;i<count;i++){
-        let c; do { c = mkCode(); } while ((memory.promoCodes||[]).some(p => p.code === c));
-        docs.push({
-          code: c, amount,
-          maxRedemptions: Number(maxRedemptions),
-          perUserLimit: Number(perUserLimit),
-          redeemedCount: 0,
-          active: true,
-          expiresAt: expiresAt ? new Date(expiresAt) : null,
-          createdBy: req.adminUser || "admin",
-          notes: String(notes || ""),
-          createdAt: now,
-          updatedAt: now,
-        });
-      }
-      memory.promoCodes = [...docs, ...(memory.promoCodes||[])];
-      scheduleSave();
-      return res.json({ ok:true, generated: docs.length, sample: docs.slice(0,5).map(d=>d.code) });
-    }
-  } catch (e) {
-    console.error("[promo/generate]", e);
-    res.status(500).json({ ok:false, error:"SERVER" });
-  }
-});
-
-// List / disable
-app.get("/api/admin/promo/list", verifyAdminToken, async (req, res) => {
-  const only = "active" in req.query ? (req.query.active === "1") : null;
   if (globalThis.__dbReady) {
-    const q = only === null ? {} : { active: only };
-    const items = await globalThis.__db.collection("promo_codes").find(q).sort({ createdAt: -1 }).limit(500).toArray();
-    return res.json({ ok:true, items });
+    const col = globalThis.__db.collection("wallets");
+    let doc = await col.findOne({ username });
+    if (!doc) {
+      // first time -> create with welcome bonus
+      doc = {
+        username,
+        balance: 50,
+        ledger: [
+          { ts: Date.now(), type: "WELCOME", amount: 50, note: "Welcome Bonus" }
+        ],
+        lastDaily: 0,
+      };
+      await col.insertOne(doc);
+    }
+    return doc;
   } else {
-    let items = [...(memory.promoCodes||[])];
-    if (only !== null) items = items.filter(p => !!p.active === only);
-    return res.json({ ok:true, items });
+    if (!memory.wallets[username]) {
+      memory.wallets[username] = {
+        balance: 50,
+        ledger: [
+          { ts: Date.now(), type: "WELCOME", amount: 50, note: "Welcome Bonus" }
+        ],
+        lastDaily: 0,
+      };
+    }
+    return memory.wallets[username];
   }
-});
-app.post("/api/admin/promo/disable", verifyAdminToken, async (req, res) => {
-  const code = normCode(req.body?.code || "");
-  if (!code) return res.status(400).json({ ok:false, error:"CODE_REQUIRED" });
+}
+
+// helper: save wallet
+async function saveWallet(username, wallet) {
+  username = String(username || "").toUpperCase();
   if (globalThis.__dbReady) {
-    const r = await globalThis.__db.collection("promo_codes").updateOne({ code }, { $set: { active:false, updatedAt: new Date() } });
-    return res.json({ ok:true, modified: r.modifiedCount });
+    const col = globalThis.__db.collection("wallets");
+    await col.updateOne({ username }, { $set: wallet }, { upsert: true });
   } else {
-    const i = (memory.promoCodes||[]).findIndex(p => p.code === code);
-    if (i >= 0) memory.promoCodes[i].active = false;
-    scheduleSave();
-    return res.json({ ok:true, modified: i >= 0 ? 1 : 0 });
+    memory.wallets[username] = wallet;
   }
-});
+  return wallet;
+}
 
-// Redeem (user)
-app.post("/api/promo/redeem", requireViewer, tinyRateLimit(), async (req, res) => {
+// GET current wallet (requires auth)
+app.get("/api/wallet/me", verifyAdminToken, async (req, res) => {
   try {
-    const code = normCode(req.body?.code || "");
-    if (!code) return res.status(400).json({ ok:false, error:"CODE_REQUIRED" });
-    const username = req.viewer;
-    const now = new Date();
+    const username = String(req.query.viewer || req.adminUser || "").toUpperCase();
+    if (!username) return res.status(400).json({ error: "no username" });
 
-    if (globalThis.__dbReady) {
-      const pc = globalThis.__db.collection("promo_codes");
-      const pr = globalThis.__db.collection("promo_redemptions");
-
-      const promo = await pc.findOne({ code });
-      if (!promo || !promo.active) return res.status(404).json({ ok:false, error:"INVALID_CODE" });
-      if (promo.expiresAt && promo.expiresAt < now) return res.status(410).json({ ok:false, error:"EXPIRED" });
-      if (promo.redeemedCount >= promo.maxRedemptions) return res.status(409).json({ ok:false, error:"DEPLETED" });
-
-      const prior = await pr.countDocuments({ code, username });
-      if (prior >= (promo.perUserLimit || 1)) return res.status(409).json({ ok:false, error:"PER_USER_LIMIT" });
-
-      try {
-        await pr.insertOne({ code, username, amount: Number(promo.amount||0), createdAt: now });
-      } catch {
-        return res.status(409).json({ ok:false, error:"ALREADY_REDEEMED" });
-      }
-
-      const up = await pc.updateOne(
-        { _id: promo._id, redeemedCount: { $lt: promo.maxRedemptions } },
-        { $inc: { redeemedCount: 1 }, $set: { updatedAt: now } }
-      );
-      if (up.modifiedCount !== 1) {
-        await pr.deleteOne({ code, username }); // rollback
-        return res.status(409).json({ ok:false, error:"DEPLETED" });
-      }
-
-      const credited = await adjustWallet(username, Number(promo.amount||0), `promo:${code}`);
-      if (!credited?.ok) {
-        await pc.updateOne({ _id: promo._id }, { $inc: { redeemedCount: -1 } });
-        await pr.deleteOne({ code, username });
-        return res.status(500).json({ ok:false, error:"CREDIT_FAILED" });
-      }
-
-      return res.json({ ok:true, added: Number(promo.amount||0), code, balance: credited.balance });
-    }
-
-    // FILE/MEMORY
-    const promo = (memory.promoCodes||[]).find(p => p.code === code);
-    if (!promo || !promo.active) return res.status(404).json({ ok:false, error:"INVALID_CODE" });
-    if (promo.expiresAt && promo.expiresAt < now) return res.status(410).json({ ok:false, error:"EXPIRED" });
-    if (promo.redeemedCount >= promo.maxRedemptions) return res.status(409).json({ ok:false, error:"DEPLETED" });
-
-    const userClaims = (memory.promoRedemptions||[]).filter(r => r.code === code && r.username === username).length;
-    if (userClaims >= (promo.perUserLimit || 1)) return res.status(409).json({ ok:false, error:"PER_USER_LIMIT" });
-
-    // reserve
-    promo.redeemedCount++;
-    memory.promoRedemptions.unshift({ code, username, amount: Number(promo.amount||0), createdAt: now });
-
-    const credited = await adjustWallet(username, Number(promo.amount||0), `promo:${code}`);
-    if (!credited?.ok) {
-      promo.redeemedCount = Math.max(0, promo.redeemedCount - 1);
-      memory.promoRedemptions = (memory.promoRedemptions||[]).filter(r => !(r.code === code && r.username === username));
-      scheduleSave();
-      return res.status(500).json({ ok:false, error:"CREDIT_FAILED" });
-    }
-    scheduleSave();
-    return res.json({ ok:true, added: Number(promo.amount||0), code, balance: credited.balance });
-  } catch (e) {
-    console.error("[promo/redeem]", e);
-    res.status(500).json({ ok:false, error:"SERVER" });
-  }
-});
-
-app.get("/api/promo/my-redemptions", requireViewer, async (req, res) => {
-  const username = req.viewer;
-  if (globalThis.__dbReady) {
-    const rows = await globalThis.__db.collection("promo_redemptions")
-      .find({ username }).sort({ createdAt: -1 }).limit(200).toArray();
-    return res.json({ ok:true, items: rows });
-  } else {
-    const rows = (memory.promoRedemptions||[]).filter(r => r.username === username);
-    return res.json({ ok:true, items: rows });
-  }
-});
-
-/* =================================================================== */
-/* ============================ LEADERBOARD ========================== */
-/* =================================================================== */
-
-const currentMonth = () => new Date().toISOString().slice(0, 7); // "YYYY-MM"
-
-app.post("/api/leaderboard/upsert", verifyAdminToken, async (req, res) => {
-  const user = String(req.body?.user || req.body?.username || "").toUpperCase();
-  if (!user) return res.status(400).json({ error: "username required" });
-
-  const mode = String(req.body?.mode || "tournament").toLowerCase();
-  const fieldMap = {
-    tournament: "tournamentPoints",
-    bonus:      "bonusHuntPoints",
-    pvp:        "pvpPoints",
-    lucky7:     "lucky7Points",
-  };
-  const field = fieldMap[mode] || "tournamentPoints";
-
-  const delta = Number(
-    req.body?.delta ??
-    req.body?.deltaTournamentPoints ??
-    0
-  );
-  const actions = Array.isArray(req.body?.actions) ? req.body.actions : [];
-  const month = String(req.body?.month || currentMonth());
-
-  try {
-    if (globalThis.__dbReady) {
-      const db = globalThis.__db;
-
-      // 1) Cumulative lifetime in profiles
-      const profiles = db.collection("profiles");
-      const cumInc = { [field]: delta };
-      const r1 = await profiles.findOneAndUpdate(
-        { username: user },
-        {
-          $setOnInsert: {
-            username: user,
-            tournamentPoints: 0,
-            bonusHuntPoints:  0,
-            pvpPoints:        0,
-            lucky7Points:     0,
-            history: []
-          },
-          $inc: cumInc,
-          $push: { history: { ts: new Date(), mode, added: delta, actions } }
-        },
-        { upsert: true, returnDocument: "after" }
-      );
-
-      // 2) Monthly bucket in leaderboard_monthly
-      const monthly = db.collection("leaderboard_monthly");
-      const r2 = await monthly.findOneAndUpdate(
-        { username: user, month },
-        {
-          $setOnInsert: {
-            username: user,
-            month,
-            tournamentPoints: 0,
-            bonusHuntPoints:  0,
-            pvpPoints:        0,
-            lucky7Points:     0,
-            totalPoints:      0,
-            history: []
-          },
-          $inc: { [field]: delta, totalPoints: delta },
-          $push: { history: { ts: new Date(), mode, added: delta, actions } }
-        },
-        { upsert: true, returnDocument: "after" }
-      );
-
-      return res.json({
-        success: true,
-        cumulative: {
-          username: r1.value.username,
-          tournamentPoints: Number(r1.value.tournamentPoints || 0),
-          bonusHuntPoints:  Number(r1.value.bonusHuntPoints  || 0),
-          pvpPoints:        Number(r1.value.pvpPoints        || 0),
-          lucky7Points:     Number(r1.value.lucky7Points     || 0)
-        },
-        monthly: {
-          username: r2.value.username,
-          month: r2.value.month,
-          tournamentPoints: Number(r2.value.tournamentPoints || 0),
-          bonusHuntPoints:  Number(r2.value.bonusHuntPoints  || 0),
-          pvpPoints:        Number(r2.value.pvpPoints        || 0),
-          lucky7Points:     Number(r2.value.lucky7Points     || 0),
-          totalPoints:      Number(r2.value.totalPoints      || 0)
-        }
-      });
-    } else {
-      // ===== File/Memory fallback =====
-      // cumulative
-      const p = memory.profiles[user] || {
-        username: user,
-        tournamentPoints: 0,
-        bonusHuntPoints:  0,
-        pvpPoints:        0,
-        lucky7Points:     0,
-        history: []
-      };
-      p[field] = Number(p[field] || 0) + delta;
-      p.history.unshift({ ts: Date.now(), mode, added: delta, actions });
-      memory.profiles[user] = p;
-
-      // monthly
-      if (!memory.monthlyLB) memory.monthlyLB = {};
-      memory.monthlyLB[month] = memory.monthlyLB[month] || {};
-      const mrec = memory.monthlyLB[month][user] || {
-        username: user,
-        month,
-        tournamentPoints: 0,
-        bonusHuntPoints:  0,
-        pvpPoints:        0,
-        lucky7Points:     0,
-        totalPoints:      0,
-        history: []
-      };
-      mrec[field] = Number(mrec[field] || 0) + delta;
-      mrec.totalPoints = Number(mrec.totalPoints || 0) + delta;
-      mrec.history.unshift({ ts: Date.now(), mode, added: delta, actions });
-      memory.monthlyLB[month][user] = mrec;
-
-      scheduleSave();
-      return res.json({
-        success: true,
-        cumulative: {
-          username: p.username,
-          tournamentPoints: p.tournamentPoints,
-          bonusHuntPoints:  p.bonusHuntPoints,
-          pvpPoints:        p.pvpPoints,
-          lucky7Points:     p.lucky7Points
-        },
-        monthly: mrec
-      });
-    }
-  } catch (e) {
-    console.error("[LEADERBOARD] upsert failed", e);
-    return res.status(500).json({ error: "failed" });
-  }
-});
-app.get("/api/leaderboard/monthly", async (req, res) => {
-  const month = String(req.query.month || currentMonth());
-  const limit = Math.max(1, Math.min(1000, Number(req.query.limit || 200)));
-
-  try {
-    if (globalThis.__dbReady) {
-      const col = globalThis.__db.collection("leaderboard_monthly");
-      const rows = await col.find({ month })
-        .project({
-          _id: 0, username: 1, month: 1,
-          tournamentPoints: 1, bonusHuntPoints: 1, pvpPoints: 1, lucky7Points: 1,
-          totalPoints: 1
-        })
-        .sort({ totalPoints: -1, tournamentPoints: -1, bonusHuntPoints: -1, pvpPoints: -1, lucky7Points: -1, username: 1 })
-        .limit(limit)
-        .toArray();
-
-      // dense rank
-      let lastKey = null, rank = 0;
-      const ranked = rows.map((r, i) => {
-        const key = `${r.totalPoints}|${r.tournamentPoints}|${r.bonusHuntPoints}|${r.pvpPoints}|${r.lucky7Points}`;
-        if (key !== lastKey) { rank = i + 1; lastKey = key; }
-        return { rank, ...r };
-      });
-
-      return res.json({ month, items: ranked });
-    }
-
-    // file/memory fallback
-    const bucket = (memory.monthlyLB && memory.monthlyLB[month]) ? memory.monthlyLB[month] : {};
-    const items = Object.values(bucket)
-      .sort((a, b) =>
-        (b.totalPoints || 0) - (a.totalPoints || 0) ||
-        (b.tournamentPoints || 0) - (a.tournamentPoints || 0) ||
-        (b.bonusHuntPoints || 0) - (a.bonusHuntPoints || 0) ||
-        (b.pvpPoints || 0) - (a.pvpPoints || 0) ||
-        (b.lucky7Points || 0) - (a.lucky7Points || 0) ||
-        a.username.localeCompare(b.username)
-      )
-      .slice(0, limit);
-
-    let lastKey = null, rank = 0;
-    const ranked = items.map((r, i) => {
-      const key = `${r.totalPoints}|${r.tournamentPoints}|${r.bonusHuntPoints}|${r.pvpPoints}|${r.lucky7Points}`;
-      if (key !== lastKey) { rank = i + 1; lastKey = key; }
-      return { rank, ...r };
+    const w = await getWallet(username);
+    res.json({
+      username,
+      wallet: { balance: Number(w.balance || 0), ledger: w.ledger || [] }
     });
-
-    return res.json({ month, items: ranked });
   } catch (e) {
-    console.error("[LEADERBOARD] monthly list failed", e);
-    return res.status(500).json({ error: "failed" });
+    console.error("[wallet/me]", e);
+    res.status(500).json({ error: "server_error" });
   }
 });
-app.get("/api/leaderboard/overall", async (req, res) => {
-  const limit = Math.max(1, Math.min(1000, Number(req.query.limit || 200)));
 
+// Daily LBX claim (5 LBX every 24h)
+app.post("/api/wallet/claim-daily", verifyAdminToken, async (req, res) => {
   try {
-    if (globalThis.__dbReady) {
-      const col = globalThis.__db.collection("profiles");
-      const rows = await col.aggregate([
-        {
-          $project: {
-            _id: 0, username: 1,
-            tournamentPoints: { $ifNull: ["$tournamentPoints", 0] },
-            bonusHuntPoints:  { $ifNull: ["$bonusHuntPoints", 0] },
-            pvpPoints:        { $ifNull: ["$pvpPoints", 0] },
-            lucky7Points:     { $ifNull: ["$lucky7Points", 0] },
-          }
-        },
-        {
-          $addFields: {
-            totalPoints: {
-              $add: ["$tournamentPoints", "$bonusHuntPoints", "$pvpPoints", "$lucky7Points"]
-            }
-          }
-        },
-        { $sort: { totalPoints: -1, tournamentPoints: -1, bonusHuntPoints: -1, pvpPoints: -1, lucky7Points: -1, username: 1 } },
-        { $limit: limit }
-      ]).toArray();
+    const username = String(req.adminUser || "").toUpperCase();
+    if (!username) return res.status(400).json({ error: "no username" });
 
-      let lastKey = null, rank = 0;
-      const ranked = rows.map((r, i) => {
-        const key = `${r.totalPoints}|${r.tournamentPoints}|${r.bonusHuntPoints}|${r.pvpPoints}|${r.lucky7Points}`;
-        if (key !== lastKey) { rank = i + 1; lastKey = key; }
-        return { rank, ...r };
-      });
-
-      return res.json({ items: ranked });
+    const w = await getWallet(username);
+    const now = Date.now();
+    if (w.lastDaily && now - w.lastDaily < 24 * 60 * 60 * 1000) {
+      return res.status(429).json({ error: "already claimed" });
     }
 
-    // file/memory fallback
-    const items = Object.values(memory.profiles || {})
-      .map(p => ({
-        username: p.username,
-        tournamentPoints: Number(p.tournamentPoints || 0),
-        bonusHuntPoints:  Number(p.bonusHuntPoints || 0),
-        pvpPoints:        Number(p.pvpPoints || 0),
-        lucky7Points:     Number(p.lucky7Points || 0),
-      }))
-      .map(r => ({ ...r,
-        totalPoints: r.tournamentPoints + r.bonusHuntPoints + r.pvpPoints + r.lucky7Points
-      }))
-      .sort((a, b) =>
-        (b.totalPoints || 0) - (a.totalPoints || 0) ||
-        (b.tournamentPoints || 0) - (a.tournamentPoints || 0) ||
-        (b.bonusHuntPoints || 0) - (a.bonusHuntPoints || 0) ||
-        (b.pvpPoints || 0) - (a.pvpPoints || 0) ||
-        (b.lucky7Points || 0) - (a.lucky7Points || 0) ||
-        a.username.localeCompare(b.username)
-      )
-      .slice(0, limit);
+    w.balance = Number(w.balance || 0) + 5;
+    w.ledger.unshift({ ts: now, type: "DAILY", amount: 5, note: "Daily LBX reward" });
+    w.lastDaily = now;
 
-    let lastKey = null, rank = 0;
-    const ranked = items.map((r, i) => {
-      const key = `${r.totalPoints}|${r.tournamentPoints}|${r.bonusHuntPoints}|${r.pvpPoints}|${r.lucky7Points}`;
-      if (key !== lastKey) { rank = i + 1; lastKey = key; }
-      return { rank, ...r };
-    });
+    await saveWallet(username, w);
 
-    return res.json({ items: ranked });
+    res.json({ success: true, wallet: { balance: w.balance, ledger: w.ledger } });
   } catch (e) {
-    console.error("[LEADERBOARD] overall list failed", e);
-    return res.status(500).json({ error: "failed" });
-  }
-});
-/* =================================================================== */
-/* ============================ PVP APIs ============================== */
-/* =================================================================== */
-
-// Public: check if entries are open (feature flag persisted in memory/file)
-app.get("/api/pvp/entries/open", (req,res)=>{
-  if (!memory.flags) memory.flags = { pvpEntriesOpen: true };
-  res.json({ open: !!memory.flags.pvpEntriesOpen });
-});
-
-// Admin: open/close entries
-app.post("/api/admin/pvp/entries/open", verifyAdminToken, (req,res)=>{
-  const open = !!req.body?.open;
-  if (!memory.flags) memory.flags = { pvpEntriesOpen: true };
-  memory.flags.pvpEntriesOpen = open;
-  scheduleSave?.();
-  res.json({ success:true, open });
-});
-
-// Submit entry (public)
-app.post("/api/pvp/entries", async (req, res) => {
-  const username = String(req.body?.username || req.body?.user || "").trim().toUpperCase();
-  const side     = String(req.body?.side || "").trim().toUpperCase();   // "EAST"/"WEST"
-  const game     = String(req.body?.game || "").trim();
-  if (!username) return res.status(400).json({ error: "username required" });
-
-  if (memory.flags && memory.flags.pvpEntriesOpen === false) {
-    return res.status(403).json({ error: "entries_closed" });
-  }
-
-  const doc = { username, side: side==="WEST" ? "WEST" : "EAST", game, status: "pending", ts: new Date() };
-
-  try {
-    if (globalThis.__dbReady) {
-      const col = globalThis.__db.collection("pvp_entries");
-      const existing = await col.findOne({ username });
-      if (existing) return res.status(409).json({ error: "duplicate", entry: existing });
-      const r = await col.insertOne(doc);
-      const saved = await col.findOne({ _id: r.insertedId });
-      return res.json({ success: true, entry: saved });
-    } else {
-      const exists = (memory.pvpEntries||[]).find(e => e.username === username);
-      if (exists) return res.status(409).json({ error: "duplicate", entry: exists });
-      const saved = { _id: String(Date.now()), ...doc };
-      memory.pvpEntries = memory.pvpEntries || [];
-      memory.pvpEntries.push(saved);
-      scheduleSave?.();
-      return res.json({ success: true, entry: saved });
-    }
-  } catch (e) {
-    console.error("[PVP] save failed", e);
-    return res.status(500).json({ error: "save failed" });
+    console.error("[wallet/claim-daily]", e);
+    res.status(500).json({ error: "server_error" });
   }
 });
 
-// Admin: list entries
-app.get("/api/pvp/entries", verifyAdminToken, async (req, res) => {
-  try {
-    if (globalThis.__dbReady) {
-      const list = await globalThis.__db.collection("pvp_entries").find().sort({ ts: -1 }).toArray();
-      return res.json({ entries: list });
-    } else {
-      const list = [...(memory.pvpEntries||[])].sort((a,b)=> new Date(b.ts) - new Date(a.ts));
-      return res.json({ entries: list });
-    }
-  } catch (e) {
-    console.error("[PVP] list failed", e);
-    return res.status(500).json({ error: "list failed" });
-  }
-});
-
-// Admin: update status
-app.post("/api/pvp/entries/:id/status", verifyAdminToken, async (req, res) => {
-  const status = String(req.body?.status || "").toLowerCase(); // "approved" | "rejected" | "pending"
-  if (!["approved","rejected","pending"].includes(status)) return res.status(400).json({ error: "bad status" });
-  try {
-    if (globalThis.__dbReady) {
-      const col = globalThis.__db.collection("pvp_entries");
-      const id = req.params.id;
-      const q = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { username: id.toUpperCase() };
-      const r = await col.updateOne(q, { $set: { status } });
-      return res.json({ success: r.matchedCount > 0 });
-    } else {
-      const id = req.params.id;
-      const i = (memory.pvpEntries||[]).findIndex(e => e._id === id || e.username === id.toUpperCase());
-      if (i < 0) return res.json({ success: false });
-      memory.pvpEntries[i].status = status;
-      scheduleSave?.();
-      return res.json({ success: true });
-    }
-  } catch (e) {
-    console.error("[PVP] status failed", e);
-    return res.status(500).json({ error: "status failed" });
-  }
-});
-
-// Admin: delete entry
-app.delete("/api/pvp/entries/:id", verifyAdminToken, async (req, res) => {
-  try {
-    if (globalThis.__dbReady) {
-      const col = globalThis.__db.collection("pvp_entries");
-      const id = req.params.id;
-      const q = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { username: id.toUpperCase() };
-      const r = await col.deleteOne(q);
-      return res.json({ success: r.deletedCount > 0 });
-    } else {
-      const id = req.params.id;
-      const before = (memory.pvpEntries||[]).length;
-      memory.pvpEntries = (memory.pvpEntries||[]).filter(e => e._id !== id && e.username !== id.toUpperCase());
-      scheduleSave?.();
-      return res.json({ success: (memory.pvpEntries||[]).length !== before });
-    }
-  } catch (e) {
-    console.error("[PVP] delete failed", e);
-    return res.status(500).json({ error: "delete failed" });
-  }
-});
-
-/* ====================== PVP Bracket (builder) ====================== */
-function nowMs(){ return Date.now(); }
-function emptyRound(n){
-  return Array.from({length:n}, (_,i)=>({
-    id: `m_${Math.random().toString(36).slice(2,8)}_${i}`,
-    left:  { name:"", img:"", score:null },
-    right: { name:"", img:"", score:null },
-    status: "pending", winner: null, game: ""
-  }));
-}
-function buildEmptySide(size){
-  const firstRound = size/4; // e.g. 32→8, 16→4 (per side)
-  const r1 = emptyRound(firstRound);
-  const r2 = emptyRound(Math.max(1, firstRound/2)); // QF
-  const r3 = emptyRound(1); // SF (side final)
-  return [r1, r2, r3];
-}
-function nextIndex(i){ return Math.floor(i/2); }
-function putIntoSlot(match, slot, player){
-  if (slot==="left") match.left = { ...(match.left||{}), ...player };
-  else match.right = { ...(match.right||{}), ...player };
-}
-
-async function getBracket(){
-  if (globalThis.__dbReady){
-    const col = globalThis.__db.collection("pvp_bracket");
-    const doc = await col.findOne({ _id: "active" });
-    return doc?.builder || null;
-  }
-  return memory.pvpBracket || null;
-}
-async function saveBracket(builder){
-  builder.lastUpdated = nowMs();
-  if (globalThis.__dbReady){
-    const col = globalThis.__db.collection("pvp_bracket");
-    await col.updateOne({ _id: "active" }, { $set: { builder } }, { upsert: true });
-  } else {
-    memory.pvpBracket = builder;
-    scheduleSave?.();
-  }
-  memory.live = memory.live || {};
-  memory.live.pvp = builder; // mirror into unified live bus
-  return builder;
-}
-
-// Read bracket
-app.get("/api/pvp/bracket", async (req, res) => {
-  try { const builder = await getBracket(); res.json({ builder: builder || null }); }
-  catch (e) { console.error("[PVP] bracket get failed", e); res.status(500).json({ error: "failed" }); }
-});
-
-// Create/replace bracket
-app.post("/api/pvp/bracket", verifyAdminToken, async (req, res) => {
-  try {
-    if (req.body?.builder) { const saved = await saveBracket(req.body.builder); return res.json({ success: true, builder: saved }); }
-    const { size, eastSeeds = [], westSeeds = [], games = [], meta = {} } = req.body || {};
-    const bracketSize = (size===32||size===16) ? size : 16;
-
-    const east = buildEmptySide(bracketSize);
-    const west = buildEmptySide(bracketSize);
-    const finals = [ emptyRound(1) ]; // Grand Final
-
-    const fillSide = (round0, seeds) => {
-      for (let i=0; i<round0.length; i++){
-        const L = seeds[i*2]   || { name: "" };
-        const R = seeds[i*2+1] || { name: "" };
-        round0[i].left.name  = (L.name||"").toUpperCase();
-        round0[i].left.img   = L.img||"";
-        round0[i].right.name = (R.name||"").toUpperCase();
-        round0[i].right.img  = R.img||"";
-      }
-    };
-    fillSide(east[0], eastSeeds);
-    fillSide(west[0], westSeeds);
-
-    if (Array.isArray(games) && games.length){
-      const assign = (round0) => {
-        for (let i=0;i<round0.length;i++){
-          const g = games[i % games.length];
-          round0[i].game = (g && (g.title || g.name || g)) || "";
-        }
-      };
-      assign(east[0]); assign(west[0]);
-    }
-
-    const saved = await saveBracket({
-      lastUpdated: nowMs(),
-      bracket: {
-        size: bracketSize,
-        east, west, finals,
-        meta: { bestOf: 1, ...meta },
-        cursor: { phase: "east", roundIndex: 0, matchIndex: 0 },
-        champion: null
-      }
-    });
-
-    res.json({ success: true, builder: saved });
-  } catch (e) {
-    console.error("[PVP] bracket build failed", e);
-    res.status(500).json({ error: "failed" });
-  }
-});
-
-// Edit a slot
-app.patch("/api/pvp/bracket/slot", verifyAdminToken, async (req, res) => {
-  try {
-    const { phase, roundIndex, matchIndex, side, name, img } = req.body || {};
-    const b = await getBracket(); if (!b || !b.bracket) return res.status(404).json({ error: "no bracket" });
-
-    const col = (phase==="east") ? b.bracket.east
-              : (phase==="west") ? b.bracket.west
-              : (phase==="finals") ? b.bracket.finals
-              : null;
-    if (!col) return res.status(400).json({ error: "bad phase" });
-    const round = col[roundIndex|0]; const match = round && round[matchIndex|0];
-    if (!match) return res.status(400).json({ error: "bad index" });
-
-    const slot = side==="left" ? match.left : match.right;
-    if (!slot) return res.status(400).json({ error: "bad side" });
-    if (typeof name === "string") slot.name = name.toUpperCase();
-    if (typeof img === "string")  slot.img  = img;
-
-    await saveBracket(b);
-    res.json({ success: true });
-  } catch (e) {
-    console.error("[PVP] slot patch failed", e);
-    res.status(500).json({ error: "failed" });
-  }
-});
-
-// Progress winner
-app.post("/api/pvp/bracket/progress", verifyAdminToken, async (req, res) => {
-  try {
-    const { phase, roundIndex, matchIndex, winner, leftScore=null, rightScore=null } = req.body || {};
-    if (!["L","R"].includes((winner||"").toUpperCase())) return res.status(400).json({ error: "winner must be L or R" });
-    const b = await getBracket(); if (!b || !b.bracket) return res.status(404).json({ error: "no bracket" });
-    const sideArr = phase==="east" ? b.bracket.east : phase==="west" ? b.bracket.west : phase==="finals" ? b.bracket.finals : null;
-    if (!sideArr) return res.status(400).json({ error: "bad phase" });
-
-    const rIdx = roundIndex|0, mIdx = matchIndex|0;
-    const round = sideArr[rIdx]; if (!round) return res.status(400).json({ error: "bad round index" });
-    const match = round[mIdx];   if (!match) return res.status(400).json({ error: "bad match index" });
-
-    if (leftScore !== null)  match.left.score  = Number(leftScore);
-    if (rightScore !== null) match.right.score = Number(rightScore);
-    match.winner = winner.toUpperCase();
-    match.status = "done";
-
-    const adv = (winner.toUpperCase()==="L") ? match.left : match.right;
-    const advPlayer = { name: adv.name || "", img: adv.img || "" };
-
-    const lastRoundIndex = sideArr.length - 1;
-    if (rIdx < lastRoundIndex){
-      const nextRound = sideArr[rIdx + 1];
-      const target = nextRound[nextIndex(mIdx)];
-      const slot = (mIdx % 2 === 0) ? "left" : "right";
-      putIntoSlot(target, slot, advPlayer);
-    } else {
-      const gf = (b.bracket.finals && b.bracket.finals[0] && b.bracket.finals[0][0]) ? b.bracket.finals[0][0] : null;
-      if (gf){
-        if (phase==="east") putIntoSlot(gf, "left", advPlayer);
-        if (phase==="west") putIntoSlot(gf, "right", advPlayer);
-        if (phase==="finals"){ b.bracket.champion = { name: advPlayer.name }; }
-      }
-    }
-
-    if (b.bracket.cursor && b.bracket.cursor.phase===phase && (b.bracket.cursor.roundIndex|0)===rIdx && (b.bracket.cursor.matchIndex|0)===mIdx){
-      const nxt = (function findNextPending(br){
-        const order = [["east"],["west"],["finals"]];
-        for (const [ph] of order){
-          const sideArr2 = br[ph]; if (!sideArr2) continue;
-          for (let r=0;r<sideArr2.length;r++){
-            const round2 = sideArr2[r] || [];
-            for (let m=0;m<round2.length;m++){
-              if (round2[m].status!=="done") return { phase: ph, roundIndex: r, matchIndex: m };
-            }
-          }
-        }
-        return null;
-      })(b.bracket);
-      if (nxt) b.bracket.cursor = nxt;
-    }
-    await saveBracket(b);
-    res.json({ success: true, builder: b });
-  } catch (e) {
-    console.error("[PVP] progress failed", e);
-    res.status(500).json({ error: "failed" });
-  }
-});
-
-// Reset bracket (keep seeds)
-app.post("/api/pvp/bracket/reset", verifyAdminToken, async (req, res) => {
-  try {
-    const b = await getBracket();
-    if (!b || !b.bracket) return res.status(404).json({ error: "no bracket" });
-    const resetSide = (arr) => {
-      for (let r=0;r<arr.length;r++){
-        for (let m=0;m<arr[r].length;m++){
-          const mm = arr[r][m];
-          if (r===0){
-            mm.status = "pending"; mm.winner=null;
-            mm.left.score=null; mm.right.score=null;
-          }else{
-            arr[r][m] = { ...mm, left:{name:"",img:"",score:null}, right:{name:"",img:"",score:null}, status:"pending", winner:null };
-          }
-        }
-      }
-    };
-    resetSide(b.bracket.east); resetSide(b.bracket.west);
-    if (b.bracket.finals && b.bracket.finals[0] && b.bracket.finals[0][0]){
-      b.bracket.finals[0][0] = {
-        id: b.bracket.finals[0][0].id || `gf_${Math.random().toString(36).slice(2,8)}`,
-        left:{name:"",img:"",score:null}, right:{name:"",img:"",score:null},
-        status:"pending", winner:null, game: b.bracket.finals[0][0].game || ""
-      };
-    }
-    b.bracket.champion = null;
-    b.bracket.cursor = { phase:"east", roundIndex:0, matchIndex:0 };
-    await saveBracket(b);
-    res.json({ success:true });
-  } catch (e) {
-    console.error("[PVP] reset failed", e);
-    res.status(500).json({ error: "failed" });
-  }
-});
-
-/* =================================================================== */
-/* ====================== LIVE FEEDS + MARKETS ======================= */
-/* =================================================================== */
-
-async function getLiveBuilder(key){
-  if (globalThis.__dbReady){
-    const col = globalThis.__db.collection("live_feeds");
-    const doc = await col.findOne({ _id: key });
-    return doc?.builder || null;
-  }
-  return memory.live?.[key] || null;
-}
-async function saveLiveBuilder(key, builder){
-  builder.lastUpdated = nowMs();
-  if (globalThis.__dbReady){
-    const col = globalThis.__db.collection("live_feeds");
-    await col.updateOne({ _id: key }, { $set: { builder } }, { upsert: true });
-  } else {
-    memory.live = memory.live || {};
-    memory.live[key] = builder;
-    scheduleSave?.();
-  }
-  return builder;
-}
-
-// BG live (widgets)
-app.get("/api/battleground/live", async (req,res)=>{
-  try{ const b = await getLiveBuilder("battleground"); res.json({ builder: b || null }); }
-  catch(e){ console.error("[BG] live get failed", e); res.status(500).json({ error:"failed" }); }
-});
-
-// BG publish from admin — accept {builder:…} or bare object
-const DEFAULT_BAND_ODDS = 2.50;
-function buildTotalRoundsBandsDraft(matchCount){
-  const m = Number(matchCount||0);
-  const min = 2*m, max = 3*m;
-
-  const bands = [
-    { key:"A", from:min,       to:min+2,  label:`${min}–${min+2}.5` },
-    { key:"B", from:min+3,     to:min+5,  label:`${min+3}–${min+5.5}` },
-    { key:"C", from:min+6,     to:min+8,  label:`${min+6}–${min+8.5}` },
-    { key:"D", from:Math.min(min+9, max), to:max, label:`${Math.min(min+9,max)}+` }
-  ].filter(b => b.from <= b.to && b.from <= max);
-
-  const today = new Date().toISOString().slice(0,10);
-  const eventId = `BG-TRB-${m}-${today}`;
-
-  return {
-    kind: "battleground",
-    eventTitle: `BG — Total Rounds Bands (Best of 3) — ${m} matches`,
-    eventId,
-    ts: Date.now(),
-    picks: bands.map(b => ({
-      id:`TRB-${b.from}-${b.to}`,
-      market:"TOTAL_ROUNDS_BANDS",
-      left:"TOTAL ROUNDS",
-      right:`${m} MATCHES`,
-      band: { from: b.from, to: b.to },
-      pickName: b.label,
-      odds: DEFAULT_BAND_ODDS
-    }))
-  };
-}
-function upsertDraft(event){
-  const id = event.eventId || event.id;
-  if (!id) return false;
-  memory.betsDrafts = memory.betsDrafts || [];
-  const i = memory.betsDrafts.findIndex(x => (x.eventId||x.id)===id);
-  if (i>=0) memory.betsDrafts[i] = { ...memory.betsDrafts[i], ...event };
-  else memory.betsDrafts.unshift(event);
-  scheduleSave?.();
-  return true;
-}
-
-app.post("/api/battleground/builder", verifyAdminToken, async (req,res)=>{
-  try{
-    const raw = (req.body && typeof req.body==='object') ? req.body : null;
-    const b = raw?.builder ?? raw;
-    if (!b || !Array.isArray(b.matches)) return res.status(400).json({ error:"invalid builder" });
-    await saveLiveBuilder("battleground", b);
-
-    // auto-create TOTAL ROUNDS BANDS draft from match count
-    const m = Array.isArray(b.matches) ? b.matches.length : 0;
-    if (m > 0){
-      upsertDraft(buildTotalRoundsBandsDraft(m));
-    }
-    res.json({ success:true, autoDraft: m>0 });
-  }catch(e){
-    console.error("[BG] publish failed", e);
-    res.status(500).json({ error:"failed" });
-  }
-});
-
-// Bonus Hunt live/publish
-app.get("/api/bonus-hunt/live", async (req,res)=>{
-  try{ const b = await getLiveBuilder("bonus"); res.json({ builder: b || null }); }
-  catch(e){ console.error("[BH] live get failed", e); res.status(500).json({ error:"failed" }); }
-});
-app.post("/api/bonus-hunt/builder", verifyAdminToken, async (req,res)=>{
-  try{
-    const raw = (req.body && typeof req.body==='object') ? req.body : null;
-    const b = raw?.builder ?? raw; // expect { title, games:[], results:[], ... }
-    if (!b || !Array.isArray(b.games)) return res.status(400).json({ error:"invalid builder" });
-    await saveLiveBuilder("bonus", b);
-    res.json({ success:true });
-  }catch(e){
-    console.error("[BH] publish failed", e);
-    res.status(500).json({ error:"failed" });
-  }
-});
-
-// Unified markets availability ping
-app.get("/api/markets/unified", async (req, res) => {
-  const bg = await getLiveBuilder("battleground");
-  const bh = await getLiveBuilder("bonus");
-  res.json({
-    battleground: !!(bg && Array.isArray(bg.matches) && bg.matches.length),
-    bonusHunt: !!(bh && Array.isArray(bh.games) && bh.games.length),
-    meta: { ts: Date.now() }
-  });
-});
-
-/* =========================== Bets Admin ============================ */
-
-app.post("/api/admin/bets", verifyAdminToken, (req,res)=>{
-  const body = req.body || {};
-  const id = String(body.eventId || body.id || "").trim() || ("EVT-"+Math.random().toString(36).slice(2,8).toUpperCase());
-  const evt = {
-    kind: String(body.kind || "battleground"),
-    eventTitle: String(body.eventTitle || "Untitled Event"),
-    eventId: id,
-    picks: Array.isArray(body.picks) ? body.picks : [],
-    ts: Date.now()
-  };
-  upsertDraft(evt);
-  res.json({ ok:true, id });
-});
-
-app.get("/api/admin/bets", verifyAdminToken, (req,res)=>{
-  const status = String(req.query.status || "draft").toLowerCase();
-  const kind   = String(req.query.kind || "").toLowerCase();
-  memory.betsDrafts = memory.betsDrafts || [];
-  memory.betsPublished = memory.betsPublished || [];
-  const src = status === "published" ? memory.betsPublished : memory.betsDrafts;
-  let items = [...src];
-  if (kind) items = items.filter(x => String(x.kind||"").toLowerCase()===kind);
-  res.json({ ok:true, items });
-});
-
-app.post("/api/admin/bets/publish", verifyAdminToken, (req,res)=>{
-  const { id, all=false, kind="" } = req.body || {};
-  memory.betsDrafts = memory.betsDrafts || [];
-  memory.betsPublished = memory.betsPublished || [];
-
-  if (all){
-    const k = String(kind||"").toLowerCase();
-    const moving = k ? memory.betsDrafts.filter(x => String(x.kind||"").toLowerCase()===k) : [...memory.betsDrafts];
-    moving.forEach(evt => {
-      memory.betsPublished = [evt, ...memory.betsPublished.filter(x => (x.eventId||x.id)!==(evt.eventId||evt.id))];
-    });
-    memory.betsDrafts = memory.betsDrafts.filter(x => !moving.includes(x));
-    scheduleSave?.();
-    return res.json({ ok:true, published: moving.length });
-  } else {
-    const i = memory.betsDrafts.findIndex(x => (x.eventId||x.id)===id);
-    if (i<0) return res.status(404).json({ ok:false, error:"not found" });
-    const evt = memory.betsDrafts[i];
-    memory.betsDrafts.splice(i,1);
-    memory.betsPublished = [evt, ...memory.betsPublished.filter(x => (x.eventId||x.id)!==(evt.eventId||evt.id))];
-    scheduleSave?.();
-    return res.json({ ok:true, id: (evt.eventId||evt.id) });
-  }
-});
-
-// Public read for live bets
-app.get("/api/bets/live", (req,res)=>{
-  const kind = String(req.query.kind || "").toLowerCase();
-  memory.betsPublished = memory.betsPublished || [];
-  let items = [...memory.betsPublished];
-  if (kind) items = items.filter(x => String(x.kind||"").toLowerCase()===kind);
-  res.json({ ok:true, items, ts: Date.now() });
-});
-
-// Legacy alias
-app.get("/api/bets/published", (req, res) => {
-  const kind = String(req.query.kind || "").toLowerCase();
-  memory.betsPublished = memory.betsPublished || [];
-  let items = [...memory.betsPublished];
-  if (kind) items = items.filter(x => String(x.kind || "").toLowerCase() === kind);
-  res.json({ ok: true, items, ts: Date.now() });
-});
-
-/* =================================================================== */
-/* =================== 404 / Error + Start / DB Boot ================= */
-/* =================================================================== */
-
-// 404
+// ===== Default 404
 app.use((req, res) => res.status(404).send("Not found."));
 
-// Error
+// ===== Error handler
 app.use((err, req, res, next) => {
   console.error("[ERROR]", err?.stack || err);
-  if (req.path && req.path.startsWith("/api")) return res.status(500).json({ error: "Server error" });
+  if (req.path.startsWith("/api")) return res.status(500).json({ error: "Server error" });
   res.status(500).send("Server error");
 });
 
-// Start server
+// ===== Start (non-blocking DB connect)
 app.listen(PORT, HOST, () => {
   console.log(`[Server] http://${HOST}:${PORT} (${NODE_ENV}) PUBLIC_DIR=${PUBLIC_DIR}`);
   console.log(`[Server] HOME_INDEX=${HOME_INDEX} hasHome=${HAS_HOME}`);
   console.log(`[Server] ADMIN_LOGIN_FILE=${ADMIN_LOGIN_FILE || "(none)"} | ADMIN_HUB_FILE=${ADMIN_HUB_FILE || "(none)"}`);
 });
 
-// DB + persistence boot (Mongo → file → memory)
 (async () => {
-  // Decide storage mode and prep file persistence early (helpers came earlier)
-  const fileOk = typeof ensureWritableStatePath === "function" ? ensureWritableStatePath() : false;
-
   if (!MONGO_URI) {
     if (!ALLOW_MEMORY_FALLBACK) console.warn("[DB] No MONGO_URI; memory mode disabled.");
-    else console.warn("[DB] No MONGO_URI; using FILE PERSIST (if available) or MEMORY.");
-    if (typeof STATE_PERSIST !== "undefined" && STATE_PERSIST && fileOk && typeof loadStateIfPresent === "function") {
-      globalThis.storageMode = "file";
-      loadStateIfPresent();
-      scheduleSave?.();
-    } else {
-      globalThis.storageMode = "memory";
-    }
+    else console.warn("[DB] No MONGO_URI; running in MEMORY MODE.");
     return;
   }
-
   try {
     const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 8000 });
     await client.connect();
     globalThis.__db = client.db(MONGO_DB);
     globalThis.__dbReady = true;
-    globalThis.storageMode = "mongo";
     console.log(`[DB] Connected to MongoDB: ${MONGO_DB}`);
-
-    // optional: ensure indexes used by promos/leaderboards (helpers defined earlier)
-    if (typeof ensurePromoIndexes === "function") await ensurePromoIndexes(globalThis.__db);
-    if (typeof ensureLeaderboardIndexes === "function") await ensureLeaderboardIndexes(globalThis.__db);
   } catch (err) {
     console.error("[DB] Mongo connection failed:", err?.message || err);
     if (!ALLOW_MEMORY_FALLBACK) { console.error("[DB] ALLOW_MEMORY_FALLBACK=false — exiting"); process.exit(1); }
-    console.warn("[DB] Continuing without Mongo.");
-    if (typeof STATE_PERSIST !== "undefined" && STATE_PERSIST && fileOk && typeof loadStateIfPresent === "function") {
-      globalThis.storageMode = "file";
-      loadStateIfPresent();
-      scheduleSave?.();
-    } else {
-      globalThis.storageMode = "memory";
-    }
+    console.warn("[DB] Continuing in memory mode.");
   }
 })();
