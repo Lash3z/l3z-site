@@ -17,7 +17,7 @@
   .body{padding:12px;display:grid;gap:10px}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .muted{color:var(--muted)} .ok{color:var(--ok)} .err{color:var(--err)}
-  input,button{background:#0f141b;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:14px}
+  input,button{background:#0f141b;border:1px solid var(--line);color:#ink;border-radius:10px;padding:10px 12px;font-size:14px}
   input{min-width:180px} button{cursor:pointer;font-weight:800}
   .primary{background:linear-gradient(180deg,#f5c462,#d49a2e);color:#1a1204;border:none}
   .ghost{background:#111a22}
@@ -49,7 +49,7 @@
           <button id="refreshBal" class="ghost">Refresh Balance</button>
           <span id="balStatus" class="muted"></span>
         </div>
-        <div class="row muted">LBX updates instantly after bets settle, promo credits, and admin adjustments.</div>
+        <div class="row muted">LBX updates after bets settle, promo credits, and admin adjustments.</div>
       </div>
     </section>
 
@@ -92,59 +92,87 @@
 </div>
 
 <script src="/assets/api-base.js"></script>
-<script src="/assets/js/bootstrap-auth.js"></script>
 <script>
+// lightweight auth bootstrap + live wallet updates
 (() => {
-  const $  = (s,r=document)=>r.querySelector(s);
-  const say= (el, msg, ok)=>{ if(!el) return; el.textContent = msg || ""; el.className=(ok===undefined)?"muted":(ok?"ok":"err"); };
-
-  const balStatus   = $("#balStatus");
+  const $ = (s,r=document)=>r.querySelector(s);
+  const say = (el,msg,ok)=>{ if(!el)return; el.textContent=msg||""; el.className=(ok===undefined)?"muted":(ok?"ok":"err"); };
+  const balEl = $("#walletBalance");
+  const balStatus = $("#balStatus");
   const promoStatus = $("#promoStatus");
   const promoCode   = $("#promoCode");
+  let currentUser = null;
 
-  // refresh wallet balance
-  $("#refreshBal")?.addEventListener("click", async ()=>{
+  function setBalance(lbx){
+    const v = Number(lbx||0);
+    balEl.textContent = `${v.toLocaleString()} LBX`;
+    const bind = document.querySelector('[data-bind="lbx"]');
+    if (bind) bind.textContent = v.toLocaleString();
+  }
+
+  async function loadMe(){
+    const me = await api.get("/api/me");
+    if (!me?.ok) throw new Error("not_logged_in");
+    currentUser = me.user?.username || null;
+    const who = document.getElementById("whoami");
+    if (who) who.textContent = currentUser || "—";
+    setBalance(me.user?.lbx || 0);
+    if (me.user?.createdAt){
+      document.getElementById("createdAt").textContent = new Date(me.user.createdAt).toLocaleString();
+      document.getElementById("createdAtRow").style.display = "";
+    }
+  }
+
+  async function refreshWallet(){
     try{
-      say(balStatus, "Refreshing…");
+      say(balStatus,"Refreshing…");
       const j = await api.get("/api/wallet");
-      const lbx = Number(j?.lbx || 0);
-      window.dispatchEvent(new CustomEvent("wallet:update", { detail:{ lbx } }));
-      say(balStatus, "Up to date.", true);
+      setBalance(j?.lbx || 0);
+      say(balStatus,"Up to date.",true);
     }catch(e){
-      say(balStatus, (e.message||"failed").replace(/_/g," "), false);
+      say(balStatus,(e.message||"failed").replace(/_/g," "),false);
     }
-  });
+  }
 
-  // redeem promo
-  $("#redeem")?.addEventListener("click", async ()=>{
+  // promo redeem (updates balance immediately)
+  document.getElementById("redeem")?.addEventListener("click", async ()=>{
     const code = (promoCode.value||"").trim().toUpperCase();
-    if(!code) return say(promoStatus, "Enter a code.", false);
-
-    $("#redeem").disabled = true; say(promoStatus, "Submitting…");
+    if(!code) return say(promoStatus,"Enter a code.",false);
+    document.getElementById("redeem").disabled = true; say(promoStatus,"Submitting…");
     try{
-      const j = await api.post("/api/code/redeem", { code });
-      const lbx = Number(j?.lbx || 0);
-      window.dispatchEvent(new CustomEvent("wallet:update", { detail:{ lbx } }));
-      say(promoStatus, `Success! New balance: ${lbx.toLocaleString()} LBX`, true);
-      promoCode.value = "";
+      const j = await api.post("/api/code/redeem",{ code });
+      setBalance(j?.lbx || 0);
+      say(promoStatus,`Success! New balance: ${Number(j?.lbx||0).toLocaleString()} LBX`,true);
+      promoCode.value="";
     }catch(e){
-      say(promoStatus, (e.message||"failed").replace(/_/g," "), false);
+      say(promoStatus,(e.message||"failed").replace(/_/g," "),false);
     }finally{
-      $("#redeem").disabled = false;
+      document.getElementById("redeem").disabled=false;
     }
   });
 
-  // show created date if available from /api/me (bootstrap-auth gets it)
-  (async function showCreated(){
+  // manual refresh
+  document.getElementById("refreshBal")?.addEventListener("click", refreshWallet);
+
+  // same-origin “poke” from Admin Hub (localStorage event)
+  window.addEventListener("storage", (ev)=>{
+    if (ev.key !== "l3z:wallet-poke") return;
     try{
-      const j = await api.get("/api/me");
-      const at = j?.user?.createdAt ? new Date(j.user.createdAt) : null;
-      if (at){
-        $("#createdAt").textContent = at.toLocaleString();
-        $("#createdAtRow").style.display = "";
+      const data = JSON.parse(ev.newValue||"{}");
+      if (data?.u && currentUser && data.u.toLowerCase() === currentUser.toLowerCase()){
+        refreshWallet();
       }
     }catch{}
-  })();
+  });
+
+  // logout button
+  document.getElementById("logout")?.addEventListener("click", async ()=>{
+    try{ await api.post("/api/auth/logout",{}); }catch{}
+    location.href="/login.html";
+  });
+
+  // boot
+  (async ()=>{ await loadMe(); })();
 })();
 </script>
 </body>
