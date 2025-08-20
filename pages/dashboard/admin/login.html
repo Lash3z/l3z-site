@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Admin Login • L3Z</title>
+  <title>Admin Login • L3Z (Dashboard)</title>
   <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
   <style>
     :root{ --glass:rgba(0,0,0,.72); --line:rgba(0,255,255,.2); --ink:#eaf7ff; --cyan:#00ffff; --ok:#12d48a; --err:#ff7a8a; }
@@ -40,7 +40,9 @@
         <div class="pill" id="cookieState">cookie: checking…</div>
         <div class="muted" id="status"></div>
       </div>
-      <div class="hint">If your API is on another domain, include <code>&lt;script&gt;window.API_BASE="https://api.your-domain"&lt;/script&gt;</code> on this page.</div>
+      <div class="hint">If your API is on another domain, include:<br>
+        <code>&lt;script&gt;window.API_BASE="https://api.your-domain.com"&lt;/script&gt;</code>
+      </div>
     </form>
   </div>
 </div>
@@ -69,7 +71,7 @@
       const role = me?.user?.role || "user";
       say(cookieState, "cookie: ok", "pill");
       if(redirectIfAdmin && role === "admin"){
-        location.href = "/admin/tools.html";
+        location.href = "/admin/tools.html"; // canonical Admin Hub
       }
       return role;
     }catch(e){
@@ -117,7 +119,7 @@
     if(last && !U.value) U.value = last;
   }catch{}
 
-  // On load, if already unlocked, bounce to hub
+  // If already logged in with admin cookie, jump straight to hub
   checkStatus(true);
 })();
 </script>
