@@ -1,19 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>L3Z — Overall Leaderboard</title>
 <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
 <style>
-  :root{
-    --bg:#05090b; --panel:#0e1416; --ink:#eaf7ff; --muted:#9cc; --teal:#00ffff; --gold:#ffb42d; --line:rgba(0,255,255,.14);
-    --row1: rgba(255,215,0,.10); --row2: rgba(192,192,192,.10); --row3: rgba(205,127,50,.10);
-    --you: rgba(0,255,255,.10);
-  }
+  :root{--bg:#05090b;--panel:#0e1416;--ink:#eaf7ff;--muted:#9cc;--teal:#00ffff;--gold:#ffb42d;--line:rgba(0,255,255,.14);--row1:rgba(255,215,0,.10);--row2:rgba(192,192,192,.10);--row3:rgba(205,127,50,.10);--you:rgba(0,255,255,.10)}
   html,body{margin:0;background:#000 url("/assets/BG_page.png") center/cover no-repeat fixed;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-  .wrap{max-width:1200px;margin:22px auto;padding:0 16px}
-  h1{margin:0 0 8px;color:var(--teal);text-shadow:0 0 12px #00ffff55}
+  .wrap{max-width:1200px;margin:22px auto;padding:0 16px} h1{margin:0 0 8px;color:var(--teal);text-shadow:0 0 12px #00ffff55}
   .mini{color:var(--muted);font-size:12px;margin-bottom:14px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0}
   .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
@@ -23,21 +17,13 @@
   .tableWrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
   table{width:100%;border-collapse:separate;border-spacing:0;min-width:720px}
   thead th{position:sticky;top:0;background:#0b1316;border-bottom:1px solid rgba(255,255,255,.08);font-weight:800;font-size:12px;color:var(--muted);text-align:left;padding:10px}
-  tbody td{padding:10px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:middle}
-  tbody tr:hover{background:#0a1214}
-  .rank{font-weight:900;white-space:nowrap}
-  .user{display:flex;align-items:center;gap:10px}
+  tbody td{padding:10px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:middle} tbody tr:hover{background:#0a1214}
+  .rank{font-weight:900;white-space:nowrap} .user{display:flex;align-items:center;gap:10px}
   .avatar{width:28px;height:28px;border-radius:6px;border:1px solid var(--line);object-fit:cover;background:#000}
   .uname{display:flex;align-items:center;gap:8px}
-  .medal{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;
-         color:#111;border:1px solid rgba(0,0,0,.25);font-size:12px}
-  .m1{background:linear-gradient(180deg,#ffe680,#caa200)}
-  .m2{background:linear-gradient(180deg,#e5e7eb,#9ca3af)}
-  .m3{background:linear-gradient(180deg,#d7a87a,#8b5e34)}
-  .you{background:var(--you)}
-  .right{display:flex;gap:8px;align-items:center}
-  .muted{color:var(--muted)}
-  .ok{color:#12d48a} .err{color:#ff7a8a}
+  .medal{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;color:#111;border:1px solid rgba(0,0,0,.25);font-size:12px}
+  .m1{background:linear-gradient(180deg,#ffe680,#caa200)} .m2{background:linear-gradient(180deg,#e5e7eb,#9ca3af)} .m3{background:linear-gradient(180deg,#d7a87a,#8b5e34)}
+  .you{background:var(--you)} .right{display:flex;gap:8px;align-items:center} .muted{color:var(--muted)} .ok{color:#12d48a} .err{color:#ff7a8a}
 </style>
 </head>
 <body>
@@ -49,121 +35,35 @@
     <div class="left">
       <div class="pill" id="mePill">you: —</div>
       <input id="filter" placeholder="Filter by username…"/>
-      <select id="limitSel">
-        <option value="25">Top 25</option>
-        <option value="50">Top 50</option>
-        <option value="100" selected>Top 100</option>
-      </select>
+      <select id="limitSel"><option value="25">Top 25</option><option value="50">Top 50</option><option value="100" selected>Top 100</option></select>
     </div>
-    <div class="right">
-      <button id="refreshBtn" class="pill">Refresh</button>
-      <span id="state" class="muted">idle</span>
-    </div>
+    <div class="right"><button id="refreshBtn" class="pill">Refresh</button><span id="state" class="muted">idle</span></div>
   </div>
 
   <div class="card tableWrap">
     <table>
-      <thead>
-        <tr>
-          <th style="width:90px">Rank</th>
-          <th>User</th>
-          <th style="width:160px">Total Points</th>
-        </tr>
-      </thead>
-      <tbody id="rows">
-        <tr><td colspan="3" class="muted" style="padding:14px">Loading…</td></tr>
-      </tbody>
+      <thead><tr><th style="width:90px">Rank</th><th>User</th><th style="width:160px">Total Points</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="3" class="muted" style="padding:14px">Loading…</td></tr></tbody>
     </table>
   </div>
 </div>
 
 <script src="/assets/api-base.js"></script>
+<script src="/assets/js/bootstrap-auth.js"></script>
 <script>
 (function(){
-  const $ = (s,r=document)=>r.querySelector(s);
-  const rows = $("#rows");
-  const mePill = $("#mePill");
-  const state = $("#state");
-  const filter = $("#filter");
-  const limitSel = $("#limitSel");
-
-  let currentUser = null;
-  let cached = [];
-  let timer = null;
-
-  function medal(rank){
-    if(rank===1) return '<span class="medal m1">1</span>';
-    if(rank===2) return '<span class="medal m2">2</span>';
-    if(rank===3) return '<span class="medal m3">3</span>';
-    return `<span class="pill" style="padding:2px 8px">${rank}</span>`;
-    }
-
-  function paintTable(data){
-    rows.innerHTML = "";
-    const term = (filter.value||"").trim().toLowerCase();
-    const lim = Number(limitSel.value||100);
-    const list = data.filter(r => !term || String(r.username||"").toLowerCase().includes(term)).slice(0, lim);
-
-    if(list.length === 0){
-      rows.innerHTML = `<tr><td colspan="3" class="muted" style="padding:14px">No results.</td></tr>`;
-      return;
-    }
-
-    for(const r of list){
-      const isYou = currentUser && r.username === currentUser;
-      const tr = document.createElement("tr");
-      if(isYou) tr.className = "you";
-      tr.innerHTML = `
-        <td class="rank">${medal(r.rank)}</td>
-        <td>
-          <div class="user">
-            <img class="avatar" src="/assets/default_avatar.png" alt="">
-            <div class="uname">${r.username}${isYou?' <span class="pill">you</span>':''}</div>
-          </div>
-        </td>
-        <td><strong>${Number(r.total||0).toLocaleString()}</strong></td>
-      `;
-      rows.appendChild(tr);
-    }
-  }
-
-  async function fetchMe(){
-    try{
-      const j = await api.get("/api/me");
-      currentUser = j?.user?.username || null;
-      mePill.textContent = `you: ${currentUser || "—"}`;
-    }catch{
-      currentUser = null;
-      mePill.textContent = "you: (not logged in)";
-    }
-  }
-
-  async function fetchLeaderboard(){
-    state.textContent = "loading…";
-    try{
-      const j = await api.get("/api/leaderboard/overall");
-      const arr = (j && j.leaderboard) || [];
-      cached = arr.map(x => ({ rank: Number(x.rank||0), username: x.username, total: Number(x.total||0) }));
-      paintTable(cached);
-      state.textContent = `loaded ${cached.length}`;
-    }catch(e){
-      rows.innerHTML = `<tr><td colspan="3" class="err" style="padding:14px">${(e.message||"failed").replace(/_/g," ")}</td></tr>`;
-      state.textContent = "error";
-    }
-  }
-
-  async function boot(){
-    await fetchMe();
-    await fetchLeaderboard();
-    if(timer) clearInterval(timer);
-    timer = setInterval(fetchLeaderboard, 10000); // refresh every 10s
-  }
-
-  $("#refreshBtn").addEventListener("click", boot);
-  filter.addEventListener("input", () => paintTable(cached));
-  limitSel.addEventListener("change", () => paintTable(cached));
-
-  boot();
+  const $=(s,r=document)=>r.querySelector(s);
+  const rows=$("#rows"), mePill=$("#mePill"), state=$("#state"), filter=$("#filter"), limitSel=$("#limitSel");
+  let currentUser=null, cached=[], timer=null;
+  const medal=(r)=> r===1?'<span class="medal m1">1</span>': r===2?'<span class="medal m2">2</span>': r===3?'<span class="medal m3">3</span>': `<span class="pill" style="padding:2px 8px">${r}</span>`;
+  function paintTable(data){ rows.innerHTML=""; const term=(filter.value||"").trim().toLowerCase(); const lim=Number(limitSel.value||100); const list=data.filter(r=>!term||String(r.username||"").toLowerCase().includes(term)).slice(0,lim);
+    if(list.length===0){ rows.innerHTML='<tr><td colspan="3" class="muted" style="padding:14px">No results.</td></tr>'; return; }
+    for(const r of list){ const isYou=currentUser&&r.username===currentUser; const tr=document.createElement("tr"); if(isYou) tr.className="you";
+      tr.innerHTML=`<td class="rank">${medal(r.rank)}</td><td><div class="user"><img class="avatar" src="/assets/default_avatar.png" alt=""><div class="uname">${r.username}${isYou?' <span class="pill">you</span>':''}</div></div></td><td><strong>${Number(r.total||0).toLocaleString()}</strong></td>`; rows.appendChild(tr); } }
+  async function fetchMe(){ try{ const j=await api.get("/api/me"); currentUser=j?.user?.username||null; mePill.textContent=`you: ${currentUser||"—"}`; }catch{ currentUser=null; mePill.textContent="you: (not logged in)"; } }
+  async function fetchLeaderboard(){ state.textContent="loading…"; try{ const j=await api.get("/api/leaderboard/overall"); const arr=(j&&j.leaderboard)||[]; cached=arr.map(x=>({ rank:Number(x.rank||0), username:x.username, total:Number(x.total||0) })); paintTable(cached); state.textContent=`loaded ${cached.length}`; }catch(e){ rows.innerHTML=`<tr><td colspan="3" class="err" style="padding:14px">${(e.message||"failed").replace(/_/g," ")}</td></tr>`; state.textContent="error"; } }
+  async function boot(){ await fetchMe(); await fetchLeaderboard(); if(timer) clearInterval(timer); timer=setInterval(fetchLeaderboard,10000); }
+  $("#refreshBtn").addEventListener("click", boot); filter.addEventListener("input", ()=>paintTable(cached)); limitSel.addEventListener("change", ()=>paintTable(cached)); boot();
 })();
 </script>
 </body>
