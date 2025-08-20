@@ -1,4 +1,4 @@
-// server.js — L3Z API (ESM, Node 20)
+// server.js — L3Z API + Static Host (ESM, Node 20)
 // - Auth (signup/login/logout/me) with HttpOnly cookie JWT
 // - Wallet LBX (user get, admin credit/debit, admin balance)
 // - Bets (player place/list; admin list/settle/void/bulk)
@@ -7,6 +7,8 @@
 // - Audit (track/list/export/clear)
 // - Kick (stub) link/unlink/status
 // - CORS allowlist + cookie SameSite tuned for cross-origin on Render
+// - **Static hosting enabled** (serves /assets, /pages, /admin, etc.)
+//   Root redirects: "/" -> "/pages/profile.html", "/admin" -> "/admin/login.html"
 //
 // ENV:
 //   NODE_ENV, PORT / PORT0
@@ -16,7 +18,7 @@
 //   COOKIE_SECURE ("true"/"false") default true
 //   COOKIE_SAMESITE ("lax"|"none"|"strict") default auto: "none" when ALLOWED_ORIGINS set, else "lax"
 //   ADMIN_USER, ADMIN_PASS (bootstrap an admin)
-//   ALLOWED_ORIGINS (comma-separated, e.g. https://your-site.onrender.com,https://www.yourdomain.com)
+//   ALLOWED_ORIGINS (comma-separated e.g. https://your-site.onrender.com,https://www.yourdomain.com)
 //   KICK_LINK_URL (optional; where to send user to link Kick)
 
 import path from "path";
@@ -59,7 +61,7 @@ app.set("trust proxy", 1);
 
 // ===== Security & parsing
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: false, // keep inline scripts/styles working
   crossOriginEmbedderPolicy: false,
 }));
 app.use(compression());
@@ -170,8 +172,10 @@ function requireAdmin(req, res, next) {
   }
   next();
 }
-// numeric helper
 const n = v => (Number.isFinite(Number(v)) ? Number(v) : NaN);
+
+// mount auth early so static pages can use cookies
+app.use(authMiddleware);
 
 // ===== Health
 app.get("/health", (_req, res) => res.json({ ok: true, env: NODE_ENV }));
@@ -329,7 +333,6 @@ app.get("/api/admin/wallet/balance", requireAdmin, async (req, res) => {
 });
 
 // ===== Promo Codes
-// Create (ADMIN): body { code, lbx, expiresHours }
 app.post("/api/code/create", requireAdmin, async (req, res) => {
   try {
     const { code, lbx, expiresHours } = req.body || {};
@@ -346,7 +349,7 @@ app.post("/api/code/create", requireAdmin, async (req, res) => {
       lbx: amt,
       createdAt: now,
       expiresAt,
-      redeemedBy: [], // usernames
+      redeemedBy: [],
       active: true,
     });
 
@@ -365,7 +368,6 @@ app.post("/api/code/create", requireAdmin, async (req, res) => {
   }
 });
 
-// Current active promo (ADMIN view)
 app.get("/api/admin/code/current", requireAdmin, async (_req, res) => {
   const now = new Date();
   const cur = await Codes.find({ active: true, expiresAt: { $gt: now } })
@@ -374,8 +376,7 @@ app.get("/api/admin/code/current", requireAdmin, async (_req, res) => {
   res.json(c ? { ok: true, code: c.code, lbx: c.lbx, expiresAt: c.expiresAt } : { ok: true, code: null });
 });
 
-// Expire all active (ADMIN)
-app.post("/api/admin/code/expire", requireAdmin, async (req, res) => {
+app.post("/api/admin/code/expire", requireAdmin, async (_req, res) => {
   const r = await Codes.updateMany({ active: true }, { $set: { active: false } });
   await AdminAudit.insertOne({
     actor: req.user.username, evt: "promo.expire",
@@ -384,7 +385,6 @@ app.post("/api/admin/code/expire", requireAdmin, async (req, res) => {
   res.json({ ok: true, n: r.modifiedCount });
 });
 
-// Redeem (USER): body { code }
 app.post("/api/code/redeem", requireAuth, async (req, res) => {
   try {
     const { code } = req.body || {};
@@ -403,17 +403,9 @@ app.post("/api/code/redeem", requireAuth, async (req, res) => {
     await session.withTransaction(async () => {
       await Users.updateOne({ _id: req.user._id }, { $inc: { lbx: c.lbx } }, { session });
       await Codes.updateOne({ _id: c._id }, { $addToSet: { redeemedBy: req.user.username } }, { session });
-
       const fresh = await Users.findOne({ _id: req.user._id }, { projection: { lbx: 1 }, session });
       newBalance = fresh?.lbx ?? null;
-
-      await LeaderEvents.insertOne({
-        type: "promo_credit",
-        username: req.user.username,
-        amount: c.lbx,
-        code: c.code,
-        createdAt: new Date(),
-      }, { session });
+      await LeaderEvents.insertOne({ type: "promo_credit", username: req.user.username, amount: c.lbx, code: c.code, createdAt: new Date() }, { session });
     });
     await session.endSession();
 
@@ -423,7 +415,6 @@ app.post("/api/code/redeem", requireAuth, async (req, res) => {
   }
 });
 
-// Admin redeem for user (ADMIN): body { username, code }
 app.post("/api/admin/code/redeem_for", requireAdmin, async (req, res) => {
   try {
     const { username, code } = req.body || {};
@@ -447,14 +438,8 @@ app.post("/api/admin/code/redeem_for", requireAdmin, async (req, res) => {
       await Codes.updateOne({ _id: c._id }, { $addToSet: { redeemedBy: uname } }, { session });
       const fresh = await Users.findOne({ _id: u._id }, { projection: { lbx: 1 }, session });
       newBalance = fresh?.lbx ?? null;
-      await LeaderEvents.insertOne({
-        type: "promo_credit_admin",
-        username: uname, amount: c.lbx, code: c.code, createdAt: new Date(),
-      }, { session });
-      await AdminAudit.insertOne({
-        actor: req.user.username, evt: "promo.redeem_for",
-        payload: { username: uname, code: c.code, lbx: c.lbx }, createdAt: new Date(),
-      }, { session });
+      await LeaderEvents.insertOne({ type: "promo_credit_admin", username: uname, amount: c.lbx, code: c.code, createdAt: new Date() }, { session });
+      await AdminAudit.insertOne({ actor: req.user.username, evt: "promo.redeem_for", payload: { username: uname, code: c.code, lbx: c.lbx }, createdAt: new Date() }, { session });
     });
     await session.endSession();
 
@@ -522,17 +507,13 @@ app.post("/api/admin/audit/clear", requireAdmin, async (_req, res) => {
 });
 
 // ===== Bets
-// helper to compute a basic potential payout (placeholder odds)
-// tweak as needed; UI just displays what we store
 function computePotential(amount, picks = []) {
-  const base = 1.5; // base 1.5x
+  const base = 1.5;
   const perPick = 0.1 * Math.max(0, (Array.isArray(picks) ? picks.length : 0) - 1);
   const mult = base + perPick;
   return Math.round(Number(amount || 0) * mult);
 }
 
-// Player place bet
-// body { game, picks: [{label}], amount }
 app.post("/api/bets/place", requireAuth, async (req, res) => {
   try {
     const { game, picks, amount } = req.body || {};
@@ -544,7 +525,6 @@ app.post("/api/bets/place", requireAuth, async (req, res) => {
     const session = client.startSession();
     let betDoc = null, newBal = null;
     await session.withTransaction(async () => {
-      // debit stake if sufficient
       const r = await Users.findOneAndUpdate(
         { _id: req.user._id, lbx: { $gte: amt } },
         { $inc: { lbx: -amt } },
@@ -581,7 +561,6 @@ app.post("/api/bets/place", requireAuth, async (req, res) => {
   }
 });
 
-// Player list own bets: /api/bets/my?status=&limit=
 app.get("/api/bets/my", requireAuth, async (req, res) => {
   const status = (req.query.status || "").toString().trim();
   const limit  = Math.min(200, Math.max(1, Number(req.query.limit || 50)));
@@ -591,7 +570,6 @@ app.get("/api/bets/my", requireAuth, async (req, res) => {
   res.json({ ok: true, bets });
 });
 
-// Admin list all bets: /api/admin/bets/list?status=&limit=&q=
 app.get("/api/admin/bets/list", requireAdmin, async (req, res) => {
   const status = (req.query.status || "").toString().trim();
   const limit  = Math.min(500, Math.max(1, Number(req.query.limit || 100)));
@@ -612,7 +590,6 @@ app.get("/api/admin/bets/list", requireAdmin, async (req, res) => {
   res.json({ ok: true, bets });
 });
 
-// Admin settle (credit payout)
 app.post("/api/admin/bets/settle", requireAdmin, async (req, res) => {
   try {
     const { betId, payout } = req.body || {};
@@ -624,27 +601,15 @@ app.post("/api/admin/bets/settle", requireAdmin, async (req, res) => {
     await session.withTransaction(async () => {
       const bet = await Bets.findOne({ _id: new ObjectId(betId) }, { session });
       if (!bet || bet.status !== "placed") throw new Error("bad_bet");
-
-      // credit payout
-      if (amt > 0) {
-        await Users.updateOne({ username: bet.username }, { $inc: { lbx: amt } }, { session });
-      }
-
+      if (amt > 0) await Users.updateOne({ username: bet.username }, { $inc: { lbx: amt } }, { session });
       const upd = await Bets.findOneAndUpdate(
         { _id: bet._id, status: "placed" },
         { $set: { status: "settled", payout: amt, settledAt: new Date() } },
         { returnDocument: "after", session }
       );
       result = upd.value;
-
-      await LeaderEvents.insertOne({
-        type: "bet_settle", username: bet.username, points: 0, payout: amt, game: bet.game, createdAt: new Date()
-      }, { session });
-
-      await AdminAudit.insertOne({
-        actor: req.user.username, evt: "bets.settle",
-        payload: { betId: bet._id.toString(), payout: amt }, createdAt: new Date()
-      }, { session });
+      await LeaderEvents.insertOne({ type:"bet_settle", username: bet.username, payout: amt, game: bet.game, createdAt: new Date() }, { session });
+      await AdminAudit.insertOne({ actor: req.user.username, evt:"bets.settle", payload:{ betId: bet._id.toString(), payout: amt }, createdAt:new Date() }, { session });
     });
     await session.endSession();
 
@@ -656,7 +621,6 @@ app.post("/api/admin/bets/settle", requireAdmin, async (req, res) => {
   }
 });
 
-// Admin void (refund stake)
 app.post("/api/admin/bets/void", requireAdmin, async (req, res) => {
   try {
     const { betId, reason } = req.body || {};
@@ -667,27 +631,15 @@ app.post("/api/admin/bets/void", requireAdmin, async (req, res) => {
     await session.withTransaction(async () => {
       const bet = await Bets.findOne({ _id: new ObjectId(betId) }, { session });
       if (!bet || bet.status !== "placed") throw new Error("bad_bet");
-
-      // refund stake
-      if (bet.amount > 0) {
-        await Users.updateOne({ username: bet.username }, { $inc: { lbx: bet.amount } }, { session });
-      }
-
+      if (bet.amount > 0) await Users.updateOne({ username: bet.username }, { $inc: { lbx: bet.amount } }, { session });
       const upd = await Bets.findOneAndUpdate(
         { _id: bet._id, status: "placed" },
         { $set: { status: "voided", voidReason: reason || null, voidedAt: new Date() } },
         { returnDocument: "after", session }
       );
       result = upd.value;
-
-      await LeaderEvents.insertOne({
-        type: "bet_void", username: bet.username, amount: bet.amount, game: bet.game, createdAt: new Date()
-      }, { session });
-
-      await AdminAudit.insertOne({
-        actor: req.user.username, evt: "bets.void",
-        payload: { betId: bet._id.toString(), reason: reason || null }, createdAt: new Date()
-      }, { session });
+      await LeaderEvents.insertOne({ type:"bet_void", username: bet.username, amount: bet.amount, game: bet.game, createdAt:new Date() }, { session });
+      await AdminAudit.insertOne({ actor: req.user.username, evt:"bets.void", payload:{ betId: bet._id.toString(), reason: reason || null }, createdAt:new Date() }, { session });
     });
     await session.endSession();
 
@@ -699,7 +651,6 @@ app.post("/api/admin/bets/void", requireAdmin, async (req, res) => {
   }
 });
 
-// Admin bulk settle
 app.post("/api/admin/bets/settle_bulk", requireAdmin, async (req, res) => {
   try {
     const decisions = Array.isArray(req.body?.decisions) ? req.body.decisions : [];
@@ -709,24 +660,17 @@ app.post("/api/admin/bets/settle_bulk", requireAdmin, async (req, res) => {
     for (const d of decisions) {
       try {
         const payload = { betId: d.betId, payout: n(d.payout) };
-        await app.inject?._noop?.(); // placeholder to keep lints happy in some analyzers
-        await new Promise((resolve, reject) => {
-          // reuse the single-settle logic inline:
-          (async () => {
-            const session = client.startSession();
-            await session.withTransaction(async () => {
-              const bet = await Bets.findOne({ _id: new ObjectId(payload.betId) }, { session });
-              if (!bet || bet.status !== "placed") throw new Error("bad_bet");
-              const amt = Math.max(0, Number(payload.payout || 0));
-              if (amt > 0) await Users.updateOne({ username: bet.username }, { $inc: { lbx: amt } }, { session });
-              await Bets.updateOne({ _id: bet._id, status: "placed" }, { $set: { status:"settled", payout: amt, settledAt: new Date() } }, { session });
-              await LeaderEvents.insertOne({ type:"bet_settle", username: bet.username, payout: amt, game: bet.game, createdAt:new Date() }, { session });
-              await AdminAudit.insertOne({ actor: req.user.username, evt:"bets.settle_bulk", payload:{ betId: bet._id.toString(), payout: amt }, createdAt:new Date() }, { session });
-            });
-            await session.endSession();
-            resolve();
-          })().catch(reject);
+        const session = client.startSession();
+        await session.withTransaction(async () => {
+          const bet = await Bets.findOne({ _id: new ObjectId(payload.betId) }, { session });
+          if (!bet || bet.status !== "placed") throw new Error("bad_bet");
+          const amt = Math.max(0, Number(payload.payout || 0));
+          if (amt > 0) await Users.updateOne({ username: bet.username }, { $inc: { lbx: amt } }, { session });
+          await Bets.updateOne({ _id: bet._id, status: "placed" }, { $set: { status:"settled", payout: amt, settledAt: new Date() } }, { session });
+          await LeaderEvents.insertOne({ type:"bet_settle", username: bet.username, payout: amt, game: bet.game, createdAt:new Date() }, { session });
+          await AdminAudit.insertOne({ actor: "bulk:"+req.user.username, evt:"bets.settle_bulk", payload:{ betId: bet._id.toString(), payout: amt }, createdAt:new Date() }, { session });
         });
+        await session.endSession();
         ok++;
       } catch { fail++; }
     }
@@ -737,19 +681,33 @@ app.post("/api/admin/bets/settle_bulk", requireAdmin, async (req, res) => {
 });
 
 // ===== Kick (stub integration)
-// These keep the UI happy without a full OAuth flow deployed yet.
 app.get("/api/social/kick/status", requireAuth, async (req, res) => {
   const { kick } = (await Users.findOne({ _id: req.user._id }, { projection: { kick: 1 } })) || {};
   res.json({ ok: true, linked: !!kick?.linked, profile: kick?.profile || null });
 });
 app.post("/api/social/kick/link_start", requireAuth, async (_req, res) => {
-  // Send user somewhere to complete linking; your real integration should bounce back to your site.
   res.json({ ok: true, url: KICK_LINK_URL });
 });
 app.post("/api/social/kick/unlink", requireAuth, async (req, res) => {
   await Users.updateOne({ _id: req.user._id }, { $set: { kick: null } });
   res.json({ ok: true });
 });
+
+// ===== Static hosting (serve site files)
+// Serve everything under repo root (assets/, pages/, admin/, etc.)
+const STATIC_ROOT = process.env.STATIC_ROOT || __dirname;
+app.use(express.static(STATIC_ROOT, {
+  index: false, // we control "/" ourselves
+  maxAge: NODE_ENV === "production" ? "1h" : 0,
+  setHeaders(res, filePath) {
+    // avoid caching HTML
+    if (filePath.endsWith(".html")) res.setHeader("Cache-Control", "no-cache");
+  },
+}));
+
+// Friendly landings
+app.get("/", (_req, res) => res.redirect("/pages/profile.html"));
+app.get("/admin", (_req, res) => res.redirect("/admin/login.html"));
 
 // ===== Error handler (last)
 app.use((err, _req, res, _next) => {
