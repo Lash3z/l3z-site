@@ -27,8 +27,8 @@
       <div class="muted">cookie: <span id="cookie">checking…</span></div>
     </div>
     <div class="row">
-      <button id="btnWho" class="primary">Refresh /api/me</button>
-      <button id="btnMyBal" class="primary">Refresh /api/wallet</button>
+      <button id="btnWho" class="primary">/api/me</button>
+      <button id="btnMyBal" class="primary">/api/wallet</button>
       <span id="status" class="muted"></span>
     </div>
     <pre id="out"></pre>
@@ -36,14 +36,13 @@
 
   <div class="card">
     <div class="row">
-      <label>View/Modify user:</label>
-      <input id="u" placeholder="username (lowercase)" />
-      <input id="amt" type="number" step="1" value="5" />
+      <label>User</label><input id="u" placeholder="username (lowercase)"/>
+      <input id="amt" type="number" step="1" value="5"/>
       <button id="btnBal" class="primary">GET admin balance</button>
       <button id="btnCredit" class="primary">POST admin credit</button>
       <button id="btnDebit">POST admin debit</button>
     </div>
-    <div class="muted">Uses <code>/api/admin/wallet/balance</code>, <code>/api/wallet/credit</code>, <code>/api/wallet/debit</code> (admin cookie required).</div>
+    <div class="muted">Uses <code>/api/admin/wallet/balance</code>, <code>/api/wallet/credit</code>, <code>/api/wallet/debit</code></div>
     <pre id="outUser"></pre>
   </div>
 
@@ -57,77 +56,73 @@
 </div>
 
 <script>
-// lightweight fetch with console echo
 async function fx(method, url, body){
-  const trace = Math.random().toString(36).slice(2);
-  console.log("[api]", method, url, body, trace);
   const res = await fetch(url, {
     method, credentials:"include",
     headers: { "Accept":"application/json", ...(body?{"Content-Type":"application/json"}:{}) },
     body: body ? JSON.stringify(body) : undefined
   });
   const json = await res.json().catch(()=> ({}));
-  console.log("[api<-]", res.status, url, json, trace);
   if(!res.ok){ const e=new Error(json?.error||`HTTP ${res.status}`); e.data=json; throw e; }
   return json;
 }
-const $ = (s,r=document)=>r.querySelector(s);
-const say=(el,msg,ok)=>{ if(!el) return; el.textContent=msg||""; el.className=(ok===undefined)?"muted":(ok?"ok":"err"); };
+const $=(s,r=document)=>r.querySelector(s);
+const say=(el,msg,ok)=>{ if(!el)return; el.textContent=msg||""; el.className=(ok===undefined)?"muted":(ok?"ok":"err"); };
 
 const meUser=$("#meUser"), meRole=$("#meRole"), cookie=$("#cookie"), status=$("#status");
 const out=$("#out"), outUser=$("#outUser"), outPromo=$("#outPromo");
 const u=$("#u"), amt=$("#amt"), promo=$("#promo");
 
 async function who(){ try{
-  const j = await fx("GET","/api/me");
-  meUser.textContent = j?.user?.username || "—";
-  meRole.textContent = j?.user?.role || "user";
+  const j=await fx("GET","/api/me");
+  meUser.textContent=j?.user?.username||"—";
+  meRole.textContent=j?.user?.role||"user";
   say(cookie,"ok",true);
-  out.textContent = JSON.stringify(j, null, 2);
-}catch(e){ meUser.textContent="(not logged in)"; meRole.textContent="—"; say(cookie,"missing",false); out.textContent = e.message; } }
+  out.textContent=JSON.stringify(j,null,2);
+}catch(e){ meUser.textContent="(not logged in)"; meRole.textContent="—"; say(cookie,"missing",false); out.textContent=e.message; } }
 
 async function myBal(){ try{
   say(status,"/api/wallet …");
-  const j = await fx("GET","/api/wallet");
+  const j=await fx("GET","/api/wallet");
   say(status,"ok",true);
-  out.textContent = JSON.stringify(j, null, 2);
-}catch(e){ say(status,e.message,false); out.textContent = JSON.stringify(e.data||{error:e.message},null,2); } }
+  out.textContent=JSON.stringify(j,null,2);
+}catch(e){ say(status,e.message,false); out.textContent=JSON.stringify(e.data||{error:e.message},null,2); } }
 
 async function adminBal(){ try{
-  const name = (u.value||"").trim().toLowerCase();
-  outUser.textContent = "…";
-  const j = await fx("GET", `/api/admin/wallet/balance?user=${encodeURIComponent(name)}`);
-  outUser.textContent = JSON.stringify(j, null, 2);
-}catch(e){ outUser.textContent = JSON.stringify(e.data||{error:e.message},null,2); } }
+  const name=(u.value||"").trim().toLowerCase();
+  outUser.textContent="…";
+  const j=await fx("GET",`/api/admin/wallet/balance?user=${encodeURIComponent(name)}`);
+  outUser.textContent=JSON.stringify(j,null,2);
+}catch(e){ outUser.textContent=JSON.stringify(e.data||{error:e.message},null,2); } }
 
 async function credit(){ try{
-  const name = (u.value||"").trim().toLowerCase();
-  const a = Number(amt.value||0);
-  outUser.textContent = "…";
-  const j = await fx("POST", "/api/wallet/credit", { username:name, amount:a, reason:"admin_credit" });
-  outUser.textContent = JSON.stringify(j, null, 2);
-}catch(e){ outUser.textContent = JSON.stringify(e.data||{error:e.message},null,2); } }
+  const name=(u.value||"").trim().toLowerCase();
+  const a=Number(amt.value||0);
+  outUser.textContent="…";
+  const j=await fx("POST","/api/wallet/credit",{username:name,amount:a,reason:"admin_credit"});
+  outUser.textContent=JSON.stringify(j,null,2);
+}catch(e){ outUser.textContent=JSON.stringify(e.data||{error:e.message},null,2); } }
 
 async function debit(){ try{
-  const name = (u.value||"").trim().toLowerCase();
-  const a = Number(amt.value||0);
-  outUser.textContent = "…";
-  const j = await fx("POST", "/api/wallet/debit", { username:name, amount:a, reason:"admin_debit" });
-  outUser.textContent = JSON.stringify(j, null, 2);
-}catch(e){ outUser.textContent = JSON.stringify(e.data||{error:e.message},null,2); } }
+  const name=(u.value||"").trim().toLowerCase();
+  const a=Number(amt.value||0);
+  outUser.textContent="…";
+  const j=await fx("POST","/api/wallet/debit",{username:name,amount:a,reason:"admin_debit"});
+  outUser.textContent=JSON.stringify(j,null,2);
+}catch(e){ outUser.textContent=JSON.stringify(e.data||{error:e.message},null,2); } }
 
 async function redeem(){ try{
-  outPromo.textContent = "…";
-  const j = await fx("POST","/api/code/redeem",{ code:(promo.value||"").trim().toUpperCase() });
-  outPromo.textContent = JSON.stringify(j, null, 2);
-}catch(e){ outPromo.textContent = JSON.stringify(e.data||{error:e.message},null,2); } }
+  outPromo.textContent="…";
+  const j=await fx("POST","/api/code/redeem",{ code:(promo.value||"").trim().toUpperCase() });
+  outPromo.textContent=JSON.stringify(j,null,2);
+}catch(e){ outPromo.textContent=JSON.stringify(e.data||{error:e.message},null,2); } }
 
-$("#btnWho").onclick = who;
-$("#btnMyBal").onclick = myBal;
-$("#btnBal").onclick = adminBal;
-$("#btnCredit").onclick = credit;
-$("#btnDebit").onclick = debit;
-$("#btnRedeem").onclick = redeem;
+$("#btnWho").onclick=who;
+$("#btnMyBal").onclick=myBal;
+$("#btnBal").onclick=adminBal;
+$("#btnCredit").onclick=credit;
+$("#btnDebit").onclick=debit;
+$("#btnRedeem").onclick=redeem;
 
 who();
 </script>
