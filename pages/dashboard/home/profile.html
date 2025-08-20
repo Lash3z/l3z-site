@@ -17,7 +17,7 @@
   .body{padding:12px;display:grid;gap:10px}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .muted{color:var(--muted)} .ok{color:var(--ok)} .err{color:var(--err)}
-  input,button{background:#0f141b;border:1px solid var(--line);color:#ink;border-radius:10px;padding:10px 12px;font-size:14px}
+  input,button{background:#0f141b;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:14px}
   input{min-width:180px} button{cursor:pointer;font-weight:800}
   .primary{background:linear-gradient(180deg,#f5c462,#d49a2e);color:#1a1204;border:none}
   .ghost{background:#111a22}
@@ -31,7 +31,7 @@
   <div class="top">
     <div class="row">
       <img src="/assets/l3z_logo.png" alt="" style="width:36px;height:36px;border-radius:10px;border:1px solid var(--line)">
-      <div class="pill">Profile</div>
+      <div class="pill" id="titlePill">Profile</div>
     </div>
     <div class="row">
       <div class="pill">user: <b id="whoami">—</b></div>
@@ -41,19 +41,17 @@
   </div>
 
   <div class="grid">
-    <!-- Wallet -->
     <section class="card">
-      <div class="head"><h2>Wallet</h2><div class="badge">LBX</div></div>
+      <div class="head"><h2>Wallet</h2><div class="badge" id="viewBadge">LBX</div></div>
       <div class="body">
         <div class="row">
           <button id="refreshBal" class="ghost">Refresh Balance</button>
           <span id="balStatus" class="muted"></span>
         </div>
-        <div class="row muted">LBX updates after bets settle, promo credits, and admin adjustments.</div>
+        <div class="row muted">Auto-updates on admin actions. Also refreshes every 10s.</div>
       </div>
     </section>
 
-    <!-- Promo redeem -->
     <section class="card">
       <div class="head"><h2>Redeem Promo Code</h2><div class="badge">per-user</div></div>
       <div class="body">
@@ -67,19 +65,11 @@
     </section>
   </div>
 
-  <!-- Kick linking -->
   <section class="card">
     <div class="head"><h2>Kick Account</h2><div class="badge" id="kickStatus">checking…</div></div>
-    <div class="body">
-      <div class="row">
-        <button id="kickLink" class="primary">Link Kick</button>
-        <button id="kickUnlink" class="ghost">Unlink</button>
-        <span class="muted">Link your Kick account for drops, badges, and verified entries.</span>
-      </div>
-    </div>
+    <div class="body"><div class="row"><button id="kickLink" class="primary">Link Kick</button><button id="kickUnlink" class="ghost">Unlink</button><span class="muted">Link your Kick account for drops, badges, and verified entries.</span></div></div>
   </section>
 
-  <!-- Account -->
   <section class="card">
     <div class="head"><h2>Account</h2><div class="badge">basic</div></div>
     <div class="body">
@@ -91,54 +81,69 @@
   </section>
 </div>
 
-<script src="/assets/api-base.js"></script>
+<script src="/assets/api-base.js?v=5"></script>
 <script>
-// lightweight auth bootstrap + live wallet updates
 (() => {
-  const $ = (s,r=document)=>r.querySelector(s);
-  const say = (el,msg,ok)=>{ if(!el)return; el.textContent=msg||""; el.className=(ok===undefined)?"muted":(ok?"ok":"err"); };
-  const balEl = $("#walletBalance");
-  const balStatus = $("#balStatus");
-  const promoStatus = $("#promoStatus");
-  const promoCode   = $("#promoCode");
-  let currentUser = null;
+  const $  = (s,r=document)=>r.querySelector(s);
+  const say= (el,msg,ok)=>{ if(!el) return; el.textContent=msg||""; el.className=(ok===undefined)?"muted":(ok?"ok":"err"); };
+  const qs = new URLSearchParams(location.search);
+  const viewUser = (qs.get("user")||"").trim().toLowerCase(); // admin view-as
 
-  function setBalance(lbx){
-    const v = Number(lbx||0);
-    balEl.textContent = `${v.toLocaleString()} LBX`;
-    const bind = document.querySelector('[data-bind="lbx"]');
-    if (bind) bind.textContent = v.toLocaleString();
+  const who = $("#whoami"), titlePill=$("#titlePill"), viewBadge=$("#viewBadge");
+  const balEl = $("#walletBalance"), balStatus=$("#balStatus"), promoStatus=$("#promoStatus");
+  const promoCode=$("#promoCode");
+  let me = null;
+
+  function setBalance(v){
+    const n = Number(v||0);
+    balEl.textContent = `${n.toLocaleString()} LBX`;
+    const bind = document.querySelector('[data-bind="lbx"]'); if (bind) bind.textContent = n.toLocaleString();
+  }
+
+  async function fetchMyWallet(){
+    const j = await api.get("/api/wallet");
+    return Number(j?.lbx||0);
+  }
+  async function fetchUserWallet(u){
+    const j = await api.get(`/api/admin/wallet/balance?user=${encodeURIComponent(u)}`);
+    return Number(j?.balance||0);
   }
 
   async function loadMe(){
-    const me = await api.get("/api/me");
-    if (!me?.ok) throw new Error("not_logged_in");
-    currentUser = me.user?.username || null;
-    const who = document.getElementById("whoami");
-    if (who) who.textContent = currentUser || "—";
-    setBalance(me.user?.lbx || 0);
-    if (me.user?.createdAt){
-      document.getElementById("createdAt").textContent = new Date(me.user.createdAt).toLocaleString();
-      document.getElementById("createdAtRow").style.display = "";
-    }
+    const j = await api.get("/api/me");
+    if (!j?.ok) throw new Error("not_logged_in");
+    me = j.user;
+    who.textContent = me.username;
+    document.querySelector('[data-bind="username"]').textContent = me.username;
+    document.querySelector('[data-bind="role"]').textContent = me.role||"user";
+    if (me.createdAt){ $("#createdAt").textContent = new Date(me.createdAt).toLocaleString(); $("#createdAtRow").style.display=""; }
   }
 
   async function refreshWallet(){
     try{
       say(balStatus,"Refreshing…");
-      const j = await api.get("/api/wallet");
-      setBalance(j?.lbx || 0);
+      let lbx;
+      if (viewUser && me?.role === "admin"){
+        lbx = await fetchUserWallet(viewUser);
+        titlePill.textContent = `Profile — viewing ${viewUser}`;
+        viewBadge.textContent = "ADMIN VIEW";
+      } else {
+        lbx = await fetchMyWallet();
+        titlePill.textContent = "Profile";
+        viewBadge.textContent = "LBX";
+      }
+      setBalance(lbx);
       say(balStatus,"Up to date.",true);
     }catch(e){
       say(balStatus,(e.message||"failed").replace(/_/g," "),false);
     }
   }
 
-  // promo redeem (updates balance immediately)
-  document.getElementById("redeem")?.addEventListener("click", async ()=>{
+  // promo redeem
+  $("#redeem")?.addEventListener("click", async ()=>{
     const code = (promoCode.value||"").trim().toUpperCase();
     if(!code) return say(promoStatus,"Enter a code.",false);
-    document.getElementById("redeem").disabled = true; say(promoStatus,"Submitting…");
+    $("#redeem").disabled=true; say(promoStatus,"Submitting…");
     try{
       const j = await api.post("/api/code/redeem",{ code });
       setBalance(j?.lbx || 0);
@@ -146,33 +151,33 @@
       promoCode.value="";
     }catch(e){
       say(promoStatus,(e.message||"failed").replace(/_/g," "),false);
-    }finally{
-      document.getElementById("redeem").disabled=false;
-    }
+    }finally{ $("#redeem").disabled=false; }
   });
 
-  // manual refresh
-  document.getElementById("refreshBal")?.addEventListener("click", refreshWallet);
-
-  // same-origin “poke” from Admin Hub (localStorage event)
-  window.addEventListener("storage", (ev)=>{
-    if (ev.key !== "l3z:wallet-poke") return;
+  // storage “poke” from Admin Hub (same origin)
+  window.addEventListener("storage",(ev)=>{
+    if (ev.key!=="l3z:wallet-poke") return;
     try{
       const data = JSON.parse(ev.newValue||"{}");
-      if (data?.u && currentUser && data.u.toLowerCase() === currentUser.toLowerCase()){
+      if (!data?.u) return;
+      const target = String(data.u).toLowerCase();
+      if ((viewUser && target===viewUser) || (!viewUser && me && target===String(me.username).toLowerCase())){
         refreshWallet();
       }
     }catch{}
   });
 
-  // logout button
-  document.getElementById("logout")?.addEventListener("click", async ()=>{
-    try{ await api.post("/api/auth/logout",{}); }catch{}
-    location.href="/login.html";
-  });
+  // manual refresh + poller
+  $("#refreshBal")?.addEventListener("click", refreshWallet);
+  setInterval(()=>{ if(!document.hidden) refreshWallet(); }, 10000);
 
-  // boot
-  (async ()=>{ await loadMe(); })();
+  // logout
+  $("#logout")?.addEventListener("click", async ()=>{ try{ await api.post("/api/auth/logout",{});}catch{} location.href="/login.html"; });
+
+  (async function boot(){
+    await loadMe();    // identify me + role
+    await refreshWallet(); // initial balance for self OR viewed user
+  })();
 })();
 </script>
 </body>
