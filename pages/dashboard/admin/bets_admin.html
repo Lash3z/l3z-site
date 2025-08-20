@@ -1,19 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Admin • Bets Console — L3Z</title>
 <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
 <style>
-  :root{
-    --bg:#0b0e13;--panel:#0f141b;--ink:#e8ecf3;--muted:#94a3b8;--line:rgba(0,255,255,.18);
-    --gold:#f0a320;--ok:#12d48a;--err:#ff7a8a;--chip:#0c141a
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-  a{color:#9bd3ff;text-decoration:none}
-  .wrap{max-width:1280px;margin:0 auto;padding:14px}
+  :root{--bg:#0b0e13;--panel:#0f141b;--ink:#e8ecf3;--muted:#94a3b8;--line:rgba(0,255,255,.18);--gold:#f0a320;--ok:#12d48a;--err:#ff7a8a;--chip:#0c141a}
+  *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  a{color:#9bd3ff;text-decoration:none}.wrap{max-width:1280px;margin:0 auto;padding:14px}
   .top{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
   .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0a1016;color:#cfe;font-weight:800}
   .right{display:flex;gap:8px;align-items:center}
@@ -23,41 +17,25 @@
   .head h2{margin:0;font-size:14px;letter-spacing:.3px;color:#ffd78a}
   .body{padding:12px;display:grid;gap:10px}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  input,select,button,textarea{
-    background:#0f141b;border:1px solid var(--line);color:var(--ink);
-    border-radius:10px;padding:10px 12px;font-size:14px
-  }
-  textarea{min-height:72px;width:100%}
-  button{cursor:pointer;font-weight:800}
-  button.primary{background:linear-gradient(180deg,#f5c462,#d49a2e);color:#1a1204;border:none}
-  button.ghost{background:#111a22}
-  button.danger{background:#2a1115;border-color:#7c2731}
-  .muted{color:var(--muted)} .ok{color:var(--ok)} .err{color:var(--err)}
-  .stats{display:flex;gap:8px;flex-wrap:wrap}
+  input,select,button,textarea{background:#0f141b;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:14px}
+  textarea{min-height:72px;width:100%} button{cursor:pointer;font-weight:800}
+  button.primary{background:linear-gradient(180deg,#f5c462,#d49a2e);color:#1a1204;border:none} button.ghost{background:#111a22} button.danger{background:#2a1115;border-color:#7c2731}
+  .muted{color:var(--muted)} .ok{color:var(--ok)} .err{color:var(--err)} .stats{display:flex;gap:8px;flex-wrap:wrap}
   .stat{display:flex;gap:6px;align-items:center;background:#0b1117;border:1px solid var(--line);border-radius:12px;padding:8px 10px}
   .tableWrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
   table{width:100%;border-collapse:separate;border-spacing:0;min-width:1040px}
-  thead th{position:sticky;top:0;background:#0b1316;border-bottom:1px solid rgba(255,255,255,.08);font-weight:800;font-size:12px;color:var(--muted);text-align:left;padding:10px}
-  tbody td{padding:10px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:middle}
-  tbody tr:hover{background:#0a1214}
+  thead th{position:sticky;top:0;background:#0b1316;border-bottom:1px solid rgba(255,255,255,.08);font-weight:800;font-size:12px;color:#9fb3c5;text-align:left;padding:10px}
+  tbody td{padding:10px;border-bottom:1px solid rgba(255,255,255,.06);vertical-align:middle} tbody tr:hover{background:#0a1214}
   .status{padding:4px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:#0d141b;font-size:12px}
-  .status.placed{color:#9bd3ff}
-  .status.settled{color:#12d48a}
-  .status.voided{color:#ff7a8a}
-  .mini{font-size:12px;color:#9fb3c5}
-  .pick{display:inline-block;margin-right:6px;padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:#0f171d;font-size:12px}
-  .sel{width:20px;height:20px}
-  .narrow{width:110px}
-  .payoutInput{width:100px}
+  .status.placed{color:#9bd3ff} .status.settled{color:#12d48a} .status.voided{color:#ff7a8a}
+  .mini{font-size:12px;color:#9fb3c5} .pick{display:inline-block;margin-right:6px;padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:#0f171d;font-size:12px}
+  .sel{width:20px;height:20px} .narrow{width:110px} .payoutInput{width:100px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="top">
-    <div style="display:flex;align-items:center;gap:10px">
-      <img src="/assets/l3z_logo.png" alt="" style="width:36px;height:36px;border-radius:10px;border:1px solid var(--line)">
-      <div class="pill">Admin • Bets Console</div>
-    </div>
+    <div style="display:flex;align-items:center;gap:10px"><img src="/assets/l3z_logo.png" alt="" style="width:36px;height:36px;border-radius:10px;border:1px solid var(--line)"><div class="pill">Admin • Bets Console</div></div>
     <div class="right">
       <div class="pill" id="who">admin: —</div>
       <a class="pill" href="/admin/tools.html" style="border-color:#3a5166">Admin Hub</a>
@@ -66,27 +44,13 @@
   </div>
 
   <section class="card">
-    <div class="head">
-      <h2>Filter & Controls</h2>
-      <div class="row">
-        <span class="muted" id="state">idle</span>
-      </div>
-    </div>
+    <div class="head"><h2>Filter & Controls</h2><div class="row"><span class="muted" id="state">idle</span></div></div>
     <div class="body">
       <div class="row" style="justify-content:space-between">
         <div class="row">
-          <select id="statusSel">
-            <option value="placed" selected>Placed</option>
-            <option value="settled">Settled</option>
-            <option value="voided">Voided</option>
-            <option value="">All</option>
-          </select>
-          <input id="q" placeholder="Search (user, game, pick…)" />
-          <select id="limitSel">
-            <option value="50">50</option>
-            <option value="100" selected>100</option>
-            <option value="200">200</option>
-          </select>
+          <select id="statusSel"><option value="placed" selected>Placed</option><option value="settled">Settled</option><option value="voided">Voided</option><option value="">All</option></select>
+          <input id="q" placeholder="Search (user, game, pick…)"/>
+          <select id="limitSel"><option value="50">50</option><option value="100" selected>100</option><option value="200">200</option></select>
           <button id="refresh" class="ghost">Refresh</button>
         </div>
         <div class="row">
@@ -95,13 +59,12 @@
           <div class="stat"><span class="muted">Potential Return</span><b id="stPotential">0 LBX</b></div>
         </div>
       </div>
-
       <div class="row" style="justify-content:space-between">
         <div class="row">
           <label class="mini">Bulk payout</label>
           <input id="bulkPayout" class="payoutInput" type="number" min="0" step="1" value="0"/>
           <button id="bulkSettle" class="primary">Settle Selected</button>
-          <button id="bulkVoid"   class="danger">Void Selected</button>
+          <button id="bulkVoid" class="danger">Void Selected</button>
         </div>
         <div class="mini">Select rows at left; bulk actions apply to those.</div>
       </div>
@@ -111,7 +74,7 @@
   <section class="card">
     <div class="head">
       <h2>Review Bets</h2>
-      <div class="row mini">Click “Settle” to award payout. “Void” auto-refunds stake.</div>
+      <div class="row mini">“Settle” awards payout. “Void” auto-refunds stake.</div>
     </div>
     <div class="body">
       <div class="tableWrap">
@@ -147,11 +110,11 @@
   const stCount=$("#stCount"), stStaked=$("#stStaked"), stPotential=$("#stPotential");
   const selAll=$("#selAll"), bulkPayout=$("#bulkPayout");
 
-  let data = [];           // loaded bets
-  let selected = new Set();// selected betIds
+  let data = [];            // loaded bets
+  let selected = new Set(); // selected betIds
   let me = null;
 
-  function fmtLBX(n){ return \`\${Number(n||0).toLocaleString()} LBX\`; }
+  function fmtLBX(n){ return `${Number(n||0).toLocaleString()} LBX`; }
   function asNum(n){ const x=Number(n); return Number.isFinite(x)?x:0; }
   function pill(s){
     const span = document.createElement("span");
@@ -209,25 +172,27 @@
       return;
     }
     for (const b of list){
-      const picks = Array.isArray(b.picks) ? b.picks.map(p=>p.label||p.choice||p.name||"Pick").map(t=>\`<span class="pick">\${t}</span>\`).join(" ") : (b.pickLabel || "—");
-      const payout = (b.payout!=null) ? (b.payout>0? \`+\${b.payout}\` : String(b.payout)) : "—";
+      const picks = Array.isArray(b.picks)
+        ? b.picks.map(p=>p.label||p.choice||p.name||"Pick").map(t=>`<span class="pick">${t}</span>`).join(" ")
+        : (b.pickLabel || "—");
+      const payout = (b.payout!=null) ? (b.payout>0? `+${b.payout}` : String(b.payout)) : "—";
       const isPlaced = (b.status === "placed");
       const tr = document.createElement("tr");
-      tr.innerHTML = \`
-        <td><input type="checkbox" class="sel" data-id="\${b._id}" \${selected.has(String(b._id))?"checked":""}></td>
-        <td>\${new Date(b.createdAt || b.placedAt || Date.now()).toLocaleString()}</td>
-        <td><b>\${b.username}</b></td>
-        <td><b>\${b.game || b.type || "Bet"}</b><div class="mini">\${picks}</div></td>
-        <td>\${fmtLBX(b.amount)}</td>
-        <td>\${pill(b.status||"placed")}</td>
-        <td>\${payout}</td>
+      tr.innerHTML = `
+        <td><input type="checkbox" class="sel" data-id="${b._id}" ${selected.has(String(b._id))?"checked":""}></td>
+        <td>${new Date(b.createdAt || b.placedAt || Date.now()).toLocaleString()}</td>
+        <td><b>${b.username}</b></td>
+        <td><b>${b.game || b.type || "Bet"}</b><div class="mini">${picks}</div></td>
+        <td>${fmtLBX(b.amount)}</td>
+        <td>${pill(b.status||"placed")}</td>
+        <td>${payout}</td>
         <td>
           <div class="row">
-            <input type="number" min="0" step="1" class="payoutInput" placeholder="payout" data-id="\${b._id}" \${!isPlaced?"disabled":""}/>
-            <button class="ghost narrow" data-act="settle" data-id="\${b._id}" \${!isPlaced?"disabled":""}>Settle</button>
-            <button class="danger narrow" data-act="void"   data-id="\${b._id}" \${!isPlaced?"disabled":""}>Void</button>
+            <input type="number" min="0" step="1" class="payoutInput" placeholder="payout" data-id="${b._id}" ${!isPlaced?"disabled":""}/>
+            <button class="ghost narrow" data-act="settle" data-id="${b._id}" ${!isPlaced?"disabled":""}>Settle</button>
+            <button class="danger narrow" data-act="void"   data-id="${b._id}" ${!isPlaced?"disabled":""}>Void</button>
           </div>
-        </td>\`;
+        </td>`;
       rows.appendChild(tr);
     }
   }
@@ -257,12 +222,12 @@
     if (!act || !id) return;
 
     if (act === "settle"){
-      const input = rows.querySelector(\`input.payoutInput[data-id="\${id}"]\`);
+      const input = rows.querySelector(`input.payoutInput[data-id="${id}"]`);
       const payout = Number(input?.value || 0);
       if (!Number.isFinite(payout) || payout < 0){ alert("Enter a non-negative payout."); return; }
       ev.target.disabled = true; state.textContent = "settling…";
       try{
-        const j = await api.post("/api/admin/bets/settle", { betId:id, payout });
+        await api.post("/api/admin/bets/settle", { betId:id, payout });
         await api.post("/api/admin/audit/track", { evt:"bets.settle", payload:{ betId:id, payout } });
         state.textContent = "settled";
         await load(); // refresh list
@@ -275,7 +240,7 @@
       const reason = prompt("Reason for void?");
       ev.target.disabled = true; state.textContent = "voiding…";
       try{
-        const j = await api.post("/api/admin/bets/void", { betId:id, reason: reason || null });
+        await api.post("/api/admin/bets/void", { betId:id, reason: reason || null });
         await api.post("/api/admin/audit/track", { evt:"bets.void", payload:{ betId:id, reason: reason || null } });
         state.textContent = "voided";
         await load();
@@ -292,7 +257,7 @@
     if (decisions.length === 0){ alert("Select at least one bet."); return; }
     state.textContent = "bulk settling…";
     try{
-      const j = await api.post("/api/admin/bets/settle_bulk", { decisions });
+      await api.post("/api/admin/bets/settle_bulk", { decisions });
       await api.post("/api/admin/audit/track", { evt:"bets.settle_bulk", payload:{ n: decisions.length, payout } });
       state.textContent = "bulk settled";
       selected.clear(); selAll.checked = false;
@@ -307,8 +272,7 @@
     const reason = prompt("Reason for void (applies to all)?") || null;
     state.textContent = "bulk void…";
     try{
-      // settle_bulk with payout=0 isn't the same as void w/refund. Use per-bet void.
-      // Fire sequentially to keep it simple client-side.
+      // Process sequentially client-side for simplicity.
       for (const id of Array.from(selected)){
         await api.post("/api/admin/bets/void", { betId:id, reason });
       }
