@@ -17,13 +17,17 @@
   .body{padding:12px;display:grid;gap:10px}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .muted{color:var(--muted)} .ok{color:var(--ok)} .err{color:var(--err)}
-  input,button{background:#0f141b;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:14px}
+  input,button{background:#0f141b;border:1px solid var(--line);color:#e8ecf3;border-radius:10px;padding:10px 12px;font-size:14px}
   input{min-width:180px} button{cursor:pointer;font-weight:800}
   .primary{background:linear-gradient(180deg,#f5c462,#d49a2e);color:#1a1204;border:none}
   .ghost{background:#111a22}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
   @media (max-width:980px){.grid{grid-template-columns:1fr}}
   .badge{display:inline-flex;align-items:center;gap:6px;background:var(--chip);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:6px 10px}
+
+  /* debug panel */
+  .dbg{position:fixed;right:10px;bottom:10px;background:#0c141a;border:1px dashed #2a3e50;color:#cfe;border-radius:10px;padding:8px 10px;max-width:360px;z-index:9999;font-size:12px}
+  .dbg pre{margin:6px 0 0 0;max-height:130px;overflow:auto;background:#0a1218;padding:8px;border-radius:8px}
 </style>
 </head>
 <body data-login-url="/login.html">
@@ -48,7 +52,7 @@
           <button id="refreshBal" class="ghost">Refresh Balance</button>
           <span id="balStatus" class="muted"></span>
         </div>
-        <div class="row muted">Auto-updates on admin actions. Also refreshes every 10s.</div>
+        <div class="row muted">Auto-updates on admin actions and every 10s.</div>
       </div>
     </section>
 
@@ -60,7 +64,7 @@
           <button id="redeem" class="primary">Redeem</button>
           <span id="promoStatus" class="muted"></span>
         </div>
-        <div class="row muted">Uses <code>/api/code/redeem</code>. Balance will update on success.</div>
+        <div class="row muted">Uses <code>/api/code/redeem</code>. Balance updates on success.</div>
       </div>
     </section>
   </div>
@@ -81,7 +85,17 @@
   </section>
 </div>
 
-<script src="/assets/api-base.js?v=5"></script>
+<!-- Debug panel -->
+<div class="dbg" id="dbg" style="display:none">
+  <div><b>Diag:</b>
+    <label><input type="checkbox" id="dbgToggle"/> log HTTP</label>
+    <label style="margin-left:8px">view user <input id="dbgUser" placeholder="(self)"></label>
+    <button id="dbgApply" class="ghost" style="margin-left:6px">Apply</button>
+  </div>
+  <pre id="dbgOut"></pre>
+</div>
+
+<script src="/assets/api-base.js?v=6"></script>
 <script>
 (() => {
   const $  = (s,r=document)=>r.querySelector(s);
@@ -92,22 +106,18 @@
   const who = $("#whoami"), titlePill=$("#titlePill"), viewBadge=$("#viewBadge");
   const balEl = $("#walletBalance"), balStatus=$("#balStatus"), promoStatus=$("#promoStatus");
   const promoCode=$("#promoCode");
+  const dbg=$("#dbg"), dbgOut=$("#dbgOut"), dbgToggle=$("#dbgToggle"), dbgUser=$("#dbgUser");
   let me = null;
 
+  function dbgShow(msg,obj){ try{ dbg.style.display="block"; const line = msg + (obj?(" " + JSON.stringify(obj)):""); dbgOut.textContent = (line + "\n" + dbgOut.textContent).slice(0,8000);}catch{} }
   function setBalance(v){
     const n = Number(v||0);
     balEl.textContent = `${n.toLocaleString()} LBX`;
     const bind = document.querySelector('[data-bind="lbx"]'); if (bind) bind.textContent = n.toLocaleString();
   }
 
-  async function fetchMyWallet(){
-    const j = await api.get("/api/wallet");
-    return Number(j?.lbx||0);
-  }
-  async function fetchUserWallet(u){
-    const j = await api.get(`/api/admin/wallet/balance?user=${encodeURIComponent(u)}`);
-    return Number(j?.balance||0);
-  }
+  async function fetchMyWallet(){ const j = await api.get("/api/wallet"); return Number(j?.lbx||0); }
+  async function fetchUserWallet(u){ const j = await api.get(`/api/admin/wallet/balance?user=${encodeURIComponent(u)}`); return Number(j?.balance||0); }
 
   async function loadMe(){
     const j = await api.get("/api/me");
@@ -127,15 +137,18 @@
         lbx = await fetchUserWallet(viewUser);
         titlePill.textContent = `Profile — viewing ${viewUser}`;
         viewBadge.textContent = "ADMIN VIEW";
+        dbgShow("GET /api/admin/wallet/balance", {user:viewUser,lbx});
       } else {
         lbx = await fetchMyWallet();
         titlePill.textContent = "Profile";
         viewBadge.textContent = "LBX";
+        dbgShow("GET /api/wallet", {lbx});
       }
       setBalance(lbx);
       say(balStatus,"Up to date.",true);
     }catch(e){
       say(balStatus,(e.message||"failed").replace(/_/g," "),false);
+      dbgShow("ERR refreshWallet", {msg:e.message});
     }
   }
 
@@ -149,8 +162,10 @@
       setBalance(j?.lbx || 0);
       say(promoStatus,`Success! New balance: ${Number(j?.lbx||0).toLocaleString()} LBX`,true);
       promoCode.value="";
+      dbgShow("POST /api/code/redeem", j);
     }catch(e){
       say(promoStatus,(e.message||"failed").replace(/_/g," "),false);
+      dbgShow("ERR redeem", {msg:e.message});
     }finally{ $("#redeem").disabled=false; }
   });
 
@@ -159,9 +174,10 @@
     if (ev.key!=="l3z:wallet-poke") return;
     try{
       const data = JSON.parse(ev.newValue||"{}");
-      if (!data?.u) return;
-      const target = String(data.u).toLowerCase();
+      const target = String(data?.u||"").toLowerCase();
+      if (!target) return;
       if ((viewUser && target===viewUser) || (!viewUser && me && target===String(me.username).toLowerCase())){
+        dbgShow("poke received", data);
         refreshWallet();
       }
     }catch{}
@@ -174,9 +190,21 @@
   // logout
   $("#logout")?.addEventListener("click", async ()=>{ try{ await api.post("/api/auth/logout",{});}catch{} location.href="/login.html"; });
 
+  // debug controls
+  dbgToggle.checked = (localStorage.getItem("l3z:debug-http")==="1");
+  $("#dbgApply")?.addEventListener("click", ()=>{
+    localStorage.setItem("l3z:debug-http", dbgToggle.checked ? "1" : "0");
+    const u = (dbgUser.value||"").trim().toLowerCase();
+    const params = new URLSearchParams(location.search);
+    if (u) params.set("user", u); else params.delete("user");
+    params.set("diag","1");
+    location.search = params.toString();
+  });
+
   (async function boot(){
-    await loadMe();    // identify me + role
-    await refreshWallet(); // initial balance for self OR viewed user
+    if (qs.has("diag")) dbg.style.display="block";
+    await loadMe();
+    await refreshWallet();
   })();
 })();
 </script>
