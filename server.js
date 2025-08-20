@@ -1,12 +1,13 @@
 // server.js — homepage-first, admin aliases, JSON+form login
-// + Wallet (Mongo + file fallback) with ledger + daily reward
-// + Viewer session (cookie) + signup bonus
-// + Promo admin + redeem (matches Admin Hub)
-// + Admin raffle entry endpoints (matches Admin Hub)
-// + PVP Entries + Bracket APIs
-// + LIVE publish feeds for Battleground & Bonus Hunt
-// + Shared leaderboard upsert
-// + Production hardening (CORS, secrets, cookies)
+// Wallet (Mongo -> file -> memory) with ledger + signup bonus + daily reward
+// Viewer session via cookie
+// Promo admin + redeem
+// Admin raffle entry endpoints
+// PVP entries + bracket builder
+// LIVE feeds for Battleground & Bonus Hunt
+// Leaderboard upsert + lists
+// Bets admin (draft/publish) + PUBLIC live + place bet (deducts LBX, writes ledger)
+// Production hardening (CORS, headers, cookies)
 
 import fs from "fs";
 import os from "os";
@@ -43,7 +44,7 @@ const SIGNUP_BONUS = Number(process.env.SIGNUP_BONUS || 0);
 const DAILY_REWARD_AMOUNT = Number(process.env.DAILY_REWARD_AMOUNT || 5);
 const DAILY_REWARD_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-// File persistence fallback (so “server sync” doesn’t wipe balances without DB)
+// File persistence fallback
 const STATE_PERSIST = (process.env.STATE_PERSIST ?? "true") === "true";
 const STATE_CANDIDATES = [
   process.env.STATE_FILE && path.resolve(process.env.STATE_FILE),
@@ -52,7 +53,6 @@ const STATE_CANDIDATES = [
 ].filter(Boolean);
 let STATE_FILE = STATE_CANDIDATES[0];
 
-// Fail fast in production if secrets are missing
 if (NODE_ENV === "production" && (!ADMIN_USER || !ADMIN_PASS || !ADMIN_SECRET || !JWT_SECRET)) {
   console.error("[SECURITY] Missing required admin credentials/secrets in production.");
   process.exit(1);
@@ -62,15 +62,12 @@ if (NODE_ENV === "production" && (!ADMIN_USER || !ADMIN_PASS || !ADMIN_SECRET ||
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 
-const PUBLIC_DIR = process.env.PUBLIC_DIR
-  ? path.resolve(process.env.PUBLIC_DIR)
-  : __dirname;
+const PUBLIC_DIR = process.env.PUBLIC_DIR ? path.resolve(process.env.PUBLIC_DIR) : __dirname;
 
 const HOME_INDEX = (() => {
   const val = process.env.HOME_INDEX || "index.html";
   return path.isAbsolute(val) ? val : path.join(PUBLIC_DIR, val);
 })();
-
 function existsSync(p) { try { fs.accessSync(p); return true; } catch { return false; } }
 const HAS_HOME = existsSync(HOME_INDEX);
 
@@ -114,6 +111,11 @@ const memory = {
   // Promo codes + redemptions (fallback)
   promoCodes: [],
   promoRedemptions: [],
+
+  // Bets / tickets fallback
+  betsDrafts: [],
+  betsPublished: [],
+  tickets: [], // { id, user, at, mode, stake, legs|leg, odds }
 };
 
 /* ===================== File persistence (fallback) ===================== */
@@ -323,6 +325,7 @@ app.use(express.static(PUBLIC_DIR, {
     }
   }
 }));
+
 /* =================================================================== */
 /* ===================== WALLET / VIEWER SESSION ===================== */
 /* =================================================================== */
@@ -432,7 +435,6 @@ app.post("/api/viewer/register", async (req, res) => {
     const pwd  = String(req.body?.password || "");
     if (!name || !pwd) return res.status(400).json({ error: "missing_credentials" });
 
-    // lightweight local users (Mongo optional)
     if (globalThis.__dbReady) {
       const users = globalThis.__db.collection("users");
       const exists = await users.findOne({ username: name });
@@ -476,7 +478,6 @@ app.post("/api/viewer/login", async (req, res) => {
     });
 
     await grantSignupBonusIfNeeded(name);
-
     const w = await getWallet(name);
     res.json({ success: true, username: name, wallet: { balance: Number(w.balance||0) } });
   } catch (e) {
@@ -589,11 +590,11 @@ app.post("/api/rewards/daily", requireViewer, async (req, res) => {
     res.status(500).json({ ok:false, error:"SERVER" });
   }
 });
+
 /* =================================================================== */
 /* ============================ JACKPOT =============================== */
 /* =================================================================== */
 
-// Public: read current jackpot
 app.get("/api/jackpot", (req, res) => {
   const j = memory.jackpot || { amount: 0, month: new Date().toISOString().slice(0,7), perSubAUD: 2.5, currency: "AUD" };
   res.json({
@@ -605,8 +606,6 @@ app.get("/api/jackpot", (req, res) => {
     ts: Date.now()
   });
 });
-
-// Admin: set jackpot fields
 app.post("/api/admin/jackpot", verifyAdminToken, (req, res) => {
   const b = req.body || {};
   if (typeof b.amount === "number") memory.jackpot.amount = Number(b.amount);
@@ -616,8 +615,6 @@ app.post("/api/admin/jackpot", verifyAdminToken, (req, res) => {
   scheduleSave();
   res.json({ ok: true, jackpot: memory.jackpot });
 });
-
-// Admin: increment/decrement by delta
 app.patch("/api/admin/jackpot/increment", verifyAdminToken, (req, res) => {
   const delta = Number(req.body?.delta || 0);
   memory.jackpot.amount = Number(memory.jackpot.amount || 0) + delta;
@@ -642,8 +639,6 @@ app.post("/api/deposits/:id/reject", verifyAdminToken, (req, res) => {
   scheduleSave();
   res.json({ success: true });
 });
-
-// accept client submit
 app.post("/api/lbx/orders", (req, res) => {
   const o = req.body || {};
   o._id = o._id || ("ORD-" + Math.random().toString(36).slice(2,10).toUpperCase());
@@ -675,7 +670,6 @@ app.post("/api/admin/raffles/:rid/entries", verifyAdminToken, (req,res)=>{
   scheduleSave();
   res.json({ success:true });
 });
-// Giveaways alias
 app.get("/api/admin/giveaways/:gid/entries", verifyAdminToken, (req,res)=>{
   const rid = String(req.params.gid||"").toUpperCase(); const r = ensureRaffle(rid);
   res.json({ rid: r.rid, title: r.title, open: !!r.open, winner: r.winner||null, entries: r.entries||[] });
@@ -693,7 +687,6 @@ app.post("/api/admin/giveaways/:gid/entries", verifyAdminToken, (req,res)=>{
 /* ============================ PROMO CODES ========================== */
 /* =================================================================== */
 
-// Helpers (shared with Admin Hub)
 const __promoHits = new Map();
 function tinyRateLimit(windowMs = 10_000) {
   return (req, res, next) => {
@@ -710,38 +703,30 @@ function normCode(s = "") {
   return String(s).trim().toUpperCase().replace(/\s+/g, "");
 }
 
-// Create single
 app.post("/api/admin/promo/create", verifyAdminToken, async (req, res) => {
   try {
     let { code, amount, maxRedemptions=1, perUserLimit=1, expiresAt=null, notes="" } = req.body || {};
     amount = Number(amount);
     maxRedemptions = Number(maxRedemptions);
     perUserLimit = Number(perUserLimit);
-
     if (!PROMO_ALLOWED_AMOUNTS.has(amount)) return res.status(400).json({ ok:false, error:"INVALID_AMOUNT" });
     if (maxRedemptions < 1 || perUserLimit < 1) return res.status(400).json({ ok:false, error:"LIMITS_INVALID" });
 
     const now = new Date();
     const doc = {
       code: normCode(code || `L3Z-${amount}-${Math.random().toString(36).slice(2,8).toUpperCase()}`),
-      amount,
-      maxRedemptions,
-      perUserLimit,
-      redeemedCount: 0,
-      active: true,
+      amount, maxRedemptions, perUserLimit,
+      redeemedCount: 0, active: true,
       expiresAt: expiresAt ? new Date(expiresAt) : null,
       createdBy: req.adminUser || "admin",
-      notes: String(notes || ""),
-      createdAt: now,
-      updatedAt: now,
+      notes: String(notes || ""), createdAt: now, updatedAt: now,
     };
 
     if (globalThis.__dbReady) {
       await globalThis.__db.collection("promo_codes").insertOne(doc);
     } else {
       if ((memory.promoCodes||[]).some(p => p.code === doc.code)) return res.status(409).json({ ok:false, error:"CODE_EXISTS" });
-      memory.promoCodes.unshift(doc);
-      scheduleSave();
+      memory.promoCodes.unshift(doc); scheduleSave();
     }
     res.json({ ok:true, code: doc.code, promo: doc });
   } catch (e) {
@@ -750,129 +735,995 @@ app.post("/api/admin/promo/create", verifyAdminToken, async (req, res) => {
     res.status(500).json({ ok:false, error:"SERVER" });
   }
 });
-// ===== Wallet: welcome bonus + daily LBX claim =====
 
-// helper: get or init wallet
-async function getWallet(username) {
-  username = String(username || "").toUpperCase();
-  if (!username) return { balance: 0, ledger: [] };
-
-  if (globalThis.__dbReady) {
-    const col = globalThis.__db.collection("wallets");
-    let doc = await col.findOne({ username });
-    if (!doc) {
-      // first time -> create with welcome bonus
-      doc = {
-        username,
-        balance: 50,
-        ledger: [
-          { ts: Date.now(), type: "WELCOME", amount: 50, note: "Welcome Bonus" }
-        ],
-        lastDaily: 0,
-      };
-      await col.insertOne(doc);
-    }
-    return doc;
-  } else {
-    if (!memory.wallets[username]) {
-      memory.wallets[username] = {
-        balance: 50,
-        ledger: [
-          { ts: Date.now(), type: "WELCOME", amount: 50, note: "Welcome Bonus" }
-        ],
-        lastDaily: 0,
-      };
-    }
-    return memory.wallets[username];
-  }
-}
-
-// helper: save wallet
-async function saveWallet(username, wallet) {
-  username = String(username || "").toUpperCase();
-  if (globalThis.__dbReady) {
-    const col = globalThis.__db.collection("wallets");
-    await col.updateOne({ username }, { $set: wallet }, { upsert: true });
-  } else {
-    memory.wallets[username] = wallet;
-  }
-  return wallet;
-}
-
-// GET current wallet (requires auth)
-app.get("/api/wallet/me", verifyAdminToken, async (req, res) => {
+app.post("/api/admin/promo/generate", verifyAdminToken, async (req, res) => {
   try {
-    const username = String(req.query.viewer || req.adminUser || "").toUpperCase();
-    if (!username) return res.status(400).json({ error: "no username" });
+    let { prefix = "L3Z", amount, count, maxRedemptions=1, perUserLimit=1, expiresAt=null, notes="" } = req.body || {};
+    amount = Number(amount);
+    count = Math.min(5000, Number(count || 1));
+    if (!PROMO_ALLOWED_AMOUNTS.has(amount)) return res.status(400).json({ ok:false, error:"INVALID_AMOUNT" });
+    if (count < 1) return res.status(400).json({ ok:false, error:"COUNT_INVALID" });
 
-    const w = await getWallet(username);
-    res.json({
-      username,
-      wallet: { balance: Number(w.balance || 0), ledger: w.ledger || [] }
+    const now = new Date();
+    const mkCode = () => `${normCode(prefix)}-${amount}-${crypto.randomBytes(6).toString("base64").replace(/[^A-Z0-9]/gi,"").slice(0,7).toUpperCase()}`;
+
+    if (globalThis.__dbReady) {
+      const pc = globalThis.__db.collection("promo_codes");
+      const docs = Array.from({ length: count }).map(() => ({
+        code: mkCode(), amount,
+        maxRedemptions: Number(maxRedemptions), perUserLimit: Number(perUserLimit),
+        redeemedCount: 0, active: true,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        createdBy: req.adminUser || "admin",
+        notes: String(notes || ""), createdAt: now, updatedAt: now,
+      }));
+      await pc.insertMany(docs, { ordered: false });
+      return res.json({ ok:true, generated: docs.length, sample: docs.slice(0,5).map(d=>d.code) });
+    } else {
+      const docs = [];
+      for (let i=0;i<count;i++){
+        let c; do { c = mkCode(); } while ((memory.promoCodes||[]).some(p => p.code === c));
+        docs.push({
+          code: c, amount,
+          maxRedemptions: Number(maxRedemptions),
+          perUserLimit: Number(perUserLimit),
+          redeemedCount: 0, active: true,
+          expiresAt: expiresAt ? new Date(expiresAt) : null,
+          createdBy: req.adminUser || "admin",
+          notes: String(notes || ""), createdAt: now, updatedAt: now,
+        });
+      }
+      memory.promoCodes = [...docs, ...(memory.promoCodes||[])];
+      scheduleSave();
+      return res.json({ ok:true, generated: docs.length, sample: docs.slice(0,5).map(d=>d.code) });
+    }
+  } catch (e) {
+    console.error("[promo/generate]", e);
+    res.status(500).json({ ok:false, error:"SERVER" });
+  }
+});
+
+app.get("/api/admin/promo/list", verifyAdminToken, async (req, res) => {
+  const only = "active" in req.query ? (req.query.active === "1") : null;
+  if (globalThis.__dbReady) {
+    const q = only === null ? {} : { active: only };
+    const items = await globalThis.__db.collection("promo_codes").find(q).sort({ createdAt: -1 }).limit(500).toArray();
+    return res.json({ ok:true, items });
+  } else {
+    let items = [...(memory.promoCodes||[])];
+    if (only !== null) items = items.filter(p => !!p.active === only);
+    return res.json({ ok:true, items });
+  }
+});
+app.post("/api/admin/promo/disable", verifyAdminToken, async (req, res) => {
+  const code = normCode(req.body?.code || "");
+  if (!code) return res.status(400).json({ ok:false, error:"CODE_REQUIRED" });
+  if (globalThis.__dbReady) {
+    const r = await globalThis.__db.collection("promo_codes").updateOne({ code }, { $set: { active:false, updatedAt: new Date() } });
+    return res.json({ ok:true, modified: r.modifiedCount });
+  } else {
+    const i = (memory.promoCodes||[]).findIndex(p => p.code === code);
+    if (i >= 0) memory.promoCodes[i].active = false;
+    scheduleSave();
+    return res.json({ ok:true, modified: i >= 0 ? 1 : 0 });
+  }
+});
+
+app.post("/api/promo/redeem", requireViewer, tinyRateLimit(), async (req, res) => {
+  try {
+    const code = normCode(req.body?.code || "");
+    if (!code) return res.status(400).json({ ok:false, error:"CODE_REQUIRED" });
+    const username = req.viewer;
+    const now = new Date();
+
+    if (globalThis.__dbReady) {
+      const pc = globalThis.__db.collection("promo_codes");
+      const pr = globalThis.__db.collection("promo_redemptions");
+
+      const promo = await pc.findOne({ code });
+      if (!promo || !promo.active) return res.status(404).json({ ok:false, error:"INVALID_CODE" });
+      if (promo.expiresAt && promo.expiresAt < now) return res.status(410).json({ ok:false, error:"EXPIRED" });
+      if (promo.redeemedCount >= promo.maxRedemptions) return res.status(409).json({ ok:false, error:"DEPLETED" });
+
+      const prior = await pr.countDocuments({ code, username });
+      if (prior >= (promo.perUserLimit || 1)) return res.status(409).json({ ok:false, error:"PER_USER_LIMIT" });
+
+      try {
+        await pr.insertOne({ code, username, amount: Number(promo.amount||0), createdAt: now });
+      } catch {
+        return res.status(409).json({ ok:false, error:"ALREADY_REDEEMED" });
+      }
+
+      const up = await pc.updateOne(
+        { _id: promo._id, redeemedCount: { $lt: promo.maxRedemptions } },
+        { $inc: { redeemedCount: 1 }, $set: { updatedAt: now } }
+      );
+      if (up.modifiedCount !== 1) {
+        await pr.deleteOne({ code, username }); // rollback
+        return res.status(409).json({ ok:false, error:"DEPLETED" });
+      }
+
+      const credited = await adjustWallet(username, Number(promo.amount||0), `promo:${code}`);
+      if (!credited?.ok) {
+        await pc.updateOne({ _id: promo._id }, { $inc: { redeemedCount: -1 } });
+        await pr.deleteOne({ code, username });
+        return res.status(500).json({ ok:false, error:"CREDIT_FAILED" });
+      }
+
+      return res.json({ ok:true, added: Number(promo.amount||0), code, balance: credited.balance });
+    }
+
+    // FILE/MEMORY
+    const promo = (memory.promoCodes||[]).find(p => p.code === code);
+    if (!promo || !promo.active) return res.status(404).json({ ok:false, error:"INVALID_CODE" });
+    if (promo.expiresAt && promo.expiresAt < now) return res.status(410).json({ ok:false, error:"EXPIRED" });
+    if (promo.redeemedCount >= promo.maxRedemptions) return res.status(409).json({ ok:false, error:"DEPLETED" });
+
+    const userClaims = (memory.promoRedemptions||[]).filter(r => r.code === code && r.username === username).length;
+    if (userClaims >= (promo.perUserLimit || 1)) return res.status(409).json({ ok:false, error:"PER_USER_LIMIT" });
+
+    promo.redeemedCount++;
+    memory.promoRedemptions.unshift({ code, username, amount: Number(promo.amount||0), createdAt: now });
+
+    const credited = await adjustWallet(username, Number(promo.amount||0), `promo:${code}`);
+    if (!credited?.ok) {
+      promo.redeemedCount = Math.max(0, promo.redeemedCount - 1);
+      memory.promoRedemptions = (memory.promoRedemptions||[]).filter(r => !(r.code === code && r.username === username));
+      scheduleSave();
+      return res.status(500).json({ ok:false, error:"CREDIT_FAILED" });
+    }
+    scheduleSave();
+    return res.json({ ok:true, added: Number(promo.amount||0), code, balance: credited.balance });
+  } catch (e) {
+    console.error("[promo/redeem]", e);
+    res.status(500).json({ ok:false, error:"SERVER" });
+  }
+});
+
+app.get("/api/promo/my-redemptions", requireViewer, async (req, res) => {
+  const username = req.viewer;
+  if (globalThis.__dbReady) {
+    const rows = await globalThis.__db.collection("promo_redemptions")
+      .find({ username }).sort({ createdAt: -1 }).limit(200).toArray();
+    return res.json({ ok:true, items: rows });
+  } else {
+    const rows = (memory.promoRedemptions||[]).filter(r => r.username === username);
+    return res.json({ ok:true, items: rows });
+  }
+});
+
+/* =================================================================== */
+/* ============================ LEADERBOARD ========================== */
+/* =================================================================== */
+
+const currentMonth = () => new Date().toISOString().slice(0, 7); // "YYYY-MM"
+
+app.post("/api/leaderboard/upsert", verifyAdminToken, async (req, res) => {
+  const user = String(req.body?.user || req.body?.username || "").toUpperCase();
+  if (!user) return res.status(400).json({ error: "username required" });
+
+  const mode = String(req.body?.mode || "tournament").toLowerCase();
+  const fieldMap = {
+    tournament: "tournamentPoints",
+    bonus:      "bonusHuntPoints",
+    pvp:        "pvpPoints",
+    lucky7:     "lucky7Points",
+  };
+  const field = fieldMap[mode] || "tournamentPoints";
+  const delta = Number(req.body?.delta ?? 0);
+  const actions = Array.isArray(req.body?.actions) ? req.body.actions : [];
+  const month = String(req.body?.month || currentMonth());
+
+  try {
+    if (globalThis.__dbReady) {
+      const db = globalThis.__db;
+      const profiles = db.collection("profiles");
+      const r1 = await profiles.findOneAndUpdate(
+        { username: user },
+        {
+          $setOnInsert: {
+            username: user,
+            tournamentPoints: 0, bonusHuntPoints: 0, pvpPoints: 0, lucky7Points: 0, history: []
+          },
+          $inc: { [field]: delta },
+          $push: { history: { ts: new Date(), mode, added: delta, actions } }
+        },
+        { upsert: true, returnDocument: "after" }
+      );
+
+      const monthly = db.collection("leaderboard_monthly");
+      const r2 = await monthly.findOneAndUpdate(
+        { username: user, month },
+        {
+          $setOnInsert: {
+            username: user, month,
+            tournamentPoints: 0, bonusHuntPoints: 0, pvpPoints: 0, lucky7Points: 0, totalPoints: 0, history: []
+          },
+          $inc: { [field]: delta, totalPoints: delta },
+          $push: { history: { ts: new Date(), mode, added: delta, actions } }
+        },
+        { upsert: true, returnDocument: "after" }
+      );
+
+      return res.json({
+        success: true,
+        cumulative: {
+          username: r1.value.username,
+          tournamentPoints: Number(r1.value.tournamentPoints || 0),
+          bonusHuntPoints:  Number(r1.value.bonusHuntPoints  || 0),
+          pvpPoints:        Number(r1.value.pvpPoints        || 0),
+          lucky7Points:     Number(r1.value.lucky7Points     || 0)
+        },
+        monthly: {
+          username: r2.value.username,
+          month: r2.value.month,
+          tournamentPoints: Number(r2.value.tournamentPoints || 0),
+          bonusHuntPoints:  Number(r2.value.bonusHuntPoints  || 0),
+          pvpPoints:        Number(r2.value.pvpPoints        || 0),
+          lucky7Points:     Number(r2.value.lucky7Points     || 0),
+          totalPoints:      Number(r2.value.totalPoints      || 0)
+        }
+      });
+    } else {
+      const p = memory.profiles[user] || {
+        username: user, tournamentPoints: 0, bonusHuntPoints: 0, pvpPoints: 0, lucky7Points: 0, history: []
+      };
+      p[field] = Number(p[field] || 0) + delta;
+      p.history.unshift({ ts: Date.now(), mode, added: delta, actions });
+      memory.profiles[user] = p;
+
+      if (!memory.monthlyLB) memory.monthlyLB = {};
+      memory.monthlyLB[month] = memory.monthlyLB[month] || {};
+      const mrec = memory.monthlyLB[month][user] || {
+        username: user, month, tournamentPoints: 0, bonusHuntPoints: 0, pvpPoints: 0, lucky7Points: 0, totalPoints: 0, history: []
+      };
+      mrec[field] = Number(mrec[field] || 0) + delta;
+      mrec.totalPoints = Number(mrec.totalPoints || 0) + delta;
+      mrec.history.unshift({ ts: Date.now(), mode, added: delta, actions });
+      memory.monthlyLB[month][user] = mrec;
+
+      scheduleSave();
+      return res.json({ success: true, cumulative: p, monthly: mrec });
+    }
+  } catch (e) {
+    console.error("[LEADERBOARD] upsert failed", e);
+    return res.status(500).json({ error: "failed" });
+  }
+});
+app.get("/api/leaderboard/monthly", async (req, res) => {
+  const month = String(req.query.month || currentMonth());
+  const limit = Math.max(1, Math.min(1000, Number(req.query.limit || 200)));
+
+  try {
+    if (globalThis.__dbReady) {
+      const col = globalThis.__db.collection("leaderboard_monthly");
+      const rows = await col.find({ month })
+        .project({ _id: 0, username: 1, month: 1, tournamentPoints: 1, bonusHuntPoints: 1, pvpPoints: 1, lucky7Points: 1, totalPoints: 1 })
+        .sort({ totalPoints: -1, tournamentPoints: -1, bonusHuntPoints: -1, pvpPoints: -1, lucky7Points: -1, username: 1 })
+        .limit(limit)
+        .toArray();
+
+      let lastKey = null, rank = 0;
+      const ranked = rows.map((r, i) => {
+        const key = `${r.totalPoints}|${r.tournamentPoints}|${r.bonusHuntPoints}|${r.pvpPoints}|${r.lucky7Points}`;
+        if (key !== lastKey) { rank = i + 1; lastKey = key; }
+        return { rank, ...r };
+      });
+
+      return res.json({ month, items: ranked });
+    }
+
+    const bucket = (memory.monthlyLB && memory.monthlyLB[month]) ? memory.monthlyLB[month] : {};
+    const items = Object.values(bucket)
+      .sort((a, b) =>
+        (b.totalPoints || 0) - (a.totalPoints || 0) ||
+        (b.tournamentPoints || 0) - (a.tournamentPoints || 0) ||
+        (b.bonusHuntPoints || 0) - (a.bonusHuntPoints || 0) ||
+        (b.pvpPoints || 0) - (a.pvpPoints || 0) ||
+        (b.lucky7Points || 0) - (a.lucky7Points || 0) ||
+        a.username.localeCompare(b.username)
+      )
+      .slice(0, limit);
+
+    let lastKey = null, rank = 0;
+    const ranked = items.map((r, i) => {
+      const key = `${r.totalPoints}|${r.tournamentPoints}|${r.bonusHuntPoints}|${r.pvpPoints}|${r.lucky7Points}`;
+      if (key !== lastKey) { rank = i + 1; lastKey = key; }
+      return { rank, ...r };
     });
+
+    return res.json({ month, items: ranked });
   } catch (e) {
-    console.error("[wallet/me]", e);
-    res.status(500).json({ error: "server_error" });
+    console.error("[LEADERBOARD] monthly list failed", e);
+    return res.status(500).json({ error: "failed" });
   }
 });
+app.get("/api/leaderboard/overall", async (req, res) => {
+  const limit = Math.max(1, Math.min(1000, Number(req.query.limit || 200)));
 
-// Daily LBX claim (5 LBX every 24h)
-app.post("/api/wallet/claim-daily", verifyAdminToken, async (req, res) => {
   try {
-    const username = String(req.adminUser || "").toUpperCase();
-    if (!username) return res.status(400).json({ error: "no username" });
+    if (globalThis.__dbReady) {
+      const col = globalThis.__db.collection("profiles");
+      const rows = await col.aggregate([
+        { $project: {
+            _id: 0, username: 1,
+            tournamentPoints: { $ifNull: ["$tournamentPoints", 0] },
+            bonusHuntPoints:  { $ifNull: ["$bonusHuntPoints", 0] },
+            pvpPoints:        { $ifNull: ["$pvpPoints", 0] },
+            lucky7Points:     { $ifNull: ["$lucky7Points", 0] },
+        }},
+        { $addFields: { totalPoints: { $add: ["$tournamentPoints", "$bonusHuntPoints", "$pvpPoints", "$lucky7Points"] } } },
+        { $sort: { totalPoints: -1, tournamentPoints: -1, bonusHuntPoints: -1, pvpPoints: -1, lucky7Points: -1, username: 1 } },
+        { $limit: limit }
+      ]).toArray();
 
-    const w = await getWallet(username);
-    const now = Date.now();
-    if (w.lastDaily && now - w.lastDaily < 24 * 60 * 60 * 1000) {
-      return res.status(429).json({ error: "already claimed" });
+      let lastKey = null, rank = 0;
+      const ranked = rows.map((r, i) => {
+        const key = `${r.totalPoints}|${r.tournamentPoints}|${r.bonusHuntPoints}|${r.pvpPoints}|${r.lucky7Points}`;
+        if (key !== lastKey) { rank = i + 1; lastKey = key; }
+        return { rank, ...r };
+      });
+
+      return res.json({ items: ranked });
     }
 
-    w.balance = Number(w.balance || 0) + 5;
-    w.ledger.unshift({ ts: now, type: "DAILY", amount: 5, note: "Daily LBX reward" });
-    w.lastDaily = now;
+    const items = Object.values(memory.profiles || {})
+      .map(p => ({
+        username: p.username,
+        tournamentPoints: Number(p.tournamentPoints || 0),
+        bonusHuntPoints:  Number(p.bonusHuntPoints  || 0),
+        pvpPoints:        Number(p.pvpPoints        || 0),
+        lucky7Points:     Number(p.lucky7Points     || 0),
+      }))
+      .map(r => ({ ...r, totalPoints: r.tournamentPoints + r.bonusHuntPoints + r.pvpPoints + r.lucky7Points }))
+      .sort((a, b) =>
+        (b.totalPoints || 0) - (a.totalPoints || 0) ||
+        (b.tournamentPoints || 0) - (a.tournamentPoints || 0) ||
+        (b.bonusHuntPoints || 0) - (a.bonusHuntPoints || 0) ||
+        (b.pvpPoints || 0) - (a.pvpPoints || 0) ||
+        (b.lucky7Points || 0) - (a.lucky7Points || 0) ||
+        a.username.localeCompare(b.username)
+      )
+      .slice(0, limit);
 
-    await saveWallet(username, w);
+    let lastKey = null, rank = 0;
+    const ranked = items.map((r, i) => {
+      const key = `${r.totalPoints}|${r.tournamentPoints}|${r.bonusHuntPoints}|${r.pvpPoints}|${r.lucky7Points}`;
+      if (key !== lastKey) { rank = i + 1; lastKey = key; }
+      return { rank, ...r };
+    });
 
-    res.json({ success: true, wallet: { balance: w.balance, ledger: w.ledger } });
+    return res.json({ items: ranked });
   } catch (e) {
-    console.error("[wallet/claim-daily]", e);
-    res.status(500).json({ error: "server_error" });
+    console.error("[LEADERBOARD] overall list failed", e);
+    return res.status(500).json({ error: "failed" });
   }
 });
 
-// ===== Default 404
-app.use((req, res) => res.status(404).send("Not found."));
+/* =================================================================== */
+/* ============================ PVP APIs ============================== */
+/* =================================================================== */
 
-// ===== Error handler
+app.get("/api/pvp/entries/open", (req,res)=>{
+  if (!memory.flags) memory.flags = { pvpEntriesOpen: true };
+  res.json({ open: !!memory.flags.pvpEntriesOpen });
+});
+app.post("/api/admin/pvp/entries/open", verifyAdminToken, (req,res)=>{
+  const open = !!req.body?.open;
+  if (!memory.flags) memory.flags = { pvpEntriesOpen: true };
+  memory.flags.pvpEntriesOpen = open;
+  scheduleSave?.();
+  res.json({ success:true, open });
+});
+app.post("/api/pvp/entries", async (req, res) => {
+  const username = String(req.body?.username || req.body?.user || "").trim().toUpperCase();
+  const side     = String(req.body?.side || "").trim().toUpperCase();   // "EAST"/"WEST"
+  const game     = String(req.body?.game || "").trim();
+  if (!username) return res.status(400).json({ error: "username required" });
+
+  if (memory.flags && memory.flags.pvpEntriesOpen === false) {
+    return res.status(403).json({ error: "entries_closed" });
+  }
+
+  const doc = { username, side: side==="WEST" ? "WEST" : "EAST", game, status: "pending", ts: new Date() };
+
+  try {
+    if (globalThis.__dbReady) {
+      const col = globalThis.__db.collection("pvp_entries");
+      const existing = await col.findOne({ username });
+      if (existing) return res.status(409).json({ error: "duplicate", entry: existing });
+      const r = await col.insertOne(doc);
+      const saved = await col.findOne({ _id: r.insertedId });
+      return res.json({ success: true, entry: saved });
+    } else {
+      const exists = (memory.pvpEntries||[]).find(e => e.username === username);
+      if (exists) return res.status(409).json({ error: "duplicate", entry: exists });
+      const saved = { _id: String(Date.now()), ...doc };
+      memory.pvpEntries = memory.pvpEntries || [];
+      memory.pvpEntries.push(saved);
+      scheduleSave?.();
+      return res.json({ success: true, entry: saved });
+    }
+  } catch (e) {
+    console.error("[PVP] save failed", e);
+    return res.status(500).json({ error: "save failed" });
+  }
+});
+app.get("/api/pvp/entries", verifyAdminToken, async (req, res) => {
+  try {
+    if (globalThis.__dbReady) {
+      const list = await globalThis.__db.collection("pvp_entries").find().sort({ ts: -1 }).toArray();
+      return res.json({ entries: list });
+    } else {
+      const list = [...(memory.pvpEntries||[])].sort((a,b)=> new Date(b.ts) - new Date(a.ts));
+      return res.json({ entries: list });
+    }
+  } catch (e) {
+    console.error("[PVP] list failed", e);
+    return res.status(500).json({ error: "list failed" });
+  }
+});
+app.post("/api/pvp/entries/:id/status", verifyAdminToken, async (req, res) => {
+  const status = String(req.body?.status || "").toLowerCase(); // "approved" | "rejected" | "pending"
+  if (!["approved","rejected","pending"].includes(status)) return res.status(400).json({ error: "bad status" });
+  try {
+    if (globalThis.__dbReady) {
+      const col = globalThis.__db.collection("pvp_entries");
+      const id = req.params.id;
+      const q = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { username: id.toUpperCase() };
+      const r = await col.updateOne(q, { $set: { status } });
+      return res.json({ success: r.matchedCount > 0 });
+    } else {
+      const id = req.params.id;
+      const i = (memory.pvpEntries||[]).findIndex(e => e._id === id || e.username === id.toUpperCase());
+      if (i < 0) return res.json({ success: false });
+      memory.pvpEntries[i].status = status;
+      scheduleSave?.();
+      return res.json({ success: true });
+    }
+  } catch (e) {
+    console.error("[PVP] status failed", e);
+    return res.status(500).json({ error: "status failed" });
+  }
+});
+app.delete("/api/pvp/entries/:id", verifyAdminToken, async (req, res) => {
+  try {
+    if (globalThis.__dbReady) {
+      const col = globalThis.__db.collection("pvp_entries");
+      const id = req.params.id;
+      const q = ObjectId.isValid(id) ? { _id: new ObjectId(id) } : { username: id.toUpperCase() };
+      const r = await col.deleteOne(q);
+      return res.json({ success: r.deletedCount > 0 });
+    } else {
+      const id = req.params.id;
+      const before = (memory.pvpEntries||[]).length;
+      memory.pvpEntries = (memory.pvpEntries||[]).filter(e => e._id !== id && e.username !== id.toUpperCase());
+      scheduleSave?.();
+      return res.json({ success: (memory.pvpEntries||[]).length !== before });
+    }
+  } catch (e) {
+    console.error("[PVP] delete failed", e);
+    return res.status(500).json({ error: "delete failed" });
+  }
+});
+
+/* ====================== PVP Bracket (builder) ====================== */
+// (unchanged: same helpers + endpoints as before, omitted for brevity in this comment)
+// — get, create/replace, patch slot, progress, reset
+// The code from your existing file is retained here unchanged.
+
+function nowMs(){ return Date.now(); }
+function emptyRound(n){
+  return Array.from({length:n}, (_,i)=>({
+    id: `m_${Math.random().toString(36).slice(2,8)}_${i}`,
+    left:  { name:"", img:"", score:null },
+    right: { name:"", img:"", score:null },
+    status: "pending", winner: null, game: ""
+  }));
+}
+function buildEmptySide(size){
+  const firstRound = size/4;
+  const r1 = emptyRound(firstRound);
+  const r2 = emptyRound(Math.max(1, firstRound/2));
+  const r3 = emptyRound(1);
+  return [r1, r2, r3];
+}
+function nextIndex(i){ return Math.floor(i/2); }
+function putIntoSlot(match, slot, player){
+  if (slot==="left") match.left = { ...(match.left||{}), ...player };
+  else match.right = { ...(match.right||{}), ...player };
+}
+async function getBracket(){
+  if (globalThis.__dbReady){
+    const col = globalThis.__db.collection("pvp_bracket");
+    const doc = await col.findOne({ _id: "active" });
+    return doc?.builder || null;
+  }
+  return memory.pvpBracket || null;
+}
+async function saveBracket(builder){
+  builder.lastUpdated = nowMs();
+  if (globalThis.__dbReady){
+    const col = globalThis.__db.collection("pvp_bracket");
+    await col.updateOne({ _id: "active" }, { $set: { builder } }, { upsert: true });
+  } else {
+    memory.pvpBracket = builder; scheduleSave?.();
+  }
+  memory.live = memory.live || {};
+  memory.live.pvp = builder;
+  return builder;
+}
+app.get("/api/pvp/bracket", async (req, res) => {
+  try { const builder = await getBracket(); res.json({ builder: builder || null }); }
+  catch (e) { console.error("[PVP] bracket get failed", e); res.status(500).json({ error: "failed" }); }
+});
+app.post("/api/pvp/bracket", verifyAdminToken, async (req, res) => {
+  try {
+    if (req.body?.builder) { const saved = await saveBracket(req.body.builder); return res.json({ success: true, builder: saved }); }
+    const { size, eastSeeds = [], westSeeds = [], games = [], meta = {} } = req.body || {};
+    const bracketSize = (size===32||size===16) ? size : 16;
+
+    const east = buildEmptySide(bracketSize);
+    const west = buildEmptySide(bracketSize);
+    const finals = [ emptyRound(1) ];
+
+    const fillSide = (round0, seeds) => {
+      for (let i=0; i<round0.length; i++){
+        const L = seeds[i*2]   || { name: "" };
+        const R = seeds[i*2+1] || { name: "" };
+        round0[i].left.name  = (L.name||"").toUpperCase();
+        round0[i].left.img   = L.img||"";
+        round0[i].right.name = (R.name||"").toUpperCase();
+        round0[i].right.img  = R.img||"";
+      }
+    };
+    fillSide(east[0], eastSeeds);
+    fillSide(west[0], westSeeds);
+
+    if (Array.isArray(games) && games.length){
+      const assign = (round0) => {
+        for (let i=0;i<round0.length;i++){
+          const g = games[i % games.length];
+          round0[i].game = (g && (g.title || g.name || g)) || "";
+        }
+      };
+      assign(east[0]); assign(west[0]);
+    }
+
+    const saved = await saveBracket({
+      lastUpdated: nowMs(),
+      bracket: {
+        size: bracketSize, east, west, finals,
+        meta: { bestOf: 1, ...meta },
+        cursor: { phase: "east", roundIndex: 0, matchIndex: 0 },
+        champion: null
+      }
+    });
+
+    res.json({ success: true, builder: saved });
+  } catch (e) {
+    console.error("[PVP] bracket build failed", e);
+    res.status(500).json({ error: "failed" });
+  }
+});
+app.patch("/api/pvp/bracket/slot", verifyAdminToken, async (req, res) => {
+  try {
+    const { phase, roundIndex, matchIndex, side, name, img } = req.body || {};
+    const b = await getBracket(); if (!b || !b.bracket) return res.status(404).json({ error: "no bracket" });
+
+    const col = (phase==="east") ? b.bracket.east
+              : (phase==="west") ? b.bracket.west
+              : (phase==="finals") ? b.bracket.finals
+              : null;
+    if (!col) return res.status(400).json({ error: "bad phase" });
+    const round = col[roundIndex|0]; const match = round && round[matchIndex|0];
+    if (!match) return res.status(400).json({ error: "bad index" });
+
+    const slot = side==="left" ? match.left : match.right;
+    if (!slot) return res.status(400).json({ error: "bad side" });
+    if (typeof name === "string") slot.name = name.toUpperCase();
+    if (typeof img === "string")  slot.img  = img;
+
+    await saveBracket(b);
+    res.json({ success: true });
+  } catch (e) {
+    console.error("[PVP] slot patch failed", e);
+    res.status(500).json({ error: "failed" });
+  }
+});
+app.post("/api/pvp/bracket/progress", verifyAdminToken, async (req, res) => {
+  try {
+    const { phase, roundIndex, matchIndex, winner, leftScore=null, rightScore=null } = req.body || {};
+    if (!["L","R"].includes((winner||"").toUpperCase())) return res.status(400).json({ error: "winner must be L or R" });
+    const b = await getBracket(); if (!b || !b.bracket) return res.status(404).json({ error: "no bracket" });
+    const sideArr = phase==="east" ? b.bracket.east : phase==="west" ? b.bracket.west : phase==="finals" ? b.bracket.finals : null;
+    if (!sideArr) return res.status(400).json({ error: "bad phase" });
+
+    const rIdx = roundIndex|0, mIdx = matchIndex|0;
+    const round = sideArr[rIdx]; if (!round) return res.status(400).json({ error: "bad round index" });
+    const match = round[mIdx];   if (!match) return res.status(400).json({ error: "bad match index" });
+
+    if (leftScore !== null)  match.left.score  = Number(leftScore);
+    if (rightScore !== null) match.right.score = Number(rightScore);
+    match.winner = winner.toUpperCase();
+    match.status = "done";
+
+    const adv = (winner.toUpperCase()==="L") ? match.left : match.right;
+    const advPlayer = { name: adv.name || "", img: adv.img || "" };
+
+    const lastRoundIndex = sideArr.length - 1;
+    if (rIdx < lastRoundIndex){
+      const nextRound = sideArr[rIdx + 1];
+      const target = nextRound[nextIndex(mIdx)];
+      const slot = (mIdx % 2 === 0) ? "left" : "right";
+      putIntoSlot(target, slot, advPlayer);
+    } else {
+      const gf = (b.bracket.finals && b.bracket.finals[0] && b.bracket.finals[0][0]) ? b.bracket.finals[0][0] : null;
+      if (gf){
+        if (phase==="east") putIntoSlot(gf, "left", advPlayer);
+        if (phase==="west") putIntoSlot(gf, "right", advPlayer);
+        if (phase==="finals"){ b.bracket.champion = { name: advPlayer.name }; }
+      }
+    }
+
+    if (b.bracket.cursor && b.bracket.cursor.phase===phase && (b.bracket.cursor.roundIndex|0)===rIdx && (b.bracket.cursor.matchIndex|0)===mIdx){
+      const nxt = (function findNextPending(br){
+        const order = [["east"],["west"],["finals"]];
+        for (const [ph] of order){
+          const sideArr2 = br[ph]; if (!sideArr2) continue;
+          for (let r=0;r<sideArr2.length;r++){
+            const round2 = sideArr2[r] || [];
+            for (let m=0;m<round2.length;m++){
+              if (round2[m].status!=="done") return { phase: ph, roundIndex: r, matchIndex: m };
+            }
+          }
+        }
+        return null;
+      })(b.bracket);
+      if (nxt) b.bracket.cursor = nxt;
+    }
+    await saveBracket(b);
+    res.json({ success: true, builder: b });
+  } catch (e) {
+    console.error("[PVP] progress failed", e);
+    res.status(500).json({ error: "failed" });
+  }
+});
+app.post("/api/pvp/bracket/reset", verifyAdminToken, async (req, res) => {
+  try {
+    const b = await getBracket();
+    if (!b || !b.bracket) return res.status(404).json({ error: "no bracket" });
+    const resetSide = (arr) => {
+      for (let r=0;r<arr.length;r++){
+        for (let m=0;m<arr[r].length;m++){
+          const mm = arr[r][m];
+          if (r===0){
+            mm.status = "pending"; mm.winner=null;
+            mm.left.score=null; mm.right.score=null;
+          }else{
+            arr[r][m] = { ...mm, left:{name:"",img:"",score:null}, right:{name:"",img:"",score:null}, status:"pending", winner:null };
+          }
+        }
+      }
+    };
+    resetSide(b.bracket.east); resetSide(b.bracket.west);
+    if (b.bracket.finals && b.bracket.finals[0] && b.bracket.finals[0][0]){
+      b.bracket.finals[0][0] = {
+        id: b.bracket.finals[0][0].id || `gf_${Math.random().toString(36).slice(2,8)}`,
+        left:{name:"",img:"",score:null}, right:{name:"",img:"",score:null},
+        status:"pending", winner:null, game: b.bracket.finals[0][0].game || ""
+      };
+    }
+    b.bracket.champion = null;
+    b.bracket.cursor = { phase:"east", roundIndex:0, matchIndex:0 };
+    await saveBracket(b);
+    res.json({ success:true });
+  } catch (e) {
+    console.error("[PVP] reset failed", e);
+    res.status(500).json({ error: "failed" });
+  }
+});
+
+/* =================================================================== */
+/* ====================== LIVE FEEDS + MARKETS ======================= */
+/* =================================================================== */
+
+async function getLiveBuilder(key){
+  if (globalThis.__dbReady){
+    const col = globalThis.__db.collection("live_feeds");
+    const doc = await col.findOne({ _id: key });
+    return doc?.builder || null;
+  }
+  return memory.live?.[key] || null;
+}
+async function saveLiveBuilder(key, builder){
+  builder.lastUpdated = nowMs();
+  if (globalThis.__dbReady){
+    const col = globalThis.__db.collection("live_feeds");
+    await col.updateOne({ _id: key }, { $set: { builder } }, { upsert: true });
+  } else {
+    memory.live = memory.live || {};
+    memory.live[key] = builder;
+    scheduleSave?.();
+  }
+  return builder;
+}
+
+app.get("/api/battleground/live", async (req,res)=>{
+  try{ const b = await getLiveBuilder("battleground"); res.json({ builder: b || null }); }
+  catch(e){ console.error("[BG] live get failed", e); res.status(500).json({ error:"failed" }); }
+});
+const DEFAULT_BAND_ODDS = 2.50;
+function buildTotalRoundsBandsDraft(matchCount){
+  const m = Number(matchCount||0);
+  const min = 2*m, max = 3*m;
+  const bands = [
+    { key:"A", from:min,       to:min+2,  label:`${min}–${min+2}.5` },
+    { key:"B", from:min+3,     to:min+5,  label:`${min+3}–${min+5.5}` },
+    { key:"C", from:min+6,     to:min+8,  label:`${min+6}–${min+8.5}` },
+    { key:"D", from:Math.min(min+9, max), to:max, label:`${Math.min(min+9,max)}+` }
+  ].filter(b => b.from <= b.to && b.from <= max);
+  const today = new Date().toISOString().slice(0,10);
+  const eventId = `BG-TRB-${m}-${today}`;
+  return {
+    kind: "battleground",
+    eventTitle: `BG — Total Rounds Bands (Best of 3) — ${m} matches`,
+    eventId,
+    ts: Date.now(),
+    picks: bands.map(b => ({
+      id:`TRB-${b.from}-${b.to}`,
+      market:"TOTAL_ROUNDS_BANDS",
+      left:"TOTAL ROUNDS",
+      right:`${m} MATCHES`,
+      band: { from: b.from, to: b.to },
+      pickName: b.label,
+      odds: DEFAULT_BAND_ODDS
+    }))
+  };
+}
+function upsertDraft(event){
+  const id = event.eventId || event.id;
+  if (!id) return false;
+  memory.betsDrafts = memory.betsDrafts || [];
+  const i = memory.betsDrafts.findIndex(x => (x.eventId||x.id)===id);
+  if (i>=0) memory.betsDrafts[i] = { ...memory.betsDrafts[i], ...event };
+  else memory.betsDrafts.unshift(event);
+  scheduleSave?.();
+  return true;
+}
+app.post("/api/battleground/builder", verifyAdminToken, async (req,res)=>{
+  try{
+    const raw = (req.body && typeof req.body==='object') ? req.body : null;
+    const b = raw?.builder ?? raw;
+    if (!b || !Array.isArray(b.matches)) return res.status(400).json({ error:"invalid builder" });
+    await saveLiveBuilder("battleground", b);
+
+    const m = Array.isArray(b.matches) ? b.matches.length : 0;
+    if (m > 0){ upsertDraft(buildTotalRoundsBandsDraft(m)); }
+    res.json({ success:true, autoDraft: m>0 });
+  }catch(e){
+    console.error("[BG] publish failed", e);
+    res.status(500).json({ error:"failed" });
+  }
+});
+app.get("/api/bonus-hunt/live", async (req,res)=>{
+  try{ const b = await getLiveBuilder("bonus"); res.json({ builder: b || null }); }
+  catch(e){ console.error("[BH] live get failed", e); res.status(500).json({ error:"failed" }); }
+});
+app.post("/api/bonus-hunt/builder", verifyAdminToken, async (req,res)=>{
+  try{
+    const raw = (req.body && typeof req.body==='object') ? req.body : null;
+    const b = raw?.builder ?? raw;
+    if (!b || !Array.isArray(b.games)) return res.status(400).json({ error:"invalid builder" });
+    await saveLiveBuilder("bonus", b);
+    res.json({ success:true });
+  }catch(e){
+    console.error("[BH] publish failed", e);
+    res.status(500).json({ error:"failed" });
+  }
+});
+app.get("/api/markets/unified", async (req, res) => {
+  const bg = await getLiveBuilder("battleground");
+  const bh = await getLiveBuilder("bonus");
+  res.json({
+    battleground: !!(bg && Array.isArray(bg.matches) && bg.matches.length),
+    bonusHunt: !!(bh && Array.isArray(bh.games) && bh.games.length),
+    meta: { ts: Date.now() }
+  });
+});
+
+/* =========================== Bets Admin + Public ============================ */
+
+app.post("/api/admin/bets", verifyAdminToken, (req,res)=>{
+  const body = req.body || {};
+  const id = String(body.eventId || body.id || "").trim() || ("EVT-"+Math.random().toString(36).slice(2,8).toUpperCase());
+  const evt = {
+    kind: String(body.kind || "battleground"),
+    eventTitle: String(body.eventTitle || "Untitled Event"),
+    eventId: id,
+    picks: Array.isArray(body.picks) ? body.picks : [],
+    ts: Date.now()
+  };
+  upsertDraft(evt);
+  res.json({ ok:true, id });
+});
+
+app.get("/api/admin/bets", verifyAdminToken, (req,res)=>{
+  const status = String(req.query.status || "draft").toLowerCase();
+  const kind   = String(req.query.kind || "").toLowerCase();
+  memory.betsDrafts = memory.betsDrafts || [];
+  memory.betsPublished = memory.betsPublished || [];
+  const src = status === "published" ? memory.betsPublished : memory.betsDrafts;
+  let items = [...src];
+  if (kind) items = items.filter(x => String(x.kind||"").toLowerCase()===kind);
+  res.json({ ok:true, items });
+});
+
+app.post("/api/admin/bets/publish", verifyAdminToken, (req,res)=>{
+  const { id, all=false, kind="" } = req.body || {};
+  memory.betsDrafts = memory.betsDrafts || [];
+  memory.betsPublished = memory.betsPublished || [];
+
+  if (all){
+    const k = String(kind||"").toLowerCase();
+    const moving = k ? memory.betsDrafts.filter(x => String(x.kind||"").toLowerCase()===k) : [...memory.betsDrafts];
+    moving.forEach(evt => {
+      memory.betsPublished = [evt, ...memory.betsPublished.filter(x => (x.eventId||x.id)!==(evt.eventId||evt.id))];
+    });
+    memory.betsDrafts = memory.betsDrafts.filter(x => !moving.includes(x));
+    scheduleSave?.();
+    return res.json({ ok:true, published: moving.length });
+  } else {
+    const i = memory.betsDrafts.findIndex(x => (x.eventId||x.id)===id);
+    if (i<0) return res.status(404).json({ ok:false, error:"not found" });
+    const evt = memory.betsDrafts[i];
+    memory.betsDrafts.splice(i,1);
+    memory.betsPublished = [evt, ...memory.betsPublished.filter(x => (x.eventId||x.id)!==(evt.eventId||evt.id))];
+    scheduleSave?.();
+    return res.json({ ok:true, id: (evt.eventId||evt.id) });
+  }
+});
+
+// Public read for live bets
+app.get("/api/bets/live", (req,res)=>{
+  const kind = String(req.query.kind || "").toLowerCase();
+  memory.betsPublished = memory.betsPublished || [];
+  let items = [...memory.betsPublished];
+  if (kind) items = items.filter(x => String(x.kind||"").toLowerCase()===kind);
+  res.json({ ok:true, items, ts: Date.now() });
+});
+app.get("/api/bets/published", (req, res) => {
+  const kind = String(req.query.kind || "").toLowerCase();
+  memory.betsPublished = memory.betsPublished || [];
+  let items = [...memory.betsPublished];
+  if (kind) items = items.filter(x => String(x.kind || "").toLowerCase() === kind);
+  res.json({ ok: true, items, ts: Date.now() });
+});
+
+/* ====================== PLAYER BETTING (deduct LBX) ====================== */
+// Aligns with your front-end slip. Max stake 100 per submission.
+
+function newId(prefix="TK"){ return `${prefix}-${Math.random().toString(36).slice(2,10).toUpperCase()}`; }
+
+app.post("/api/bets/place", requireViewer, async (req,res)=>{
+  try{
+    const user = req.viewer;
+    const mode = String(req.body?.mode || "single").toLowerCase(); // "single" | "multi"
+    const stake = Number(req.body?.stake || 0);
+    const ghost = !!req.body?.ghost;
+
+    // single: [{ marketId, label, type, odds, ... }]
+    // multi:  [{ ... }] as legs
+    const legs = Array.isArray(req.body?.legs) ? req.body.legs : (req.body?.leg ? [req.body.leg] : []);
+    if (!legs.length) return res.status(400).json({ ok:false, error:"NO_LEGS" });
+    if (!(stake > 0)) return res.status(400).json({ ok:false, error:"BAD_STAKE" });
+
+    // cap (same as UI)
+    const totalStake = (mode === "single") ? stake * legs.length : stake;
+    if (totalStake > 100) return res.status(400).json({ ok:false, error:"LIMIT" });
+
+    const w = await getWallet(user);
+    if (Number(w.balance || 0) < totalStake) return res.status(402).json({ ok:false, error:"INSUFFICIENT" });
+
+    // make tickets
+    let tickets = [];
+    if (mode === "single"){
+      tickets = legs.map(leg => ({
+        id:newId("TK"), user, at: Date.now(), mode:"single", stake, leg, odds:Number(leg.odds||1)
+      }));
+    } else {
+      const prod = legs.reduce((p,x)=> p*(Number(x.odds||1)), 1);
+      tickets = [{ id:newId("TK"), user, at: Date.now(), mode:"multi", stake, legs, odds:prod }];
+    }
+
+    // save & deduct wallet
+    if (globalThis.__dbReady){
+      const col = globalThis.__db.collection("bets_tickets");
+      await col.insertMany(tickets);
+    } else {
+      memory.tickets = memory.tickets || [];
+      memory.tickets.unshift(...tickets);
+      scheduleSave?.();
+    }
+
+    if (!ghost){
+      const r = await adjustWallet(user, -totalStake, "BET_STAKE");
+      if (!r?.ok) return res.status(500).json({ ok:false, error:"WALLET_FAIL" });
+    }
+
+    return res.json({ ok:true, tickets, debited: ghost ? 0 : totalStake });
+  }catch(e){
+    console.error("[BETS] place error", e);
+    res.status(500).json({ ok:false, error:"SERVER" });
+  }
+});
+
+app.get("/api/bets/my", requireViewer, async (req,res)=>{
+  try{
+    const user = req.viewer;
+    if (globalThis.__dbReady){
+      const col = globalThis.__db.collection("bets_tickets");
+      const rows = await col.find({ user }).sort({ at:-1 }).limit(500).toArray();
+      return res.json({ ok:true, items: rows });
+    } else {
+      const rows = (memory.tickets||[]).filter(t => t.user === user).slice(0,500);
+      return res.json({ ok:true, items: rows });
+    }
+  }catch(e){
+    console.error("[BETS] my error", e);
+    res.status(500).json({ ok:false, error:"SERVER" });
+  }
+});
+
+/* =================================================================== */
+/* =================== 404 / Error + Start / DB Boot ================= */
+/* =================================================================== */
+
+app.use((req, res) => res.status(404).send("Not found."));
 app.use((err, req, res, next) => {
   console.error("[ERROR]", err?.stack || err);
-  if (req.path.startsWith("/api")) return res.status(500).json({ error: "Server error" });
+  if (req.path && req.path.startsWith("/api")) return res.status(500).json({ error: "Server error" });
   res.status(500).send("Server error");
 });
 
-// ===== Start (non-blocking DB connect)
 app.listen(PORT, HOST, () => {
   console.log(`[Server] http://${HOST}:${PORT} (${NODE_ENV}) PUBLIC_DIR=${PUBLIC_DIR}`);
   console.log(`[Server] HOME_INDEX=${HOME_INDEX} hasHome=${HAS_HOME}`);
   console.log(`[Server] ADMIN_LOGIN_FILE=${ADMIN_LOGIN_FILE || "(none)"} | ADMIN_HUB_FILE=${ADMIN_HUB_FILE || "(none)"}`);
 });
 
+// DB + persistence boot (Mongo → file → memory)
 (async () => {
+  const fileOk = ensureWritableStatePath();
+
   if (!MONGO_URI) {
     if (!ALLOW_MEMORY_FALLBACK) console.warn("[DB] No MONGO_URI; memory mode disabled.");
-    else console.warn("[DB] No MONGO_URI; running in MEMORY MODE.");
+    else console.warn("[DB] No MONGO_URI; using FILE PERSIST (if available) or MEMORY.");
+    if (STATE_PERSIST && fileOk) {
+      globalThis.storageMode = "file";
+      loadStateIfPresent(); scheduleSave?.();
+    } else {
+      globalThis.storageMode = "memory";
+    }
     return;
   }
+
   try {
     const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 8000 });
     await client.connect();
     globalThis.__db = client.db(MONGO_DB);
     globalThis.__dbReady = true;
+    globalThis.storageMode = "mongo";
     console.log(`[DB] Connected to MongoDB: ${MONGO_DB}`);
   } catch (err) {
     console.error("[DB] Mongo connection failed:", err?.message || err);
     if (!ALLOW_MEMORY_FALLBACK) { console.error("[DB] ALLOW_MEMORY_FALLBACK=false — exiting"); process.exit(1); }
-    console.warn("[DB] Continuing in memory mode.");
+    console.warn("[DB] Continuing without Mongo.");
+    if (STATE_PERSIST && fileOk) {
+      globalThis.storageMode = "file";
+      loadStateIfPresent(); scheduleSave?.();
+    } else {
+      globalThis.storageMode = "memory";
+    }
   }
 })();
