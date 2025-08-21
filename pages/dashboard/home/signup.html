@@ -5,124 +5,30 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Sign Up — L3Z</title>
 <style>
-  :root{ --bg:#0b0f10; --ink:#eaf7ff; --muted:#9bc; --accent:#ffb42d; --panel:#0f1416; --ring:rgba(0,255,255,.25); --ok:#baffea; --bad:#ffb5be }
-  *,*::before,*::after{ box-sizing:border-box }
-  html,body{ margin:0; background:var(--bg) url("/assets/BG_page.png") center/cover fixed no-repeat; color:var(--ink); font-family:Segoe UI,system-ui,Arial,sans-serif }
-  .wrap{ max-width:560px; margin:40px auto; padding:0 16px }
-  h1{ margin:0 0 12px; color:var(--accent); text-shadow:0 0 14px rgba(255,180,45,.35) }
-  .card{ background:var(--panel); border:1px solid var(--ring); border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.35); padding:14px }
-  .field{ display:flex; flex-direction:column; gap:6px; margin-bottom:10px }
-  .label{ font-size:12px; color:var(--muted) }
-  input{ width:100%; height:42px; padding:8px 12px; border-radius:10px; border:1px solid rgba(0,255,255,.18); background:#0a1719; color:var(--ink); outline:none }
-  input:focus{ border-color:#18e4ff; box-shadow:0 0 0 2px rgba(0,255,255,.15) }
-  .btn{ height:46px; border:none; border-radius:12px; background:var(--accent); color:#1a1405; font-weight:800; cursor:pointer; padding:0 14px }
-  .btn.block{ width:100%; margin-top:4px }
-  .btn.ghost{ background:transparent; border:1px solid rgba(0,255,255,.18); color:#cfe }
-  .mini{ font-size:12px; color:var(--muted); margin-top:8px }
-  a{ color:#cfe; text-decoration:none } a:hover{ text-decoration:underline }
-  .msg{ margin-top:8px; font-size:13px }
-  .ok{ color:var(--ok) } .err{ color:var(--bad) }
-  .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
-  .pill{ padding:6px 10px; border-radius:999px; border:1px solid rgba(0,255,255,.18); background:#0a1719; color:#cfe; font-size:12px }
-  .hint{ font-size:12px; color:#9fd0d6 }
-  .muted{ color:#9fd0d6 }
+  :root{ --bg:#0b0f10; --ink:#eaf7ff; --muted:#9bc; --accent:#ffb42d; --panel:#0f1416; --ring:rgba(0,255,255,.25); --ok:#baffea; --bad:#ffb5be; }
+  *,*::before,*::after{ box-sizing:border-box; }
+  html,body{ margin:0; background:var(--bg) url("/assets/BG_page.png") center/cover fixed no-repeat; color:var(--ink); font-family:Segoe UI,system-ui,Arial,sans-serif; }
+  .wrap{ max-width:520px; margin:40px auto; padding:0 16px; }
+  h1{ margin:0 0 12px; color:var(--accent); text-shadow:0 0 14px rgba(255,180,45,.35); }
+  .card{ background:var(--panel); border:1px solid var(--ring); border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.35); padding:14px; }
+  .field{ display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+  .label{ font-size:12px; color:var(--muted); }
+  input{ width:100%; height:42px; padding:8px 12px; border-radius:10px; border:1px solid rgba(0,255,255,.18); background:#0a1719; color:var(--ink); outline:none; }
+  input:focus{ border-color:#18e4ff; box-shadow:0 0 0 2px rgba(0,255,255,.15); }
+  .btn{ width:100%; height:46px; border:none; border-radius:12px; background:var(--accent); color:#1a1405; font-weight:800; cursor:pointer; margin-top:4px; }
+  .mini{ font-size:12px; color:var(--muted); margin-top:8px; }
+  a{ color:#cfe; text-decoration:none; } a:hover{ text-decoration:underline; }
+  .note{ font-size:12px; color:var(--muted); margin-top:6px; }
+  .msg{ margin-top:8px; font-size:13px; }
+  .ok{ color:var(--ok); }
+  .err{ color:var(--bad); }
 </style>
 </head>
-
-<!-- Live Server (VSC) proxy: route /api to localhost:3000, include credentials, no-store -->
-<script>
-(function(){
-  const API_BASE = (location.port === '5501') ? 'http://127.0.0.1:3000' : '';
-  const _fetch = window.fetch ? window.fetch.bind(window) : null;
-  if (_fetch){
-    window.fetch = (input, init={})=>{
-      if (typeof input === 'string' && input.startsWith('/api/')) {
-        input = API_BASE + input;
-        init = Object.assign({credentials:'include', cache:'no-store'}, init||{});
-      }
-      return _fetch(input, init);
-    };
-  }
-})();
-</script>
-
 <body>
-  <!-- USER HEADER -->
-  <div class="userbar" id="userBar">
-    <div class="ub-left">
-      <span class="ub-hello">Hello,</span>
-      <span id="ubName" class="ub-name">Guest</span>
-    </div>
-    <div class="ub-right">
-      <span class="ub-badge">LBX <b id="ubBal">0</b></span>
-    </div>
-  </div>
-
-  <style>
-    .userbar{
-      max-width:1100px; margin:12px auto 8px; padding:8px 12px;
-      display:flex; align-items:center; justify-content:space-between;
-      border:1px solid rgba(255,255,255,.10); border-radius:12px;
-      background:rgba(0,0,0,.25); backdrop-filter: blur(6px)
-    }
-    .ub-hello{ font-size:12px; color:#9fd0d6; margin-right:6px }
-    .ub-name{ font-weight:900; color:#ffe39a }
-    .ub-badge{ display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; font-weight:800;
-      background:#2a2310; color:#ffe39a; border:1px solid #8c6926 }
-    @media (max-width:520px){ .userbar{ margin:8px 8px 4px } }
-  </style>
-
-  <script>
-  (function(){
-    "use strict";
-    const $=s=>document.querySelector(s);
-    const up=s=>String(s||"").trim().toUpperCase();
-    const sget=(k,d=null)=>{ try{const v=localStorage.getItem(k); return v?JSON.parse(v):d;}catch(_){return d;} };
-
-    function pickUser(){
-      const qp = new URLSearchParams(location.search).get("viewer");
-      if (qp && qp.trim()) return up(qp);
-      const sess = sget("l3z:session");
-      if (sess && sess.user) return up(sess.user);
-      const prof = sget("l3z:user");
-      if (prof && prof.username) return up(prof.username);
-      const legacy = localStorage.getItem("user:username");
-      if (legacy) return up(legacy);
-      const last = sget("lash3z_last_user");
-      if (last) return up(last);
-      return "";
-    }
-
-    async function refresh(){
-      const name = pickUser() || "GUEST";
-      $("#ubName").textContent = name;
-
-      try{
-        const r = await fetch("/api/wallet/me?viewer="+encodeURIComponent(name), { credentials:"include" });
-        if(!r.ok) throw 0;
-        const j = await r.json();
-        const bal = (j && j.wallet && typeof j.wallet.balance==="number") ? j.wallet.balance : 0;
-        $("#ubBal").textContent = Math.floor(bal);
-        return;
-      }catch(_){}
-
-      const w = sget("lbx:wallet:"+name) || { balance: 0 };
-      $("#ubBal").textContent = Math.floor(Number(w.balance||0));
-    }
-
-    window.addEventListener("storage", (e)=>{
-      if(["l3z:session","l3z:user","user:username","lash3z_last_user"].includes(e.key)) refresh();
-    });
-
-    refresh();
-  })();
-  </script>
-
   <div class="wrap">
     <h1>Create your account</h1>
 
-    <div class="card" style="margin-bottom:12px">
-      <!-- Signup form -->
+    <div class="card">
       <div class="field">
         <div class="label">Username</div>
         <input id="u" type="text" autocomplete="username" placeholder="Pick a username (letters/numbers)">
@@ -136,26 +42,10 @@
         <input id="pc" type="password" autocomplete="new-password" placeholder="Repeat password">
       </div>
 
-      <!-- Kick connect (optional on signup; can verify immediately) -->
-      <div class="field">
-        <div class="label">Kick Handle (optional)</div>
-        <div class="row">
-          <input id="kick" type="text" inputmode="text" placeholder="yourkickname (no @)">
-          <button id="kickStartBtn" class="btn ghost" type="button" title="Start Kick verification" aria-label="Start Kick verification">Verify</button>
-        </div>
-        <div class="hint">We’ll verify your Kick account belongs to you. You’ll get a short code to place in your Kick bio (or we’ll auto-check if your API supports it).</div>
-        <div id="kickMsg" class="msg"></div>
-        <div class="row" id="kickRow" style="display:none">
-          <span class="pill" id="kickCodePill">Code: —</span>
-          <span class="pill" id="kickStatusPill">Status: checking…</span>
-          <button id="kickCheckBtn" class="btn ghost" type="button">Re-check</button>
-        </div>
-      </div>
+      <button class="btn" id="signupBtn">Create Account</button>
 
-      <button class="btn block" id="signupBtn">Create Account</button>
-
-      <div class="mini">Already have an account? <a href="/pages/dashboard/home/login.html">Log in</a></div>
-      <div id="msg" class="msg" role="status" aria-live="polite"></div>
+      <div class="note">Already have an account? <a href="/pages/dashboard/home/login.html">Log in</a></div>
+      <div id="msg" class="msg"></div>
     </div>
   </div>
 
@@ -163,42 +53,33 @@
 (function(){
   "use strict";
 
-  /* ============== Constants / Keys ============== */
+  // ----- constants & keys -----
   const OWNER_USER = 'LASH3Z';
   const OWNER_PW   = 'Lash3z777';
 
-  const USERS_KEY   = 'l3z:users';                 // { USERNAME: { pw, displayName, createdAt } }
-  const LEGACY_USERS_KEY = 'users';
-  const SESSION_KEY = 'l3z:session';               // { user, issuedAt, expiresAt }
-  const USER_NAME_KEY = 'user:username';
+  const USERS_KEY   = 'l3z:users';              // { USERNAME: { pw, displayName, createdAt } }
+  const LEGACY_USERS_KEY = 'users';             // legacy mirror
+  const SESSION_KEY = 'l3z:session';            // { user, issuedAt, expiresAt }
+  const USER_NAME_KEY = 'user:username';        // compat keys
   const PROFILE_KEY   = 'l3z:user';
   const LAST_USER_KEY = 'lash3z_last_user';
   const WALLET_KEY = u => `lbx:wallet:${(u||'').toUpperCase()}`;
   const LEDGER_KEY = u => `lbx:ledger:${(u||'').toUpperCase()}`;
-  const KICK_KEY   = u => `l3z:kick:${(u||'').toUpperCase()}`;
   const SESSION_HOURS = 6;
 
-  /* ============== DOM ============== */
+  // ----- dom -----
   const $ = s => document.querySelector(s);
   const uEl = $('#u'), pEl = $('#p'), pcEl = $('#pc'), msgEl = $('#msg'), btn = $('#signupBtn');
 
-  // Kick DOM
-  const kickEl = $('#kick'), kickMsg = $('#kickMsg');
-  const kickStartBtn = $('#kickStartBtn');
-  const kickCheckBtn = $('#kickCheckBtn');
-  const kickRow = $('#kickRow');
-  const kickCodePill = $('#kickCodePill');
-  const kickStatusPill = $('#kickStatusPill');
-
-  /* ============== Utils ============== */
+  // ----- utils -----
   const up = s => (s||'').toString().trim().toUpperCase();
   const now = ()=>Date.now();
   function sget(k,def=null){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(_){ return def; } }
   function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } }
-  function setMsg(t, ok){ msgEl.className = "msg " + (ok?"ok":"err"); msgEl.textContent = t; }
-  function setKickMsg(t, ok){ kickMsg.className = "msg " + (ok?"ok":"err"); kickMsg.textContent = t; }
 
-  /* ============== Bootstrap owner (unchanged) ============== */
+  function setMsg(t, ok){ if(!msgEl) return; msgEl.className = "msg " + (ok?"ok":"err"); msgEl.textContent = t; }
+
+  // Owner exists/seeded
   (function ensureOwner(){
     const users = sget(USERS_KEY,{});
     const legacy= sget(LEGACY_USERS_KEY,{});
@@ -210,7 +91,11 @@
     }
   })();
 
-  function getUsers(){ return { ...sget(LEGACY_USERS_KEY,{}), ...sget(USERS_KEY,{}) }; }
+  function getUsers(){
+    const modern = sget(USERS_KEY,{});
+    const legacy = sget(LEGACY_USERS_KEY,{});
+    return { ...legacy, ...modern };
+  }
   function saveUsers(obj){ sset(USERS_KEY,obj); sset(LEGACY_USERS_KEY,obj); }
 
   function validUsername(raw){
@@ -250,130 +135,6 @@
   }
   function go(dest){ try{ location.replace(dest); }catch{ location.href = dest; } }
 
-  /* ============== Kick API helpers (will try your existing routes) ============== */
-  // These try multiple patterns so you don’t have to tweak code if your route name differs.
-  async function apiPOST(paths, body){
-    for (const path of paths){
-      try{
-        const r = await fetch(path, {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          credentials:'include',
-          cache:'no-store',
-          body: JSON.stringify(body||{})
-        });
-        if (r.ok) return await r.json().catch(()=> ({}));
-      }catch(_){}
-    }
-    throw new Error('API unavailable');
-  }
-  async function apiGET(paths, qs){
-    const q = qs ? ('?'+new URLSearchParams(qs).toString()) : '';
-    for (const base of paths){
-      try{
-        const r = await fetch(base+q, { credentials:'include', cache:'no-store' });
-        if (r.ok) return await r.json().catch(()=> ({}));
-      }catch(_){}
-    }
-    throw new Error('API unavailable');
-  }
-
-  // Start: returns {code,expiresAt} or similar
-  async function kickStart(handle){
-    return apiPOST(
-      [
-        '/api/kick/verification/start',
-        '/api/kick/connect/start',
-        '/api/kick/verify/start',
-        '/api/kick/start'
-      ],
-      { handle }
-    );
-  }
-  // Check: returns {verified: boolean} (any extra fields are ignored)
-  async function kickCheck(handle){
-    // prefer GET but support POST as well
-    try{
-      return await apiGET(
-        ['/api/kick/verification/check','/api/kick/verify/check','/api/kick/check'],
-        { handle }
-      );
-    }catch(_){
-      return apiPOST(
-        ['/api/kick/verification/check','/api/kick/verify/check','/api/kick/check'],
-        { handle }
-      );
-    }
-  }
-  // Save mapping (optional; some backends auto-link on start)
-  async function kickConnect(username, handle){
-    return apiPOST(
-      ['/api/kick/connect','/api/kick/link'],
-      { username, handle }
-    );
-  }
-
-  function saveKickLocal(user, payload){
-    sset(KICK_KEY(user), Object.assign({ handle: payload?.handle || '', verified: !!payload?.verified }, payload||{}));
-  }
-  function readKickLocal(user){ return sget(KICK_KEY(user), null); }
-
-  /* ============== Kick UI logic ============== */
-  let kickPollTimer = null, kickPolling = false;
-
-  function setKickPills(code, statusText){
-    kickRow.style.display = 'flex';
-    if (code) kickCodePill.textContent = 'Code: ' + String(code);
-    if (statusText) kickStatusPill.textContent = 'Status: ' + statusText;
-  }
-
-  async function onKickStart(userForLocal){
-    const raw = (kickEl.value||'').trim();
-    if (!raw){ setKickMsg('Enter your Kick handle first.', false); return; }
-    const handle = raw.replace(/^@/,'').trim();
-    kickStartBtn.disabled = true; setKickMsg('Starting verification…');
-    try{
-      await kickConnect(userForLocal||'', handle).catch(()=>{ /* ok if backend does it later */ });
-      const j = await kickStart(handle);
-      const code = j.code || j.token || j.verificationCode || '—';
-      const exp  = j.expiresAt || j.exp || null;
-      setKickPills(code, 'pending');
-      saveKickLocal(userForLocal||'', { handle, code, expiresAt: exp, verified:false });
-      setKickMsg('Add this code to your Kick bio (or follow your on-stream instructions), then click Re-check.', true);
-    }catch(e){
-      setKickMsg('Could not start verification (API). You can still finish signup and try later.', false);
-    }finally{
-      kickStartBtn.disabled = false;
-    }
-  }
-
-  async function onKickCheck(userForLocal){
-    const raw = (kickEl.value||'').trim();
-    if (!raw){ setKickMsg('Enter your Kick handle first.', false); return; }
-    const handle = raw.replace(/^@/,'').trim();
-
-    // prevent overlapping checks
-    if (kickPolling) return;
-    kickPolling = true; kickCheckBtn.disabled = true; setKickMsg('Checking…');
-
-    try{
-      const j = await kickCheck(handle);
-      const ok = !!(j.verified || j.ok || j.status==='verified');
-      setKickPills(null, ok ? 'verified' : 'pending');
-      saveKickLocal(userForLocal||'', { handle, verified: ok, lastChecked: now() });
-      setKickMsg(ok ? 'Kick verified ✔' : 'Not verified yet — update your bio and retry.', ok);
-    }catch(e){
-      setKickMsg('Check failed (API). Try again.', false);
-    }finally{
-      kickPolling = false; kickCheckBtn.disabled = false;
-    }
-  }
-
-  // Wire Kick buttons (works before/after signup)
-  kickStartBtn.addEventListener('click', ()=> onKickStart( (sget(SESSION_KEY)||{}).user || '' ));
-  kickCheckBtn.addEventListener('click', ()=> onKickCheck( (sget(SESSION_KEY)||{}).user || '' ));
-
-  /* ============== Signup flow ============== */
   function signup(){
     const rawU = uEl.value.trim();
     const pw   = pEl.value;
@@ -385,24 +146,17 @@
 
     const U = up(rawU);
     const users = getUsers();
-    if(users[U]){ setMsg("That username is already taken. Try logging in.", false); return; }
 
-    // Create user locally (offline-safe mirror)
+    if(users[U]){
+      setMsg("That username is already taken. Try logging in.", false);
+      return;
+    }
+
     users[U] = { pw, displayName: U, createdAt: now() };
     saveUsers(users);
+
     ensureWallet(U);
     startSession(U);
-
-    // If a Kick handle was entered, begin/continue verification flow
-    const kickHandle = (kickEl.value||'').trim().replace(/^@/,'');
-    if (kickHandle){
-      // optimistic local write
-      saveKickLocal(U, { handle: kickHandle, verified: false, createdAt: now() });
-      // best-effort backend mapping & start
-      (async ()=>{
-        try{ await kickConnect(U, kickHandle).catch(()=>{}); await kickStart(kickHandle).catch(()=>{}); }catch(_){}
-      })();
-    }
 
     setMsg("Account created! Redirecting…", true);
     setTimeout(()=> go(resolveRedirect()), 350);
@@ -414,22 +168,6 @@
 
   btn.addEventListener('click', signup);
   pcEl.addEventListener('keydown', e=>{ if(e.key==='Enter') signup(); });
-
-  // If user already logged in and previously linked Kick, surface it
-  (function hydrateKickFromLocal(){
-    const sess = sget(SESSION_KEY);
-    const cur = sess && sess.user ? up(sess.user) : '';
-    if (!cur) return;
-    const lk = readKickLocal(cur);
-    if (lk && lk.handle){
-      kickEl.value = lk.handle;
-      kickRow.style.display = 'flex';
-      kickCodePill.textContent = 'Code: ' + (lk.code || '—');
-      kickStatusPill.textContent = 'Status: ' + (lk.verified ? 'verified' : 'pending');
-      setKickMsg(lk.verified ? 'Kick verified ✔' : 'Kick pending verification', !!lk.verified);
-    }
-  })();
-
 })();
 </script>
 </body>
