@@ -119,7 +119,6 @@ function scheduleSave() {
     try {
       const data = JSON.stringify(memory, null, 2);
       fs.writeFileSync(STATE_FILE, data);
-      // eslint-disable-next-line no-console
       console.log(`[PERSIST] state saved → ${STATE_FILE}`);
     } catch (e) {
       console.warn("[PERSIST] save failed:", e?.message || e);
@@ -132,9 +131,7 @@ function loadStateIfPresent() {
     if (existsSync(STATE_FILE)) {
       const text = fs.readFileSync(STATE_FILE, "utf8");
       const parsed = JSON.parse(text);
-      // shallow merge; keep schema defaults for new keys
-      Object.assign(memory, parsed || {});
-      // eslint-disable-next-line no-console
+      Object.assign(memory, parsed || {}); // shallow merge
       console.log(`[PERSIST] state loaded from ${STATE_FILE}`);
     }
   } catch (e) {
@@ -185,7 +182,7 @@ app.disable("x-powered-by");
 app.set("trust proxy", 1);
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(compression());
-app.use(morgan(NODE_ENV === "production" ? "tiny" : "dev"));
+app.use(morgan(NODE_ENV === "production" ? "tiny" : "dev"))
 
 // security headers already covered mostly by helmet
 app.use((req, res, next) => {
@@ -254,7 +251,7 @@ function hasValidAdminCookie(req){
 
 const loginHits = new Map();
 function rateLimitLogin(req, res, next){
-  const ip = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || "unknown";
+  const ip = req.ip || req.headers["x-forwarded-for"] || req.connection?.remoteAddress || "unknown";
   const now = Date.now();
   const rec = loginHits.get(ip) || { count:0, ts:now };
   if (now - rec.ts > 10*60*1000) { rec.count = 0; rec.ts = now; }
@@ -356,9 +353,8 @@ app.use(express.static(PUBLIC_DIR, {
 }));
 
 /* ======================================================================== */
-/* ===================== WALLET / USER HELPERS ============================ */
+/* ===================== CORE HELPERS ===================================== */
 /* ======================================================================== */
-
 const U = (s) => String(s || "").trim().toUpperCase();
 const nowISO = () => new Date().toISOString();
 const hash = (pwd) => crypto.createHash("sha256").update(String(pwd)).digest("hex");
@@ -366,7 +362,7 @@ const hash = (pwd) => crypto.createHash("sha256").update(String(pwd)).digest("he
 // Leaderboard helpers
 const currentMonth = () => new Date().toISOString().slice(0, 7); // "YYYY-MM"
 
-// ===== PROMO HELPERS =====
+// ===== PROMO HELPERS (used later too) =====
 function normCode(s = "") {
   return String(s).trim().toUpperCase().replace(/\s+/g, "");
 }
@@ -391,7 +387,10 @@ function tinyRateLimit(windowMs = 10_000) {
   };
 }
 const PROMO_ALLOWED_AMOUNTS = new Set([5,10,15,20,25,30]);
-// ===== END PROMO HELPERS =====
+
+/* ======================================================================== */
+/* ===================== Wallet & Users (helpers) ========================= */
+/* ======================================================================== */
 
 // get or create wallet (does NOT apply bonus)
 async function getWallet(username) {
@@ -629,6 +628,8 @@ app.post("/api/viewer/logout", (req, res) => {
   res.json({ success: true });
 });
 
+/* ==== END OF PART 1 ==== */
+// Part 2 will start with: Kick OAuth Linking → Deposits/Orders → Jackpot → Raffles/Giveaways → Prize Claims → Leaderboard
 /* ===================== Kick OAuth Linking ===================== */
 /** We persist PKCE verifier + state in a secure, httpOnly cookie to avoid
  *  'invalid_state' if the process restarts or a different instance handles
@@ -1306,6 +1307,8 @@ app.delete("/api/pvp/entries/:id", verifyAdminToken, async (req, res) => {
   }
 });
 
+/* ==== END OF PART 2 ==== */
+// Part 3 will start with: PVP Bracket (builder + advance) → LIVE widgets → PROMOS → BETS → DB/STATE INIT → START SERVER
 /* ===================== PVP Bracket + LIVE BG/Bonus ===================== */
 function nowMs(){ return Date.now(); }
 function emptyRound(n){
@@ -1319,7 +1322,7 @@ function emptyRound(n){
 function buildEmptySide(size){
   const firstRound = size/4;
   const r1 = emptyRound(firstRound);
-  const r2 = emptyRound(Math.max(1, firstRound/2));
+  const r2 = emptyRound(Math.max(1, Math.floor(firstRound/2)));
   const r3 = emptyRound(1);
   return [r1, r2, r3];
 }
@@ -1351,9 +1354,13 @@ async function saveBracket(builder){
 }
 
 app.get("/api/pvp/bracket", async (req, res) => {
-  try { const builder = await getBracket(); res.json({ builder: builder
-  try { const builder = await getBracket(); res.json({ builder: builder || null }); }
-  catch (e) { console.error("[PVP] bracket read failed", e); res.status(500).json({ error: "failed" }); }
+  try {
+    const builder = await getBracket();
+    res.json({ builder: builder || null });
+  } catch (e) {
+    console.error("[PVP] bracket read failed", e);
+    res.status(500).json({ error: "failed" });
+  }
 });
 
 // Admin: save full builder (idempotent)
@@ -1372,7 +1379,7 @@ app.post("/api/admin/pvp/bracket/save", verifyAdminToken, async (req, res) => {
 // Admin: quick-generate empty bracket
 app.post("/api/admin/pvp/bracket/generate", verifyAdminToken, async (req, res) => {
   try {
-    const size = Math.max(8, Number(req.body?.size || 8)); // must be power of 2 per side (we use 8 as base)
+    const size = Math.max(8, Number(req.body?.size || 8)); // per side base
     const builder = {
       id: "active",
       east: buildEmptySide(size),
@@ -1420,17 +1427,14 @@ function propagateWinner(builder, side, roundIndex, matchIndex) {
   const m = (rounds[roundIndex] || [])[matchIndex];
   if (!m || !m.winner) return;
 
-  // Choose winner payload (name/img)
   const winnerPlayer = m.winner === "left" ? m.left : m.right;
 
-  // If next round exists, move there; else to final
   if (roundIndex + 1 < rounds.length) {
     const next = rounds[roundIndex + 1];
     const target = nextIndex(matchIndex);
     const slot = matchIndex % 2 === 0 ? "left" : "right";
     putIntoSlot(next[target], slot, { name: winnerPlayer.name, img: winnerPlayer.img, score: null });
   } else {
-    // move into final
     const slot = side === "east" ? "left" : "right";
     putIntoSlot(builder.final, slot, { name: winnerPlayer.name, img: winnerPlayer.img, score: null });
   }
@@ -1448,19 +1452,17 @@ app.post("/api/admin/pvp/bracket/score", verifyAdminToken, async (req, res) => {
     const found = findMatch(builder, matchId);
     if (!found) return res.status(404).json({ error: "match_not_found" });
 
-    // Update scores
     if (typeof leftScore === "number")  found.match.left.score = leftScore;
     if (typeof rightScore === "number") found.match.right.score = rightScore;
     if (game !== undefined) found.match.game = String(game || "");
 
-    // Decide winner if both scores present
     if (Number.isFinite(found.match.left.score) && Number.isFinite(found.match.right.score)) {
       if (found.match.left.score > found.match.right.score) {
         found.match.winner = "left";
       } else if (found.match.right.score > found.match.left.score) {
         found.match.winner = "right";
       } else {
-        found.match.winner = null; // tie -> require manual resolve
+        found.match.winner = null; // tie
       }
       found.match.status = found.match.winner ? "done" : "pending";
       if (found.match.winner) propagateWinner(builder, found.side, found.roundIndex, found.matchIndex);
@@ -1565,7 +1567,6 @@ app.post("/api/promo/redeem", requireViewer, tinyRateLimit(), async (req, res) =
       return res.status(400).json({ ok: false, error: "MAXED_OUT" });
     }
 
-    // credit wallet
     const adj = await adjustWallet(user, Number(promo.amount), `promo:${code}`);
     memory.promoRedemptions.push({ code, user, ts: nowMs() });
     scheduleSave();
@@ -1701,3 +1702,4 @@ initStorage().then(() => {
   console.error("[INIT] failed", e);
   process.exit(1);
 });
+
