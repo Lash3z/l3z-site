@@ -52,95 +52,7 @@
   .toast.on{opacity:1;transform:translateY(0)}
 </style>
 </head>
-<script>
-  // env switch
-  window.API_BASE = (location.hostname==='127.0.0.1'||location.hostname==='localhost')
-    ? 'http://localhost:3000'
-    : '';
-  // define once, reuse anywhere
-  window.apiUrl = window.apiUrl || function(p){
-    return /^https?:\/\//i.test(p) ? p : (window.API_BASE||'') + p;
-  };
-</script>
-
 <body>
-  <!-- USER HEADER (drop this right after <body>) -->
-<div class="userbar" id="userBar">
-  <div class="ub-left">
-    <span class="ub-hello">Hello,</span>
-    <span id="ubName" class="ub-name">Guest</span>
-  </div>
-  <div class="ub-right">
-    <span class="ub-badge">LBX <b id="ubBal">0</b></span>
-  </div>
-</div>
-
-<style>
-  .userbar{
-    max-width:1100px; margin:12px auto 8px; padding:8px 12px;
-    display:flex; align-items:center; justify-content:space-between;
-    border:1px solid rgba(255,255,255,.10); border-radius:12px;
-    background:rgba(0,0,0,.25); backdrop-filter: blur(6px);
-  }
-  .ub-hello{ font-size:12px; color:#9fd0d6; margin-right:6px }
-  .ub-name{ font-weight:900; color:#ffe39a }
-  .ub-badge{
-    display:inline-flex; align-items:center; gap:6px;
-    padding:6px 10px; border-radius:999px; font-weight:800;
-    background:#2a2310; color:#ffe39a; border:1px solid #8c6926;
-  }
-  @media (max-width:520px){
-    .userbar{ margin:8px 8px 4px; }
-  }
-</style>
-
-<script>
-(function(){
-  "use strict";
-  const $  = s => document.querySelector(s);
-  const up = s => String(s||"").trim().toUpperCase();
-  const sget = (k,def=null)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(_){ return def; } };
-
-  function pickUser(){
-    const qp = new URLSearchParams(location.search).get("viewer");
-    if (qp && qp.trim()) return up(qp);
-    const sess = sget("l3z:session");
-    if (sess && sess.user) return up(sess.user);
-    const prof = sget("l3z:user");
-    if (prof && prof.username) return up(prof.username);
-    const legacy = localStorage.getItem("user:username");
-    if (legacy) return up(legacy);
-    const last = sget("lash3z_last_user");
-    if (last) return up(last);
-    return "";
-  }
-
-  async function refresh(){
-    const name = pickUser() || "GUEST";
-    $("#ubName").textContent = name;
-
-    // server first
-    try{
-      const r = await fetch(window.apiUrl("/api/wallet/me?viewer="+encodeURIComponent(name)), { credentials:"include" });
-      if(!r.ok) throw 0;
-      const j = await r.json();
-      const bal = (j && j.wallet && typeof j.wallet.balance==="number") ? j.wallet.balance : 0;
-      $("#ubBal").textContent = Math.floor(bal);
-      return;
-    }catch(_){ /* local fallback */ }
-
-    const w = sget("lbx:wallet:"+name) || { balance: 0 };
-    $("#ubBal").textContent = Math.floor(Number(w.balance||0));
-  }
-
-  window.addEventListener("storage", (e)=>{
-    if(["l3z:session","l3z:user","user:username","lash3z_last_user"].includes(e.key)) refresh();
-  });
-
-  refresh();
-})();
-</script>
-
 <div class="wrap">
   <div class="topbar"><h1>Battleground — Prediction Form</h1><div class="pill" id="evtInfo">—</div></div>
   <div class="controls">
@@ -174,8 +86,8 @@
   "use strict";
   const K_PUBLISHED='sb:markets:battleground';
   const K_BUILDER='bg:builder:battleground';
-  const K_BETS='lash3z_bets';
-  const MYBETS_KEY = u => 'sb:mybets:'+u;
+  const K_BETS='lash3z_bets';                // legacy per-match entries (kept)
+  const MYBETS_KEY = u => 'sb:mybets:'+u;    // compact “My Bets” feed
 
   const $=s=>document.querySelector(s);
   const listEl=$('#list'), userEl=$('#user'), evtInfoEl=$('#evtInfo');
@@ -189,7 +101,7 @@
   let leftSeriesName='Left', rightSeriesName='Right';
   let seriesTotal=3;
 
-  const read=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(_){return null}};
+  const read=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch{return null}};
   const esc=s=>(s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
   function normalizeFromPublished(o){
@@ -231,7 +143,7 @@
     const pc=pub?.matchups?.length||0, bc=bld?.matchups?.length||0;
     if(bld && bc && bc>=pc) return bld;
     if(pub && pc) return pub;
-    return bld || pub || {source:'none',eventId, title:eventTitle, matchups:[], seriesTotal:3, lastUpdated:0};
+    return bld || pub || {source:'none',eventId,title:eventTitle,matchups:[],seriesTotal:3,lastUpdated:0};
   }
 
   function loadData(){
@@ -295,17 +207,17 @@
     submitBtn.disabled=!(uname && allPicked && sumOk && within);
   }
 
-  // legacy per-match write (kept)
+  // legacy per-match write (kept, no UI change)
   function upsertBets(records){
     const now=Date.now();
-    const existing=(()=>{try{ return JSON.parse(localStorage.getItem(K_BETS)||'[]'); }catch(_){ return []; }})();
+    const existing=(()=>{try{return JSON.parse(localStorage.getItem(K_BETS)||'[]')}catch{return []}})();
     const uname=(userEl.value||'').trim().toUpperCase();
     const filtered=existing.filter(r=>!(r.mode==='battleground' && r.user===uname && r.eventId===eventId && (r.type==='prediction'||r.type==='series_score')));
     const next=filtered.concat(records.map(r=>({ts:now,...r})));
     localStorage.setItem(K_BETS,JSON.stringify(next));
   }
 
-  // “My Bets” compact record
+  // NEW: minimal “My Bets” record for display
   function writeMyBets(){
     const uname=(userEl.value||'').trim().toUpperCase();
     const sl=Number(scoreLEl.value||0), sr=Number(scoreREl.value||0);
@@ -322,7 +234,7 @@
       final: { leftName:leftSeriesName, rightName:rightSeriesName, left:sl, right:sr, total:seriesTotal }
     };
     const k=MYBETS_KEY(uname);
-    let arr=[]; try{ arr=JSON.parse(localStorage.getItem(k)||'[]')||[]; }catch(_){}
+    let arr=[]; try{ arr=JSON.parse(localStorage.getItem(k)||'[]')||[]; }catch{}
     arr.push(rec);
     localStorage.setItem(k, JSON.stringify(arr.slice(-20)));
   }
@@ -337,8 +249,8 @@
     });
     const sl=Number(scoreLEl.value||0), sr=Number(scoreREl.value||0);
     recs.push({mode:'battleground',type:'series_score',user:uname,eventId,leftName:leftSeriesName,rightName:rightSeriesName,left:sl,right:sr,total:seriesTotal});
-    upsertBets(recs);
-    writeMyBets();
+    upsertBets(recs);     // keep legacy feed
+    writeMyBets();        // new compact feed
     toast.textContent=`Saved ${recs.length-1} picks + final score for ${uname}.`;
     toast.classList.add('on'); setTimeout(()=>toast.classList.remove('on'),1400);
   }
