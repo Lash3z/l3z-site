@@ -1,71 +1,138 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Admin Login — L3Z</title>
-
-  <!-- No meta CSP here. CSP must allow 'script-src self' so externals load. -->
-  <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
-  <link rel="stylesheet" href="/assets/admin.css"/>
-
-  <style>
-    :root{--bg:#0b0e13;--panel:#0f141b;--ink:#e8ecf3;--muted:#94a3b8;--line:rgba(0,255,255,.18)}
-    html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-    .wrap{min-height:100dvh;display:grid;place-items:center;padding:18px}
-    .card{width:min(560px,92vw);background:linear-gradient(180deg,#0f131a,#0a0f15);
-          border:1px solid var(--line);border-radius:16px;padding:18px}
-    .head{font-size:22px;font-weight:800;text-align:center;margin-bottom:10px}
-    .row{display:flex;gap:8px;align-items:center;margin:8px 0}
-    label{display:block;font-size:13px;color:#a8b6c8;margin-bottom:6px}
-    input,button{width:100%;background:#0f141b;border:1px solid var(--line);color:var(--ink);
-                 border-radius:10px;padding:12px 12px;font-size:15px}
-    .btn{cursor:pointer;font-weight:800}
-    .primary{background:linear-gradient(180deg,#2bf2d5,#1ad0bc);color:#04211e;border:none}
-    .muted{color:var(--muted);font-size:12px}
-    .hint{display:flex;justify-content:space-between;align-items:center}
-    .eye{min-width:86px}
-    .err{color:#ff7a8a}
-    .ok{color:#12d48a}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Admin Login — L3Z</title>
+<meta http-equiv="Cache-Control" content="no-store"/>
+<style>
+  :root{--bg:#060b0d;--ink:#eaf7ff;--muted:#a8c6cc;--line:rgba(0,255,255,.18);--teal:#00ffff;--ok:#11d48a;--bad:#ff6b81}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#000 url("/assets/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  .wrap{min-height:100%;display:grid;place-items:center;padding:24px}
+  .card{width:380px;max-width:92vw;background:linear-gradient(180deg,rgba(5,10,12,.78),rgba(5,10,12,.50));
+        border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.5);padding:20px}
+  h1{margin:0 0 8px;color:var(--teal);text-shadow:0 0 16px #00ffff55}
+  .muted{margin:0 0 16px;color:var(--muted);font-size:13px}
+  label{display:block;margin:12px 0 8px;font-size:14px}
+  input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#081216;color:var(--ink);outline:none}
+  button{width:100%;padding:12px;border:0;border-radius:10px;background:var(--teal);color:#001316;font-weight:800;cursor:pointer;box-shadow:0 0 20px #00ffff55;margin-top:12px}
+  button[disabled]{opacity:.6;cursor:not-allowed}
+  .row{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:8px}
+  .pill{padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cff;font-size:12px}
+  #msg{min-height:18px;margin-top:10px;font-size:13px}
+  #msg.ok{color:var(--ok)} #msg.bad{color:var(--bad)}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card" role="form" aria-labelledby="h">
-      <div id="h" class="head">Admin Login</div>
-
-      <div class="row">
-        <div style="width:100%">
-          <label for="username">Username</label>
-          <input id="username" name="username" autocomplete="username" placeholder="admin"/>
-        </div>
-      </div>
-
-      <div class="row">
-        <div style="width:100%">
-          <label for="password">Password</label>
-          <div class="hint">
-            <input id="password" name="password" type="password" autocomplete="current-password" placeholder="••••••••"/>
-            <button id="toggle" class="btn eye" type="button" aria-label="Show/Hide password">SHOW</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="row">
-        <button id="login" class="btn primary" type="button">Sign In</button>
-      </div>
-
-      <div class="row" style="justify-content:space-between">
-        <a class="muted" href="/admin/tools.html">← Back to Dashboard</a>
-        <span id="status" class="muted" aria-live="polite"></span>
-      </div>
-
-      <div class="row muted">Use your admin creds. Cookie is HttpOnly.</div>
+<div class="wrap">
+  <div class="card">
+    <div class="row">
+      <h1 style="margin:0">Admin Login</h1>
+      <span id="env" class="pill">—</span>
     </div>
-  </div>
+    <p class="muted">Server-locked. Your admin cookie is required.</p>
 
-  <!-- Dependencies: no inline JS -->
-  <script src="/assets/api-base.js"></script>
-  <script src="/assets/js/admin-login.js"></script>
+    <form id="f" autocomplete="on">
+      <label>Username
+        <input name="username" required autocomplete="username"/>
+      </label>
+      <label>Password
+        <input name="password" type="password" required autocomplete="current-password"/>
+      </label>
+      <button id="submitBtn" type="submit">Unlock Admin</button>
+      <div id="msg"></div>
+    </form>
+  </div>
+</div>
+
+<!-- Live Server proxy: route /api/* to localhost:3000 with cookies -->
+<script>
+(function(){
+  const API_BASE = (location.port === '5501') ? 'http://127.0.0.1:3000' : '';
+  const _fetch = window.fetch.bind(window);
+  window.fetch = (input, init={})=>{
+    if (typeof input === 'string' && input.startsWith('/api/')) {
+      input = API_BASE + input;
+      init = Object.assign({credentials:'include', cache:'no-store'}, init||{});
+    }
+    return _fetch(input, init);
+  };
+})();
+</script>
+
+<script>
+(function(){
+  "use strict";
+  const f   = document.getElementById("f");
+  const msg = document.getElementById("msg");
+  const btn = document.getElementById("submitBtn");
+  const env = document.getElementById("env");
+
+  try{ env.textContent = location.origin; }catch(_){ env.textContent = "—"; }
+
+  const setMsg = (t, ok)=>{ msg.textContent = t || ""; msg.className = ok===true ? "ok" : ok===false ? "bad" : ""; };
+
+  // tries /api/admin/gate/login then /api/admin/login
+  async function adminLogin(username, password){
+    const payload = { username, password };
+    const paths = ["/api/admin/gate/login", "/api/admin/login"];
+    for (const p of paths){
+      try{
+        const r = await fetch(p, {
+          method: "POST",
+          headers: { "Content-Type":"application/json" },
+          credentials: "include",
+          cache: "no-store",
+          body: JSON.stringify(payload)
+        });
+        const ct = r.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await r.json().catch(()=>null) : await r.text().catch(()=>null);
+        if (r.ok && (!body || body.ok !== false)) return body || { ok:true };
+        // if this path rejects (404/405/etc), try the next
+      }catch(_){}
+    }
+    const e = new Error("Login endpoint unavailable");
+    e.status = 503;
+    throw e;
+  }
+
+  let inFlight = false;
+
+  const submit = async (e)=>{
+    e && e.preventDefault();
+    if (inFlight) return;
+    const fd = new FormData(f);
+    const username = String(fd.get("username")||"").trim();
+    const password = String(fd.get("password")||"");
+    if(!username || !password){ setMsg("Enter username and password.", false); return; }
+
+    inFlight = true;
+    btn.disabled = true;
+    setMsg("Unlocking…");
+
+    try{
+      await adminLogin(username, password);
+      setMsg("OK — redirecting…", true);
+      const params = new URLSearchParams(location.search);
+      const next = params.get("redirect") || "/pages/dashboard/admin/admin_hub.html";
+      setTimeout(()=> location.replace(next), 120);
+    }catch(e){
+      if (e && e.status === 405) setMsg("Login endpoint not enabled (405). Check backend route.", false);
+      else if (e && e.status === 404) setMsg("Login endpoint not found (404). Check API path.", false);
+      else if (e && e.status === 401) setMsg("Invalid credentials.", false);
+      else setMsg(e?.message || "Login failed.", false);
+      btn.disabled = false;
+      inFlight = false;
+    }
+  };
+
+  f.addEventListener("submit", submit);
+  // Enter on password triggers submit too (covers odd browsers)
+  f.querySelector('input[name="password"]').addEventListener('keydown', e=>{
+    if(e.key === 'Enter'){ submit(e); }
+  });
+})();
+</script>
 </body>
 </html>
