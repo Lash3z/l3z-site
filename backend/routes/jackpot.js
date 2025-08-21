@@ -1,139 +1,59 @@
-// backend/routes/jackpot.js
-import { Router } from "express";
-import Jackpot from "../models/jackpot.model.js";
-import requireAdmin from "../middleware/auth.js";
+// /backend/routes/jackpot.js
+const express = require("express");
+const fs = require("fs");
+const path = require("path");
 
-const r = Router();
+const router = express.Router();
 
-/* ---------- time helpers ---------- */
-function monthContext(d = new Date()) {
-  const y = d.getFullYear();
-  const m = d.getMonth(); // 0..11
-  const start = new Date(y, m, 1, 0, 0, 0, 0);
-  const next = new Date(y, m + 1, 1, 0, 0, 0, 0);
-  const end = new Date(next.getTime() - 1);
-  const key = `${y}-${String(m + 1).padStart(2, "0")}`;
-  return { key, start, end, now: d };
+const DATA_DIR = path.join(__dirname, "..", "..", "data");
+const FILE = path.join(DATA_DIR, "jackpot.json");
+
+function ensureData(){
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (!fs.existsSync(FILE)) fs.writeFileSync(FILE, JSON.stringify({ amount: 0, updatedAt: Date.now() }, null, 2));
 }
 
-async function getOrCreate(monthKey) {
-  let doc = await Jackpot.findOne({ monthKey });
-  if (!doc) doc = await Jackpot.create({ monthKey, extra: 0 });
-  return doc;
+function readJackpot(){
+  try { ensureData(); return JSON.parse(fs.readFileSync(FILE, "utf8")); }
+  catch (_) { return { amount: 0, updatedAt: Date.now() }; }
+}
+function writeJackpot(obj){
+  ensureData(); fs.writeFileSync(FILE, JSON.stringify(obj, null, 2));
 }
 
-// Compute base (0..150) since (overrideStartISO || month start), + extra
-function computeValue(doc, ctx) {
-  const start = doc.overrideStartISO && doc.overrideStartISO instanceof Date
-    ? doc.overrideStartISO
-    : ctx.start;
-
-  const now = ctx.now.getTime();
-  const s = Math.max(start.getTime(), ctx.start.getTime());
-  const e = ctx.end.getTime();
-  const period = Math.max(1, e - s + 1); // ms
-  const elapsed = Math.max(0, Math.min(now - s, period));
-  const frac = Math.min(1, elapsed / period);
-
-  const base = 150 * frac;
-  const extra = Number.isFinite(doc.extra) ? Math.max(0, doc.extra) : 0;
-  const value = base + extra;
-
-  return { value, parts: { base, extra }, start, end: ctx.end, now: ctx.now };
-}
-
-/* ---------- routes ---------- */
-
-// GET /api/jackpot
-// -> { ok:true, value:Number, ctx:{ key, startISO, endISO, nowISO }, parts:{ base, extra } }
-r.get("/", async (_req, res) => {
-  try {
-    const ctx = monthContext();
-    const doc = await getOrCreate(ctx.key);
-    const out = computeValue(doc, ctx);
-    res.json({
-      ok: true,
-      value: out.value,
-      ctx: {
-        key: ctx.key,
-        startISO: out.start.toISOString(),
-        endISO: out.end.toISOString(),
-        nowISO: out.now.toISOString(),
-      },
-      parts: {
-        base: out.parts.base,
-        extra: out.parts.extra,
-      },
-    });
-  } catch (e) {
-    console.error("[jackpot] GET failed:", e?.message);
-    res.status(500).json({ ok: false, error: "server_error" });
-  }
-});
-
-// POST /api/jackpot/contribute { amount:Number, source?, username? }
-// -> { ok:true, value:Number }
-r.post("/contribute", async (req, res) => {
-  try {
-    const amount = Number(req.body?.amount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return res.status(400).json({ ok: false, error: "bad_amount" });
+function isAdmin(req){
+  // Accept either Basic auth OR an admin cookie set elsewhere in your admin login
+  // Basic: Authorization: Basic base64(user:pass)
+  try{
+    const hdr = req.headers.authorization || "";
+    if (hdr.startsWith("Basic ")) {
+      const pair = Buffer.from(hdr.slice(6), "base64").toString("utf8");
+      const idx = pair.indexOf(":");
+      const user = pair.slice(0, idx), pass = pair.slice(idx+1);
+      if (user === (process.env.ADMIN_USER||"LASH3Z") && pass === (process.env.ADMIN_PASS||"LASH3Z777")) return true;
     }
+  }catch(_){}
+  // Or cookie set by your admin auth flow: admin=1
+  if (req.cookies && req.cookies.admin === "1") return true;
+  return false;
+}
 
-    const ctx = monthContext();
-    const doc = await getOrCreate(ctx.key);
-    doc.extra = Math.max(0, (Number(doc.extra) || 0) + amount);
-    await doc.save();
-
-    const out = computeValue(doc, ctx);
-    res.json({ ok: true, value: out.value });
-  } catch (e) {
-    console.error("[jackpot] contribute failed:", e?.message);
-    res.status(500).json({ ok: false, error: "server_error" });
-  }
+// Viewers: get the current jackpot (grow-only number)
+router.get("/", (req, res) => {
+  const jp = readJackpot();
+  res.json({ ok: true, amount: jp.amount, updatedAt: jp.updatedAt });
 });
 
-// POST /api/jackpot/reset  (admin only)
-// -> { ok:true, value:Number }
-r.post("/reset", requireAdmin, async (_req, res) => {
-  try {
-    const ctx = monthContext();
-    const doc = await getOrCreate(ctx.key);
-
-    // Reset current month: start over & clear extras
-    doc.overrideStartISO = new Date();
-    doc.extra = 0;
-    await doc.save();
-
-    const out = computeValue(doc, ctx);
-    res.json({ ok: true, value: out.value });
-  } catch (e) {
-    console.error("[jackpot] reset failed:", e?.message);
-    res.status(500).json({ ok: false, error: "server_error" });
-  }
+// Admin: contribute delta (positive or negative, but not below zero)
+router.post("/contribute", (req, res) => {
+  if (!isAdmin(req)) return res.status(401).json({ ok:false, error:"Unauthorized" });
+  const delta = Number(req.body && req.body.delta);
+  if (!isFinite(delta)) return res.status(400).json({ ok:false, error:"delta must be a number" });
+  const jp = readJackpot();
+  const next = Math.max(0, Number(jp.amount||0) + delta);
+  const updated = { amount: next, updatedAt: Date.now() };
+  writeJackpot(updated);
+  res.json({ ok:true, amount: updated.amount, updatedAt: updated.updatedAt });
 });
 
-// (optional) GET /api/jackpot/debug (admin) -> raw doc + computed parts
-r.get("/debug", requireAdmin, async (_req, res) => {
-  try {
-    const ctx = monthContext();
-    const doc = await getOrCreate(ctx.key);
-    const out = computeValue(doc, ctx);
-    res.json({
-      ok: true,
-      doc,
-      computed: {
-        value: out.value,
-        base: out.parts.base,
-        extra: out.parts.extra,
-        startISO: out.start.toISOString(),
-        endISO: out.end.toISOString(),
-        nowISO: out.now.toISOString(),
-      },
-    });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: "server_error" });
-  }
-});
-
-export default r;
+module.exports = router;
