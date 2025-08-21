@@ -38,6 +38,87 @@
 </style>
 </head>
 <body>
+  <!-- USER HEADER (drop this right after <body>) -->
+<div class="userbar" id="userBar">
+  <div class="ub-left">
+    <span class="ub-hello">Hello,</span>
+    <span id="ubName" class="ub-name">Guest</span>
+  </div>
+  <div class="ub-right">
+    <span class="ub-badge">LBX <b id="ubBal">0</b></span>
+  </div>
+</div>
+
+<style>
+  .userbar{
+    max-width:1100px; margin:12px auto 8px; padding:8px 12px;
+    display:flex; align-items:center; justify-content:space-between;
+    border:1px solid rgba(255,255,255,.10); border-radius:12px;
+    background:rgba(0,0,0,.25); backdrop-filter: blur(6px);
+  }
+  .ub-hello{ font-size:12px; color:#9fd0d6; margin-right:6px }
+  .ub-name{ font-weight:900; color:#ffe39a }        /* light yellow (readable on dark) */
+  .ub-badge{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:6px 10px; border-radius:999px; font-weight:800;
+    background:#2a2310; color:#ffe39a; border:1px solid #8c6926;  /* “signup” gold vibe */
+  }
+  /* keep it tucked on small screens */
+  @media (max-width:520px){
+    .userbar{ margin:8px 8px 4px; }
+  }
+</style>
+
+<script>
+(function(){
+  "use strict";
+  const $  = s => document.querySelector(s);
+  const up = s => String(s||"").trim().toUpperCase();
+  const sget = (k,def=null)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(_){ return def; } };
+
+  // Prefer current URL ?viewer=NAME, else use your existing session/profile keys
+  function pickUser(){
+    const qp = new URLSearchParams(location.search).get("viewer");
+    if (qp && qp.trim()) return up(qp);
+    const sess = sget("l3z:session");           // { user, issuedAt, expiresAt }
+    if (sess && sess.user) return up(sess.user);
+    const prof = sget("l3z:user");              // { username, ... }
+    if (prof && prof.username) return up(prof.username);
+    const legacy = localStorage.getItem("user:username");
+    if (legacy) return up(legacy);
+    const last = sget("lash3z_last_user");
+    if (last) return up(last);
+    return "";
+  }
+
+  async function refresh(){
+    const name = pickUser() || "GUEST";
+    $("#ubName").textContent = name;
+
+    // Ask server first
+    try{
+      const r = await fetch("/api/wallet/me?viewer="+encodeURIComponent(name), { credentials:"include" });
+      if(!r.ok) throw 0;
+      const j = await r.json();
+      const bal = (j && j.wallet && typeof j.wallet.balance==="number") ? j.wallet.balance : 0;
+      $("#ubBal").textContent = Math.floor(bal);
+      return;
+    }catch(_){ /* fall through to local */ }
+
+    // Fallback to local wallet mirror if offline / server not set
+    const w = sget("lbx:wallet:"+name) || { balance: 0 };
+    $("#ubBal").textContent = Math.floor(Number(w.balance||0));
+  }
+
+  // react to login/signup changes in other tabs
+  window.addEventListener("storage", (e)=>{
+    if(["l3z:session","l3z:user","user:username","lash3z_last_user"].includes(e.key)) refresh();
+  });
+
+  refresh();
+})();
+</script>
+
 <div class="wrap">
   <h1>Bonus Hunt — Slot Request</h1>
   <div class="sub">
