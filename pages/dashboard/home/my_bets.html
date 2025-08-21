@@ -36,6 +36,106 @@
 </style>
 </head>
 <body>
+  <!-- USER HEADER (drop this right after <body>) -->
+<div class="userbar" id="userBar">
+  <div class="ub-left">
+    <span class="ub-hello">Hello,</span>
+    <span id="ubName" class="ub-name">Guest</span>
+  </div>
+  <div class="ub-right">
+    <span class="ub-badge">LBX <b id="ubBal">0</b></span>
+  </div>
+</div>
+
+<style>
+  .userbar{
+    max-width:1100px; margin:12px auto 8px; padding:8px 12px;
+    display:flex; align-items:center; justify-content:space-between;
+    border:1px solid rgba(255,255,255,.10); border-radius:12px;
+    background:rgba(0,0,0,.25); backdrop-filter: blur(6px);
+  }
+  .ub-hello{ font-size:12px; color:#9fd0d6; margin-right:6px }
+  .ub-name{ font-weight:900; color:#ffe39a }
+  .ub-badge{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:6px 10px; border-radius:999px; font-weight:800;
+    background:#2a2310; color:#ffe39a; border:1px solid #8c6926;
+  }
+  @media (max-width:520px){
+    .userbar{ margin:8px 8px 4px; }
+  }
+</style>
+
+<!-- ===== Unified viewer helper (prevents “last-write-wins”) ===== -->
+<script>
+(function(){
+  if (window.l3zGetViewer) return; // reuse if already defined elsewhere
+  const sget=(k,d=null)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(_){ return d; } };
+  const pickName=()=>{
+    const qp=new URLSearchParams(location.search).get('viewer'); if(qp) return qp.trim().toUpperCase();
+    const sess=sget('l3z:session'); if(sess?.user) return String(sess.user).toUpperCase();
+    const prof=sget('l3z:user'); if(prof?.username) return String(prof.username).toUpperCase();
+    const lg=localStorage.getItem('user:username'); if(lg) return String(lg).toUpperCase();
+    const last=sget('lash3z_last_user'); if(last) return String(last).toUpperCase();
+    return 'PLAYER';
+  };
+  async function fetchBalance(name){
+    try{
+      const r=await fetch('/api/viewer/me',{credentials:'include',cache:'no-store'});
+      if(r.ok){ const j=await r.json();
+        const u=(j?.username||name||'PLAYER').toUpperCase();
+        if (j?.wallet && typeof j.wallet.balance==='number') return {username:u, balance:j.wallet.balance};
+        name=u;
+      }
+    }catch(_){}
+    try{
+      const r=await fetch('/api/wallet/balance',{credentials:'include',cache:'no-store'});
+      if(r.ok){ const j=await r.json(); if(typeof j.balance==='number') return {username:name, balance:j.balance}; }
+    }catch(_){}
+    try{
+      const r=await fetch('/api/wallet/me?viewer='+encodeURIComponent(name),{credentials:'include',cache:'no-store'});
+      if(r.ok){ const j=await r.json(); if(j?.wallet && typeof j.wallet.balance==='number') return {username:name, balance:j.wallet.balance}; }
+    }catch(_){}
+    const w = sget('lbx:wallet:'+name) || { balance:0 };
+    return {username:name, balance:Number(w.balance)||0};
+  }
+  let _memo=null;
+  window.l3zGetViewer = async function(){
+    if(_memo) return _memo;
+    const name = pickName();
+    _memo = fetchBalance(name).then(x=>({ username:(x.username||name).toUpperCase(), balance:Math.max(0, Math.floor(Number(x.balance)||0)) }));
+    return _memo;
+  };
+})();
+</script>
+
+<!-- Header fill (uses unified helper + “only upgrade” write) -->
+<script>
+(function(){
+  "use strict";
+  const $  = s => document.querySelector(s);
+  const onlyUpgradeNumber = (el, value)=>{
+    if(!el) return;
+    const v = Math.max(0, Math.floor(Number(value)||0));
+    const cur = Math.max(0, Math.floor(Number(String(el.textContent).replace(/[^\d.-]/g,''))||0));
+    if (cur !== 0 && v === 0) return; // don't downgrade non-zero to 0
+    el.textContent = String(v);
+  };
+
+  async function refresh(){
+    const { username, balance } = await window.l3zGetViewer();
+    $("#ubName").textContent = username || "GUEST";
+    onlyUpgradeNumber($("#ubBal"), balance);
+  }
+
+  window.addEventListener("storage", (e)=>{
+    if(["l3z:session","l3z:user","user:username","lash3z_last_user"].includes(e.key)) refresh();
+  });
+
+  refresh();
+})();
+</script>
+
 <div class="wrap">
   <div class="topbar">
     <div class="brand">
@@ -98,11 +198,11 @@ if(!window.__L3Z_MYBETS_INIT__){ window.__L3Z_MYBETS_INIT__ = true;
   tabs.forEach(btn=> btn.addEventListener("click", ()=> setActive(btn.dataset.tab, true)));
   setActive((location.hash||"").replace(/^#/,"") in panels ? (location.hash||"").slice(1) : "battleground", false);
 
-  // who
+  // who (use unified helper)
   (async ()=>{
     try{
-      const me = await apiFetch("/api/wallet/me");
-      whoEl.textContent = (me.username || me.user || "PLAYER").toUpperCase();
+      const me = await window.l3zGetViewer();
+      whoEl.textContent = (me.username||"PLAYER").toUpperCase();
     }catch{ whoEl.textContent = "PLAYER"; }
   })();
 
@@ -166,6 +266,55 @@ if(!window.__L3Z_MYBETS_INIT__){ window.__L3Z_MYBETS_INIT__ = true;
   render();
 })();
 }
+</script>
+
+<!-- viewer glue v2 (now uses unified helper + no-downgrade writes) -->
+<script id="viewer-glue">
+(function(){
+  const S = (sel) => document.querySelector(sel);
+  const SS = (sel) => Array.from(document.querySelectorAll(sel));
+  const set = (sel, val) => { const n=S(sel); if(n){ n.textContent = val; n.title = val; }};
+  const onlyUpgradeNumber = (el, value)=>{
+    if(!el) return;
+    const v = Math.max(0, Math.floor(Number(value)||0));
+    const cur = Math.max(0, Math.floor(Number(String(el.textContent).replace(/[^\d.-]/g,''))||0));
+    if (cur !== 0 && v === 0) return;
+    el.textContent = String(v);
+  };
+
+  async function loadMe(){
+    const me = await window.l3zGetViewer();
+
+    const user = (me.username||'').toUpperCase();
+    set('#helloName', user);
+    set('#welcomeName', user);
+    set('#usernameDisplay', user);
+    set('#ubName', user);
+    set('#playerName', user);
+    set('#who', user);
+    if (S('#guestChipLabel')) S('#guestChipLabel').textContent = user;
+
+    const pretty = (Number(me.balance)||0).toFixed(0);
+    set('#headerLbx', pretty+' LBX');
+    set('#navLbx',    pretty);
+    onlyUpgradeNumber(S('#ubBal'), pretty);
+    set('#playerBalance', pretty);
+    set('#walletBalance', pretty);
+    set('#walletBalanceTop', pretty);
+
+    SS('.lbx-pill,.lbx,.pill-lbx').forEach(n=>{
+      const m = String(n.textContent||'').match(/\b(\d+)\b/);
+      if (m) n.textContent = (n.textContent||'').replace(m[1], pretty);
+    });
+
+    // kill any “switch name” buttons if present on this page
+    ['#btnSwitch','.btnSwitchName','#switchName','.switch-name','.switchName'].map(S).filter(Boolean).forEach(n=>n.style.display='none');
+    SS('button').forEach(b=>{ const t=(b.textContent||'').toLowerCase(); if(t.includes('switch name')) b.style.display='none'; });
+  }
+  loadMe();
+  window.addEventListener('focus', loadMe);
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) loadMe(); });
+})();
 </script>
 </body>
 </html>
