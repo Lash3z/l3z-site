@@ -1,108 +1,227 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-admin="ready">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>L3Z — Admin Dashboard</title>
 <meta http-equiv="Cache-Control" content="no-store"/>
+<title>L3Z — Hub</title>
 <style>
-  :root{--bg:#060b0d;--ink:#eaf7ff;--muted:#a8c6cc;--line:rgba(0,255,255,.18);--teal:#00ffff;--warn:#ff9b6b}
+  :root{
+    --bg:#060b0d; --panel:#0b1417; --ink:#eaf7ff; --muted:#9fd0d6;
+    --line:rgba(0,255,255,.18); --teal:#00ffff; --gold:#ffb42d;
+    --ok:#12d48a; --bad:#e25a6f; --ink2:#cfffff;
+  }
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%;background:#041014 url("/assets/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-  header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(0,0,0,.55);border-bottom:1px solid var(--line);position:sticky;top:0}
-  h1{margin:0;font-size:18px;letter-spacing:.5px}
-  .crumb{color:#9fd;opacity:.9}
-  .back{border:1px solid var(--line);background:#08181c;color:#cfe;border-radius:10px;padding:8px 12px;text-decoration:none}
-  .grid{max-width:1100px;margin:22px auto;padding:0 14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
-  .card{background:linear-gradient(180deg,#0b1519,#081116);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:14px;display:flex;flex-direction:column;gap:10px;position:relative}
-  .card img{width:56px;height:56px;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(0,255,255,.15))}
-  .card h3{margin:0;font-size:16px}
-  .card p{margin:0;color:#a9c7cf;font-size:13px;min-height:34px}
-  .card a{margin-top:auto;align-self:flex-start;text-decoration:none;border:1px solid var(--line);background:#0b2227;color:#cfe;padding:8px 10px;border-radius:10px;font-weight:700}
-  .gate{max-width:900px;margin:28px auto;padding:20px;border:1px dashed #ffb5b5;background:rgba(255,0,0,.07);border-radius:14px;text-align:center}
-  .gate h2{margin:0 0 8px;color:#ffb5b5}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center;margin-top:10px}
-  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cff;font-size:12px}
-  .toolbar{max-width:1100px;margin:10px auto 0;padding:0 14px;display:flex;gap:10px;align-items:center}
-  .btn{border:1px solid var(--line);background:#09171b;color:#bff;padding:8px 12px;border-radius:10px;text-decoration:none;font-weight:800}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
+  h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
+  .wrap{max-width:1300px;margin:0 auto;padding:0 16px 48px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+  .panel{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;min-height:220px}
+  .full{grid-column:1 / -1}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:var(--ink2)}
+  input,select,textarea{border-radius:10px;border:1px solid var(--line);background:#0c1519;color:var(--ink);padding:8px}
+  textarea{width:100%;min-height:80px}
+  button{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:#0f1720;color:var(--ink);font-weight:800;cursor:pointer}
+  button.ok{background:#103d30;border-color:#1fa37b}
+  button.danger{background:#2b1116;border-color:#7e2a3c}
+  button.warn{background:#231b0f;border-color:#8c6926}
+  button[disabled]{opacity:.5;cursor:not-allowed}
+  .hr{height:1px;background:var(--line);margin:10px 0}
+  .tbl{width:100%;border-collapse:separate;border-spacing:0}
+  .tbl th,.tbl td{border-bottom:1px solid rgba(255,255,255,.06);padding:8px;text-align:left;font-size:13px}
+  .tbl th{color:var(--muted)}
+  .right{margin-left:auto}
+  .hint{color:var(--muted);font-size:12px}
+  .mini{font-size:12px;color:var(--muted)}
+  .badge{padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#081318;color:#bfe}
+  .toast{position:fixed;right:16px;bottom:16px;background:#0b1f21;border:1px solid var(--line);border-radius:10px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none;z-index:9999}
+  .toast.on{opacity:1;transform:translateY(0)}
+  @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
-  <header>
-    <div class="crumb">L3Z — <strong>Admin Dashboard</strong></div>
-    <a class="back" href="/index.html">← Back to site</a>
-  </header>
 
-  <main id="app">
-    <!-- gate will be replaced when admin is verified -->
-    <section id="gate" class="gate">
-      <h2>Admin access required</h2>
-      <p>You’re not signed in as an administrator. Use the normal login, then come back here.</p>
+<div class="wrap">
+  <h1>Hub</h1>
+
+  <div class="grid" id="grid">
+
+    <!-- RAFFLES (read-only + local draw) -->
+    <div class="panel">
+      <h2>Raffles</h2>
       <div class="row">
-        <a class="btn" href="/pages/dashboard/home/login.html">Go to Login</a>
+        <input id="rfId" placeholder="RAFFLE ID" style="width:160px">
+        <button id="rfRefresh">Refresh</button>
+        <button id="rfDraw">Draw Winner (local)</button>
+        <span id="rfMsg" class="pill">Ready</span>
       </div>
-    </section>
-  </main>
+      <div class="hr"></div>
+      <div class="mini">Entries</div>
+      <div style="max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px">
+        <table class="tbl" id="rfTbl">
+          <thead><tr><th>#</th><th>User</th><th>Time</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="mini" style="margin-top:6px">Tip: Use “Giveaways” below to add entries to the current open raffle.</div>
+    </div>
 
+    
+
+    <!-- VIP WALLET -->
+    <div class="panel">
+      <h2>VIP — Wallet Adjust</h2>
+      <div class="row">
+        <input id="vipUser" placeholder="USERNAME" style="width:160px;text-transform:uppercase">
+        <input id="vipAmt" type="number" step="1" placeholder="+/- LBX" style="width:120px">
+        <input id="vipWhy" placeholder="Reason (e.g., LUCKY7)" style="min-width:200px">
+        <button id="vipApply" class="ok">Apply</button>
+        <span id="vipMsg" class="pill">Ready</span>
+      </div>
+      <div class="hr"></div>
+      <div class="mini">Posts to <code>/api/wallet/adjust</code>. (Admin bypass must be on for now.)</div>
+    </div>
+
+    <!-- UTILITIES -->
+    <div class="panel full">
+      <h2>Utilities</h2>
+      <div class="row">
+        <button id="btnPing">Ping API</button>
+        <span id="utilMsg" class="pill">Ready</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast" class="toast">Saved.</div>
+
+<!-- Minimal API helper -->
 <script>
 (function(){
   "use strict";
-  const app = document.getElementById("app");
-  function api(path,opts){ opts=opts||{}; opts.credentials="include"; return fetch(path,opts); }
+  if (window.api && typeof window.api.get==="function") return;
+  function isJson(res){ return (res.headers.get("content-type")||"").indexOf("application/json")>-1; }
+  async function readBody(res){ try{ return isJson(res) ? await res.json() : await res.text(); }catch(_){ return null; } }
+  function err(res,body){ var e=new Error((body&&body.error)||("HTTP "+res.status)); e.status=res.status; e.body=body; return e; }
+  async function core(path,opts){
+    var res=await fetch(path,{credentials:"include",cache:"no-store",headers:(opts&&opts.headers)||{},method:(opts&&opts.method)||"GET",body:opts&&opts.body});
+    var body=await readBody(res);
+    if(!res.ok || (body&&body.ok===false)) throw err(res,body);
+    return body==null?{ok:true}:body;
+  }
+  window.api={
+    get:function(p,o){ return core(p,o||{}); },
+    post:function(p,b,o){ o=o||{}; o.method="POST"; o.headers=Object.assign({"Content-Type":"application/json"},o.headers||{}); o.body=JSON.stringify(b||{}); return core(p,o); }
+  };
+})();
+</script>
 
-  // Build the dashboard UI (cards)
-  function buildCards(){
-    const cards = [
-      { href:"/pages/dashboard/admin/bets_admin.html",            title:"Bets Admin (Unified)",  img:"/assets/lash3zbux_pp.png", desc:"Publish, edit and manage betting markets." },
-      { href:"/pages/dashboard/admin/battleground_admin.html",    title:"Battleground Admin",     img:"/assets/lashes%20battleground.png", desc:"Create/seed brackets & matches." },
-      { href:"/pages/dashboard/admin/battleground_widget.html",   title:"Battleground Widget",    img:"/assets/lashes%20battleground.png", desc:"On-stream widget for Battleground." },
-      { href:"/pages/dashboard/admin/bonus_hunt_admin.html",      title:"Bonus Hunt Admin",       img:"/assets/bonus_hunt_icon.png", desc:"Configure Bonus Hunt runs and games." },
-      { href:"/pages/dashboard/admin/bonus_hunt_widget.html",     title:"Bonus Hunt Widget",      img:"/assets/bonus_hunt_icon.png", desc:"Overlay widget for Bonus Hunts." },
-      { href:"/pages/dashboard/admin/pvp_admin.html",             title:"PVP Admin",              img:"/assets/pvp_icon.png", desc:"Approve entries and manage PVP." },
-      { href:"/pages/dashboard/admin/lucky7.html",                title:"Lucky 7",                img:"/assets/control_panel_icon.png", desc:"Tournament points & events." },
-      { href:"/pages/dashboard/admin/admin_hub.html",             title:"Admin Hub",              img:"/assets/L3Z_logoMain.png", desc:"Tools & quick actions." },
-    ];
-
-    const toolbar = document.createElement("div");
-    toolbar.className="toolbar";
-    const who = document.createElement("span");
-    who.className="pill"; who.id="who";
-    toolbar.appendChild(who);
-    const logout = document.createElement("a");
-    logout.className="btn"; logout.textContent="Log out of admin";
-    logout.href="#"; logout.addEventListener("click", async (e)=>{ e.preventDefault(); try{ await api("/api/admin/gate/logout",{method:"POST"}); location.reload(); }catch(_){ location.reload(); } });
-    toolbar.appendChild(logout);
-
-    const grid = document.createElement("section");
-    grid.className="grid";
-    cards.forEach(c=>{
-      const card = document.createElement("article");
-      card.className="card";
-      const img = document.createElement("img"); img.src=c.img; img.alt=c.title;
-      const h3 = document.createElement("h3"); h3.textContent=c.title;
-      const p  = document.createElement("p");  p.textContent=c.desc;
-      const a  = document.createElement("a");  a.href=c.href; a.textContent="Open";
-      card.append(img,h3,p,a); grid.appendChild(card);
-    });
-
-    app.innerHTML="";
-    app.appendChild(toolbar);
-    app.appendChild(grid);
+<!-- Page logic (no admin checks) -->
+<script>
+(function(){
+  "use strict";
+  var $ = function(s,r){ return (r||document).querySelector(s); };
+  var $$ = function(s,r){ return Array.from((r||document).querySelectorAll(s)); };
+  var toast = $("#toast");
+  function showToast(t){ toast.textContent=t||"Saved."; toast.classList.add("on"); setTimeout(function(){ toast.classList.remove("on"); }, 1400); }
+  function up(s){ return String(s||"").trim().toUpperCase(); }
+  function pill(el,txt,ok){ el.textContent=txt; el.style.background = ok ? "#103d30" : "#0f1720"; el.style.borderColor = ok ? "#1fa37b" : "var(--line)"; }
+  function renderEntries(tbody,rows){
+    tbody.innerHTML = (rows||[]).map(function(r,i){
+      var ts = r.ts ? new Date(r.ts).toLocaleString() : "—";
+      return '<tr><td>'+(i+1)+'</td><td>'+up(r.user||r.username||"")+'</td><td>'+ts+'</td></tr>';
+    }).join("") || '<tr><td colspan="3" class="mini">No entries</td></tr>';
   }
 
-  // Check admin status (send cookies!)
-  (async function verify(){
-    try{
-      const r = await api("/api/admin/gate/check");
-      if (!r.ok) throw 0;
-      const j = await r.json();
-      buildCards();
-      const who = document.getElementById("who");
-      if (who) who.textContent = "Signed in as admin: " + (j?.username || "unknown");
-    }catch(_){
-      // leave the gate visible
-    }
-  })();
+  /* ---------- RAFFLES (read-only + local draw) ---------- */
+  var rfId=$("#rfId"), rfRefresh=$("#rfRefresh"), rfDraw=$("#rfDraw"), rfMsg=$("#rfMsg"), rfTbl=$("#rfTbl tbody");
+  function getRaffleEntriesById(id){
+    if(!id){ pill(rfMsg,"Missing ID"); return; }
+    rfMsg.textContent="Loading…";
+    api.get("/api/raffles/"+encodeURIComponent(id)+"/entries").then(function(j){
+      renderEntries(rfTbl, j.entries||[]);
+      pill(rfMsg,"OK",true);
+    }).catch(function(){
+      renderEntries(rfTbl, []);
+      pill(rfMsg,"Load failed");
+    });
+  }
+  rfRefresh.addEventListener("click", function(){ getRaffleEntriesById(rfId.value); });
+  rfDraw.addEventListener("click", function(){
+    var names = $$("#rfTbl tr td:nth-child(2)").map(function(td){ return td.textContent.trim(); });
+    if(!names.length){ pill(rfMsg,"No entries"); return; }
+    var pick = names[Math.floor(Math.random()*names.length)];
+    showToast("Winner: "+pick);
+  });
+
+  /* ---------- GIVEAWAYS (public) ---------- */
+  var gvOpen=$("#gvOpen"), gvUser=$("#gvUser"), gvAdd=$("#gvAdd"), gvRefresh=$("#gvRefresh"), gvDraw=$("#gvDraw"), gvMsg=$("#gvMsg"), gvTbl=$("#gvTbl tbody");
+  var currentRid = null;
+
+  function refreshCurrentRaffle(){
+    gvMsg.textContent="Loading…";
+    api.get("/api/raffles/public").then(function(j){
+      currentRid = j && j.id ? String(j.id) : null;
+      gvOpen.textContent = "Open: " + (currentRid || "—");
+      if (currentRid){
+        return api.get("/api/raffles/"+encodeURIComponent(currentRid)+"/entries");
+      } else {
+        return { entries: [] };
+      }
+    }).then(function(j2){
+      renderEntries(gvTbl, j2.entries||[]);
+      pill(gvMsg,"OK",true);
+    }).catch(function(){
+      renderEntries(gvTbl, []);
+      pill(gvMsg,"Load failed");
+    });
+  }
+
+  gvRefresh.addEventListener("click", refreshCurrentRaffle);
+  gvAdd.addEventListener("click", function(){
+    var user=up(gvUser.value);
+    if(!user){ pill(gvMsg,"Need USER"); return; }
+    gvMsg.textContent="Adding…";
+    api.post("/api/giveaways/enter", { user:user }).then(function(){
+      gvUser.value=""; showToast("Entry added");
+      refreshCurrentRaffle();
+    }).catch(function(){ pill(gvMsg,"Add failed"); });
+  });
+  gvDraw.addEventListener("click", function(){
+    var names = $$("#gvTbl tr td:nth-child(2)").map(function(td){ return td.textContent.trim(); });
+    if(!names.length){ pill(gvMsg,"No entries"); return; }
+    var pick = names[Math.floor(Math.random()*names.length)];
+    showToast("Winner: "+pick);
+  });
+
+  /* ---------- VIP WALLET (bypass relies on server) ---------- */
+  var vipUser=$("#vipUser"), vipAmt=$("#vipAmt"), vipWhy=$("#vipWhy"), vipApply=$("#vipApply"), vipMsg=$("#vipMsg");
+  vipApply.addEventListener("click", function(){
+    var user=up(vipUser.value), amt=Number(vipAmt.value||0), why=(vipWhy.value||"ADJUSTMENT").toString();
+    if(!user || !amt){ pill(vipMsg,"Need USER + AMOUNT"); return; }
+    vipApply.disabled=true; vipMsg.textContent="Submitting…";
+    api.post("/api/wallet/adjust", { username:user, delta:amt, reason:why }).then(function(r){
+      pill(vipMsg,"OK",true);
+      showToast("Wallet updated");
+      vipAmt.value=""; vipWhy.value="";
+    }).catch(function(e){
+      pill(vipMsg, (e.body&&e.body.error) || "Failed");
+    }).finally(function(){ vipApply.disabled=false; });
+  });
+
+  /* ---------- Utilities ---------- */
+  var utilMsg=$("#utilMsg");
+  $("#btnPing").addEventListener("click", function(){
+    utilMsg.textContent="Pinging…";
+    api.get("/api/health").then(function(){ pill(utilMsg,"OK",true); showToast("API OK"); })
+      .catch(function(){ pill(utilMsg,"Ping failed"); });
+  });
+
+  // initial load
+  refreshCurrentRaffle();
 })();
 </script>
 </body>
