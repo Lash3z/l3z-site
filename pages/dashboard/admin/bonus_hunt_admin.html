@@ -1,505 +1,395 @@
 <!DOCTYPE html>
-<html lang="en" data-admin="checking">
+<html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Bonus Hunt — Admin (Games • Results • Live)</title>
-<meta http-equiv="Cache-Control" content="no-store"/>
+<title>Bonus Hunt — Admin / Logger</title>
 <style>
-:root{
-  --bg:#060b0d;--panel:#0b1417;--ink:#eaf7ff;--muted:#9fd0d6;--line:rgba(0,255,255,.18);
-  --teal:#00ffff;--gold:#ffb42d;--ok:#12d48a;--bad:#e25a6f
-}
+:root{--bg:#0b0f12;--panel:#0b1417;--ink:#eaf7ff;--muted:#9fd0d6;--line:rgba(0,255,255,.18);--teal:#00ffff;--ok:#12d48a;--bad:#e25a6f}
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
-
-.wrap{max-width:1400px;margin:0 auto;padding:16px 16px 64px}
-h1{margin:0 0 12px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
+html,body{margin:0;background:#000 url("") center/cover fixed no-repeat;color:var(--ink);font-family:"Segoe UI",system-ui,Arial,sans-serif}
+.wrap{max-width:1280px;margin:0 auto;padding:16px 16px 96px}
+h1{margin:0 0 12px;color:var(--teal);text-shadow:0 0 14px rgba(0,255,255,.33)}
 .card{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
-.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cfffff;font-weight:800}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.right{margin-left:auto}
 .btn{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#0f1720;color:#eaf7ff;font-weight:800;cursor:pointer}
 .btn.ok{background:#103d30;border-color:#1fa37b}
 .btn.warn{background:#231b0f;border-color:#8c6926}
 .btn.danger{background:#2b1116;border-color:#7e2a3c}
-input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;color:#eaf7ff;padding:10px}
-.small{font-size:12px;color:#9fd0d6}
-.hr{height:1px;background:var(--line);margin:10px 0}
-.kv{display:flex;gap:8px;align-items:center}
-.kv b{color:var(--muted)}
-
-/* grid */
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-@media (max-width:1100px){.grid{grid-template-columns:1fr}}
-
-/* Games */
-.games{border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.gamesHead{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
-.gamesBody{max-height:520px;overflow:auto;padding:10px;background:#0b1418}
-.game{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:8px;background:#0c1519}
-.game + .game{margin-top:8px}
-.thumb{width:64px;height:86px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#000}
-.thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.title{font-weight:900}
-.prov{font-size:12px;color:#9fd0d6}
-
-/* Results */
-.res{border:1px solid var(--line);border-radius:12px;overflow:hidden}
-.resHead{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
-.resBody{max-height:520px;overflow:auto;padding:10px;background:#0b1418}
-.r{display:grid;grid-template-columns:1fr 120px 120px 100px auto;gap:10px;align-items:center;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:8px;background:#0c1519}
-.r + .r{margin-top:8px}
-.badge{padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#081318;color:#bfe}
-.badge.lock{background:#231519;color:#ffc0cc;border-color:#7e2a3c}
-
-/* Stats */
-.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
-@media (max-width:900px){.stats{grid-template-columns:repeat(3,1fr)}}
-.stat{background:#0c1519;border:1px solid var(--line);border-radius:10px;padding:8px}
-.stat .k{font-size:12px;color:#9fd0d6}
-.stat .v{font-weight:900;margin-top:2px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cfffff}
+.small{font-size:12px;color:var(--muted)}
+input,select,textarea{border-radius:10px;border:1px solid var(--line);background:#0c1519;color:#eaf7ff;padding:10px}
+input[type="number"]{width:120px}
+.tbl{width:100%;border-collapse:separate;border-spacing:0}
+.tbl th,.tbl td{border-bottom:1px solid rgba(255,255,255,.06);padding:8px;text-align:left;font-size:13px;vertical-align:top}
+.tbl th{color:var(--muted)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.statBox{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 12px}
+.kv b{color:#cfe}
+.bad{color:#ffbbc7}
+.good{color:#b8ffd9}
 </style>
 </head>
-<body>
-
-<!-- ===== AdminGate (cookie → server) ===== -->
 <script>
-(function(){
-  "use strict";
-  const ADMIN_CHECK="/api/admin/gate/check", ADMIN_LOGIN="/pages/dashboard/admin/admin_login.html", DASH="/index.html";
-  const H=document.documentElement; H.setAttribute("data-admin","checking");
-  function lock(){
-    H.removeAttribute("data-admin");
-    const s=document.createElement("style");
-    s.textContent=".lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}.lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75)}.lockcard h1{margin:0 0 10px;color:#cfe}.lockcard a{color:#7ad7ff;text-decoration:underline}";
-    document.head.appendChild(s);
-    document.body.innerHTML='<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'">Admin Login</a> first.</div><div class="small" style="margin-top:8px;opacity:.85">If you just logged in elsewhere, your session may have expired.</div><div style="margin-top:14px"><a href="'+DASH+'">Back to Dashboard</a></div></div></div>';
-  }
-  fetch(ADMIN_CHECK,{credentials:"include",cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{ if(j&&j.admin){ H.removeAttribute("data-admin"); }else{ lock(); } }).catch(lock);
-})();
+  // Define API base early so every fetch sees it
+  window.API_BASE = (location.hostname==='127.0.0.1'||location.hostname==='localhost')
+    ? 'http://localhost:3000'
+    : ''; // same-origin in production
 </script>
-<!-- ===== /AdminGate ===== -->
 
+<body>
 <div class="wrap">
-  <h1>Bonus Hunt — Admin</h1>
+  <h1>Bonus Hunt — Admin / Logger</h1>
 
-  <!-- Top controls -->
+  <!-- Controls -->
   <div class="card row" style="justify-content:space-between">
     <div class="row">
-      <button id="btnSave" class="btn">Save Draft</button>
-      <button id="btnPublish" class="btn ok">Publish Live</button>
-      <button id="btnClear" class="btn danger">Delete All</button>
-      <button id="btnExport" class="btn">Export JSON</button>
-      <input id="fileImport" type="file" accept=".json" style="display:none">
-      <button id="btnImport" class="btn">Import JSON</button>
+      <button id="btnAdd" class="btn ok">+ Add Game</button>
+      <button id="btnAutoX" class="btn">Auto-calc X</button>
+      <button id="btnSave" class="btn">Save (local)</button>
+      <button id="btnLoad" class="btn">Load (local)</button>
+      <button id="btnExport" class="btn">Export CSV</button>
+      <button id="btnImport" class="btn">Import</button>
+      <button id="btnPublish" class="btn warn">Publish to Live</button>
+      <button id="btnReset" class="btn danger">Reset</button>
     </div>
     <div class="row">
-      <span id="src" class="pill">SRC: local</span>
+      <span class="pill">Session:</span>
+      <input id="casino" placeholder="Casino / Session name or ID" style="min-width:220px">
+      <span class="pill">Start</span><input id="startBal" type="number" step="0.01" placeholder="0.00">
+      <span class="pill">Opening</span><input id="openBal"  type="number" step="0.01" placeholder="0.00">
       <span id="stamp" class="pill">Not published</span>
       <span id="msg" class="pill">Ready</span>
     </div>
   </div>
 
-  <!-- Meta -->
-  <div class="card">
-    <div class="row">
-      <label>EVENT TITLE <input id="evTitle" placeholder="BONUS HUNT" style="min-width:260px"></label>
-      <label>STARTING BALANCE <input id="evStart" type="number" step="0.01" placeholder="e.g. 1000.00" style="min-width:180px"></label>
-      <label>DEFAULT BET (optional) <input id="evBet" type="number" step="0.01" placeholder="e.g. 1.00" style="min-width:160px"></label>
+  <!-- Stats -->
+  <div class="stats">
+    <div class="statBox">
+      <div class="kv">
+        <b>Casino:</b>            <span id="sCasino">—</span>
+        <b>Bonuses:</b>           <span id="sBonuses">0</span>
+        <b>Start Balance:</b>     <span id="sStart">$0.00</span>
+        <b>Opening Balance:</b>   <span id="sOpening">$0.00</span>
+        <b>Total Cost:</b>        <span id="sCost">$0.00</span>
+        <b>Break-Even (remain):</b><span id="sBE">$0.00</span>
+        <b>Break-Even/B:</b>      <span id="sBEB">$0.00</span>
+        <b>Break-Even/X/B:</b>    <span id="sBEXB">0</span>
+      </div>
     </div>
-    <div class="hr"></div>
-    <div class="stats" id="statsBox">
-      <div class="stat"><div class="k">Games</div><div class="v" id="stGames">0</div></div>
-      <div class="stat"><div class="k">Total Bet</div><div class="v" id="stBet">$ 0.00</div></div>
-      <div class="stat"><div class="k">Total Payout</div><div class="v" id="stPay">$ 0.00</div></div>
-      <div class="stat"><div class="k">Avg X</div><div class="v" id="stAvg">0.00×</div></div>
-      <div class="stat"><div class="k">Break-even X</div><div class="v" id="stBex">0.00×</div></div>
-      <div class="stat"><div class="k">BE Progress</div><div class="v" id="stProg">0.0%</div></div>
-      <div class="stat"><div class="k">Shortfall → BE</div><div class="v" id="stShort">$ 0.00</div></div>
-      <div class="stat"><div class="k">100× Wins</div><div class="v" id="st100">0</div></div>
+    <div class="statBox">
+      <div class="kv">
+        <b>Avg. Betsize:</b>      <span id="sAvgBet">$0.00</span>
+        <b>Avg. Win:</b>          <span id="sAvgWin">$0.00</span>
+        <b>Avg. X:</b>            <span id="sAvgX">0</span>
+        <b>Total Bet (info):</b>  <span id="sTotBet">$0.00</span>
+        <b>Total Payout:</b>      <span id="sTotPay">$0.00</span>
+        <b>Total Profit:</b>      <span id="sProfit" class="bad">$0.00</span>
+        <b>100x Count:</b>        <span id="s100x">0</span>
+        <b>Last Updated:</b>      <span id="sTime">—</span>
+      </div>
     </div>
   </div>
 
-  <div class="grid">
-    <!-- Games -->
-    <div class="card games">
-      <div class="gamesHead">
-        <div class="row">
-          <div style="font-weight:900">Games</div>
-          <span class="small">Tip: Use <b>Asset Path</b> from site root (e.g. <code>/assets/slot_images/duck_hunters.png</code>).</span>
-        </div>
-        <div class="row">
-          <input id="gUpload" type="file" accept=".png,.jpg,.jpeg,.webp" multiple style="display:none">
-          <button id="useUpload" class="btn">Choose Files</button>
-          <select id="bulkN"><option>10</option><option selected>20</option><option>40</option></select>
-          <button id="bulkAdd" class="btn">+ Add N (from files)</button>
-        </div>
-      </div>
-      <div class="row" style="gap:10px;padding:10px">
-        <label>TITLE <input id="gTitle" placeholder="E.G. DUCK HUNTERS" style="min-width:240px"></label>
-        <label>PROVIDER <input id="gProv" placeholder="E.G. HACKSAW" style="min-width:160px"></label>
-        <label>ASSET PATH <input id="gPath" placeholder="/assets/slot_images/duck_hunters.png" style="min-width:360px"></label>
-        <label>BET SIZE <input id="gBet" type="number" step="0.01" placeholder="e.g. 1.00" style="min-width:120px"></label>
-        <button id="autoName" class="btn">Use filename → fields</button>
-        <button id="addGame" class="btn ok">+ Add Game</button>
-      </div>
-      <div id="gamesList" class="gamesBody"></div>
-    </div>
-
-    <!-- Results -->
-    <div class="card res">
-      <div class="resHead">
-        <div class="row">
-          <div style="font-weight:900">Results</div>
-          <span class="pill" id="resCount">0 results</span>
-        </div>
-        <div class="row">
-          <button id="btnZeroUnopened" class="btn">Mark unopened → 0</button>
-          <button id="btnClearResults" class="btn warn">Clear results</button>
-        </div>
-      </div>
-      <div id="resList" class="resBody"></div>
-    </div>
+  <!-- Table -->
+  <div class="card">
+    <table class="tbl" id="tbl">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Slot</th>
+          <th>Provider</th>
+          <th>Bet</th>
+          <th>Result</th>
+          <th>Multi</th>
+          <th>When</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="small" style="margin-top:6px">Tip: enter Bet now; when you later add a Result we’ll auto-fill Multi (X) = Result ÷ Bet.</div>
   </div>
 </div>
 
 <script>
 (function(){
   "use strict";
-
   // ---------- helpers ----------
   const $=(s,r=document)=>r.querySelector(s);
   const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
-  const money=n=>'$ '+Number(n||0).toFixed(2);
-  const fmtX=n=>Number(n||0).toFixed(2)+'×';
-  const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const kid=p=> (p||'ID')+Math.random().toString(36).slice(2,10).toUpperCase();
-
-  const ASSET_DIR='/assets/slot_images/';
-  const absPath = p => {
-    if(!p) return '';
-    p=String(p).replace(/^\.?\//,'').replace(/slot images\//i,'slot_images/').replace(/^assets\/media\//i,'assets/');
-    return '/'+p;
-  };
-
-  function toast(t,ok){
-    const n=$("#msg"); n.textContent=t;
-    n.style.color = ok===false ? '#ff9aa7' : '#baffea';
-    setTimeout(()=>{ n.textContent='Ready'; n.style.color=''; },1600);
+  const sget=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch{return null}};
+  const sset=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+  const kid=(p="ID")=>(p+Math.random().toString(36).slice(2,10).toUpperCase());
+  const fmt=(n,dec=2)=>Number(n||0).toFixed(dec);
+  const money=v=>'$'+fmt(v);
+  const now=()=>Date.now();
+  const toast=(t,ok=true)=>{const m=$("#msg");m.textContent=t;m.style.color=ok?"#baffea":"#ff9aa7";setTimeout(()=>m.textContent="Ready",1600);};
+  const apiUrl = (path)=> (/^https?:\/\//i.test(path) ? path : (window.API_BASE||'') + path);
+  async function postJSON(path, body){
+    const res = await fetch(apiUrl(path), {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      credentials:'include',
+      cache:'no-store',
+      body: JSON.stringify(body||{})
+    });
+    if(!res.ok){
+      let txt; try{ txt = await res.text(); }catch{}
+      throw new Error((txt||('HTTP '+res.status)).slice(0,300));
+    }
+    try{ return await res.json(); }catch{ return {}; }
   }
 
   // ---------- storage keys ----------
-  const K_BUILDER='bh:builder:bonus';
-  const K_G='bh:games';
-  const K_R='bh:results';
-  const K_S='bh:starting';
-  const K_DRAFT='bh:draft';
-  const K_LIVE='bh:live';
+  const K_WORK="bh:logger:v2";
+  const K_DRAFT="bh:draft";
+  const K_LIVE ="bh:live";
 
   // ---------- state ----------
-  let state = read() || {
-    title:'BONUS HUNT',
-    startingBalance:0,
-    games:[],
-    results:[], // {gameId, bet, win, x}
-    lastUpdated:0
-  };
+  let state = sget(K_WORK) || {meta:{casino:"",start:0,opening:0}, entries:[], lastUpdated:0};
 
-  function read(){ try{ const j=localStorage.getItem(K_BUILDER); return j?JSON.parse(j):null; }catch{return null;} }
-  function write(){
-    try{
-      state.lastUpdated=Date.now();
-      localStorage.setItem(K_BUILDER, JSON.stringify(state));
-      // legacy mirrors
-      localStorage.setItem(K_G, JSON.stringify(state.games||[]));
-      localStorage.setItem(K_R, JSON.stringify(state.results||[]));
-      localStorage.setItem(K_S, JSON.stringify(state.startingBalance||0));
-      // update draft pack for Bets Admin preview
-      localStorage.setItem(K_DRAFT, JSON.stringify(buildLivePack(state)));
-    }catch{}
-  }
+  // ---------- elements ----------
+  const tbody=$("#tbody");
+  const casinoInp=$("#casino"), startInp=$("#startBal"), openInp=$("#openBal"), stamp=$("#stamp");
 
-  // ---------- server hydrate / publish ----------
-  async function hydrateFromServer(){
-    // prefer builder endpoint
-    const tried=[];
-    async function get(url){
-      tried.push(url);
-      try{ const r=await fetch(url,{cache:'no-store',credentials:'include'}); if(r.ok) return await r.json(); }catch{}
-      return null;
-    }
-    let src = await get('/api/bonus/builder') || await get('/api/bonus/live') || await get('/assets/bonus_hunt_live.json');
-    if(!src){ $("#src").textContent='SRC: local'; return false; }
+  // stats els
+  const sCasino=$("#sCasino"), sBonuses=$("#sBonuses"), sStart=$("#sStart"), sOpening=$("#sOpening"),
+        sCost=$("#sCost"), sBE=$("#sBE"), sBEB=$("#sBEB"), sBEXB=$("#sBEXB"),
+        sAvgBet=$("#sAvgBet"), sAvgWin=$("#sAvgWin"), sAvgX=$("#sAvgX"),
+        sTotBet=$("#sTotBet"), sTotPay=$("#sTotPay"), sProfit=$("#sProfit"),
+        s100x=$("#s100x"), sTime=$("#sTime");
 
-    // normalize: accept {builder:{...}} or flat
-    const b = src.builder || src;
-    const title = b.title || 'BONUS HUNT';
-    const starting = +b.startingBalance || +b.starting || +b.start || 0;
-    const games = Array.isArray(b.games) ? b.games : [];
-    const results = Array.isArray(b.results) ? b.results
-      : (Array.isArray(b.entries) ? b.entries.map((e,i)=>({gameId: games[i]?.id || ('G'+i), bet:+e.bet||0, win:+(e.payout||e.win||0), x: e.x!=null? +e.x : ((+e.bet>0)? (+(+e.payout||e.win||0)/+e.bet):0)})) : []);
+  // ---------- painting ----------
+  function paint(){
+    // header inputs
+    casinoInp.value = state.meta.casino||"";
+    startInp.value  = state.meta.start ?? "";
+    openInp.value   = state.meta.opening ?? "";
 
-    state = { title, startingBalance:starting, games, results, lastUpdated: Date.now() };
-    write();
-    $("#src").textContent='SRC: server/local mix';
-    return true;
-  }
-
-  async function publish(){
-    write(); // ensure mirrors + draft current
-    const live = buildLivePack(state);
-    localStorage.setItem(K_LIVE, JSON.stringify(live));
-
-    // attempt server publish
-    try{
-      const r = await fetch('/api/bonus/publish',{
-        method:'POST',credentials:'include',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ builder:state, live })
+    tbody.innerHTML="";
+    if(!state.entries.length){
+      const tr=document.createElement("tr");
+      tr.innerHTML='<td colspan="8" class="small">No games yet. Click “+ Add Game”.</td>';
+      tbody.appendChild(tr);
+    }else{
+      state.entries.forEach((e,idx)=>{
+        const tr=document.createElement("tr");
+        tr.innerHTML =
+          `<td>${idx+1}</td>
+           <td><input data-k="slot"     value="${e.slot||""}" placeholder="Game name" style="min-width:220px"></td>
+           <td><input data-k="provider" value="${e.provider||""}" placeholder="Provider"  style="min-width:160px"></td>
+           <td><input data-k="bet"   type="number" step="0.01" value="${e.bet??""}"     placeholder="0.00"></td>
+           <td><input data-k="payout"type="number" step="0.01" value="${e.payout??""}"  placeholder="0.00"></td>
+           <td><input data-k="x"     type="number" step="0.01" value="${e.x??""}"       placeholder="auto" title="Result ÷ Bet"></td>
+           <td class="small">${e.ts?new Date(e.ts).toLocaleString():"—"}</td>
+           <td><button class="btn" data-act="dup">Dup</button> <button class="btn danger" data-act="del">Del</button></td>`;
+        tr.querySelectorAll("input").forEach(inp=>{
+          inp.addEventListener("change",()=>{
+            const k=inp.dataset.k;
+            let v=inp.value;
+            if(k==="bet"||k==="payout"||k==="x"){ v=(v===""?null:+v); }
+            state.entries[idx][k]=v;
+            if((k==="bet"||k==="payout")){
+              const b=+state.entries[idx].bet||0, p=+state.entries[idx].payout||0;
+              if(b>0 && (p||p===0)){ state.entries[idx].x = +(p/b).toFixed(2); }
+            }
+            state.entries[idx].ts = state.entries[idx].ts || now();
+            autosave(); recalc(); paint();
+          });
+        });
+        tr.querySelector('[data-act="dup"]').addEventListener("click",()=>{
+          const c=Object.assign({}, state.entries[idx], {id:kid("E"), ts:now()});
+          state.entries.splice(idx+1,0,c); autosave(); recalc(); paint();
+        });
+        tr.querySelector('[data-act="del"]').addEventListener("click",()=>{
+          state.entries.splice(idx,1); autosave(); recalc(); paint();
+        });
+        tbody.appendChild(tr);
       });
-      if(!r.ok) throw 0;
-      $("#stamp").textContent='Last publish @ '+new Date(state.lastUpdated).toLocaleString();
-      toast('Published live');
-    }catch{
-      $("#stamp").textContent='Local publish @ '+new Date(state.lastUpdated).toLocaleString();
-      toast('Server publish failed — kept local copy', false);
     }
+    recalc();
   }
 
-  // ---------- live pack + stats ----------
-  function buildLivePack(b){
-    const gMap = new Map((b.games||[]).map(g=>[g.id,g]));
-    const entries = (b.results||[]).map(r=>{
-      const g=gMap.get(r.gameId)||{};
-      const bet = +r.bet||+g.betSize||0;
-      const win = +r.win||0;
-      const x = r.x!=null? +r.x : (bet>0? (win/bet) : 0);
-      return { slot: g.title||'GAME', provider: g.provider||'', bet, payout: win, x, done: win>0 };
-    });
-    return { title:b.title||'BONUS HUNT', start:+b.startingBalance||0, entries };
+  function recalc(){
+    // meta
+    const start=+state.meta.start||0;
+    const opening=+state.meta.opening||0;
+
+    // aggregates
+    const n=state.entries.length;
+    const sum=(arr,fn)=>arr.reduce((a,x)=>a+(+fn(x)||0),0);
+    const bets   = sum(state.entries, e=>e.bet);
+    const pays   = sum(state.entries, e=>e.payout);
+    const xList  = state.entries.map(e=> +e.x ).filter(v=>!isNaN(v));
+    const opened = state.entries.filter(e=> e.payout!=null );
+
+    const avgBet = n? bets/n : 0;
+    const avgWin = opened.length? (pays/opened.length) : 0;
+    const avgX   = xList.length? (xList.reduce((a,b)=>a+b,0)/xList.length) : 0;
+
+    const totalCost = Math.max(0, start - opening);
+    const beRemain  = Math.max(0, totalCost - pays);
+    const bePerBonus= n? beRemain/n : 0;
+    const beXPerBonus = (avgBet>0)? (bePerBonus/avgBet) : 0;
+
+    const profit = pays - totalCost;
+    const cnt100 = xList.filter(x=>x>=100).length;
+
+    // stats panel
+    sCasino.textContent = state.meta.casino||"—";
+    sBonuses.textContent= n;
+    sStart.textContent  = money(start);
+    sOpening.textContent= money(opening);
+    sCost.textContent   = money(totalCost);
+    sBE.textContent     = money(beRemain);
+    sBEB.textContent    = money(bePerBonus);
+    sBEXB.textContent   = (beXPerBonus||0).toFixed(1);
+    sAvgBet.textContent = money(avgBet);
+    sAvgWin.textContent = money(avgWin);
+    sAvgX.textContent   = (avgX||0).toFixed(2);
+    sTotBet.textContent = money(bets);
+    sTotPay.textContent = money(pays);
+    sProfit.textContent = money(profit);
+    sProfit.className   = "bad"; if(profit>=0) sProfit.className="good";
+    s100x.textContent   = cnt100;
+    sTime.textContent   = state.lastUpdated? new Date(state.lastUpdated).toLocaleString() : "—";
+    stamp.textContent   = state.lastUpdated? ("Last publish @ "+new Date(state.lastUpdated).toLocaleString()) : "Not published";
   }
 
-  function computeStats(){
-    const live = buildLivePack(state);
-    const start = +live.start || 0;
-    const tBet = live.entries.reduce((a,e)=>a+(+e.bet||0),0);
-    const tPay = live.entries.reduce((a,e)=>a+(+e.payout||0),0);
-    const avgX = tBet>0 ? (tPay/tBet) : 0;
-    const beX  = (tBet>0 && start>0) ? (start/tBet) : 0;
-    const prog = start>0 ? (tPay/start) : 0;
-    const short= start>0 ? Math.max(0,start - tPay) : 0;
-    const c100 = live.entries.filter(e=>+e.x>=100).length;
-    return {games: live.entries.length, tBet, tPay, avgX, beX, prog, short, c100};
-  }
+  function autosave(){ sset(K_WORK,state); }
 
-  function paintStats(){
-    const s = computeStats();
-    $("#stGames").textContent = s.games;
-    $("#stBet").textContent   = money(s.tBet);
-    $("#stPay").textContent   = money(s.tPay);
-    $("#stAvg").textContent   = fmtX(s.avgX);
-    $("#stBex").textContent   = fmtX(s.beX);
-    $("#stProg").textContent  = (s.prog*100).toFixed(1)+'%';
-    $("#stShort").textContent = money(s.short);
-    $("#st100").textContent   = s.c100;
-  }
+  // ---------- header inputs ----------
+  $("#casino").addEventListener("change",()=>{ state.meta.casino=casinoInp.value.trim(); autosave(); recalc(); });
+  $("#startBal").addEventListener("change", ()=>{ state.meta.start = startInp.value===""?0:+startInp.value; autosave(); recalc(); });
+  $("#openBal").addEventListener("change",  ()=>{ state.meta.opening = openInp.value===""?0:+openInp.value; autosave(); recalc(); });
 
-  // ---------- paint games/results ----------
-  function paintGames(){
-    const host=$("#gamesList"); host.innerHTML='';
-    if(!(state.games||[]).length){ host.innerHTML='<div class="small">No games yet. Use the form above to add or bulk-add from files.</div>'; return; }
-    (state.games||[]).forEach((g,i)=>{
-      const row=document.createElement('div'); row.className='game';
-      row.innerHTML=`
-        <div class="thumb">${g.imageUrl?`<img src="${esc(g.imageUrl)}" alt="">`:''}</div>
-        <div>
-          <div class="title">${esc(g.title||'—')}</div>
-          <div class="prov">${esc(g.provider||'')}</div>
-          <div class="small">${esc(g.imageUrl||'')}</div>
-          <div class="small">Bet Size: <b>${(g.betSize!=null? Number(g.betSize).toFixed(2):'—')}</b></div>
-        </div>
-        <div class="row">
-          <button class="btn warn" data-act="edit" data-i="${i}">Edit</button>
-          <button class="btn danger" data-act="del" data-i="${i}">Delete</button>
-        </div>`;
-      host.appendChild(row);
-    });
-  }
-
-  function paintResults(){
-    const host=$("#resList"); host.innerHTML='';
-    const r=state.results||[];
-    $("#resCount").textContent = r.length+' results';
-    if(!r.length){ host.innerHTML='<div class="small">Results appear once you add games (defaults from bet size). Edit any values below during the show.</div>'; return; }
-    const gMap=new Map((state.games||[]).map(g=>[g.id,g]));
-    r.forEach((it,ri)=>{
-      const g=gMap.get(it.gameId)||{};
-      const line=document.createElement('div'); line.className='r';
-      const betVal = (it.bet!=null? it.bet : g.betSize)||0;
-      const xVal = (it.x!=null? it.x : (betVal>0? (+it.win||0)/betVal : 0));
-      line.innerHTML=`
-        <div class="small"><b>${esc(g.title||'—')}</b><div>${esc(g.provider||'')}</div></div>
-        <input data-r="bet" data-i="${ri}" type="number" step="0.01" value="${Number(betVal).toFixed(2)}" placeholder="Bet">
-        <input data-r="win" data-i="${ri}" type="number" step="0.01" value="${Number(it.win||0).toFixed(2)}" placeholder="Win">
-        <div class="pill">${fmtX(xVal)}</div>
-        <div class="row">
-          <button class="btn" data-act="zero" data-i="${ri}">Zero</button>
-          <button class="btn danger" data-act="rdel" data-i="${ri}">Delete</button>
-        </div>`;
-      host.appendChild(line);
-    });
-  }
-
-  function ensureResultsForGames(){
-    const have=new Set((state.results||[]).map(x=>x.gameId));
-    (state.games||[]).forEach(g=>{
-      if(!have.has(g.id)){
-        state.results.push({gameId:g.id, bet: (g.betSize!=null? +g.betSize : (+$("#evBet").value||0)), win:0, x:0});
-      }
-    });
-    // trim results for removed games
-    const ids=new Set((state.games||[]).map(g=>g.id));
-    state.results = state.results.filter(r=>ids.has(r.gameId));
-  }
-
-  // ---------- wire: meta ----------
-  $("#evTitle").value = state.title||'BONUS HUNT';
-  $("#evStart").value = Number(state.startingBalance||0).toFixed(2);
-  $("#evBet").value   = '';
-
-  $("#evTitle").addEventListener('change',e=>{ state.title=(e.target.value||'BONUS HUNT').toUpperCase(); write(); paintStats(); });
-  $("#evStart").addEventListener('change',e=>{ state.startingBalance=+e.target.value||0; write(); paintStats(); });
-  $("#evBet").addEventListener('change',e=>{ const v=+e.target.value||0; (state.games||[]).forEach(g=>{ if(g.betSize==null||g.betSize===0) g.betSize=v; }); ensureResultsForGames(); write(); paintResults(); paintStats(); });
-
-  // ---------- wire: games add/bulk ----------
-  $("#useUpload").addEventListener('click',()=>$("#gUpload").click());
-
-  $("#autoName").addEventListener('click',()=>{
-    const f=$("#gUpload").files?.[0]; if(!f) return;
-    const base=f.name.replace(/\.[^.]+$/,'');
-    if(!$("#gTitle").value) $("#gTitle").value=base.replace(/[_-]+/g,' ').toUpperCase();
-    if(!$("#gPath").value)  $("#gPath").value = ASSET_DIR + base + '.png';
+  // ---------- buttons ----------
+  $("#btnAdd").addEventListener("click", ()=>{
+    state.entries.push({id:kid("E"),slot:"",provider:"",bet:null,payout:null,x:null,ts:now()});
+    autosave(); paint(); toast("Row added");
   });
 
-  $("#addGame").addEventListener('click',()=>{
-    const title=$("#gTitle").value.trim(); if(!title) return toast('Enter a GAME TITLE',false);
-    const provider=$("#gProv").value.trim();
-    let path=$("#gPath").value.trim();
-    let bet = $("#gBet").value ? +$("#gBet").value : (+$("#evBet").value||0);
-    if(!path){
-      const f=$("#gUpload").files?.[0];
-      if(f){ const base=f.name.replace(/\.[^.]+$/,''); path=ASSET_DIR + base + '.png'; }
-    }
-    path=absPath(path);
-    const game={ id:kid('G'), title:title.toUpperCase(), provider, imageUrl:path, betSize:(isFinite(bet)?bet:0) };
-    state.games.push(game);
-    ensureResultsForGames(); write(); paintGames(); paintResults(); paintStats();
-    $("#gTitle").value=''; $("#gProv").value=''; $("#gPath").value=''; $("#gBet").value=''; $("#gUpload").value='';
-  });
-
-  $("#bulkAdd").addEventListener('click',()=>{
-    const files=Array.from($("#gUpload").files||[]); if(!files.length) return toast('Choose files first',false);
-    const N=+($("#bulkN").value||20)||20;
-    const defBet= +($("#evBet").value||0);
-    files.slice(0,N).forEach(f=>{
-      const base=f.name.replace(/\.[^.]+$/,'');
-      state.games.push({ id:kid('G'), title:base.replace(/[_-]+/g,' ').toUpperCase(), provider:'', imageUrl:absPath(ASSET_DIR+base+'.png'), betSize:defBet });
+  $("#btnAutoX").addEventListener("click", ()=>{
+    state.entries.forEach(e=>{
+      const b=+e.bet||0, p=+e.payout||0;
+      if(b>0 && (p||p===0)) e.x=+(p/b).toFixed(2);
     });
-    ensureResultsForGames(); write(); paintGames(); paintResults(); paintStats(); toast('Added '+Math.min(N,files.length)+' games');
+    autosave(); paint(); toast("X recalculated");
   });
 
-  $("#gamesList").addEventListener('click',e=>{
-    const b=e.target.closest('button'); if(!b) return;
-    const i=+b.dataset.i;
-    if(b.dataset.act==='del'){
-      const gid=(state.games[i]||{}).id;
-      state.games.splice(i,1);
-      state.results = (state.results||[]).filter(x=>x.gameId!==gid);
-      write(); paintGames(); paintResults(); paintStats();
-    }else if(b.dataset.act==='edit'){
-      const g=state.games[i]; if(!g) return;
-      const nt=prompt('Game Title', g.title||'')||g.title;
-      const np=prompt('Provider', g.provider||'')||g.provider;
-      const na=prompt('Asset Path', g.imageUrl||'')||g.imageUrl;
-      const nb=parseFloat(prompt('Bet Size', (g.betSize!=null?g.betSize:0))||g.betSize||0);
-      g.title=(nt||g.title).toUpperCase(); g.provider=np||''; g.imageUrl=absPath(na||''); g.betSize=isFinite(nb)?nb:0;
-      write(); paintGames(); ensureResultsForGames(); paintResults(); paintStats();
+  $("#btnSave").addEventListener("click", ()=>{ autosave(); toast("Saved locally"); });
+  $("#btnLoad").addEventListener("click", ()=>{
+    const w=sget(K_WORK); if(!w){ toast("Nothing saved yet",false); return; }
+    state=w; paint(); toast("Loaded");
+  });
+
+  $("#btnExport").addEventListener("click", ()=>{
+    const H=["slot","provider","bet","payout","x","ts"];
+    const rows=[H.join(",")].concat(state.entries.map(e=>{
+      const vals=[e.slot||"",e.provider||"",e.bet??"",e.payout??"",e.x??"",e.ts||""];
+      return vals.map(v=>String(v).includes(",")?('"'+String(v).replace(/"/g,'""')+'"'):String(v)).join(",");
+    }));
+    const blob=new Blob([rows.join("\n")],{type:"text/csv"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="bonus_hunt.csv"; a.click();
+  });
+
+  $("#btnImport").addEventListener("click", ()=>{
+    const card=document.createElement("div"); card.className="card";
+    const ta=document.createElement("textarea");
+    ta.placeholder="Paste CSV or JSON here.\nCSV headers: slot,provider,bet,payout,x,ts";
+    ta.style.cssText="width:100%;height:220px;margin-top:8px";
+    card.innerHTML='<div class="row"><span class="pill">Import</span><button class="btn ok">Import</button><button class="btn right">Close</button></div>';
+    card.appendChild(ta); document.body.appendChild(card);
+    const [btnImp, btnClose] = card.querySelectorAll(".btn");
+    btnClose.addEventListener("click", ()=>card.remove());
+    btnImp.addEventListener("click", ()=>{
+      const txt=ta.value.trim(); if(!txt){ toast("Nothing to import",false); return; }
+      try{
+        if(txt[0]==="{"||txt[0]==="["){
+          const j=JSON.parse(txt);
+          state.entries = Array.isArray(j)? j : (Array.isArray(j.entries)? j.entries : []);
+        }else{
+          const lines=txt.replace(/\r/g,"").split("\n").filter(Boolean);
+          const head=lines.shift().split(",").map(h=>h.trim().toLowerCase());
+          const idx=k=>head.indexOf(k);
+          state.entries = lines.map(line=>{
+            const c = parseCSV(line);
+            return {id:kid("E"),
+              slot:c[idx("slot")]||"",
+              provider:c[idx("provider")]||"",
+              bet: parseNum(c[idx("bet")]),
+              payout: parseNum(c[idx("payout")]),
+              x: parseNum(c[idx("x")]),
+              ts:+(c[idx("ts")]||"")||now()
+            };
+          });
+        }
+        autosave(); paint(); toast("Imported");
+        card.remove();
+      }catch{ toast("Import failed",false); }
+    });
+  });
+
+  $("#btnPublish").addEventListener("click", async ()=>{
+    // ensure Xs are up-to-date
+    state.entries.forEach(e=>{
+      if(e.x==null){ const b=+e.bet||0, p=+e.payout||0; if(b>0 && (p||p===0)) e.x=+(p/b).toFixed(2); }
+    });
+    const payload = {
+      status:"open",
+      start: +state.meta.start||0,
+      opening: +state.meta.opening||0,
+      entries: state.entries.slice(),
+      lastUpdated: now(),
+      casino: state.meta.casino||""
+    };
+
+    // Try to save & publish to server; if it fails, fall back to local.
+    try{
+      // Upsert draft
+      await postJSON('/api/admin/bonus-hunt', payload);
+      // Publish (so frontends can read /api/bonus-hunt/live or equivalent)
+      await postJSON('/api/admin/bonus-hunt/publish', { all:true });
+      state.lastUpdated = payload.lastUpdated;
+      autosave(); recalc();
+      toast("Published to live (server)");
+    }catch(e){
+      // Local fallback so you’re never blocked
+      sset(K_DRAFT, payload);
+      sset(K_LIVE,  payload);
+      state.lastUpdated = payload.lastUpdated;
+      autosave(); recalc();
+      toast("Server publish failed; saved locally", false);
+      console.warn('Publish fallback:', e);
     }
   });
 
-  // ---------- wire: results ----------
-  $("#resList").addEventListener('change',e=>{
-    const t=e.target;
-    if(!t.dataset || t.dataset.r==null) return;
-    const idx=+t.dataset.i;
-    const item=state.results[idx]; if(!item) return;
-    if(t.dataset.r==='bet'){ item.bet=+t.value||0; }
-    if(t.dataset.r==='win'){ item.win=+t.value||0; }
-    // recalc x
-    const bet = (item.bet!=null?item.bet:0);
-    item.x = bet>0 ? (+item.win||0)/bet : 0;
-    write(); paintResults(); paintStats();
+  $("#btnReset").addEventListener("click", ()=>{
+    if(!confirm("Reset this logger on this device?")) return;
+    state={meta:{casino:"",start:0,opening:0},entries:[],lastUpdated:0};
+    sset(K_WORK,state); paint(); toast("Reset");
   });
 
-  $("#resList").addEventListener('click',e=>{
-    const b=e.target.closest('button'); if(!b) return;
-    const i=+b.dataset.i;
-    if(b.dataset.act==='zero'){
-      const item=state.results[i]; if(!item) return;
-      item.bet = item.bet!=null ? +item.bet : 0;
-      item.win = 0; item.x = 0; write(); paintResults(); paintStats();
-    }else if(b.dataset.act==='rdel'){
-      state.results.splice(i,1); write(); paintResults(); paintStats();
+  // ---------- utils ----------
+  function parseCSV(line){
+    const out=[]; let cur=""; let q=false;
+    for(let i=0;i<line.length;i++){
+      const ch=line[i];
+      if(ch==='"'){ if(q && line[i+1]==='"'){ cur+='"'; i++; } else { q=!q; } }
+      else if(ch===',' && !q){ out.push(cur); cur=""; }
+      else { cur+=ch; }
     }
-  });
-
-  $("#btnZeroUnopened").addEventListener('click',()=>{ (state.results||[]).forEach(r=>{ if(!(+r.win>0)){ r.win=0; r.x = (r.bet>0? 0 : 0); } }); write(); paintResults(); paintStats(); });
-  $("#btnClearResults").addEventListener('click',()=>{ if(!confirm('Clear ALL results?')) return; state.results=[]; ensureResultsForGames(); write(); paintResults(); paintStats(); });
-
-  // ---------- file import/export ----------
-  $("#btnExport").addEventListener('click',()=>{
-    const payload={ builder:state, live:buildLivePack(state) };
-    const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='bonus_hunt_export.json'; a.click();
-  });
-  $("#btnImport").addEventListener('click',()=>$("#fileImport").click());
-  $("#fileImport").addEventListener('change',()=>{
-    const f=$("#fileImport").files?.[0]; if(!f) return;
-    const r=new FileReader();
-    r.onload=()=>{ try{
-      const j=JSON.parse(String(r.result||'{}'));
-      const b=j.builder || j; // accept flat
-      if(!b || !Array.isArray(b.games)) return toast('Invalid file',false);
-      state = {
-        title: b.title||'BONUS HUNT',
-        startingBalance: +b.startingBalance || +b.start || +b.starting || 0,
-        games: Array.isArray(b.games)? b.games : [],
-        results: Array.isArray(b.results)? b.results : [],
-        lastUpdated: Date.now()
-      };
-      ensureResultsForGames(); write(); paintGames(); paintResults(); paintStats(); toast('Imported');
-    }catch{ toast('Invalid JSON',false); } };
-    r.readAsText(f);
-  });
-
-  // ---------- top buttons ----------
-  $("#btnSave").addEventListener('click',()=>{ write(); $("#stamp").textContent='Saved @ '+new Date(state.lastUpdated).toLocaleTimeString(); toast('Saved'); });
-  $("#btnPublish").addEventListener('click',publish);
-  $("#btnClear").addEventListener('click',()=>{ if(!confirm('Delete ALL games & results?')) return;
-    state={title:'BONUS HUNT',startingBalance:0,games:[],results:[],lastUpdated:0}; write(); paintGames(); paintResults(); paintStats(); toast('Cleared');
-  });
+    out.push(cur);
+    return out;
+  }
+  function parseNum(s){ if(s==null||s==="") return null; const n=+s; return isNaN(n)? null : n; }
 
   // ---------- boot ----------
-  (async function boot(){
-    // hydrate, then paint
-    await hydrateFromServer();
-    $("#evTitle").value = state.title||'BONUS HUNT';
-    $("#evStart").value = Number(state.startingBalance||0).toFixed(2);
-    ensureResultsForGames(); write();
-    paintGames(); paintResults(); paintStats();
-    if(state.lastUpdated){ $("#stamp").textContent='Last change @ '+new Date(state.lastUpdated).toLocaleString(); }
-  })();
+  paint();
 })();
 </script>
 </body>
