@@ -6,17 +6,23 @@
 <meta http-equiv="Cache-Control" content="no-store" />
 <title>Lucky 7 — Admin (Submit → Wallet + Leaderboard)</title>
 <style>
-  :root{--bg:#0b0f10;--ink:#eaf7ff;--muted:#9cc;--teal:#00ffff;--accent:#ffb42d;--panel:#0f1416;--line:rgba(0,255,255,.14)}
-  html,body{margin:0;background:#000 url("/assets/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  :root{
+    --bg:#0b0f10; --ink:#eaf7ff; --muted:#9cc; --teal:#00ffff; --accent:#ffb42d;
+    --panel:#0f1416; --line:rgba(0,255,255,.14);
+  }
+  html,body{margin:0;background:#000 url("/assets/media/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
   .topbar{max-width:820px;margin:14px auto 0;padding:0 16px;display:flex;align-items:center;justify-content:space-between}
   .miniLink{color:#cfe;text-decoration:none;font-size:13px}
   .btnMini{border:1px solid rgba(0,255,255,.25);background:#0f1c1f;color:#cfe;border-radius:10px;padding:6px 10px;cursor:pointer}
+
   .wrap{max-width:820px;margin:18px auto 28px;padding:0 16px}
   h1{margin:0 0 8px;color:var(--teal);text-shadow:0 0 12px #00ffff55}
   .sub{font-size:12px;color:var(--muted);margin-bottom:10px}
   .card{border:1px solid var(--line);border-radius:12px;background:#0e1416;padding:14px;margin:12px 0}
+
   label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
-  input{background:var(--panel);border:1px solid var(--line);color:var(--ink);padding:10px;border-radius:10px;width:100%}
+  input{background:var(--panel);border:1px solid var(--line);color:var(--ink);padding:10px;border-radius:10px;width:100%;box-sizing:border-box}
+
   .row{display:flex;gap:12px;align-items:center;margin:10px 0;flex-wrap:wrap}
   .btn{padding:10px 14px;border:none;border-radius:10px;font-weight:800;cursor:pointer}
   .btn.primary{background:var(--accent);color:#222}
@@ -24,42 +30,19 @@
   .btn.danger{background:#61222a;color:#fff}
   .btn.ghost{background:#121a1d;border:1px solid rgba(255,255,255,.08);color:#d8f2ff}
   .btn[disabled]{opacity:.55;cursor:not-allowed}
+
   .award{display:flex;justify-content:space-between;align-items:center;background:#0c1316;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:10px 12px;margin:8px 0}
   .award .l{font-weight:700}
   .award .r{display:flex;gap:8px;align-items:center}
   .pill{padding:2px 8px;border-radius:999px;background:#22323a;border:1px solid rgba(0,255,255,.2);font-size:12px}
   .totalBox{display:flex;justify-content:space-between;align-items:center;background:#0b1619;border:1px dashed rgba(0,255,255,.25);border-radius:12px;padding:12px;margin-top:10px}
-  .log{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background:#0b0f10;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;max-height:180px;overflow:auto}
+  .log{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;font-size:12px;background:#0b0f10;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;max-height:180px;overflow:auto}
+
   .status{font-size:12px;color:#9fd}
   .toast{position:fixed;right:16px;bottom:16px;background:#0f1416;border:1px solid var(--line);padding:10px 14px;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.35);display:none;z-index:9999}
-
-  /* Header (username + LBX + socials) */
-  .headerWrap{max-width:820px;margin:10px auto 0;padding:0 16px;display:flex;align-items:center;justify-content:space-between}
-  .headerLeft{display:flex;gap:12px;align-items:center}
-  #usernameDisplay{font-weight:700;color:#cfe}
-  #socialBar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .icon-link{width:28px;height:28px;display:inline-grid;place-items:center;border-radius:8px;background:#0f1c1f;border:1px solid var(--line);text-decoration:none}
-  .icon-img{width:18px;height:18px;object-fit:contain;display:block}
 </style>
 </head>
-<script>
-  window.API_BASE = (location.hostname==='127.0.0.1'||location.hostname==='localhost')
-    ? 'http://localhost:3000' 
-    : ''; // same-origin in production
-</script>
-
 <body>
-
-<!-- Header (username + LBX + socials) -->
-<header class="headerWrap">
-  <div class="headerLeft">
-    <div id="usernameDisplay">Welcome, PLAYER</div>
-  </div>
-  <div id="socialBar">
-    <!-- Keep LBX pill as FIRST child; script appends icons after this -->
-    <span class="pill">LBX: <b id="ubBal">0</b></span>
-  </div>
-</header>
 
 <div class="topbar">
   <a class="miniLink" href="/index.html">← Back to Dashboard</a>
@@ -74,6 +57,7 @@
   <div class="card">
     <label for="username">Username</label>
     <input id="username" placeholder="TYPE USERNAME" autocomplete="off" />
+
     <div class="row" style="margin-top:14px">
       <span class="pill">Session total: <b id="totalPill">0</b> LBX</span>
       <button class="btn ghost" id="undoBtn" type="button">Undo Last</button>
@@ -82,13 +66,35 @@
   </div>
 
   <div class="card">
-    <div class="award"><div class="l">1×7</div><div class="r"><span class="pill">+7</span><button class="btn alt add" data-pts="7">Add</button></div></div>
-    <div class="award"><div class="l">2×7</div><div class="r"><span class="pill">+14</span><button class="btn alt add" data-pts="14">Add</button></div></div>
-    <div class="award"><div class="l">3×7</div><div class="r"><span class="pill">+25</span><button class="btn alt add" data-pts="25">Add</button></div></div>
-    <div class="award"><div class="l">4×7</div><div class="r"><span class="pill">+100</span><button class="btn alt add" data-pts="100">Add</button></div></div>
-    <div class="award"><div class="l">Flush</div><div class="r"><span class="pill">+21</span><button class="btn alt add" data-pts="21" data-tag="flush">Add</button></div></div>
-    <div class="award"><div class="l">Straight</div><div class="r"><span class="pill">+21</span><button class="btn alt add" data-pts="21" data-tag="straight">Add</button></div></div>
-    <div class="award"><div class="l">Straight Flush</div><div class="r"><span class="pill">+50</span><button class="btn alt add" data-pts="50" data-tag="sflush">Add</button></div></div>
+    <div class="award">
+      <div class="l">1×7</div>
+      <div class="r"><span class="pill">+7</span><button class="btn alt add" data-pts="7">Add</button></div>
+    </div>
+    <div class="award">
+      <div class="l">2×7</div>
+      <div class="r"><span class="pill">+14</span><button class="btn alt add" data-pts="14">Add</button></div>
+    </div>
+    <div class="award">
+      <div class="l">3×7</div>
+      <div class="r"><span class="pill">+25</span><button class="btn alt add" data-pts="25">Add</button></div>
+    </div>
+    <div class="award">
+      <div class="l">4×7</div>
+      <div class="r"><span class="pill">+100</span><button class="btn alt add" data-pts="100">Add</button></div>
+    </div>
+    <div class="award">
+      <div class="l">Flush</div>
+      <div class="r"><span class="pill">+21</span><button class="btn alt add" data-pts="21" data-tag="flush">Add</button></div>
+    </div>
+    <div class="award">
+      <div class="l">Straight</div>
+      <div class="r"><span class="pill">+21</span><button class="btn alt add" data-pts="21" data-tag="straight">Add</button></div>
+    </div>
+    <div class="award">
+      <div class="l">Straight Flush</div>
+      <div class="r"><span class="pill">+50</span><button class="btn alt add" data-pts="50" data-tag="sflush">Add</button></div>
+    </div>
+
     <div class="totalBox">
       <div>Total Lash3zBux (this session): <b id="totalBox">0</b></div>
       <button class="btn primary" id="submitBtn" type="button">Submit → Wallet + Profile & Leaderboard</button>
@@ -96,244 +102,224 @@
   </div>
 
   <div class="card">
-    <div class="row" style="justify-content:space-between"><div class="pill">Activity Log</div><button class="btn ghost" id="copyLogBtn" type="button">Copy Log</button></div>
+    <div class="row" style="justify-content:space-between">
+      <div class="pill">Activity Log</div>
+      <button class="btn ghost" id="copyLogBtn" type="button">Copy Log</button>
+    </div>
     <div id="log" class="log">—</div>
   </div>
 </div>
 
 <div id="toast" class="toast"></div>
 
-<!-- Header script (isolated IIFE) -->
 <script>
-(function(){
-  "use strict";
+/* ===== Keys (local fallbacks for instant UI) ===== */
+var PROFILES_KEY = 'overall:profiles';      // leaderboard/profiles (local mirror)
+var PROFILES_TS  = 'overall:profiles:ts';   // bump key for cross-tab refresh
+var USER_PROFILE_PREFIX = 'user:profile:';  // quick per-user profile blob
+var L7_FORM_KEY = 'lucky7:session';         // session WIP state
 
-  const $  = s => document.querySelector(s);
-  const up = s => String(s||"").trim().toUpperCase();
-  const sget = (k,def=null)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(_){ return def; } };
-  const sset = (k,v)=>{ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } };
-  const apiUrl = (path)=> (/^https?:\/\//i.test(path) ? path : (window.API_BASE||'') + path);
-
-  function fromCookie(...names){
-    const jar = Object.fromEntries(
-      (document.cookie||"").split(/;\s*/).filter(Boolean).map(p=>{
-        const i = p.indexOf("="); return [p.slice(0,i), decodeURIComponent(p.slice(i+1))];
-      })
-    );
-    for(const n of names){ if(jar[n]) return jar[n]; }
-    return "";
-  }
-
-  function pickUserLocal(){
-    // best to worst
-    const qp  = new URLSearchParams(location.search).get("viewer");
-    if (qp) return up(qp);
-    const c   = fromCookie("viewer","username","user","player");
-    if (c) return up(c);
-    const sess= sget("l3z:session");           if (sess?.user)      return up(sess.user);
-    const prof= sget("l3z:user");              if (prof?.username)  return up(prof.username);
-    const legacy = localStorage.getItem("user:username"); if (legacy) return up(legacy);
-    const last   = sget("lash3z_last_user");   if (last)             return up(last);
-    return "PLAYER";
-  }
-
-  // read balance preferring local storage, then server if available
-  async function readBalance(username){
-    let best = 0;
-
-    // 1) local wallet
-    const wLocal = sget(`lbx:wallet:${username}`);
-    if (wLocal && typeof wLocal.balance === "number") {
-      best = Math.max(best, Math.floor(+wLocal.balance||0));
-    }
-
-    // 2) server
-    try{
-      const r = await fetch(apiUrl(`/api/wallet/me?viewer=${encodeURIComponent(username)}`), { credentials:"include", cache:"no-store" });
-      if (r.ok) {
-        const j = await r.json().catch(()=> ({}));
-        const svr = Math.floor(+((j && j.wallet && j.wallet.balance) || 0));
-        best = Math.max(best, svr);
-      }
-    }catch(_){ /* ignore */ }
-
-    return best;
-  }
-
-  // socials list you supplied
-  const SOCIALS = [
-    { href:'https://kick.com/lash3z',             src:'/assets/kick.png',        alt:'Kick',      show:true },
-    { href:'https://x.com/Lash3_z',               src:'/assets/x_twitter.png',   alt:'Twitter',   show:true },
-    { href:'https://www.instagram.com/lash3z50/', src:'/assets/instagram.png',   alt:'Instagram', show:true },
-    { href:'https://www.facebook.com/lashesslots',src:'/assets/facebook.png',    alt:'Facebook',  show:true },
-    { href:'https://www.youtube.com/@Lash3z-50',  src:'/assets/youtube.png',     alt:'YouTube',   show:true },
-    { href:'https://discord.gg/fSVqK6cMmB',       src:'/assets/discord.png',     alt:'Discord',   show:true },
-  ];
-
-  function buildSocials(){
-    const bar = $("#socialBar");
-    if(!bar) return;
-    // keep LBX pill (first child)
-    while (bar.children.length > 1) bar.removeChild(bar.lastElementChild);
-
-    SOCIALS.filter(s => s.show !== false).forEach(({ href, src, alt }) => {
-      const a = document.createElement("a");
-      a.className = "icon-link";
-      a.href = href; a.target = "_blank"; a.rel = "noopener"; a.title = alt || "";
-
-      const img = document.createElement("img");
-      img.className = "icon-img"; img.alt = alt || ""; img.src = src;
-      img.onerror = function(){
-        a.style.display = "grid"; a.style.placeItems = "center";
-        a.style.fontWeight = "900"; a.style.color = "#cfe";
-        a.textContent = (alt || "?")[0].toUpperCase();
-        this.remove();
-      };
-
-      a.appendChild(img);
-      bar.appendChild(a);
-    });
-  }
-
-  async function refreshHeader(){
-    const name = pickUserLocal();
-    const ud = $("#usernameDisplay");
-    if (ud) ud.textContent = "Welcome, " + name;
-
-    const bal = await readBalance(name);
-    const bEl = $("#ubBal");
-    if (bEl) bEl.textContent = bal;
-  }
-
-  // react to login/profile/awards updates from other tabs (also wallet keys)
-  window.addEventListener("storage", (e)=>{
-    if (!e.key) return;
-    const me = (function(){ // avoid reusing admin script's helpers
-      const qp  = new URLSearchParams(location.search).get("viewer");
-      if (qp) return String(qp||"").trim().toUpperCase();
-      const jar = (document.cookie||"").split(/;\s*/).filter(Boolean).reduce((a,p)=>{const i=p.indexOf("=");a[p.slice(0,i)]=decodeURIComponent(p.slice(i+1));return a;},{}); 
-      if (jar.viewer) return String(jar.viewer||"").trim().toUpperCase();
-      try{ const s = JSON.parse(localStorage.getItem("l3z:user")||"null"); if (s?.username) return String(s.username).trim().toUpperCase(); }catch(_){}
-      return "PLAYER";
-    })();
-
-    if (
-      ["l3z:session","l3z:user","user:username","lash3z_last_user","l3z:socials"].includes(e.key) ||
-      e.key === `lbx:wallet:${me}` || e.key === `lbx:ledger:${me}`
-    ){
-      refreshHeader();
-    }
-  });
-
-  buildSocials();
-  refreshHeader();
-  setInterval(refreshHeader, 15000);
-})();
-</script>
-
-<!-- Admin page script (wrapped to avoid globals) -->
-<script>
-(()=>{
-// === keys used by Profile page too ===
-const WALLET = u => 'lbx:wallet:'+u;
-const LEDGER = u => 'lbx:ledger:'+u;
-const PROFILES_KEY='overall:profiles', PROFILES_TS='overall:profiles:ts';
-
-// session store
-const L7_FORM_KEY='lucky7:session';
-const $=s=>document.querySelector(s);
-const now=()=>new Date().toISOString().replace('T',' ').slice(0,19);
-const up=s=>(s||'').toString().trim().toUpperCase();
-const sget=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(_){return null;}};
-const sset=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(_){ }};
-const apiUrl = (path)=> (/^https?:\/\//i.test(path) ? path : (window.API_BASE||'') + path);
-
-function setStatus(t){ const el=$("#syncStatus"); if(el) el.textContent=t; }
-function toast(t){ const el=$("#toast"); el.textContent=t; el.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>el.style.display='none',2000); }
-
-// state
-let session = (()=>{ try{const s=JSON.parse(localStorage.getItem(L7_FORM_KEY)||'{}');return{username:up(s.username||''),total:+(s.total||0),log:Array.isArray(s.log)?s.log:[]};}catch(_){return{username:'',total:0,log:[]};} })();
-function save(){ localStorage.setItem(L7_FORM_KEY, JSON.stringify(session)); }
-function render(){
-  $("#username").value=session.username;
-  $("#totalPill").textContent=session.total.toFixed(0);
-  $("#totalBox").textContent=session.total.toFixed(0);
-  const log=$("#log");
-  log.innerHTML=session.log.length?session.log.map(e=>`[${e.ts}] ${e.label}${e.tag?` [${e.tag}]`:''}`).join('<br/>'):'—';
-  document.querySelectorAll('.add').forEach(b=>b.disabled=!session.username);
+/* ===== Utilities ===== */
+function $(s,root){ return (root||document).querySelector(s); }
+function now(){ return new Date().toISOString().replace('T',' ').slice(0,19); }
+function toCaps(s){ return (s||'').toString().toUpperCase(); }
+function toast(msg){
+  var t = $('#toast'); if(!t) return;
+  t.textContent = msg; t.style.display='block';
+  clearTimeout(toast._t); toast._t = setTimeout(function(){ t.style.display='none'; }, 2200);
 }
+function setStatus(txt){ var s=$('#syncStatus'); if(s) s.textContent=txt; }
+
+/* ===== State ===== */
+var session = loadSession();
+var submitting = false;
 render();
 
-// inputs
-$("#username").addEventListener('input',e=>{ session.username=up(e.target.value||''); e.target.value=session.username; save(); render(); });
-document.querySelectorAll('.add').forEach(btn=>btn.addEventListener('click',()=>{
-  if(!session.username) return alert('Enter USERNAME first.');
-  const pts=+(btn.getAttribute('data-pts')||0), tag=btn.getAttribute('data-tag')||'';
-  session.total=Math.max(0,session.total+pts);
-  const label=(btn.previousElementSibling?.textContent||('+'+pts)).trim()+' LBX';
-  session.log.push({ts:now(),pts,label,tag}); save(); render();
-}));
-$("#undoBtn").addEventListener('click',()=>{ if(!session.log.length) return; const last=session.log.pop(); session.total=Math.max(0, session.total - (+last.pts||0)); save(); render(); });
-$("#resetBtn").addEventListener('click',()=>{ if(!confirm('Clear this session tally?')) return; session.total=0; session.log=[]; save(); render(); });
-$("#copyLogBtn").addEventListener('click',()=>{ const t=session.log.map(e=>`[${e.ts}] ${e.label}`).join('\n')||'—'; navigator.clipboard?.writeText(t); toast('Log copied'); });
-
-// backend helpers
-async function apiPost(url, body){
-  const opts={method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},cache:'no-store',body:JSON.stringify(body||{})};
-  const res=await fetch(apiUrl(url),opts);
-  if(!res.ok){
-    let txt=''; try{ txt=await res.text(); }catch(_){}
-    throw new Error(txt || ('HTTP '+res.status));
-  }
-  try { return await res.json(); } catch { return { ok:true }; }
+function loadSession(){
+  try{
+    var s = JSON.parse(localStorage.getItem(L7_FORM_KEY)||'{}');
+    return {
+      username: toCaps(s.username||''),
+      total: Math.max(0, Number(s.total||0)),
+      log: Array.isArray(s.log) ? s.log : []   // [{ts, pts, label, tag}]
+    };
+  }catch(e){ return { username:'', total:0, log:[] }; }
 }
+function saveSession(){ localStorage.setItem(L7_FORM_KEY, JSON.stringify(session)); }
 
-// local credit (fallback) -> same keys as Profile
-function localCredit(user, amount, reason){
-  const WKEY=WALLET(user), LKEY=LEDGER(user);
-  let w=sget(WKEY) || { balance:0, created:Date.now(), lastDaily:0 };
-  w.balance = +(w.balance||0) + (+amount||0);
-  sset(WKEY, w);
-  const ledger=sget(LKEY) || [];
-  ledger.push({ ts: Date.now(), delta:+amount, reason: reason||'L7_LOCAL', balance:w.balance });
-  sset(LKEY, ledger.slice(-200));
-}
-
-// leaderboard local fallback
-function localLeaderboardUpsert(user, delta, actions){
-  let profiles=sget(PROFILES_KEY) || {};
-  if(!profiles[user]) profiles[user]={username:user,tournamentPoints:0,bonusHuntPoints:0,history:[]};
-  profiles[user].tournamentPoints=+(profiles[user].tournamentPoints||0)+(+delta||0);
-  profiles[user].history.unshift({ ts:new Date().toISOString(), mode:'Lucky7', added:+delta, actions:actions||[] });
-  sset(PROFILES_KEY, profiles); sset(PROFILES_TS, Date.now());
-}
-
-// logout → use working API route
-$("#logoutBtn").addEventListener('click',()=>{ 
-  fetch(apiUrl('/api/admin/logout'),{method:'POST',credentials:'include',cache:'no-store'}).catch(()=>{});
-  location.replace('/admin/login');
+/* ===== Auth logout ===== */
+document.getElementById('logoutBtn').addEventListener('click', function(){
+  try{ fetch('/admin/logout',{method:'POST',credentials:'include'}); }catch(_e){}
+  location.replace('/admin/login.html');
 });
 
-// submit
-$("#submitBtn").addEventListener('click', async ()=>{
-  const user=up(session.username||''); if(!user) return alert('Enter USERNAME.'); if(session.total<=0) return alert('Nothing to submit.');
-  const amount=+session.total||0;
+/* ===== Render ===== */
+function render(){
+  var u = $('#username'); if(u){ u.value = session.username; }
+  $('#totalPill').textContent = session.total.toFixed(0);
+  $('#totalBox').textContent = session.total.toFixed(0);
+  renderLog();
+  document.querySelectorAll('.add').forEach(function(b){
+    b.disabled = !session.username || submitting;
+  });
+  $('#submitBtn').disabled = submitting;
+}
+function renderLog(){
+  var el = $('#log');
+  if(!session.log.length){ el.textContent = '—'; return; }
+  el.innerHTML = session.log.map(function(ev){
+    var tag = ev.tag ? (' ['+ev.tag+']') : '';
+    var label = ev.label || ('+'+ev.pts+' LBX');
+    return '['+ev.ts+'] ' + label + tag;
+  }).join('<br/>');
+}
+
+/* ===== Inputs ===== */
+$('#username').addEventListener('input', function(e){
+  session.username = toCaps(e.target.value||'');
+  e.target.value = session.username;
+  saveSession(); render();
+});
+
+/* ===== Award clicks ===== */
+document.querySelectorAll('.add').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    if(!session.username){ alert('Enter USERNAME first.'); return; }
+    var pts = Number(btn.getAttribute('data-pts')||0);
+    var tag = btn.getAttribute('data-tag')||'';
+    session.total = Math.max(0, session.total + pts);
+    var pill = btn.previousElementSibling;
+    var label = (pill && pill.textContent || ('+'+pts)).trim() + ' LBX';
+    session.log.push({ ts: now(), pts: pts, label: label, tag: tag });
+    saveSession(); render();
+  });
+});
+
+/* ===== Undo / Reset ===== */
+$('#undoBtn').addEventListener('click', function(){
+  if(!session.log.length) return;
+  var last = session.log.pop();
+  session.total = Math.max(0, session.total - Number(last.pts||0));
+  saveSession(); render();
+});
+$('#resetBtn').addEventListener('click', function(){
+  if(!confirm('Clear this session tally for '+(session.username||'USER')+' ?')) return;
+  session.total = 0;
+  session.log = [];
+  saveSession(); render();
+});
+
+/* ===== Backend helpers (with graceful fallbacks) ===== */
+async function apiPost(url, body){
+  const res = await fetch(url, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type':'application/json' },
+    body: JSON.stringify(body||{})
+  });
+  if(!res.ok) throw new Error((await res.text())||('HTTP '+res.status));
+  return res.json().catch(()=>({ ok:true }));
+}
+
+async function creditWallet(user, amount, reason){
   try{
     setStatus('Crediting wallet…');
-    await apiPost('/api/wallet/credit',{user,amount,reason:'Lucky7 award'});
-    setStatus('Updating leaderboard…');
-    await apiPost('/api/leaderboard/upsert',{user,deltaTournamentPoints:amount,source:'Lucky7',actions:session.log.slice()});
-    setStatus('Done ✔');
-  }catch(e){
-    // fall back to local – write exactly where Profile reads
-    localCredit(user, amount, 'L7_LOCAL');
-    localLeaderboardUpsert(user, amount, session.log.slice());
-    setStatus('Local fallback applied ✔');
+    await apiPost('/api/wallet/credit', { user, amount, reason: reason||'Lucky7 award' });
+    setStatus('Wallet credited ✔');
+    return true;
+  }catch(err){
+    // Fallback to local wallet for offline/dev
+    try{
+      var key='sb:wallet:'+user, w=JSON.parse(localStorage.getItem(key)||'{}');
+      if(!w.balance){ w.balance=0; w.tx=[]; }
+      w.balance = Number(w.balance||0) + Number(amount||0);
+      (w.tx||[]).push({ ts:Date.now(), delta:+amount, reason:reason||'Lucky7 award', ref:'L7' });
+      w.updatedAt = Date.now();
+      localStorage.setItem(key, JSON.stringify(w));
+      setStatus('Wallet credited (local fallback) ✔');
+      return true;
+    }catch(_e){}
+    setStatus('Wallet credit failed ✖');
+    throw err;
   }
-  toast(`Submitted ${amount} LBX to ${user} ✅`);
-  session.total=0; session.log=[]; save(); render();
+}
+
+async function upsertLeaderboard(user, delta, actions){
+  try{
+    setStatus('Updating leaderboard…');
+    await apiPost('/api/leaderboard/upsert', {
+      user, deltaTournamentPoints: Number(delta||0), source: 'Lucky7', actions: actions||[]
+    });
+    setStatus('Leaderboard updated ✔');
+    return true;
+  }catch(err){
+    // Fallback to local leaderboard/profiles
+    try{
+      var profiles = {};
+      try{ profiles = JSON.parse(localStorage.getItem(PROFILES_KEY)||'{}'); }catch(_e){ profiles={}; }
+      if(!profiles[user]){
+        profiles[user] = { username:user, bonusHuntPoints:0, tournamentPoints:0, lbx:0, history:[] };
+      }
+      profiles[user].tournamentPoints = Number(profiles[user].tournamentPoints||0) + Number(delta||0);
+      profiles[user].history.unshift({ ts: now(), mode:'Lucky7', added:Number(delta||0), actions: actions||[] });
+      localStorage.setItem(PROFILES_KEY, JSON.stringify(profiles));
+      localStorage.setItem(PROFILES_TS, String(Date.now()));
+      setStatus('Leaderboard updated (local fallback) ✔');
+      return true;
+    }catch(_e){}
+    setStatus('Leaderboard update failed ✖');
+    throw err;
+  }
+}
+
+function updateLocalProfileBlob(user, delta){
+  // Keep per-user quick profile current for the profile page
+  var userKey = USER_PROFILE_PREFIX + user;
+  var userDoc = {};
+  try{ userDoc = JSON.parse(localStorage.getItem(userKey)||'{}'); }catch(_e){ userDoc={}; }
+  userDoc.username = user;
+  userDoc.tournamentPoints = Number(userDoc.tournamentPoints||0) + Number(delta||0);
+  userDoc.updatedAt = now();
+  userDoc.lastMode = 'Lucky7';
+  localStorage.setItem(userKey, JSON.stringify(userDoc));
+}
+
+/* ===== Submit → Wallet + Leaderboard + Profile ===== */
+$('#submitBtn').addEventListener('click', async function(){
+  if(submitting) return;
+  var user = toCaps(session.username||'');
+  if(!user){ alert('Enter USERNAME.'); return; }
+  if(session.total<=0){ alert('Nothing to submit yet. Add some awards first.'); return; }
+
+  submitting = true; render();
+  const amount = Number(session.total||0);
+
+  try{
+    await creditWallet(user, amount, 'Lucky7 award');
+    await upsertLeaderboard(user, amount, session.log.slice());
+    updateLocalProfileBlob(user, amount);
+
+    toast('Submitted '+amount+' LBX to '+user+' ✅');
+    // Clear only the tally/log; keep username for repeated awards to same player
+    session.total = 0;
+    session.log = [];
+    saveSession(); render();
+  }catch(err){
+    console.error(err);
+    toast('Submit had an error — check status line.');
+  }finally{
+    submitting = false; render();
+  }
 });
-})();
+
+/* ===== Copy log (optional) ===== */
+$('#copyLogBtn').addEventListener('click', function(){
+  var text = session.log.map(function(ev){
+    return '['+ev.ts+'] '+(ev.label||('+'+ev.pts))+(ev.tag?(' ['+ev.tag+']'):'');
+  }).join('\n') || '—';
+  navigator.clipboard?.writeText(text);
+  toast('Log copied.');
+});
 </script>
 </body>
 </html>
