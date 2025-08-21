@@ -61,26 +61,28 @@
   @media (max-width:980px){ .wrap{grid-template-columns:1fr} }
 </style>
 
-<!-- AUTH GATE -->
+<!-- AUTH GATE (no optional chaining; tolerant if expiresAt is absent) -->
 <script>
 (function(){
   "use strict";
-  const LOGIN="/pages/dashboard/home/login.html";
-  const SESSION_KEY="l3z:session", PROFILE_KEY="l3z:user", UNAME_KEY="user:username", LAST_KEY="lash3z_last_user";
-  const WALLET = u=>`lbx:wallet:${(u||'').toUpperCase()}`, LEDGER=u=>`lbx:ledger:${(u||'').toUpperCase()}`;
-  const now=()=>Date.now(); const DAY=86400000; const up=s=>(s||"").toString().trim().toUpperCase();
-  function sget(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch{ return null; } }
-  function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
-  function redirectToLogin(){ const back=encodeURIComponent(location.pathname+location.search+location.hash); location.replace(`${LOGIN}?redirect=${back}`); }
+  var LOGIN="/pages/dashboard/home/login.html";
+  var SESSION_KEY="l3z:session", PROFILE_KEY="l3z:user", UNAME_KEY="user:username", LAST_KEY="lash3z_last_user";
+  var WALLET = function(u){ return "lbx:wallet:"+(String(u||"").toUpperCase()); };
+  var LEDGER = function(u){ return "lbx:ledger:"+(String(u||"").toUpperCase()); };
+  var now=function(){ return Date.now(); }; var DAY=86400000; var up=function(s){ return String(s||"").trim().toUpperCase(); };
+  function sget(k){ try{var v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch(_){ return null; } }
+  function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } }
+  function redirectToLogin(){ var back=encodeURIComponent(location.pathname+location.search+location.hash); location.replace(LOGIN+"?redirect="+back); }
 
   document.documentElement.setAttribute("data-auth","checking");
-  const sess=sget(SESSION_KEY);
-  if(!sess || !sess.user || Number(sess.expiresAt)<=now()){ redirectToLogin(); throw new Error("no session"); }
-  const USER=up(sess.user);
+  var sess=sget(SESSION_KEY);
+  var expOk = sess && (sess.expiresAt==null || Number(sess.expiresAt)>now());
+  if(!sess || !sess.user || !expOk){ redirectToLogin(); throw new Error("no session"); }
+  var USER=up(sess.user);
   localStorage.setItem(UNAME_KEY,USER); localStorage.setItem(LAST_KEY,USER); sset(PROFILE_KEY,{username:USER});
 
   function ensureWallet(u){
-    let w=sget(WALLET(u));
+    var w=sget(WALLET(u));
     if(!w){
       w={balance:50,created:now(),lastDaily:0};
       sset(WALLET(u),w);
@@ -88,11 +90,17 @@
     }
     return w;
   }
-  window.__L3Z__ = { USER, WALLET, LEDGER, ensureWallet, now, DAY };
-  window.addEventListener("DOMContentLoaded",()=> document.documentElement.removeAttribute("data-auth"));
+  window.__L3Z__ = { USER:USER, WALLET:WALLET, LEDGER:LEDGER, ensureWallet:ensureWallet, now:now, DAY:DAY };
+  window.addEventListener("DOMContentLoaded",function(){ document.documentElement.removeAttribute("data-auth"); });
 })();
 </script>
 </head>
+<script>
+  window.API_BASE = (location.hostname==='127.0.0.1'||location.hostname==='localhost')
+    ? 'http://localhost:3000' 
+    : ''; // same-origin in production
+</script>
+
 <body>
   <div class="topbar">
     <div class="title">My Profile</div>
@@ -165,13 +173,13 @@
         <div class="muted">Send to this address:</div>
         <div class="row" style="margin:6px 0">
           <div id="addr" class="copy">—</div>
-          <button class="btn" id="copyAddr">Copy</button>
+          <button class="btn" id="copyAddr" type="button">Copy</button>
         </div>
 
         <div class="muted">Reference code (put in TX memo/notes if your wallet supports it):</div>
         <div class="row" style="margin:6px 0">
           <div id="ref" class="copy">—</div>
-          <button class="btn" id="copyRef">Copy</button>
+          <button class="btn" id="copyRef" type="button">Copy</button>
         </div>
 
         <div class="row" style="margin:6px 0">
@@ -180,7 +188,7 @@
 
         <div class="row" style="justify-content:space-between;align-items:center">
           <div class="muted" id="limitNote">You can buy up to 30 LBX today.</div>
-          <button class="btn ok" id="submitOrder" disabled>Submit for Review</button>
+          <button class="btn ok" id="submitOrder" type="button" disabled>Submit for Review</button>
         </div>
       </div>
     </div>
@@ -191,23 +199,23 @@
 <script>
 (function(){
   "use strict";
-  const $=s=>document.querySelector(s);
-  const esc=s=>(s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
-  const fmt=n=> (+n).toFixed(2);
-  const up=s=>(s||'').toString().trim().toUpperCase();
+  var $=function(s){ return document.querySelector(s); };
+  var esc=function(s){ s=(s==null?'':String(s)); return s.replace(/[&<>"']/g,function(m){return m==="&"?"&amp;":m==="<"?"&lt;":m===">"?"&gt;":m==='"'?"&quot;":"&#39;";}); };
+  var fmt=function(n){ return (+n).toFixed(2); };
+  var up=function(s){ return String(s||'').trim().toUpperCase(); };
 
-  const { USER, WALLET, LEDGER, ensureWallet, now, DAY } = window.__L3Z__;
+  var USER = window.__L3Z__.USER, WALLET=window.__L3Z__.WALLET, LEDGER=window.__L3Z__.LEDGER, ensureWallet=window.__L3Z__.ensureWallet, now=window.__L3Z__.now, DAY=window.__L3Z__.DAY;
 
-  const welcomeName=$("#welcomeName"), balEl=$("#bal"), rankEl=$("#rank"), rankSub=$("#rankSub");
-  const claimBtn=$("#claimBtn"), claimStatus=$("#claimStatus");
-  const ledgerBody=$("#ledger tbody"), lbTableBody=$("#lbTable tbody");
-  const rewardsList=$("#rewardsList"), toast=$("#toast");
+  var welcomeName=$("#welcomeName"), balEl=$("#bal"), rankEl=$("#rank"), rankSub=$("#rankSub");
+  var claimBtn=$("#claimBtn"), claimStatus=$("#claimStatus");
+  var ledgerBody=$("#ledger tbody"), lbTableBody=$("#lbTable tbody");
+  var rewardsList=$("#rewardsList"), toast=$("#toast");
 
-  // ---- BUY LBX UI ----
-  const pkgRow=$("#pkgRow"), assetSel=$("#assetSel"), usdDue=$("#usdDue");
-  const addrEl=$("#addr"), refEl=$("#ref"), txidEl=$("#txid"), submitBtn=$("#submitOrder"), limitNote=$("#limitNote");
+  // BUY LBX UI
+  var pkgRow=$("#pkgRow"), assetSel=$("#assetSel"), usdDue=$("#usdDue");
+  var addrEl=$("#addr"), refEl=$("#ref"), txidEl=$("#txid"), submitBtn=$("#submitOrder"), limitNote=$("#limitNote");
 
-  const CRYPTO_ADDR = {
+  var CRYPTO_ADDR = {
     "BTC":"bc1q0l428lsymjqrksxrnlx4m9jahzjjrnvns5a6ah",
     "ETH":"0xc59Ab6F4f71ba573F7435fA3fb730EdEdAF26884",
     "USDT":"TVfWLpQBG5m5Px7K7so3yqdiAC21o7cEub",
@@ -215,71 +223,70 @@
     "LTC":"ltc1qn6klwjdalpfk8g252ypht03tktr4em7x367vm7"
   };
 
-  const PRICE_USD = {5:2.50, 10:5.00, 15:7.00, 20:9.00, 25:10.50, 30:12.00};
-  const PKGS=[5,10,15,20,25,30];
-  let selectedPkg=0;
+  var PRICE_USD = {5:2.50, 10:5.00, 15:7.00, 20:9.00, 25:10.50, 30:12.00};
+  var PKGS=[5,10,15,20,25,30];
+  var selectedPkg=0;
 
-  const ORDERS_KEY="lbx:orders";
-  function sget(k,def=null){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch{ return def; } }
-  function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
-  function toastMsg(t){ toast.textContent=t; toast.classList.add('on'); setTimeout(()=>toast.classList.remove('on'),1400); }
+  var ORDERS_KEY="lbx:orders";
+  function sget(k,def){ try{var v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(_){ return def; } }
+  function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } }
+  function toastMsg(t){ toast.textContent=t; toast.classList.add('on'); setTimeout(function(){ toast.classList.remove('on'); },1400); }
 
   function readWallet(u){ return ensureWallet(u); }
   function writeWallet(u,w){ sset(WALLET(u),w); }
   function readLedger(u){ return sget(LEDGER(u),[]) }
   function pushLedger(u,delta,reason){
-    const w = readWallet(u);
+    var w = readWallet(u);
     w.balance = +(w.balance||0) + (+delta||0);
     writeWallet(u,w);
-    const list = readLedger(u);
+    var list = readLedger(u);
     list.push({ ts: now(), delta:+delta, reason:String(reason||'ADJUSTMENT'), balance:w.balance });
     sset(LEDGER(u), list.slice(-200));
     paintWallet(); paintLedger(); paintLeaderboard();
   }
 
-  /* === NEW: Sync from server so awards given via admin reflect here === */
+  /* Server sync (no optional chaining) */
   async function syncFromServer(){
     try{
-      const r = await fetch("/api/wallet/me?viewer="+encodeURIComponent(USER), { credentials:"include" });
+      var r = await fetch("/api/wallet/me?viewer="+encodeURIComponent(USER), { credentials:"include" });
       if(!r.ok) return;
-      const j = await r.json();
-      const serverBal = Number(j?.wallet?.balance ?? NaN);
-      if (!Number.isFinite(serverBal)) return;
+      var j = await r.json();
+      var serverBal = (j && j.wallet && typeof j.wallet.balance === "number") ? Number(j.wallet.balance) : NaN;
+      if (!isFinite(serverBal)) return;
 
-      const w = readWallet(USER);
-      const current = Number(w.balance||0);
-      const delta = serverBal - current;
+      var w = readWallet(USER);
+      var current = Number(w.balance||0);
+      var delta = serverBal - current;
 
       if (Math.abs(delta) > 1e-9) {
-        // Update local wallet to match server and create a reconciling ledger entry.
         w.balance = serverBal;
         writeWallet(USER, w);
-        const L = readLedger(USER);
+        var L = readLedger(USER);
         L.push({ ts: now(), delta: +delta, reason: "SERVER_SYNC", balance: serverBal });
         sset(LEDGER(USER), L.slice(-200));
       }
       paintWallet(); paintLedger(); paintLeaderboard();
     } catch(_e) {
-      // ignore if server not reachable; local fallback stays
+      // ignore network issues
     }
   }
 
   function msToHMS(ms){
     if(ms<=0) return "ready";
-    const h=Math.floor(ms/3600000), m=Math.floor((ms%3600000)/60000), s=Math.floor((ms%60000)/1000);
-    return `${h}h ${m}m ${s}s`;
+    var h=Math.floor(ms/3600000), m=Math.floor((ms%3600000)/60000), s=Math.floor((ms%60000)/1000);
+    return h+"h "+m+"m "+s+"s";
   }
 
-  // Daily reward (local only)
+  // Daily reward
   function updateDailyUI(){
-    const w = readWallet(USER);
-    const next = (w.lastDaily||0) + DAY;
-    const remain = next - now();
+    var w = readWallet(USER);
+    var next = (w.lastDaily||0) + DAY;
+    var remain = next - now();
     if(remain <= 0){ claimBtn.disabled=false; claimStatus.textContent="Ready"; }
     else{ claimBtn.disabled=true; claimStatus.textContent="Next in " + msToHMS(remain); }
   }
-  claimBtn.addEventListener('click', ()=>{
-    const w = readWallet(USER); const next=(w.lastDaily||0)+DAY;
+  claimBtn.addEventListener('click', function(){
+    var w = readWallet(USER); var next=(w.lastDaily||0)+DAY;
     if(now() < next){ toastMsg("Too soon — come back later"); return; }
     w.lastDaily = now(); writeWallet(USER,w);
     pushLedger(USER, +5, "DAILY_REWARD"); toastMsg("+5 LBX claimed"); updateDailyUI();
@@ -288,184 +295,204 @@
 
   // Rewards (local awards scan)
   function listAwards(){
-    const out=[];
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i);
-      if(!k || !k.startsWith("bux:awards:")) continue;
-      const arr=sget(k,[]);
-      if(Array.isArray(arr)) arr.forEach((a,idx)=>{
-        const uname=up(a.userId||a.name||'');
-        if(uname===USER) out.push({id:`${k}::${idx}`, key:k, idx, label:a.label||'Reward', amount:+(a.amount||0)});
-      });
+    var out=[];
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(!k || k.indexOf("bux:awards:")!==0) continue;
+      var arr=sget(k,[]);
+      if(Array.isArray(arr)) for(var idx=0; idx<arr.length; idx++){
+        var a=arr[idx];
+        var uname=up((a && (a.userId||a.name))||'');
+        if(uname===USER) out.push({id:k+"::"+idx, key:k, idx:idx, label:(a && a.label)||'Reward', amount:+((a && a.amount)||0)});
+      }
     }
     return out;
   }
   function isClaimed(id){ return localStorage.getItem("lbx:award:claimed:"+id)==="1"; }
   function setClaimed(id){ localStorage.setItem("lbx:award:claimed:"+id,"1"); }
   function paintRewards(){
-    const items=listAwards();
-    if(!items.length){ rewardsList.innerHTML=`<span class="muted">No rewards pending.</span>`; return; }
+    var items=listAwards();
+    if(!items.length){ rewardsList.innerHTML='<span class="muted">No rewards pending.</span>'; return; }
     rewardsList.innerHTML="";
-    items.forEach(it=>{
-      const wrap=document.createElement('div'); wrap.className="row"; wrap.style.marginBottom="6px";
-      const claimed=isClaimed(it.id);
-      wrap.innerHTML=`<div class="pill">${esc(it.label)}</div><div class="pill">${claimed?'CLAIMED':('+'+fmt(it.amount)+' LBX')}</div><button class="btn" data-claim="${it.id}" ${claimed?'disabled':''}>Claim</button>`;
+    items.forEach(function(it){
+      var wrap=document.createElement('div'); wrap.className="row"; wrap.style.marginBottom="6px";
+      var claimed=isClaimed(it.id);
+      wrap.innerHTML='<div class="pill">'+esc(it.label)+'</div><div class="pill">'+(claimed?'CLAIMED':('+'+fmt(it.amount)+' LBX'))+'</div><button class="btn" data-claim="'+it.id+'" '+(claimed?'disabled':'')+'>Claim</button>';
       rewardsList.appendChild(wrap);
     });
-    rewardsList.querySelectorAll('[data-claim]').forEach(btn=>{
-      btn.addEventListener('click',()=>{
-        const id=btn.getAttribute('data-claim');
-        const it=listAwards().find(x=>x.id===id);
-        if(!it||isClaimed(id)) return;
-        pushLedger(USER, +it.amount, `AWARD:${it.label}`);
-        setClaimed(id); toastMsg(`+${fmt(it.amount)} LBX added`); paintRewards();
+    rewardsList.querySelectorAll('[data-claim]').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        var id=btn.getAttribute('data-claim');
+        var found=listAwards().filter(function(x){ return x.id===id; })[0];
+        if(!found||isClaimed(id)) return;
+        pushLedger(USER, +found.amount, "AWARD:"+found.label);
+        setClaimed(id); toastMsg('+'+fmt(found.amount)+' LBX added'); paintRewards();
       });
     });
   }
 
   // Leaderboard (local scan)
   function collectWallets(){
-    const res=[];
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i);
-      if(k && k.startsWith("lbx:wallet:")){
-        const u=k.split(":").pop();
-        const w=sget(k);
+    var res=[];
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k && k.indexOf("lbx:wallet:")===0){
+        var u=k.split(":").pop();
+        var w=sget(k);
         if(w) res.push({user:u,balance:+(w.balance||0)});
       }
     }
     return res;
   }
   function paintLeaderboard(){
-    const all=collectWallets().sort((a,b)=>b.balance-a.balance);
-    const meIndex=all.findIndex(x=>x.user===up(USER));
+    var all=collectWallets().sort(function(a,b){ return b.balance-a.balance; });
+    var meIndex=-1; for(var i=0;i<all.length;i++){ if(all[i].user===up(USER)){ meIndex=i; break; } }
     rankEl.textContent = "#"+(meIndex>=0?meIndex+1:"—");
-    rankSub.textContent = all.length?`of ${all.length}`:"—";
-    const top=all.slice(0,10);
+    rankSub.textContent = all.length?("of "+all.length):"—";
+    var top=all.slice(0,10);
     lbTableBody.innerHTML =
-      top.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.user)} ${r.user===up(USER)?'<span class="pill">you</span>':''}</td><td class="right">${fmt(r.balance)}</td></tr>`).join('')
-      || `<tr><td colspan="3" class="muted">No data yet.</td></tr>`;
+      (top.map(function(r,i){ return '<tr><td>'+(i+1)+'</td><td>'+esc(r.user)+' '+(r.user===up(USER)?'<span class="pill">you</span>':'')+'</td><td class="right">'+fmt(r.balance)+'</td></tr>'; }).join(''))
+      || '<tr><td colspan="3" class="muted">No data yet.</td></tr>';
   }
 
   // Ledger + wallet painters
   function paintLedger(){
-    const L=(sget(LEDGER(USER),[])).slice(-50).reverse();
-    ledgerBody.innerHTML = L.map(row=>
-      `<tr><td>${new Date(row.ts).toLocaleString()}</td><td>${esc(row.reason||'')}</td><td class="right ${row.delta>=0?'':'bad'}">${row.delta>=0?'+':''}${fmt(row.delta||0)}</td><td class="right">${fmt(row.balance||0)}</td></tr>`
-    ).join('') || `<tr><td colspan="4" class="muted">No transactions yet.</td></tr>`;
+    var L=(sget(LEDGER(USER),[])).slice(-50).reverse();
+    ledgerBody.innerHTML = (L.map(function(row){
+      var sign = (row.delta>=0?'+':'');
+      return '<tr><td>'+new Date(row.ts).toLocaleString()+'</td><td>'+esc(row.reason||'')+'</td><td class="right '+(row.delta>=0?'':'bad')+'">'+sign+fmt(row.delta||0)+'</td><td class="right">'+fmt(row.balance||0)+'</td></tr>';
+    }).join('')) || '<tr><td colspan="4" class="muted">No transactions yet.</td></tr>';
   }
-  function paintWallet(){ const w=sget(WALLET(USER)); welcomeName.textContent=USER; balEl.textContent=fmt((w&&w.balance)||0); }
+  function paintWallet(){ var w=sget(WALLET(USER)); welcomeName.textContent=USER; balEl.textContent=fmt((w&&w.balance)||0); }
 
-  // ----- Purchase UI -----
+  // Purchase UI
   function renderPkgs(){
-    pkgRow.innerHTML = PKGS.map(n=>`<button class="btn" data-pkg="${n}">${n} LBX</button>`).join("");
-    pkgRow.querySelectorAll("[data-pkg]").forEach(b=> b.addEventListener("click", ()=>{
-      selectedPkg = +b.getAttribute("data-pkg");
-      pkgRow.querySelectorAll("button").forEach(x=>x.classList.remove("ok")); b.classList.add("ok");
-      usdDue.value = "$" + (PRICE_USD[selectedPkg] ? PRICE_USD[selectedPkg].toFixed(2) : "0.00");
-      refreshAddrRef();
-      validateLimit();
-    }));
+    pkgRow.innerHTML = PKGS.map(function(n){ return '<button class="btn" data-pkg="'+n+'">'+n+' LBX</button>'; }).join("");
+    pkgRow.querySelectorAll("[data-pkg]").forEach(function(b){
+      b.addEventListener("click", function(){
+        selectedPkg = +b.getAttribute("data-pkg");
+        pkgRow.querySelectorAll("button").forEach(function(x){ x.classList.remove("ok"); }); b.classList.add("ok");
+        usdDue.value = "$" + (PRICE_USD[selectedPkg] ? PRICE_USD[selectedPkg].toFixed(2) : "0.00");
+        refreshAddrRef();
+        validateLimit();
+      });
+    });
   }
   function refreshAddrRef(){
-    const asset = assetSel.value;
+    var asset = assetSel.value;
     addrEl.textContent = CRYPTO_ADDR[asset] || "—";
-    const code = "L3Z-"+ up(USER) +"-"+ Math.random().toString(36).slice(2,8).toUpperCase();
+    var code = "L3Z-"+ up(USER) +"-"+ Math.random().toString(36).slice(2,8).toUpperCase();
     refEl.textContent = code;
   }
-  function copy(el){ navigator.clipboard.writeText(el.textContent||"").then(()=>toastMsg("Copied")); }
 
-  document.getElementById("copyAddr").addEventListener("click", ()=>copy(addrEl));
-  document.getElementById("copyRef").addEventListener("click", ()=>copy(refEl));
-  assetSel.addEventListener("change", ()=>refreshAddrRef());
+  function copyTextFrom(el){
+    var txt = (el && el.textContent) ? el.textContent : "";
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(function(){ toastMsg("Copied"); }, function(){ fallback(); });
+      return;
+    }
+    fallback();
+    function fallback(){
+      var ta=document.createElement("textarea"); ta.value=txt; ta.style.position="fixed"; ta.style.opacity="0";
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      try{ document.execCommand("copy"); }catch(_){}
+      document.body.removeChild(ta); toastMsg("Copied");
+    }
+  }
+  document.getElementById("copyAddr").addEventListener("click", function(){ copyTextFrom(addrEl); });
+  document.getElementById("copyRef").addEventListener("click", function(){ copyTextFrom(refEl); });
+  assetSel.addEventListener("change", function(){ refreshAddrRef(); });
 
   function lbxBoughtLast24h(){
-    const orders = sget(ORDERS_KEY,[]).filter(o=> up(o.user)===up(USER) );
-    const since = now()-DAY;
-    return orders.filter(o=>Number(o.ts)>=since).reduce((a,o)=> a + (+o.amount||0), 0);
+    var orders = (sget(ORDERS_KEY,[])||[]).filter(function(o){ return up(o.user)===up(USER); });
+    var since = now()-DAY;
+    var sum=0; for(var i=0;i<orders.length;i++){ if(Number(orders[i].ts)>=since) sum += (+orders[i].amount||0); }
+    return sum;
   }
   function validateLimit(){
-    const used = lbxBoughtLast24h();
-    const remain = Math.max(0, 30 - used);
-    limitNote.textContent = `You can buy up to ${remain} LBX today.`;
-    submitBtn.disabled = !(selectedPkg && remain >= selectedPkg && addrEl.textContent!=="—" && (txidEl.value||"").trim().length>=8);
+    var used = lbxBoughtLast24h();
+    var remain = Math.max(0, 30 - used);
+    limitNote.textContent = "You can buy up to "+remain+" LBX today.";
+    var txOk = (String(txidEl.value||"").trim().length>=8);
+    submitBtn.disabled = !(selectedPkg && remain >= selectedPkg && addrEl.textContent!=="—" && txOk);
   }
   txidEl.addEventListener("input", validateLimit);
 
   async function submitOrder(){
-    const asset = assetSel.value;
-    const o = {
+    var asset = assetSel.value;
+    var o = {
       id: "ORD-" + Math.random().toString(36).slice(2,10).toUpperCase(),
       user: up(USER),
       amount: selectedPkg,
       usd: PRICE_USD[selectedPkg]||0,
-      asset, address: addrEl.textContent, ref: refEl.textContent, txid: (txidEl.value||"").trim(),
+      asset: asset, address: addrEl.textContent, ref: refEl.textContent, txid: String(txidEl.value||"").trim(),
       status: "pending", ts: now()
     };
-    const all = sget(ORDERS_KEY,[]); all.push(o); sset(ORDERS_KEY, all);
-    try{ await fetch("/api/lbx/orders", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(o) }); }catch(_){ }
+    var all = sget(ORDERS_KEY,[]); all.push(o); sset(ORDERS_KEY, all);
+    try{
+      await fetch("/api/lbx/orders", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(o) });
+    }catch(_){ }
     toastMsg("Submitted for review. We'll approve after confirming on-chain.");
     txidEl.value=""; validateLimit();
   }
   submitBtn.addEventListener("click", submitOrder);
 
-  // Boot sequence
+  // Boot
   ensureWallet(USER);
   renderPkgs(); refreshAddrRef(); validateLimit();
   paintWallet(); paintLedger(); paintLeaderboard(); paintRewards(); updateDailyUI();
 
-  // NEW: Sync with server after initial paint (and again after 1s for safety)
+  // Server sync (now & shortly after)
   syncFromServer();
   setTimeout(syncFromServer, 1000);
 
-  // Cross-tab update listeners
-  window.addEventListener('storage', (e)=>{
+  // Cross-tab updates
+  window.addEventListener('storage', function(e){
     if(!e.key) return;
-    if(e.key.startsWith("lbx:wallet:") || e.key.startsWith("lbx:ledger:")){ paintWallet(); paintLedger(); paintLeaderboard(); }
+    if(e.key.indexOf("lbx:wallet:")===0 || e.key.indexOf("lbx:ledger:")===0){ paintWallet(); paintLedger(); paintLeaderboard(); }
     if(e.key===ORDERS_KEY){ validateLimit(); }
-    if(e.key.startsWith("bux:awards:") || e.key.startsWith("lbx:award:claimed:")){ paintRewards(); }
+    if(e.key.indexOf("bux:awards:")===0 || e.key.indexOf("lbx:award:claimed:")===0){ paintRewards(); }
   });
 })();
 </script>
 
-<!-- viewer glue v2 -->
+<!-- viewer glue v2 (unchanged logic; no optional chaining) -->
 <script id="viewer-glue">
 (function(){
-  const S = (sel) => document.querySelector(sel);
-  const SS = (sel) => Array.from(document.querySelectorAll(sel));
-  const set = (sel, val) => { const n=S(sel); if(n){ n.textContent = val; n.title = val; }};
+  var S = function(sel){ return document.querySelector(sel); };
+  var SS = function(sel){ return Array.prototype.slice.call(document.querySelectorAll(sel)); };
+  var set = function(sel, val){ var n=S(sel); if(n){ n.textContent = val; n.title = val; } };
 
   function readCookie(name){
-    const m = document.cookie.match(new RegExp('(?:^|; )'+name+'=([^;]*)'));
+    var m = document.cookie.match(new RegExp('(?:^|; )'+name+'=([^;]*)'));
     return m ? decodeURIComponent(m[1]) : '';
   }
 
   async function loadMe(){
-    const viewerCookie = readCookie('viewer');
-    let me = { username: (viewerCookie||'').toUpperCase(), wallet:{balance:0}, anon: !viewerCookie };
+    var viewerCookie = readCookie('viewer');
+    var me = { username: String(viewerCookie||'').toUpperCase(), wallet:{balance:0}, anon: !viewerCookie };
     try{
-      const r = await fetch('/api/viewer/me', { credentials: 'include' });
+      var r = await fetch('/api/viewer/me', { credentials: 'include' });
       if(r.ok){ me = await r.json(); if(!me || typeof me !== 'object') throw 0; }
     }catch(_){}
 
-    const user = (me.username||'').toUpperCase();
+    var user = String(me.username||'').toUpperCase();
     set('#helloName', user);
     set('#welcomeName', user);
     set('#usernameDisplay', user);
     set('#ubName', user);
     set('#playerName', user);
     set('#who', user);
-    if (S('#guestChipLabel')) S('#guestChipLabel').textContent = user;
+    var g=S('#guestChipLabel'); if(g) g.textContent=user;
 
-    // balance
-    let bal = (me.wallet && typeof me.wallet.balance==='number') ? me.wallet.balance : 0;
+    var bal = (me.wallet && typeof me.wallet.balance==='number') ? me.wallet.balance : 0;
     if ((!bal || isNaN(bal)) && user){
       try{
-        const wr = await fetch('/api/wallet/me?viewer='+encodeURIComponent(user), { credentials:'include' });
-        if (wr.ok){ const wj = await wr.json(); bal = Number((wj.wallet&&wj.wallet.balance)||0) || 0; }
+        var wr = await fetch('/api/wallet/me?viewer='+encodeURIComponent(user), { credentials:'include' });
+        if (wr.ok){ var wj = await wr.json(); bal = Number((wj.wallet&&wj.wallet.balance)||0) || 0; }
       }catch(_){}
     }
-    const pretty = (Number(bal)||0).toFixed(0);
+    var pretty = (Number(bal)||0).toFixed(0);
     set('#headerLbx', pretty+' LBX');
     set('#navLbx',    pretty);
     set('#ubBal',     pretty);
@@ -473,24 +500,22 @@
     set('#walletBalance', pretty);
     set('#walletBalanceTop', pretty);
 
-    // Hide or disable "Switch name" controls
-    const kill = ['#btnSwitch','.btnSwitchName','#switchName','.switch-name','.switchName']
+    var kill = ['#btnSwitch','.btnSwitchName','#switchName','.switch-name','.switchName']
       .map(S).filter(Boolean);
-    kill.forEach(n => n.style.display='none');
-    SS('button').forEach(b=>{
-      const t = (b.textContent||'').toLowerCase();
-      if (t.includes('switch name')) b.style.display='none';
+    kill.forEach(function(n){ n.style.display='none'; });
+    SS('button').forEach(function(b){
+      var t = (b.textContent||'').toLowerCase();
+      if (t.indexOf('switch name')>=0) b.style.display='none';
     });
 
-    // update LBX pill usually in header (span like "LBX 0")
-    SS('.lbx-pill,.lbx,.pill-lbx').forEach(n=>{
-      const m = String(n.textContent||'').match(/\b(\d+)\b/);
-      if (m) n.textContent = (n.textContent||'').replace(m[1], pretty);
+    SS('.lbx-pill,.lbx,.pill-lbx').forEach(function(n){
+      var m = String(n.textContent||'').match(/\b(\d+)\b/);
+      if (m) n.textContent = String(n.textContent||'').replace(m[1], pretty);
     });
   }
   loadMe();
   window.addEventListener('focus', loadMe);
-  document.addEventListener('visibilitychange', () => { if(!document.hidden) loadMe(); });
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) loadMe(); });
 })();
 </script>
 </body>
