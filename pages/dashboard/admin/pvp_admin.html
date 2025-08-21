@@ -3,383 +3,363 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>PVP — Admin</title>
+<title>PVP Admin — Knockout</title>
 <meta http-equiv="Cache-Control" content="no-store"/>
 <style>
-  :root{
-    --bg:#060b0d; --panel:#0b1417; --ink:#eaf7ff; --muted:#9fd0d6; --line:rgba(0,255,255,.18);
-    --teal:#00ffff; --ok:#12d48a; --warn:#ffb42d; --danger:#e25a6f; --gold:#ffb42d;
-  }
+  :root{--bg:#060b0d;--ink:#eaf7ff;--muted:#a8c6cc;--line:rgba(0,255,255,.18);--teal:#00ffff;--ok:#11d48a;--bad:#ff6b81;--card:#0d1417}
   *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}
-  /* prevent content flash while admin check runs */
-  html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
-
-  h1{margin:16px 0 10px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
-  .wrap{max-width:1500px;margin:0 auto;padding:0 16px 48px}
-  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-  input,select,button{border-radius:10px;border:1px solid var(--line);background:#0c1519;color:#eaf7ff;padding:10px}
-  button{cursor:pointer;font-weight:800}
-  .btn{padding:10px 12px;border:1px solid var(--line);background:#0f1720;color:#eaf7ff;border-radius:10px}
-  .btn.ok{background:#103d30;border-color:#1fa37b}
-  .btn.warn{background:#3a2e10;border-color:#b38328}
-  .btn.del{background:#2b1116;border-color:#7e2a3c}
-  .card{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
-  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cfffff}
-  .note{font-size:12px;color:#bfe}
-  .grid2{display:grid;grid-template-columns:1fr 1.1fr;gap:16px}
-  @media (max-width:1200px){.grid2{grid-template-columns:1fr}}
-
-  .frow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:8px}
-  .frow .col{display:flex;flex-direction:column;gap:8px}
-  .cap{text-transform:uppercase}
-
-  .gamesList{display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 360px);overflow:auto;padding-right:6px}
-  .gameCard{display:grid;grid-template-columns:64px 1fr auto auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:8px 10px}
-  .tiny{width:64px;height:86px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#000}
-  .tiny img{width:100%;height:100%;object-fit:cover;display:block}
-  .gtitle{font-weight:900}
-  .sub{font-size:12px;color:#9fd0d6}
-
-  .matches{display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 360px);overflow:auto;padding-right:6px}
-  .matchCard{
-    display:grid;grid-template-columns:1fr 48px 1fr 210px 84px;gap:12px;align-items:center;
-    border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:10px 12px;
-  }
-  .sideL{display:grid;grid-template-columns:1fr 40px;gap:10px;align-items:center}
-  .sideR{display:grid;grid-template-columns:40px 1fr;gap:10px;align-items:center}
-  .thumb{width:40px;height:56px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#000}
-  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
-  .sname{font-weight:900;display:flex;align-items:center;gap:6px}
-  .cup{color:var(--gold);filter:drop-shadow(0 0 4px #ffb42d66)}
-  .vs{display:grid;place-items:center;color:#9fe;font-weight:900}
-  input[type="number"]{appearance:textfield}
-  input[type="number"]::-webkit-inner-spin-button,
-  input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
-  .score{width:70px;text-align:center;font-weight:900}
+  html,body{margin:0;height:100%;background:#000 url("/assets/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  .wrap{max-width:1100px;margin:18px auto;padding:0 16px}
+  h1{margin:0 0 8px;color:var(--teal);text-shadow:0 0 16px #00ffff55}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:12px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cff;font-size:12px}
+  .btn{padding:10px 14px;border:none;border-radius:10px;font-weight:800;cursor:pointer}
+  .btn.ok{background:#ffb42d;color:#241b00}
+  .btn.ghost{background:#121a1d;border:1px solid rgba(255,255,255,.08);color:#d8f2ff}
+  .btn.danger{background:#61222a;color:#fff}
+  .btn.alt{background:#103036;border:1px solid var(--line);color:#cfe}
+  .card{border:1px solid var(--line);border-radius:14px;background:var(--card);padding:14px;margin:12px 0}
+  input{background:#0b1215;border:1px solid var(--line);color:#eaf7ff;padding:10px;border-radius:10px}
+  input.wide{min-width:210px}
+  .match{border:1px solid rgba(255,255,255,.08);border-radius:12px;background:#0b1012;padding:12px;margin:8px 0}
+  .tiny{font-size:12px;color:#9fd}
+  .imgprev{width:36px;height:36px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,.12);background:#061015}
+  .grid{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
+  .undo{font-size:12px;border-radius:999px;border:1px dashed rgba(255,255,255,.22);background:#0a1417;padding:4px 8px;cursor:pointer}
+  .tag{padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#bfe;font-size:12px}
+  .inbox{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .inboxList{border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:8px;max-height:160px;overflow:auto;background:#0c1216}
 </style>
 </head>
 <body>
-
-<!-- ========= AdminGate v2 (must be first in <body>) ========= -->
-<script>
-(function(){
-  "use strict";
-  const SESSION_KEY = "l3z:session";
-  const ADMIN_TOKEN = "admin:token";
-  const ADMIN_LOGIN = "/pages/dashboard/admin/admin_login.html";
-  const DASHBOARD  = "/index.html";
-  const MAX_AGE_MS = 12*60*60*1000;
-
-  const H = document.documentElement;
-  H.setAttribute("data-admin","checking");
-
-  function sget(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null;}catch{ return null; } }
-  function fresh(x){ return typeof x==="number" && Date.now()<x; }
-
-  function unlock(){ H.removeAttribute("data-admin"); }
-
-  function lock(){
-    unlock();
-    const s=document.createElement("style");
-    s.textContent=".lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}.lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75);box-shadow:0 0 18px rgba(0,255,255,.15)}.lockcard h1{margin:0 0 10px;color:#cfe}.lockcard a{color:#7ad7ff;text-decoration:underline}";
-    document.head.appendChild(s);
-    document.body.innerHTML='<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you just logged in elsewhere, your unlock may have expired (lasts ~12 hours).</div><div style="margin-top:14px"><a href="'+DASHBOARD+'">Back to Dashboard</a></div></div></div>';
-  }
-
-  const sess=sget(SESSION_KEY);
-  const tok =sget(ADMIN_TOKEN);
-  if(sess && tok && fresh(tok.expiresAt)){ unlock(); return; }
-
-  fetch("/api/auth/session",{credentials:"include",cache:"no-store"})
-    .then(r=>r.ok?r.json():null)
-    .then(j=>{
-      if(j && (j.isAdmin || j.admin===true || j.role==="admin")){
-        const u=(j.username||j.user||j.name||"ADMIN").toString().toUpperCase();
-        localStorage.setItem(SESSION_KEY, JSON.stringify({user:u,isAdmin:true,expiresAt:Date.now()+7*24*60*60*1000}));
-        localStorage.setItem(ADMIN_TOKEN, JSON.stringify({by:u,ts:Date.now(),expiresAt:Date.now()+MAX_AGE_MS}));
-        unlock();
-      }else{
-        lock();
-      }
-    })
-    .catch(()=>lock());
-})();
-</script>
-<!-- ========= /AdminGate v2 ========= -->
-
 <div class="wrap">
-  <h1>PVP — Admin</h1>
-
-  <div class="card" style="display:flex;gap:10px;align-items:center">
-    <button id="btnSave" class="btn warn">Save Draft</button>
-    <button id="btnPublish" class="btn ok">Publish → Player UIs + Live</button>
-    <button id="btnClear" class="btn del">Delete All</button>
-    <span id="msg" class="pill" style="margin-left:auto">Ready</span>
+  <div class="row" style="justify-content:space-between">
+    <div class="row">
+      <h1>PVP Admin — Knockout</h1>
+      <span id="badge" class="pill">Not published</span>
+      <span id="msg" class="pill">Ready</span>
+    </div>
+    <div class="row">
+      <button id="btnPublish" class="btn ok">Publish</button>
+      <button id="btnReset" class="btn danger">Reset All (Rounds)</button>
+    </div>
   </div>
+  <p class="sub">Add matchups, click a winner (auto-advances), and publish. Images come from <code>/assets/slot_images/&lt;slug&gt;.png</code> with fallback to <code>mateslots_logo.png</code>.</p>
 
-  <!-- Add game -->
+  <!-- Quick add -->
   <div class="card">
-    <div class="frow">
-      <div class="col">
-        <label>GAME TITLE</label>
-        <input id="inGTitle" class="cap" placeholder="E.G. DUCK HUNTERS"/>
-      </div>
-      <div class="col">
-        <label>PROVIDER</label>
-        <input id="inProv" class="cap" placeholder="E.G. HACKSAW"/>
-      </div>
-      <div class="col">
-        <label>OTHER / NOTE</label>
-        <input id="inNote" class="cap" placeholder="OPTIONAL"/>
-      </div>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <div class="col">
-        <label>UPLOAD IMAGE</label>
-        <input id="inFile" type="file" accept="image/*"/>
-      </div>
-      <div class="col" style="flex:1;min-width:360px">
-        <label>OR ASSET PATH (relative)</label>
-        <div class="row" style="gap:8px">
-          <input id="inAsset" style="flex:1" placeholder="assets/slot images/duck-hunters.webp"/>
-          <button id="btnAuto" class="btn">Auto</button>
-        </div>
-      </div>
-      <button id="btnAdd" class="btn ok">+ Add Game</button>
-      <span class="note">“Auto” searches /assets/slot images/ (multi-base, index.json, spaces & case friendly).</span>
+    <div class="row">
+      <span class="pill">Add Play-in Match</span>
+      <img id="lPrev" class="imgprev" alt="">
+      <input id="lName" class="wide" placeholder="Left player">
+      <input id="lGame" class="wide" placeholder="Left game (e.g. rip city)">
+      <span class="pill">vs</span>
+      <img id="rPrev" class="imgprev" alt="">
+      <input id="rName" class="wide" placeholder="Right player">
+      <input id="rGame" class="wide" placeholder="Right game (e.g. gates)">
+      <button id="btnAdd" class="btn alt">+ Add Match</button>
     </div>
   </div>
 
-  <div class="grid2">
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <h3>Games</h3>
-        <span class="note">Select two → Add Match.</span>
-      </div>
-      <div id="gamesList" class="gamesList"></div>
-    </div>
-
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <h3>Matchups & Live Scores</h3>
-        <button id="btnAddMatch" class="btn">+ Add Match (pair selected)</button>
-      </div>
-      <div id="matches" class="matches"></div>
-    </div>
-  </div>
-
+  <!-- Inbox (from entry form[s]) -->
   <div class="card">
-    <div class="note">
-      Stores draft in <code>localStorage["pvp:games"]</code> / <code>["pvp:matches"]</code>, and publishes a combined feed at
-      <code>localStorage["pvp:builder"]</code>. Images from <b>assets/slot images/</b>.
+    <div class="inbox">
+      <span class="tag">Entries Inbox</span>
+      <button id="btnInboxRefresh" class="btn ghost">Refresh Inbox</button>
+      <button id="btnPairSelected" class="btn ghost">Pair Selected → Play-in</button>
+      <button id="btnAutoPair" class="btn ghost">Auto-pair All</button>
+      <button id="btnClearInbox" class="btn danger">Clear Inbox</button>
+      <span id="inboxCount" class="pill">0 entries</span>
+      <span id="inboxKey" class="pill" title="Detected storage key">—</span>
     </div>
+    <div id="inboxList" class="inboxList">No entries yet.</div>
   </div>
+
+  <!-- Rounds -->
+  <div id="rounds"></div>
 </div>
 
 <script>
-(function(){
-  "use strict";
+/* ========= tiny helpers ========= */
+const $ = s => document.querySelector(s);
+const el = (t, cls) => { const a=document.createElement(t); if(cls) a.className=cls; return a; };
+const up = s => String(s||'').trim().toUpperCase();
+const sget=(k,d=null)=>{ try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(_){return d;} };
+const sset=(k,v)=>{ try{localStorage.setItem(k,JSON.stringify(v));}catch(_){ } };
+const now = () => new Date().toLocaleTimeString();
 
-  /* ------------ CONFIG (same robust Auto finder) ------------ */
-  const BASES = ['assets/slot images/', '../assets/slot images/', '/assets/slot images/'];
-  const EXT = ['webp','png','jpg','jpeg'];
-  let IMG_INDEX = null;
+/* ========= images ========= */
+function slotImgFrom(title){
+  const DEF="/assets/slot_images/mateslots_logo.png";
+  const special={"rip city":"rip_city","gates":"gates_of_olympus","gates of olympus":"gates_of_olympus","starlight princess":"starlight_princess"};
+  if(!title) return DEF;
+  let s=String(title).trim().toLowerCase();
+  if(special[s]) s=special[s];
+  s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,'and').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  return `/assets/slot_images/${s||'mateslots_logo'}.png`;
+}
 
-  /* ------------ KEYS ------------ */
-  const GKEY='pvp:games', MKEY='pvp:matches', BKEY='pvp:builder';
+/* ========= keys (legacy-friendly) ========= */
+const PRIMARY_INBOX = 'pvp:entry:inbox';
+const ALT_INBOX_KEYS = [
+  'pvp:entries','pvp:entry','pvp:entry:list','pvp:entry_queue','pvp:playin:inbox','pvp:inbox'
+];
+let INBOX_KEY = PRIMARY_INBOX;
 
-  /* ------------ DOM ------------ */
-  const $ = s=>document.querySelector(s);
-  const els = {
-    msg: $('#msg'),
-    inGTitle: $('#inGTitle'), inProv: $('#inProv'), inNote: $('#inNote'),
-    inFile: $('#inFile'), inAsset: $('#inAsset'), btnAuto: $('#btnAuto'),
-    btnAdd: $('#btnAdd'), btnSave: $('#btnSave'), btnPublish: $('#btnPublish'), btnClear: $('#btnClear'),
-    gamesList: $('#gamesList'), matches: $('#matches'), btnAddMatch: $('#btnAddMatch')
+function normalizeEntries(v){
+  let a = [];
+  if(Array.isArray(v)) a=v;
+  else if(v && Array.isArray(v.items)) a=v.items;
+  else return [];
+  return a.map(x=>({
+    id: x.id || x._id || x.ts || (Date.now()+Math.random()),
+    username: up(x.username || x.user || x.name || x.player || x.nickname || x.handle || ''),
+    game: x.game || x.slot || x.title || x.leftGame || x.rightGame || '',
+    ts: x.ts || x.time || Date.now()
+  })).filter(e=>e.username);
+}
+
+function sniffInbox(){
+  // 1) primary
+  let arr = normalizeEntries(sget(PRIMARY_INBOX));
+  if(arr.length){ INBOX_KEY=PRIMARY_INBOX; return arr; }
+  // 2) known alternates
+  for(const k of ALT_INBOX_KEYS){
+    const v = normalizeEntries(sget(k));
+    if(v.length){ INBOX_KEY=k; return v; }
+  }
+  // 3) scan everything that looks like pvp+entry/inbox
+  for(let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    if(!/pvp.*(entry|inbox)/i.test(k)) continue;
+    const v = normalizeEntries(sget(k));
+    if(v.length){ INBOX_KEY=k; return v; }
+  }
+  INBOX_KEY = PRIMARY_INBOX; // default
+  return [];
+}
+
+/* ========= bracket state ========= */
+const K_BUILDER = 'pvp:builder';
+const K_LIVE    = 'pvp:live';
+
+let state = sget(K_BUILDER) || {
+  rounds: [
+    { name:"Play-in", matches:[] },
+    { name:"Quarterfinals", matches:[] },
+    { name:"Semifinals", matches:[] },
+    { name:"Grand Final", matches:[] }
+  ],
+  publishedAt: 0
+};
+function save(){ sset(K_BUILDER,state); }
+
+/* ========= inbox UI ========= */
+function renderInbox(){
+  const box = $("#inboxList");
+  const list = sniffInbox();
+  $("#inboxCount").textContent = `${list.length} entries`;
+  $("#inboxKey").textContent = INBOX_KEY;
+  if(!list.length){ box.innerHTML='No entries yet.'; return; }
+  box.innerHTML='';
+  list.forEach((e,i)=>{
+    const row=document.createElement('label');
+    row.style.display='grid';
+    row.style.gridTemplateColumns='24px 1fr 1fr auto';
+    row.style.alignItems='center'; row.style.gap='8px'; row.style.padding='4px 0';
+    row.innerHTML=`<input type="checkbox" data-id="${e.id}"><span>${e.username}</span><span class="tiny">${e.game||''}</span><span class="tiny">${new Date(e.ts).toLocaleString()}</span>`;
+    box.appendChild(row);
+  });
+}
+$("#btnInboxRefresh").onclick = renderInbox;
+$("#btnClearInbox").onclick = ()=>{
+  if(!confirm('Clear all entries from '+INBOX_KEY+'?')) return;
+  sset(INBOX_KEY, []);
+  renderInbox();
+};
+$("#btnPairSelected").onclick = ()=>{
+  const all = sniffInbox();
+  const selectedIds = Array.from($("#inboxList").querySelectorAll('input[type=checkbox]:checked')).map(x=>x.dataset.id);
+  const picks = all.filter(x=> selectedIds.includes(String(x.id)));
+  if(picks.length<2){ alert('Select at least 2 entries.'); return; }
+  for(let i=0;i<picks.length;i+=2){
+    const L=picks[i], R=picks[i+1]; if(!R) break;
+    addMatchToRound(0, L.username, L.game, R.username, R.game);
+  }
+  // remove the ones we used
+  const keep = all.filter(x=> !selectedIds.includes(String(x.id)));
+  sset(INBOX_KEY, keep);
+  renderInbox();
+};
+$("#btnAutoPair").onclick = ()=>{
+  const all = sniffInbox();
+  if(all.length<2){ alert('Need at least two entries.'); return; }
+  for(let i=0;i<all.length;i+=2){
+    const L=all[i], R=all[i+1]; if(!R) break;
+    addMatchToRound(0, L.username, L.game, R.username, R.game);
+  }
+  sset(INBOX_KEY, []); renderInbox();
+};
+
+/* ========= add / render ========= */
+function addMatchToRound(roundIdx, leftName, leftGame, rightName, rightGame){
+  const m = {
+    id: "m_"+Math.random().toString(36).slice(2,8),
+    left:  { username: up(leftName||''),  game: String(leftGame||"")  },
+    right: { username: up(rightName||''), game: String(rightGame||"") },
+    leftScore: 0, rightScore: 0, winner: null, status:"pending", _history:[]
   };
+  state.rounds[roundIdx].matches.push(m);
+  save(); paint();
+}
 
-  /* ------------ STATE ------------ */
-  let games = load(GKEY) || []; // {id,title,provider,note,image,imageUrl}
-  let matches = load(MKEY) || []; // {id,leftId,rightId,leftTitle,rightTitle,leftImg,rightImg,leftScore,rightScore,winnerId}
+function renderRound(round, idx){
+  const card = el('div','card');
+  const head = el('div','row');
+  head.innerHTML = `<span class="pill">${round.name}</span><span class="pill">${round.matches.length} match${round.matches.length!==1?'es':''}</span>`;
+  card.appendChild(head);
 
-  /* ------------ UTILS ------------ */
-  function load(k){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):null;}catch{ return null; } }
-  function save(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
-  function toast(t,ok){ els.msg.textContent=t; els.msg.style.color=ok===false?'#ff9aa7':'#baffea'; clearTimeout(els._t); els._t=setTimeout(()=>els.msg.textContent='',2200); }
-  function slug(s){ return (s||'').toString().trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
-  function enc(u){ return encodeURI(u); }
+  round.matches.forEach((m)=>{
+    const row = el('div','match');
+    const grid = el('div','grid');
 
-  async function imgExists(url){
-    return new Promise(res=>{
-      const i=new Image(); i.onload=()=>res(true); i.onerror=()=>res(false);
-      i.src = enc(url) + (url.includes('?')?'&':'?') + 'v=' + Date.now();
-    });
-  }
+    // left
+    const l = el('div');
+    const lImg = el('img','imgprev'); lImg.src = slotImgFrom(m.left.game); lImg.onerror=()=>{ lImg.src="/assets/slot_images/mateslots_logo.png"; };
+    const lName = el('div'); lName.innerHTML = `<b>${m.left.username||'—'}</b><div class="tiny">${m.left.game||'&nbsp;'}</div>`;
+    const lWrap = el('div','row'); lWrap.appendChild(lImg); lWrap.appendChild(lName);
+    l.appendChild(lWrap);
 
-  async function loadIndex(){
-    for (const b of BASES){
-      try{
-        const r = await fetch(enc(b + 'index.json'), {cache:'no-store'});
-        if(r.ok){ const j = await r.json(); return j.images || j; }
-      }catch(e){}
-    }
-    return null;
-  }
+    // mid
+    const mid = el('div','row'); mid.style.justifyContent='center'; mid.innerHTML = `<span class="pill">VS</span>`;
 
-  async function autoFind(){
-    const raw = els.inGTitle.value.trim();
-    const prv = els.inProv.value.trim();
-    if(!raw){ toast('Type a game title first.', false); return; }
-    if(IMG_INDEX===null) IMG_INDEX = await loadIndex();
+    // right
+    const r = el('div'); r.style.textAlign='right';
+    const rImg = el('img','imgprev'); rImg.src = slotImgFrom(m.right.game); rImg.onerror=()=>{ rImg.src="/assets/slot_images/mateslots_logo.png"; };
+    const rName = el('div'); rName.innerHTML = `<b>${m.right.username||'—'}</b><div class="tiny">${m.right.game||'&nbsp;'}</div>`;
+    const rWrap = el('div','row'); rWrap.style.justifyContent='flex-end'; rWrap.appendChild(rName); rWrap.appendChild(rImg);
+    r.appendChild(rWrap);
 
-    const tSlug = slug(raw), pSlug = slug(prv), rawLower = raw.toLowerCase();
+    grid.appendChild(l); grid.appendChild(mid); grid.appendChild(r);
+    row.appendChild(grid);
 
-    const k1 = tSlug, k2 = pSlug ? `${pSlug}__${tSlug}` : null;
-    const mapVal = IMG_INDEX && (IMG_INDEX[k2] || IMG_INDEX[k1]);
-    if(mapVal){
-      const cands = (/^(?:\/|\.{1,2}\/|assets\/)/.test(mapVal)) ? [mapVal] : BASES.map(b=>b+mapVal);
-      for(const u of cands){ if(await imgExists(u)){ els.inAsset.value=u; toast('Found image (index) ✓'); return; } }
-    }
+    // controls
+    const bar = el('div','row'); bar.style.marginTop='8px';
+    const lBtn = el('button','btn ghost'); lBtn.textContent="Left Wins";
+    const rBtn = el('button','btn ghost'); rBtn.textContent="Right Wins";
+    const clr  = el('button','btn danger'); clr.textContent="Clear";
+    const undo = el('button','undo'); undo.textContent='Undo';
+    const status = el('span','pill'); status.textContent = m.winner? (m.winner==='L'? (m.left.username||'LEFT') : (m.right.username||'RIGHT')) : 'Pending';
 
-    const guesses=[];
-    for(const base of BASES){
-      EXT.forEach(ext=>guesses.push(`${base}${raw}.${ext}`));
-      EXT.forEach(ext=>guesses.push(`${base}${rawLower}.${ext}`));
-      EXT.forEach(ext=>guesses.push(`${base}${tSlug}.${ext}`));
-      if(pSlug){
-        EXT.forEach(ext=>guesses.push(`${base}${pSlug}__${tSlug}.${ext}`));
-        EXT.forEach(ext=>guesses.push(`${base}${pSlug}/${tSlug}.${ext}`));
+    function recalcFrom(roundIdx){
+      // rebuild downstream rounds from winners
+      for(let i=roundIdx;i<state.rounds.length-1;i++){
+        const fromWinners = state.rounds[i].matches.filter(x=>x.winner==='L'||x.winner==='R')
+          .map(x => x.winner==='L' ? x.left : x.right);
+        const to = state.rounds[i+1];
+        const rebuilt=[];
+        for(let j=0;j<fromWinners.length;j+=2){
+          const L = fromWinners[j]   || { username:'BYE', game:'' };
+          const R = fromWinners[j+1] || { username:'BYE', game:'' };
+          const keep = to.matches[Math.floor(j/2)];
+          rebuilt.push({
+            id: keep?.id || "m_"+Math.random().toString(36).slice(2,8),
+            left:L, right:R, leftScore:0, rightScore:0, winner:null, status:"pending", _history:[]
+          });
+        }
+        to.matches = rebuilt;
       }
     }
-    for(const u of guesses){ if(await imgExists(u)){ els.inAsset.value=u; toast('Found image ✓'); return; } }
-    toast('No matching image found. Upload or paste a path.', false);
-  }
-
-  els.btnAuto.addEventListener('click', autoFind);
-  ['inGTitle','inProv'].forEach(id=>document.getElementById(id).addEventListener('blur', ()=>{ if(!els.inAsset.value) autoFind(); }));
-  ['inGTitle','inProv','inNote'].forEach(id=>document.getElementById(id).addEventListener('input', function(){ this.value=this.value.toUpperCase(); }));
-
-  /* ------------ RENDER ------------ */
-  function renderGames(){
-    els.gamesList.innerHTML='';
-    if(!games.length){ els.gamesList.innerHTML='<div class="pill">No games yet.</div>'; return; }
-    games.forEach(g=>{
-      const div=document.createElement('div'); div.className='gameCard'; div.dataset.id=g.id;
-      const src=g.imageUrl||g.image||'';
-      div.innerHTML=`
-        <div class="tiny">${src?`<img src="${enc(src)}" alt="">`:''}</div>
-        <div><div class="gtitle">${g.title||'UNTITLED'}</div><div class="sub">${g.provider||''}</div></div>
-        <button class="btn" data-act="pick">Select</button>
-        <button class="btn del" data-act="del">Delete</button>
-      `;
-      div.querySelector('[data-act="pick"]').addEventListener('click', ()=>{ div.classList.toggle('picked'); });
-      div.querySelector('[data-act="del"]').addEventListener('click', ()=>{
-        games = games.filter(x=>x.id!==g.id);
-        matches = matches.filter(mx=>mx.leftId!==g.id && mx.rightId!==g.id);
-        save(GKEY,games); save(MKEY,matches); renderGames(); renderMatches();
-      });
-      els.gamesList.appendChild(div);
-    });
-  }
-
-  function renderMatches(){
-    els.matches.innerHTML='';
-    if(!matches.length){ els.matches.innerHTML='<div class="pill">No matchups yet.</div>'; return; }
-    matches.forEach(mx=>{
-      const L = games.find(x=>x.id===mx.leftId)||{}, R = games.find(x=>x.id===mx.rightId)||{};
-      const leftWin = mx.winnerId && mx.winnerId===mx.leftId;
-      const rightWin = mx.winnerId && mx.winnerId===mx.rightId;
-      const li=document.createElement('div'); li.className='matchCard'; li.dataset.id=mx.id;
-      li.innerHTML=`
-        <div class="sideL">
-          <div class="sname">${leftWin?'<span class="cup">🏆</span>':''}${mx.leftTitle||L.title||'LEFT'}</div>
-          <div class="thumb">${(L.imageUrl||L.image)?`<img src="${enc(L.imageUrl||L.image)}" alt="">`:''}</div>
-        </div>
-        <div class="vs">VS</div>
-        <div class="sideR">
-          <div class="thumb">${(R.imageUrl||R.image)?`<img src="${enc(R.imageUrl||R.image)}" alt="">`:''}</div>
-          <div class="sname">${rightWin?'<span class="cup">🏆</span>':''}${mx.rightTitle||R.title||'RIGHT'}</div>
-        </div>
-        <div class="row" style="gap:8px;justify-content:center">
-          <input class="score sL" type="number" min="0" step="1" value="${+mx.leftScore||0}"/>
-          <span class="vs">:</span>
-          <input class="score sR" type="number" min="0" step="1" value="${+mx.rightScore||0}"/>
-          <button class="btn ok btnSettle">Set Winner</button>
-        </div>
-        <div style="text-align:right"><button class="btn del" data-act="del">Delete</button></div>
-      `;
-      li.querySelector('.sL').addEventListener('input', e=>{ mx.leftScore=+e.target.value||0; save(MKEY,matches); });
-      li.querySelector('.sR').addEventListener('input', e=>{ mx.rightScore=+e.target.value||0; save(MKEY,matches); });
-      li.querySelector('.btnSettle').addEventListener('click', ()=>{
-        const Ls=+mx.leftScore||0, Rs=+mx.rightScore||0;
-        if(Ls===Rs){ toast('Scores tied. Adjust first.', false); return; }
-        mx.winnerId = (Ls>Rs)? mx.leftId : mx.rightId;
-        save(MKEY,matches); renderMatches(); toast('Winner set.');
-      });
-      li.querySelector('[data-act="del"]').addEventListener('click', ()=>{
-        matches = matches.filter(x=>x.id!==mx.id); save(MKEY,matches); renderMatches();
-      });
-      els.matches.appendChild(li);
-    });
-  }
-
-  /* ------------ ACTIONS ------------ */
-  els.btnAdd.addEventListener('click', ()=>{
-    const t=els.inGTitle.value.trim().toUpperCase();
-    const p=els.inProv.value.trim().toUpperCase();
-    const n=els.inNote.value.trim().toUpperCase();
-    const asset=els.inAsset.value.trim();
-    if(!t){ toast('Enter a game title.', false); return; }
-
-    function add(imgUrl){
-      games.push({id:'PG'+Math.random().toString(36).slice(2,10).toUpperCase(), title:t, provider:p, note:n, imageUrl:imgUrl||null});
-      els.inGTitle.value=''; els.inProv.value=''; els.inNote.value=''; els.inAsset.value=''; els.inFile.value='';
-      save(GKEY,games); renderGames(); toast('Game added.');
+    function setWinner(w){
+      m._history.push({winner:m.winner,leftScore:m.leftScore,rightScore:m.rightScore});
+      m.winner=w; m.status='done';
+      m.leftScore = (w==='L')?1:0; m.rightScore = (w==='R')?1:0;
+      save(); recalcFrom( state.rounds.findIndex(r=>r.matches.includes(m)) ); paint();
     }
-    if(els.inFile.files && els.inFile.files[0]){
-      const fr=new FileReader(); fr.onload=e=>add(e.target.result); fr.readAsDataURL(els.inFile.files[0]);
-    }else{ add(asset||null); }
-  });
+    function clearWinner(){
+      m._history.push({winner:m.winner,leftScore:m.leftScore,rightScore:m.rightScore});
+      m.winner=null; m.status='pending'; m.leftScore=0; m.rightScore=0;
+      save(); recalcFrom( state.rounds.findIndex(r=>r.matches.includes(m)) ); paint();
+    }
+    function doUndo(){
+      const last=m._history.pop(); if(!last) return;
+      m.winner=last.winner; m.leftScore=last.leftScore; m.rightScore=last.rightScore;
+      m.status=m.winner? 'done':'pending'; save();
+      recalcFrom( state.rounds.findIndex(r=>r.matches.includes(m)) ); paint();
+    }
 
-  els.btnAddMatch.addEventListener('click', ()=>{
-    const picks=[...els.gamesList.querySelectorAll('.gameCard.picked')].map(x=>x.dataset.id);
-    if(picks.length!==2){ toast('Pick exactly TWO games (click “Select”).', false); return; }
-    const L=games.find(x=>x.id===picks[0]), R=games.find(x=>x.id===picks[1]);
-    matches.push({
-      id:'PM'+Math.random().toString(36).slice(2,10).toUpperCase(),
-      leftId:L.id,rightId:R.id,leftTitle:L.title,rightTitle:R.title,
-      leftImg:L.imageUrl||L.image||'', rightImg:R.imageUrl||R.image||'',
-      leftScore:0,rightScore:0,winnerId:null
+    lBtn.onclick = ()=> setWinner('L');
+    rBtn.onclick = ()=> setWinner('R');
+    clr.onclick  = clearWinner;
+    undo.onclick = doUndo;
+
+    bar.appendChild(lBtn); bar.appendChild(rBtn); bar.appendChild(clr); bar.appendChild(undo); bar.appendChild(status);
+    row.appendChild(bar);
+    card.appendChild(row);
+  });
+  return card;
+}
+
+function paint(){
+  const root = $("#rounds"); root.innerHTML = "";
+  state.rounds.forEach((r,i)=> root.appendChild(renderRound(r,i)));
+}
+
+/* ========= quick add + previews ========= */
+function previewHook(){
+  const lG=$("#lGame"), rG=$("#rGame"), lP=$("#lPrev"), rP=$("#rPrev");
+  const upd = ()=>{ lP.src=slotImgFrom(lG.value); lP.onerror=()=>lP.src="/assets/slot_images/mateslots_logo.png";
+                    rP.src=slotImgFrom(rG.value); rP.onerror=()=>rP.src="/assets/slot_images/mateslots_logo.png"; };
+  lG.addEventListener('input',upd); rG.addEventListener('input',upd); upd();
+}
+$("#btnAdd").onclick = ()=>{
+  const lN=$("#lName").value, lG=$("#lGame").value, rN=$("#rName").value, rG=$("#rGame").value;
+  if(!lN || !rN){ alert("Enter both player names."); return; }
+  addMatchToRound(0, lN,lG, rN,rG);
+  $("#lName").value=""; $("#lGame").value=""; $("#rName").value=""; $("#rGame").value="";
+  previewHook();
+};
+
+/* ========= publish ========= */
+function buildLive(){
+  const live={ title:"PVP — Knockout", lastUpdated:Date.now(), rounds: state.rounds };
+  live.flat=[];
+  state.rounds.forEach(r=> r.matches.forEach(m=>{
+    live.flat.push({
+      id:m.id, round:r.name,
+      left:m.left.username, right:m.right.username,
+      leftProv:m.left.game, rightProv:m.right.game,
+      leftImg:slotImgFrom(m.left.game), rightImg:slotImgFrom(m.right.game),
+      leftScore:m.leftScore|0, rightScore:m.rightScore|0, winner:m.winner
     });
-    els.gamesList.querySelectorAll('.picked').forEach(x=>x.classList.remove('picked'));
-    save(MKEY,matches); renderMatches(); toast('Match added.');
-  });
+  }));
+  return live;
+}
+async function publish(){
+  $("#btnPublish").disabled=true; $("#msg").textContent='Publishing…';
+  const live = buildLive();
+  sset(K_LIVE, live); // local live for Unified Live + widget
+  try{
+    const r = await fetch("/api/pvp/bracket", {
+      method:"POST", credentials:"include",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ builder: state })
+    });
+    if(!r.ok) throw new Error("HTTP "+r.status);
+  }catch(_){ /* dev/offline -> ignore */ }
+  $("#badge").textContent = "Published @ "+now();
+  $("#msg").textContent = "Ready";
+  $("#btnPublish").disabled=false;
+}
 
-  els.btnSave.addEventListener('click', ()=>{ save(GKEY,games); save(MKEY,matches); toast('Draft saved.'); });
+/* ========= reset ========= */
+$("#btnReset").onclick = ()=>{ if(!confirm("Clear all rounds?")) return;
+  state.rounds.forEach(r=> r.matches=[]); save(); paint(); };
 
-  els.btnPublish.addEventListener('click', ()=>{
-    const builder={
-      games: games.map(g=>({id:g.id,title:g.title,provider:g.provider,note:g.note,imageUrl:g.imageUrl||null})),
-      matches: matches.map(mx=>({
-        id:mx.id,leftId:mx.leftId,rightId:mx.rightId,
-        leftTitle:mx.leftTitle,rightTitle:mx.rightTitle,
-        leftImg:mx.leftImg||null,rightImg:mx.rightImg||null,
-        leftScore:+mx.leftScore||0,rightScore:+mx.rightScore||0,winnerId:mx.winnerId||null
-      })),
-      lastUpdated: Date.now()
-    };
-    save(BKEY,builder); toast('Published builder feed.');
-  });
-
-  els.btnClear.addEventListener('click', ()=>{
-    if(!confirm('Delete ALL games & matches?')) return;
-    games=[]; matches=[]; save(GKEY,games); save(MKEY,matches); toast('Cleared.'); renderGames(); renderMatches();
-  });
-
-  (async()=>{ IMG_INDEX = await loadIndex(); renderGames(); renderMatches(); })();
-
-})();
+/* ========= boot ========= */
+previewHook(); renderInbox(); paint();
+$("#btnPublish").onclick = publish;
 </script>
 </body>
 </html>
