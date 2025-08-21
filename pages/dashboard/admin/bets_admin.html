@@ -1,580 +1,338 @@
-<!-- Bets Admin — Unified (BG / Bonus / PVP) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Bets Admin — Unified (BG / Bonus / PVP)</title>
-
-<!-- Define API base early so every fetch sees it -->
-<script>
-  window.API_BASE =
-    (location.hostname==='127.0.0.1' || location.hostname==='localhost')
-      ? 'http://localhost:3000'
-      : ''; // same-origin in production
-</script>
-
+<title>L3Z — Bets Admin (Unified)</title>
+<meta http-equiv="Cache-Control" content="no-store"/>
 <style>
-:root{--bg:#060b0d;--panel:#0b1417;--ink:#eaf7ff;--muted:#9fd0d6;--line:rgba(0,255,255,.18);--teal:#00ffff}
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,Arial,sans-serif}
-.wrap{max-width:1400px;margin:0 auto;padding:16px 16px 64px}
-h1{margin:0 0 12px;color:var(--teal);text-shadow:0 0 14px #00ffff44}
-.card{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
-.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.btn{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#0f1720;color:#eaf7ff;font-weight:800;cursor:pointer}
-.btn.ok{background:#103d30;border-color:#1fa37b}
-.btn.warn{background:#231b0f;border-color:#8c6926}
-.btn.danger{background:#2b1116;border-color:#7e2a3c}
-.pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cfffff}
-input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;color:#eaf7ff;padding:10px}
-.small{font-size:12px;color:#9fd0d6}
-.sectionTitle{font-weight:900;margin-bottom:8px}
-.badge{padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#081318;color:#bfe}
-.hr{height:1px;background:var(--line);margin:10px 0}
-/* BG table */
-.table{width:100%;border-collapse:separate;border-spacing:0 10px}
-.table th,.table td{padding:8px 10px}
-.cell{border:1px solid var(--line);border-radius:10px;background:#0c1519}
-.thumb{width:40px;height:40px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#000}
-.thumb img{width:100%;height:100%;object-fit:cover;display:block}
-/* markets */
-.mkts{display:flex;flex-direction:column;gap:12px}
-.mkt{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px}
-.mTop{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-.selRow{display:grid;grid-template-columns:1fr 110px auto;gap:8px;margin:6px 0}
-.lineRow{display:flex;align-items:center;gap:8px;margin:4px 0}
-.del{border:1px solid var(--line);border-radius:10px;background:#2b1116;color:#ffd0d6;padding:8px 10px;cursor:pointer}
-/* small grid for defaults */
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
-.box{border:1px solid var(--line);border-radius:10px;background:#0a1418;padding:8px}
-.box label{display:block;font-size:12px;color:#9fd0d6;margin-bottom:6px}
-.box input{width:100%}
+  :root{
+    --bg:#060b0d; --panel:#0b1417; --ink:#eaf7ff; --muted:#9fd0d6;
+    --line:rgba(0,255,255,.18); --teal:#00ffff; --gold:#ffb42d;
+    --ok:#12d48a; --bad:#e25a6f; --ink2:#cfffff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#000 url("/assets/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  .wrap{max-width:1200px;margin:0 auto;padding:16px 16px 80px}
+  .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  h1{margin:0;color:var(--teal);text-shadow:0 0 14px #00ffff55}
+  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:var(--ink2)}
+  .tabs{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 8px}
+  .tab{appearance:none;border:1px solid var(--line);border-radius:999px;background:#0a1116;color:#cfe;padding:8px 12px;font-weight:800;cursor:pointer}
+  .tab.on{background:rgba(0,255,255,.08);border-color:var(--teal);box-shadow:0 0 0 1px rgba(0,255,255,.1) inset}
+  .grid{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+  .card{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  input,textarea,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;color:var(--ink);padding:8px}
+  textarea{width:100%;min-height:80px}
+  .btn{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:#0f1720;color:var(--ink);font-weight:800;cursor:pointer}
+  .btn.ok{background:#103d30;border-color:#1fa37b}
+  .btn.warn{background:#231b0f;border-color:#8c6926}
+  .btn.danger{background:#2b1116;border-color:#7e2a3c}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+  .tbl{width:100%;border-collapse:separate;border-spacing:0}
+  .tbl th,.tbl td{border-bottom:1px solid rgba(255,255,255,.06);padding:8px;text-align:left;font-size:13px}
+  .tbl th{color:var(--muted)}
+  .right{margin-left:auto}
+  .muted{color:var(--muted);font-size:12px}
+  .toast{position:fixed;right:16px;bottom:16px;background:#0b1f21;border:1px solid var(--line);border-radius:10px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:.2s;pointer-events:none;z-index:9999}
+  .toast.on{opacity:1;transform:translateY(0)}
+  @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
 </style>
 </head>
-
 <body>
+
+<!-- DEV KILL SWITCH: keeps admin open while you build -->
+<script src="/assets/js/admin-dev-open.js"></script>
+
+<!-- Minimal API helper (uses global api if already present) -->
+<script>
+(function(){
+  if (window.api && typeof window.api.get==="function") return;
+  function isJson(r){return (r.headers.get("content-type")||"").indexOf("application/json")>-1;}
+  function core(p,o){o=o||{};return fetch(p,{credentials:"include",cache:"no-store",headers:o.headers||{},method:o.method||"GET",body:o.body}).then(function(r){
+    return (isJson(r)?r.json():r.text()).catch(function(){return null;}).then(function(b){
+      if(!r.ok||(b&&b.ok===false)){var e=new Error((b&&b.error)||("HTTP "+r.status));e.status=r.status;e.body=b;throw e;}
+      return b==null?{ok:true}:b;
+    });
+  });}
+  window.api={
+    get:function(p,o){return core(p,o||{});},
+    post:function(p,b,o){o=o||{};o.method="POST";o.headers=Object.assign({"Content-Type":"application/json"},o.headers||{});o.body=JSON.stringify(b||{});return core(p,o);}
+  };
+})();
+</script>
+
 <div class="wrap">
-  <h1>Bets Admin — Unified</h1>
-
-  <div class="card row" style="justify-content:space-between">
-    <div class="row">
-      <button id="btnSave" class="btn">Save</button>
-      <button id="btnPublish" class="btn ok">Publish to Players</button>
-      <button id="btnOpenAll" class="btn">Open All</button>
-      <button id="btnLockAll" class="btn">Lock All</button>
-      <button id="btnDelete" class="btn danger">Delete All</button>
-    </div>
-    <div class="row">
-      <span id="stamp" class="pill">Not published</span>
-      <span id="msg" class="pill">Ready</span>
-    </div>
+  <div class="top">
+    <h1>Bets Admin</h1>
+    <span class="pill" id="env">—</span>
+    <span class="muted">Create events and publish to players.</span>
+    <button id="btnPublishAll" class="btn ok right">Publish All Drafts</button>
   </div>
 
-  <div class="card row" style="gap:12px">
-    <label><input id="enBG" type="checkbox"> <b>Battleground</b></label>
-    <label><input id="enBONUS" type="checkbox"> <b>Bonus Hunt</b></label>
-    <label><input id="enPVP" type="checkbox"> <b>PVP Predictions</b></label>
-    <span class="small">BH markets auto-build from the Bonus Hunt page; you set the odds.</span>
+  <div class="tabs" role="tablist" aria-label="Event kind">
+    <button class="tab on"  data-kind="battleground" role="tab" aria-selected="true">Battleground</button>
+    <button class="tab"      data-kind="bonus"        role="tab" aria-selected="false">Bonus Hunt</button>
+    <button class="tab"      data-kind="pvp"          role="tab" aria-selected="false">PVP</button>
   </div>
 
-  <div class="card" id="secBG" style="display:none">
-    <div class="row" style="justify-content:space-between">
-      <div class="sectionTitle">Battleground</div>
-      <div class="badge" id="statusBG">OPEN</div>
-    </div>
+  <div class="grid">
+    <!-- EDITOR -->
+    <div class="card">
+      <div class="row" style="margin-bottom:10px">
+        <input id="evTitle" placeholder="Event title (e.g., Battleground — Custom Markets)" style="flex:1;min-width:220px">
+        <input id="evId" placeholder="Event ID (optional)" style="width:220px">
+        <select id="evKind" style="width:160px">
+          <option value="battleground">Battleground</option>
+          <option value="bonus">Bonus Hunt</option>
+          <option value="pvp">PVP</option>
+        </select>
+      </div>
 
-    <!-- import/build -->
-    <div class="row" style="justify-content:space-between;align-items:center">
-      <div class="row">
-        <button class="btn" id="bgImport">Import Matchups</button>
-        <span class="small">Reads from <code>bg:builder:battleground</code> or <code>battleground:live</code> (with fallbacks).</span>
-        <span class="pill" id="dbgImport">—</span>
-      </div>
-      <div class="row">
-        <button class="btn" id="bgBuild">Build/Refresh H2H</button>
-      </div>
-    </div>
+      <table class="tbl" id="pickTable">
+        <thead>
+          <tr><th style="width:34%">Left</th><th style="width:34%">Right</th><th>Pick Name</th><th style="width:90px"></th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
 
-    <!-- BG defaults + toolbar -->
-    <div class="hr"></div>
-    <div class="box">
-      <div class="row" style="justify-content:space-between">
-        <div class="pill">BG Defaults</div>
-        <div class="row">
-          <button id="bgSaveDefaults" class="btn ok">Save Defaults</button>
-          <button id="bgApplyDefaults" class="btn">Apply Defaults</button>
-          <button id="bgMigrate" class="btn warn" title="Fix older markets to new shape">Migrate Old</button>
-        </div>
+      <div class="row" style="margin-top:10px">
+        <button id="btnAddRow" class="btn">+ Add Pick</button>
+        <button id="btnClear" class="btn warn">Clear Editor</button>
+        <span class="muted">Each row becomes one pick players can choose from.</span>
       </div>
-      <div class="grid2" style="margin-top:8px">
-        <div class="box"><label>O/U Line</label><input id="def_ou_line" type="number" step="0.5" value="25.5"></div>
-        <div class="box"><label>O/U — Over Odds</label><input id="def_ou_over" type="number" step="0.01" value="1.84"></div>
-        <div class="box"><label>O/U — Under Odds</label><input id="def_ou_under" type="number" step="0.01" value="1.84"></div>
-        <div class="box"><label>20–22.5 Odds</label><input id="def_band_20_22" type="number" step="0.01" value="1.78"></div>
-        <div class="box"><label>23–25.5 Odds</label><input id="def_band_23_25" type="number" step="0.01" value="1.27"></div>
-        <div class="box"><label>26–28.5 Odds</label><input id="def_band_26_28" type="number" step="0.01" value="1.70"></div>
-        <div class="box"><label>29–30 Odds</label><input id="def_band_29_30" type="number" step="0.01" value="1.14"></div>
+
+      <div class="row" style="margin-top:14px">
+        <button id="btnSaveDraft" class="btn ok">Save Draft</button>
+        <button id="btnPublishOne" class="btn">Publish This Event</button>
+        <span id="editMsg" class="pill">Ready</span>
       </div>
     </div>
 
-    <div class="row" style="justify-content:space-between;align-items:center;margin-top:10px">
-      <div class="row">
-        <button class="btn" id="bgAddOU">+ Total Rounds O/U (defaults)</button>
-        <button class="btn" id="bgAddBands">+ Total Rounds Bands (20–30)</button>
-        <button class="btn" id="bgAddYN">+ Yes/No</button>
-        <button class="btn" id="bgAddCU">+ Custom</button>
-        <button class="btn" id="bgAddCS">+ Which Matchup Clean Sweep?</button>
+    <!-- DRAFTS LIST -->
+    <div class="card">
+      <div class="row" style="margin-bottom:8px">
+        <div style="font-weight:900">Drafts</div>
+        <button id="btnRefresh" class="btn right">Refresh</button>
       </div>
+      <div style="max-height:420px;overflow:auto;border:1px solid var(--line);border-radius:10px">
+        <table class="tbl" id="draftTbl">
+          <thead><tr><th>Kind</th><th>Title</th><th>ID</th><th>Created</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="muted" style="margin-top:6px">Click “Load” to bring a draft back into the editor.</div>
     </div>
-
-    <!-- H2H -->
-    <div class="hr"></div>
-    <table class="table">
-      <thead>
-        <tr>
-          <th class="small">#</th>
-          <th class="small">Left</th>
-          <th class="small">Right</th>
-          <th class="small">L Odds</th>
-          <th class="small">R Odds</th>
-        </tr>
-      </thead>
-      <tbody id="bgRows"></tbody>
-    </table>
-
-    <!-- Overall markets -->
-    <div class="hr"></div>
-    <div class="sectionTitle">Overall Markets</div>
-    <div id="bgMkts" class="mkts"></div>
-  </div>
-
-  <!-- BONUS -->
-  <div class="card" id="secBONUS" style="display:none">
-    <div class="row" style="justify-content:space-between">
-      <div class="row" style="gap:8px">
-        <div class="sectionTitle">Bonus Hunt</div>
-        <div class="badge" id="statusBONUS">OPEN</div>
-        <span class="pill">Reads <code>bh:live</code> (fallback <code>bonus:builder</code>)</span>
-      </div>
-      <div class="row">
-        <button id="boAuto" class="btn ok">+ Build 6 Standard Markets</button>
-        <button id="boPull" class="btn">Refresh Game List</button>
-      </div>
-    </div>
-    <div class="small" id="boGamesBadge">Games: —</div>
-    <div class="hr"></div>
-    <div id="boMkts" class="mkts"></div>
-  </div>
-
-  <!-- PVP -->
-  <div class="card" id="secPVP" style="display:none">
-    <div class="row" style="justify-content:space-between">
-      <div class="row">
-        <div class="sectionTitle">PVP Predictions</div>
-        <div class="badge" id="statusPVP">OPEN</div>
-      </div>
-      <div class="row">
-        <button id="pvImport" class="btn">Import from PVP (live)</button>
-        <button id="pvBuildWinners" class="btn ok">+ Build “Winner” Markets</button>
-        <button id="pvAddOU" class="btn">+ Over/Under</button>
-        <button id="pvAddMR" class="btn">+ Multi-Range</button>
-        <button id="pvAddYN" class="btn">+ Yes/No</button>
-        <button id="pvAddCU" class="btn">+ Custom</button>
-      </div>
-    </div>
-    <div class="small">Deepest non-empty round from <code>pvp:live</code> (or <code>pvp:builder</code>).</div>
-    <div class="hr"></div>
-    <div class="sectionTitle">Head-to-Head (from PVP)</div>
-    <div id="pvH2H" class="mkts"></div>
-    <div class="hr"></div>
-    <div class="sectionTitle">Markets</div>
-    <div id="pvMkts" class="mkts"></div>
   </div>
 </div>
+
+<div id="toast" class="toast">Saved.</div>
 
 <script>
 (function(){
   "use strict";
-  const el=(s,r=document)=>r.querySelector(s), els=(s,r=document)=>Array.from(r.querySelectorAll(s));
-  const sget=k=>{ try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(_){return null;} };
-  const sset=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
-  const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
-  const up=s=>String(s||'').toUpperCase();
-  const kid=p=>(p||'ID')+Math.random().toString(36).slice(2,10).toUpperCase();
-  const toast=(t,ok=true)=>{const m=el('#msg');m.textContent=t;m.style.color=ok?'#baffea':'#ffb4c4';setTimeout(()=>m.textContent='Ready',2000);};
-  const apiUrl = (path)=> (/^https?:\/\//i.test(path) ? path : (window.API_BASE||'') + path);
+  if (window.__BETS_ADMIN__) return; window.__BETS_ADMIN__ = true;
 
-  const K_UNIFIED='sb:markets:unified';
-  const K_BG_BUILDER='bg:builder:battleground';
+  // ===== Helpers
+  var $ = function(s,r){ return (r||document).querySelector(s); };
+  var $$ = function(s,r){ return Array.from((r||document).querySelectorAll(s)); };
+  var env = $("#env"); try{ env.textContent = location.origin; }catch(_){}
+  var toast = $("#toast"); function showToast(t){ toast.textContent=t||"Saved."; toast.classList.add("on"); setTimeout(function(){ toast.classList.remove("on"); }, 1400); }
+  function up(s){ return String(s||"").trim().toUpperCase(); }
+  function esc(s){ return String(s||"").replace(/[&<>"']/g, function(m){ return m==="&"?"&amp;":m==="<"?"&lt;":m===">"?"&gt;":"&quot;"; }); }
 
-  let state=sget(K_UNIFIED)||{
-    status:'open', lastUpdated:0,
-    sections:{ battleground:{enabled:true,h2h:[],overall:[]}, bonus:{enabled:false,overall:[]}, pvp:{enabled:false,h2h:[],overall:[]}}
-  };
+  // ===== Elements
+  var evTitle=$("#evTitle"), evId=$("#evId"), evKind=$("#evKind");
+  var pickTbody=$("#pickTable tbody");
+  var btnAddRow=$("#btnAddRow"), btnSaveDraft=$("#btnSaveDraft"), btnPublishOne=$("#btnPublishOne");
+  var btnPublishAll=$("#btnPublishAll"), btnRefresh=$("#btnRefresh"), btnClear=$("#btnClear");
+  var editMsg=$("#editMsg"), draftTbody=$("#draftTbl tbody");
 
-  /* toggles */
-  function syncToggles(){
-    el('#enBG').checked=!!state.sections.battleground.enabled;
-    el('#enBONUS').checked=!!state.sections.bonus.enabled;
-    el('#enPVP').checked=!!state.sections.pvp.enabled;
-    el('#secBG').style.display=state.sections.battleground.enabled?'':'none';
-    el('#secBONUS').style.display=state.sections.bonus.enabled?'':'none';
-    el('#secPVP').style.display=state.sections.pvp.enabled?'':'none';
-    ['BG','BONUS','PVP'].forEach(k=> el('#status'+k).textContent=(state.status||'open').toUpperCase());
-  }
-  ['BG','BONUS','PVP'].forEach(key=>{
-    el('#en'+key).addEventListener('change',()=>{
-      const map={BG:'battleground',BONUS:'bonus',PVP:'pvp'};
-      state.sections[map[key]].enabled=el('#en'+key).checked; save(); syncToggles();
+  // ===== Tabs (kind)
+  var activeKind="battleground";
+  $$(".tab").forEach(function(b){
+    b.addEventListener("click", function(){
+      $$(".tab").forEach(function(x){ x.classList.remove("on"); x.setAttribute("aria-selected","false"); });
+      b.classList.add("on"); b.setAttribute("aria-selected","true");
+      activeKind = b.getAttribute("data-kind");
+      evKind.value = activeKind;
+      refreshDrafts();
     });
   });
 
-  /* BG rows */
-  function paintBGRows(){
-    const host=el('#bgRows'); host.innerHTML='';
-    const rows=state.sections.battleground.h2h||[];
-    if(!rows.length){ host.innerHTML='<tr><td colspan="5" class="small" style="opacity:.8">No matchups yet — click Import Matchups.</td></tr>'; return; }
-    rows.forEach((h,i)=>{
-      const tr=document.createElement('tr');
-      tr.innerHTML=`
-        <td class="cell small">${i+1}</td>
-        <td class="cell"><div class="row"><div class="thumb"><img src="${esc(h.leftImg||'')}"></div><div><div class="title">${esc(h.leftTitle||'LEFT')}</div><div class="small">${esc(h.leftProv||'')}</div></div></div></td>
-        <td class="cell"><div class="row" style="justify-content:flex-end"><div><div class="title" style="text-align:right">${esc(h.rightTitle||'RIGHT')}</div><div class="small" style="text-align:right">${esc(h.rightProv||'')}</div></div><div class="thumb"><img src="${esc(h.rightImg||'')}"></div></div></td>
-        <td class="cell"><input data-k="l${i}" type="number" step="0.01" value="${esc(h.leftOdds||2)}" style="width:110px"></td>
-        <td class="cell"><input data-k="r${i}" type="number" step="0.01" value="${esc(h.rightOdds||2)}" style="width:110px"></td>`;
-      tr.querySelector('[data-k="l'+i+'"]').addEventListener('change',e=>{ state.sections.battleground.h2h[i].leftOdds=+e.target.value||1; save(); });
-      tr.querySelector('[data-k="r'+i+'"]').addEventListener('change',e=>{ state.sections.battleground.h2h[i].rightOdds=+e.target.value||1; save(); });
-      host.appendChild(tr);
-    });
+  // ===== Row management
+  function addRow(p){
+    var tr=document.createElement("tr");
+    tr.innerHTML = '<td><input placeholder="Left" value="'+esc(p&&p.left||'')+'"></td>'
+                 + '<td><input placeholder="Right" value="'+esc(p&&p.right||'')+'"></td>'
+                 + '<td><input placeholder="Pick name" value="'+esc(p&&p.pickName||'')+'"></td>'
+                 + '<td><button type="button" class="btn danger btnDel">Del</button></td>';
+    pickTbody.appendChild(tr);
+    tr.querySelector(".btnDel").addEventListener("click", function(){ tr.remove(); });
   }
+  btnAddRow.addEventListener("click", function(){ addRow(); });
+  btnClear.addEventListener("click", function(){
+    evTitle.value=""; evId.value=""; pickTbody.innerHTML=""; addRow();
+    editMsg.textContent="Cleared";
+  });
 
-  /* markets paint */
-  function paintMkts(section,mount){
-    const sec=state.sections[section]; const host=el(mount); host.innerHTML='';
-    if(!sec.overall.length){ host.innerHTML='<div class="pill">No markets yet.</div>'; return; }
-    sec.overall.forEach((m,mi)=>{
-      const box=document.createElement('div'); box.className='mkt';
-      const fixed=!!m.fixed;
-      const top=`<div class="mTop">
-        ${fixed?`<span class="pill">${esc(m.type)}</span>`:
-        `<select data-x="type">${['OVER_UNDER','MULTI_RANGE','YES_NO','CUSTOM','NUMERIC_GUESS','TEXT_GUESS'].map(t=>`<option ${m.type===t?'selected':''}>${t}</option>`).join('')}</select>`}
-        <input data-x="label" ${(fixed?'disabled':'')} placeholder="Market label" value="${esc(m.label||'')}" style="min-width:260px">
-        <span class="pill">Stake</span><input data-x="stake" type="number" step="1" value="${m.stake??10}" style="width:110px">
-        <span class="pill">Prize</span><input data-x="prize" type="number" step="1" value="${m.prize||0}" style="width:110px">
-        <select data-x="status"><option ${m.status!=='locked'?'selected':''}>OPEN</option><option ${m.status==='locked'?'selected':''}>LOCKED</option></select>
-        ${fixed?'':'<button class="del" data-act="del">Delete</button>'}
-      </div>`;
-      const extraOU = (!fixed && m.type==='OVER_UNDER') ? (`<div class="lineRow"><span class="pill">LINE</span> <input data-x="line" type="number" step="0.5" value="${m.line??''}" style="width:140px"></div>`) : '';
-      const sels = (!fixed ? (m.selections||[]).map((s,si)=>`<div class="selRow">
-        <input data-sel="${si}" data-x="slabel" placeholder="Selection" value="${esc(s.label||'')}">
-        <input data-sel="${si}" data-x="sodds" type="number" step="0.01" value="${esc(s.odds||2)}">
-        <button class="del" data-act="sdel" data-sel="${si}">×</button></div>`).join('') : '' );
-      const addBtn = (!fixed ? '<div><button class="btn" data-act="addSel">+ Add Line</button></div>' : '');
-      box.innerHTML = top + extraOU + sels + addBtn;
+  // start with one row
+  addRow();
 
-      const T=box.querySelector('[data-x="type"]'); if(T) T.addEventListener('change',e=>{ sec.overall[mi].type=e.target.value; save(); paintMkts(section,mount); });
-      const L=box.querySelector('[data-x="label"]'); if(L) L.addEventListener('change',e=>{ sec.overall[mi].label=e.target.value; save(); });
-      const St=box.querySelector('[data-x="stake"]'); if(St) St.addEventListener('change',e=>{ sec.overall[mi].stake=+e.target.value||0; save(); });
-      const Pr=box.querySelector('[data-x="prize"]'); if(Pr) Pr.addEventListener('change',e=>{ sec.overall[mi].prize=+e.target.value||0; save(); });
-      const S=box.querySelector('[data-x="status"]'); if(S) S.addEventListener('change',e=>{ sec.overall[mi].status=(e.target.value||'OPEN').toLowerCase()==='locked'?'locked':'open'; save(); });
-      const line=box.querySelector('[data-x="line"]'); if(line) line.addEventListener('change',e=>{
-        const v=+e.target.value; sec.overall[mi].line=v;
-        if(sec.overall[mi].selections?.length>=2){ sec.overall[mi].selections[0].label='Over '+v; sec.overall[mi].selections[1].label='Under '+v; }
-        save(); paintMkts(section,mount);
-      });
-      box.querySelectorAll('[data-x="slabel"]').forEach(n=> n.addEventListener('change',function(){ sec.overall[mi].selections[+this.dataset.sel].label=this.value; save(); }));
-      box.querySelectorAll('[data-x="sodds"]').forEach(n=> n.addEventListener('change',function(){ sec.overall[mi].selections[+this.dataset.sel].odds=+this.value||1; save(); }));
-      box.querySelectorAll('[data-act="sdel"]').forEach(b=> b.addEventListener('click',function(){ sec.overall[mi].selections.splice(+this.dataset.sel,1); save(); paintMkts(section,mount); }));
-      const addSelBtn=box.querySelector('[data-act="addSel"]'); if(addSelBtn) addSelBtn.addEventListener('click',()=>{ (sec.overall[mi].selections||(sec.overall[mi].selections=[])).push({id:kid('SEL'),label:'',odds:2}); save(); paintMkts(section,mount); });
-      const delBtn=box.querySelector('[data-act="del"]'); if(delBtn) delBtn.addEventListener('click',()=>{ if(!confirm('Delete market "'+(m.label||m.type)+'"?'))return; sec.overall.splice(mi,1); save(); paintMkts(section,mount); });
+  // ===== Serialize editor
+  function readEditor(){
+    var picks = $$("#pickTable tbody tr").map(function(tr){
+      var tds = tr.querySelectorAll("td");
+      return {
+        left: (tds[0].querySelector("input").value||"").trim(),
+        right:(tds[1].querySelector("input").value||"").trim(),
+        pickName:(tds[2].querySelector("input").value||"").trim()
+      };
+    }).filter(function(p){ return p.left || p.right || p.pickName; });
 
-      host.appendChild(box);
-    });
-  }
-
-  /* BG import/build */
-  function normalizeFromBuilder(b){
-    const byId=new Map((b.games||[]).map(g=>[g.id,g]));
-    const out=[];
-    (b.matches||[]).forEach(mx=>{
-      if (mx.leftTitle || mx.leftImg || mx.rightTitle || mx.rightImg){
-        out.push({id:mx.id||kid('M'),leftTitle:mx.leftTitle||'LEFT',rightTitle:mx.rightTitle||'RIGHT',leftImg:mx.leftImg||'',rightImg:mx.rightImg||'',leftProv:mx.leftProv||'',rightProv:mx.rightProv||'',leftOdds:2,rightOdds:2});
-      }else{
-        const L=byId.get(mx.leftId)||{}, R=byId.get(mx.rightId)||{};
-        out.push({id:mx.id||kid('M'),leftTitle:up(L.title||'LEFT'),rightTitle:up(R.title||'RIGHT'),leftImg:L.img||'',rightImg:R.img||'',leftProv:L.provider||'',rightProv:R.provider||'',leftOdds:2,rightOdds:2});
-      }
-    });
-    return out;
-  }
-  function acceptMatchesNorm(arr,used){
-    state.sections.battleground.h2h = arr.map((mx,i)=>({
-      id:mx.id||('M'+i), leftTitle:mx.leftTitle||'LEFT', rightTitle:mx.rightTitle||'RIGHT',
-      leftImg:mx.leftImg||'', rightImg:mx.rightImg||'', leftProv:mx.leftProv||'', rightProv:mx.rightProv||'', leftOdds:mx.leftOdds||2, rightOdds:mx.rightOdds||2
-    }));
-    save(); paintBGRows(); el('#dbgImport').textContent=used+' ('+arr.length+')'; toast('Imported '+arr.length+' matchups');
-  }
-  function importBG(){
-    const builderObj=sget(K_BG_BUILDER);
-    if(builderObj?.matches?.length){ acceptMatchesNorm(normalizeFromBuilder(builderObj),'local:'+K_BG_BUILDER); return; }
-    const live=sget('battleground:live');
-    if(live?.matches?.length){
-      const norm=(live.matches||[]).map(m=>({id:kid('M'),leftTitle:up(m.left?.name||'LEFT'),rightTitle:up(m.right?.name||'RIGHT'),leftImg:m.left?.img||'',rightImg:m.right?.img||'',leftProv:m.left?.game||'',rightProv:m.right?.game||'',leftOdds:2,rightOdds:2}));
-      acceptMatchesNorm(norm,'local:battleground:live'); return;
-    }
-    const keys=['BG_MATCHUPS','BATTLEGROUND_MATCHUPS','BATTLEGROUND_SELECTED','BG_SELECTED_GAMES','battleground:matches','battleground:admin:matches','bg:admin:matches','bg:matchups'];
-    for(const k of keys){ const v=sget(k); if(Array.isArray(v)&&v.length){ acceptMatchesNorm(v,'local:'+k); return; } }
-    el('#dbgImport').textContent='none'; toast('No matchups found',false);
-  }
-  function buildH2H(){ if(!state.sections.battleground.h2h.length){ toast('No matches to build',false); return; } paintBGRows(); toast('H2H built'); }
-
-  /* BG defaults + adders */
-  let bgDefaults=sget('bg:defaults')||{ouLine:25.5,ouOver:1.84,ouUnder:1.84,b20_22:1.78,b23_25:1.27,b26_28:1.70,b29_30:1.14};
-  const mapIds={ouLine:'def_ou_line',ouOver:'def_ou_over',ouUnder:'def_ou_under',b20_22:'def_band_20_22',b23_25:'def_band_23_25',b26_28:'def_band_26_28',b29_30:'def_band_29_30'};
-  Object.keys(mapIds).forEach(k=>{ const n=el('#'+mapIds[k]); if(n) n.value=bgDefaults[k]; });
-
-  function addOU_BG(){
-    const d=bgDefaults, sec=state.sections.battleground;
-    sec.overall.push({ id:kid('OU'), type:'OVER_UNDER', label:'Total Rounds O/U', status:'open', stake:10, line:d.ouLine,
-      selections:[{id:kid('SEL'),label:'Over '+d.ouLine,odds:d.ouOver},{id:kid('SEL'),label:'Under '+d.ouLine,odds:d.ouUnder}]});
-    save(); paintMkts('battleground','#bgMkts'); toast('Added O/U');
-  }
-  function addBands_BG(){
-    const d=bgDefaults, sec=state.sections.battleground;
-    sec.overall.push({ id:kid('TRB'), type:'MULTI_RANGE', label:'Total Rounds (Bands 20–30)', status:'open', stake:10,
-      selections:[{id:kid('SEL'),label:'20–22.5',odds:d.b20_22},{id:kid('SEL'),label:'23–25.5',odds:d.b23_25},{id:kid('SEL'),label:'26–28.5',odds:d.b26_28},{id:kid('SEL'),label:'29–30',odds:d.b29_30}]});
-    save(); paintMkts('battleground','#bgMkts'); toast('Added Bands');
-  }
-  function addYN(sec){ sec.overall.push({id:kid('YN'),type:'YES_NO',label:'Yes / No',status:'open',stake:10,selections:[{id:kid('SEL'),label:'Yes',odds:2},{id:kid('SEL'),label:'No',odds:2}]}); save(); paintMkts('battleground','#bgMkts'); }
-  function addCU(sec){ sec.overall.push({id:kid('CU'),type:'CUSTOM',label:'Custom Market',status:'open',stake:10,selections:[]}); save(); paintMkts('battleground','#bgMkts'); }
-  function addCS(sec){
-    if(!state.sections.battleground.h2h.length){ toast('Build H2H first',false); return; }
-    const m={id:kid('CS'),type:'CUSTOM',label:'Which matchup clean sweep?',status:'open',stake:10,selections:[]};
-    state.sections.battleground.h2h.forEach(h=>{
-      m.selections.push({id:kid('SEL'),label:`${h.leftTitle} 3-0`,odds:3.0});
-      m.selections.push({id:kid('SEL'),label:`${h.rightTitle} 3-0`,odds:3.0});
-    });
-    sec.overall.push(m); save(); paintMkts('battleground','#bgMkts'); toast('Added Clean Sweep');
-  }
-
-  el('#bgSaveDefaults').addEventListener('click', ()=>{ bgDefaults={ouLine:+el('#def_ou_line').value||25.5, ouOver:+el('#def_ou_over').value||1.84, ouUnder:+el('#def_ou_under').value||1.84, b20_22:+el('#def_band_20_22').value||2, b23_25:+el('#def_band_23_25').value||2, b26_28:+el('#def_band_26_28').value||2, b29_30:+el('#def_band_29_30').value||2}; sset('bg:defaults',bgDefaults); toast('BG defaults saved'); });
-  el('#bgApplyDefaults').addEventListener('click', ()=>{ const sec=state.sections.battleground; (sec.overall||[]).forEach(m=>{ if(m.type==='OVER_UNDER'){ m.line=bgDefaults.ouLine; if(m.selections?.length>=2){ m.selections[0].label='Over '+bgDefaults.ouLine; m.selections[0].odds=bgDefaults.ouOver; m.selections[1].label='Under '+bgDefaults.ouLine; m.selections[1].odds=bgDefaults.ouUnder; } } if(m.type==='MULTI_RANGE' && /Total Rounds/i.test(m.label||'')){ m.label='Total Rounds (Bands 20–30)'; m.selections=[{id:kid('SEL'),label:'20–22.5',odds:bgDefaults.b20_22},{id:kid('SEL'),label:'23–25.5',odds:bgDefaults.b23_25},{id:kid('SEL'),label:'26–28.5',odds:bgDefaults.b26_28},{id:kid('SEL'),label:'29–30',odds:bgDefaults.b29_30}]; } }); save(); paintMkts('battleground','#bgMkts'); toast('Applied defaults'); });
-  el('#bgMigrate').addEventListener('click', ()=>{ const sec=state.sections.battleground; (sec.overall||[]).forEach(m=>{ if(m.type==='OVER_UNDER'){ const bad=(typeof m.line!=='number')||m.line<20||m.line>30; if(bad) m.line=bgDefaults.ouLine; if(!m.selections||m.selections.length<2){ m.selections=[{id:kid('SEL'),label:'Over '+m.line,odds:bgDefaults.ouOver},{id:kid('SEL'),label:'Under '+m.line,odds:bgDefaults.ouUnder}]; } else { m.selections[0].label='Over '+m.line; m.selections[1].label='Under '+m.line; if(bad){ m.selections[0].odds=bgDefaults.ouOver; m.selections[1].odds=bgDefaults.ouUnder; } } m.label='Total Rounds O/U'; } if(m.type==='MULTI_RANGE' && (/Total Games|Total Rounds/i.test(m.label||'')||(m.selections||[]).some(s=>/\d{2}–\d{2}/.test(s.label||'')))){ m.label='Total Rounds (Bands 20–30)'; m.selections=[{id:kid('SEL'),label:'20–22.5',odds:bgDefaults.b20_22},{id:kid('SEL'),label:'23–25.5',odds:bgDefaults.b23_25},{id:kid('SEL'),label:'26–28.5',odds:bgDefaults.b26_28},{id:kid('SEL'),label:'29–30',odds:bgDefaults.b29_30}]; } }); save(); paintMkts('battleground','#bgMkts'); toast('Migrated'); });
-
-  el('#bgAddOU').addEventListener('click',addOU_BG);
-  el('#bgAddBands').addEventListener('click',addBands_BG);
-  el('#bgAddYN').addEventListener('click',()=>addYN(state.sections.battleground));
-  el('#bgAddCU').addEventListener('click',()=>addCU(state.sections.battleground));
-  el('#bgAddCS').addEventListener('click',()=>addCS(state.sections.battleground));
-
-  /* BONUS + PVP helpers (unchanged) */
-  function readBH(){ const live=sget('bh:live')||sget('bonus:builder')||{}; let games=[]; if(Array.isArray(live.games)) games=live.games.map(g=>({title:g.title||g.name||g.slot||'',provider:g.provider||g.prov||''})); if(!games.length && Array.isArray(live.rows)) games=live.rows.map(r=>({title:r.slot||r.title||'',provider:r.provider||r.prov||''})); return {games,meta:live}; }
-  function paintBHBadge(){ const {games}=readBH(); el('#boGamesBadge').textContent='Games: '+(games.length||'—'); }
-  el('#boAuto').addEventListener('click',()=>{ const sec=state.sections.bonus; const {games}=readBH(); const topN=games.slice(0,12); sec.overall.push({id:kid('BHBAL'),type:'MULTI_RANGE',label:'Final Balance ($) — Band',status:'open',stake:10,selections:[{id:kid('SEL'),label:'<$100',odds:2},{id:kid('SEL'),label:'$100–$299',odds:2},{id:kid('SEL'),label:'$300–$499',odds:2},{id:kid('SEL'),label:'$500+',odds:2}]}); sec.overall.push({id:kid('BHHI'),type:'MULTI_RANGE',label:'Highest Multiplier — Band',status:'open',stake:10,selections:[{id:kid('SEL'),label:'<100×',odds:2},{id:kid('SEL'),label:'100–499×',odds:2},{id:kid('SEL'),label:'500–999×',odds:2},{id:kid('SEL'),label:'1000×+',odds:2}]}); sec.overall.push({id:kid('BHLO'),type:'MULTI_RANGE',label:'Lowest Multiplier — Band',status:'open',stake:10,selections:[{id:kid('SEL'),label:'<5×',odds:2},{id:kid('SEL'),label:'5–9×',odds:2},{id:kid('SEL'),label:'10–19×',odds:2},{id:kid('SEL'),label:'20×+',odds:2}]}); sec.overall.push({id:kid('BHHIGAME'),type:'TEXT_GUESS',label:'Which game pays the highest?',status:'open',stake:10,selections:topN.map(g=>({id:kid('SEL'),label:up(g.title||''),odds:2}))}); sec.overall.push({id:kid('BHLOGAME'),type:'TEXT_GUESS',label:'Which game pays the lowest?',status:'open',stake:10,selections:topN.map(g=>({id:kid('SEL'),label:up(g.title||''),odds:2}))}); sec.overall.push({id:kid('BHPROFIT'),type:'YES_NO',label:'Will we profit from the Hunt?',status:'open',stake:10,selections:[{id:kid('SEL'),label:'Yes',odds:2},{id:kid('SEL'),label:'No',odds:2}]}); save(); paintMkts('bonus','#boMkts'); toast('BH standard markets added'); });
-  el('#boPull').addEventListener('click',()=>{ paintBHBadge(); toast('Game list refreshed'); });
-  paintBHBadge();
-
-  function slotImgFrom(title){ const DEF="/assets/slot_images/mateslots_logo.png"; if(!title) return DEF; const map={"gates":"gates_of_olympus","gates of olympus":"gates_of_olympus","sweet bonanza":"sweet_bonanza","rip city":"rip_city"}; let s=String(title).trim().toLowerCase(); if(map[s]) s=map[s]; s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); s=s.replace(/&/g,'and').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,''); return `/assets/slot_images/${s||'mateslots_logo'}.png`; }
-  function readPVP(){ const builder=sget('pvp:builder')||{}; const live=sget('pvp:live')||{}; const src=live.rounds?.length?live:builder; const rounds=Array.isArray(src.rounds)?src.rounds:[]; const round=rounds.slice().reverse().find(r=>Array.isArray(r.matches)&&r.matches.length)||rounds[0]; const matches=(round?.matches||[]).map((m,i)=>({id:m.id||'M'+i,leftTitle:up(m.left?.username||m.left?.name||'LEFT'),rightTitle:up(m.right?.username||m.right?.name||'RIGHT'),leftProv:m.left?.game||'',rightProv:m.right?.game||'',leftImg:slotImgFrom(m.left?.game),rightImg:slotImgFrom(m.right?.game),leftOdds:2,rightOdds:2})); return {roundName:round?.name||'Round',matches}; }
-  function paintPVP(){ const box=el('#pvH2H'); box.innerHTML=''; const sec=state.sections.pvp; if(!sec.h2h.length){ box.innerHTML='<div class="pill">No PVP matches yet. Click “Import from PVP (live)”.</div>'; return; } sec.h2h.forEach(h=>{ const row=document.createElement('div'); row.className='mkt'; row.innerHTML=`<div class="row" style="justify-content:space-between"><div class="row"><div class="thumb"><img src="${esc(h.leftImg||'')}"></div><div><div class="title">${esc(h.leftTitle)}</div><div class="small">${esc(h.leftProv||'')}</div></div></div><div class="row" style="justify-content:flex-end"><div><div class="title" style="text-align:right">${esc(h.rightTitle)}</div><div class="small" style="text-align:right">${esc(h.rightProv||'')}</div></div><div class="thumb"><img src="${esc(h.rightImg||'')}"></div></div></div>`; box.appendChild(row); }); }
-  el('#pvImport').addEventListener('click',()=>{ const {roundName,matches}=readPVP(); if(!matches.length) return toast('No PVP matches found',false); state.sections.pvp.h2h=matches; save(); paintPVP(); toast('Imported '+matches.length+' from '+roundName); });
-  el('#pvBuildWinners').addEventListener('click',()=>{ const sec=state.sections.pvp; if(!sec.h2h.length) return toast('Import PVP matches first',false); sec.h2h.forEach(h=>{ sec.overall.push({id:kid('PVWIN'),type:'CUSTOM',label:`Winner — ${h.leftTitle} vs ${h.rightTitle}`,status:'open',stake:10,selections:[{id:kid('SEL'),label:h.leftTitle,odds:h.leftOdds||2},{id:kid('SEL'),label:h.rightTitle,odds:h.rightOdds||2}]}); }); save(); paintMkts('pvp','#pvMkts'); toast('Winner markets created'); });
-  el('#pvAddOU').addEventListener('click',()=>{ const s=state.sections.pvp; s.overall.push({id:kid('OU'),type:'OVER_UNDER',label:'Over / Under',status:'open',stake:10,line:2.5,selections:[{id:kid('SEL'),label:'Over 2.5',odds:2},{id:kid('SEL'),label:'Under 2.5',odds:2}]}); save(); paintMkts('pvp','#pvMkts'); });
-  el('#pvAddMR').addEventListener('click',()=>{ const s=state.sections.pvp; s.overall.push({id:kid('MR'),type:'MULTI_RANGE',label:'Multi-Range',status:'open',stake:10,selections:[{id:kid('SEL'),label:'Low',odds:2.5},{id:kid('SEL'),label:'Mid',odds:2.0},{id:kid('SEL'),label:'High',odds:3.0}]}); save(); paintMkts('pvp','#pvMkts'); });
-  el('#pvAddYN').addEventListener('click',()=>{ const s=state.sections.pvp; s.overall.push({id:kid('YN'),type:'YES_NO',label:'Yes / No',status:'open',stake:10,selections:[{id:kid('SEL'),label:'Yes',odds:2},{id:kid('SEL'),label:'No',odds:2}]}); save(); paintMkts('pvp','#pvMkts'); });
-  el('#pvAddCU').addEventListener('click',()=>{ const s=state.sections.pvp; s.overall.push({id:kid('CU'),type:'CUSTOM',label:'Custom Market',status:'open',stake:10,selections:[]}); save(); paintMkts('pvp','#pvMkts'); });
-
-  /* ===== Transform current editor state → backend events ===== */
-  function marketToPicks(sectionKey, m){
-    // Normalize each market into generic picks for the backend.
-    const base = [];
-    const type = (m.type||'CUSTOM').toUpperCase();
-    if (type === 'OVER_UNDER'){
-      const line = Number(m.line||0);
-      const [over, under] = m.selections||[];
-      base.push({
-        id: (m.id||kid('OU')),
-        market: 'OVER_UNDER',
-        left: (over?.label||('Over '+line)),
-        right: (under?.label||('Under '+line)),
-        line,
-        picks: [
-          { id: kid('P'), label: over?.label||('Over '+line), odds: Number(over?.odds||2) },
-          { id: kid('P'), label: under?.label||('Under '+line), odds: Number(under?.odds||2) }
-        ]
-      });
-    } else if (type === 'MULTI_RANGE' || type === 'TEXT_GUESS' || type === 'NUMERIC_GUESS' || type === 'CUSTOM'){
-      base.push({
-        id: (m.id||kid('MK')),
-        market: type,
-        left: (sectionKey==='battleground'?'TOTAL ROUNDS':m.label||type),
-        right: (sectionKey==='battleground'?'BG':sectionKey.toUpperCase()),
-        picks: (m.selections||[]).map(s=>({ id: s.id||kid('P'), label: String(s.label||'').toUpperCase(), odds: Number(s.odds||2) }))
-      });
-    } else if (type === 'YES_NO'){
-      const [yes,no] = m.selections||[];
-      base.push({
-        id: (m.id||kid('YN')),
-        market: 'YES_NO',
-        left: yes?.label||'YES',
-        right: no?.label||'NO',
-        picks: [
-          { id: kid('P'), label: yes?.label||'YES', odds: Number(yes?.odds||2) },
-          { id: kid('P'), label: no?.label||'NO',  odds: Number(no?.odds||2) }
-        ]
-      });
-    }
-    return base;
-  }
-
-  function h2hToPicks(h){
     return {
-      id: h.id || kid('H2H'),
-      market: 'H2H_WINNER',
-      left: h.leftTitle,
-      right: h.rightTitle,
-      picks: [
-        { id: kid('P'), label: h.leftTitle,  odds: Number(h.leftOdds||2)  },
-        { id: kid('P'), label: h.rightTitle, odds: Number(h.rightOdds||2) }
-      ],
-      meta: { leftImg: h.leftImg||'', rightImg: h.rightImg||'', leftProv: h.leftProv||'', rightProv: h.rightProv||'' }
+      kind: evKind.value || activeKind,
+      eventTitle: (evTitle.value||"").trim() || "Untitled Event",
+      eventId: (evId.value||"").trim() || ("EVT-"+Math.random().toString(36).slice(2,8).toUpperCase()),
+      picks: picks,
+      ts: Date.now()
     };
   }
 
-  function buildEventsFromState(){
-    const out = [];
-    const ts = Date.now();
-    const stamp = new Date(ts).toISOString().replace(/[-:TZ.]/g,'').slice(0,14);
+  // ===== Backend routes + local fallback
+  var LS_KEY="adm:bets"; // local fallback cache for dev
+  function lsRead(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)||"[]")||[]; }catch(_){ return []; } }
+  function lsWrite(arr){ try{ localStorage.setItem(LS_KEY, JSON.stringify(arr)); }catch(_){} }
 
-    const sections = [
-      ['battleground','Battleground'],
-      ['bonus','Bonus Hunt'],
-      ['pvp','PVP']
-    ];
-
-    for (const [key, label] of sections){
-      const sec = state.sections[key];
-      if (!sec?.enabled) continue;
-
-      // Event shell
-      const eventId = `UNIFIED-${key.toUpperCase()}-${stamp}`;
-      const event = {
-        kind: key,                                  // server groups by kind
-        eventTitle: `Unified — ${label}`,
-        eventId,
-        ts,
-        picks: []
-      };
-
-      // H2H into picks (where present)
-      if (Array.isArray(sec.h2h) && sec.h2h.length){
-        sec.h2h.forEach(h => event.picks.push(h2hToPicks(h)));
-      }
-
-      // Overall markets into picks
-      if (Array.isArray(sec.overall) && sec.overall.length){
-        sec.overall.forEach(m => marketToPicks(key, m).forEach(pk => event.picks.push(pk)));
-      }
-
-      if (event.picks.length) out.push(event);
-    }
-    return out;
-  }
-
-  /* ===== SAVE / PUBLISH to backend ===== */
-  async function postJSON(path, body){
-    const res = await fetch(apiUrl(path), {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      credentials:'include',
-      body: JSON.stringify(body||{})
+  function saveDraft(body){
+    // Try server first
+    return api.post("/api/admin/bets", body).catch(function(e){
+      // Fallback: local
+      var arr = lsRead(); body.id = body.id || ("DRAFT-"+Math.random().toString(36).slice(2,10).toUpperCase());
+      arr.push(body); lsWrite(arr);
+      return { ok:true, id: body.id, local:true };
     });
-    if (!res.ok){
-      let msg;
-      try { msg = await res.text(); } catch(_){}
-      throw new Error((msg||'HTTP '+res.status).slice(0,300));
-    }
-    return res.json().catch(()=>({}));
   }
 
-  async function saveToBackend(){
-    const events = buildEventsFromState();
-    if (!events.length){ toast('Nothing to save', false); return { saved: 0 }; }
-    let saved = 0;
-    for (const evt of events){
-      await postJSON('/api/admin/bets', evt); // upsert draft by eventId
-      saved++;
-    }
-    return { saved, events };
+  function listDrafts(kind){
+    return api.get("/api/admin/bets?status=draft&kind="+encodeURIComponent(kind)).catch(function(){
+      var arr = lsRead().filter(function(x){ return x && x.kind===kind; });
+      return { ok:true, items: arr, local:true };
+    });
   }
 
-  async function publishToPlayers(){
-    const events = buildEventsFromState();
-    if (!events.length){ toast('Nothing to publish', false); return; }
-    // 1) Save drafts
-    for (const evt of events){
-      await postJSON('/api/admin/bets', evt);
-    }
-    // 2) Publish drafts per kind so they appear in /api/bets/live
-    const kinds = [...new Set(events.map(e=>String(e.kind||'').toLowerCase()))];
-    for (const k of kinds){
-      await postJSON('/api/admin/bets/publish', { all: true, kind: k });
-    }
-    state.lastUpdated = Date.now(); save();
-    el('#stamp').textContent = 'Last publish @ '+ new Date(state.lastUpdated).toLocaleString();
-    toast('Published to players');
+  function publishEvent(eventId){
+    return api.post("/api/admin/bets/publish", { id:eventId }).catch(function(){
+      // local: just remove from LS
+      var arr = lsRead().filter(function(x){ return (x.eventId||x.id)!==eventId; });
+      lsWrite(arr);
+      return { ok:true, local:true };
+    });
   }
 
-  /* save/publish buttons */
-  function save(){ sset(K_UNIFIED,state); }
-  function publish(){ /* kept for local-only fallback; replaced by publishToPlayers() */ state.lastUpdated=Date.now(); save(); el('#stamp').textContent='Last publish @ '+new Date(state.lastUpdated).toLocaleString(); toast('Published (local)'); }
+  function publishAllDrafts(){
+    return api.post("/api/admin/bets/publish", { all:true, kind:activeKind }).catch(function(){
+      var arr = lsRead().filter(function(x){ return x.kind!==activeKind; });
+      lsWrite(arr);
+      return { ok:true, local:true };
+    });
+  }
 
-  el('#btnSave').addEventListener('click', async ()=>{
-    try {
-      const { saved } = await saveToBackend();
-      toast(saved ? (`Saved ${saved} draft${saved>1?'s':''}`) : 'Nothing to save', !!saved);
-    } catch (e){ toast('Save failed: '+e.message, false); }
+  // ===== Draft list render
+  function refreshDrafts(){
+    draftTbody.innerHTML = '<tr><td colspan="5" class="muted">Loading…</td></tr>';
+    listDrafts(activeKind).then(function(j){
+      var items = (j.items||[]).slice().sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+      if(!items.length){ draftTbody.innerHTML = '<tr><td colspan="5" class="muted">No drafts</td></tr>'; return; }
+      draftTbody.innerHTML = items.map(function(d){
+        var created = new Date(d.ts||Date.now()).toLocaleString();
+        return '<tr>'
+          + '<td>'+esc(d.kind)+'</td>'
+          + '<td>'+esc(d.eventTitle||"")+'</td>'
+          + '<td>'+esc(d.eventId||d.id||"")+'</td>'
+          + '<td>'+esc(created)+'</td>'
+          + '<td>'
+            + '<button type="button" class="btn btnLoad" data-id="'+esc(d.eventId||d.id)+'">Load</button> '
+            + '<button type="button" class="btn ok btnPub" data-id="'+esc(d.eventId||d.id)+'">Publish</button>'
+          + '</td>'
+        +'</tr>';
+      }).join("");
+
+      // wire actions
+      $$(".btnLoad", draftTbody).forEach(function(b){
+        b.addEventListener("click", function(){
+          var id = b.getAttribute("data-id");
+          var found = (j.items||[]).find(function(x){ return (x.eventId||x.id)===id; });
+          if(!found) return;
+          evTitle.value = found.eventTitle||"";
+          evId.value = found.eventId||found.id||"";
+          evKind.value = found.kind||activeKind;
+          pickTbody.innerHTML = "";
+          (found.picks||[]).forEach(addRow);
+          if(!found.picks || !found.picks.length) addRow();
+          showToast("Draft loaded");
+        });
+      });
+      $$(".btnPub", draftTbody).forEach(function(b){
+        b.addEventListener("click", function(){
+          var id = b.getAttribute("data-id");
+          editMsg.textContent="Publishing…";
+          publishEvent(id).then(function(){
+            showToast("Published"); refreshDrafts();
+            editMsg.textContent="Published";
+          }).catch(function(){ editMsg.textContent="Publish failed"; });
+        });
+      });
+    }).catch(function(){
+      draftTbody.innerHTML = '<tr><td colspan="5" class="muted">Failed to load drafts</td></tr>';
+    });
+  }
+
+  // ===== Buttons
+  btnSaveDraft.addEventListener("click", function(){
+    var body = readEditor();
+    if(!body.picks.length){ editMsg.textContent="Add at least one pick"; return; }
+    editMsg.textContent = "Saving…";
+    saveDraft(body).then(function(r){
+      editMsg.textContent = r.local ? "Saved (local)" : "Saved";
+      showToast("Draft saved");
+      refreshDrafts();
+    }).catch(function(e){
+      editMsg.textContent = (e.body&&e.body.error)||"Save failed";
+    });
   });
 
-  el('#btnPublish').addEventListener('click', async ()=>{
-    try { await publishToPlayers(); }
-    catch (e){ toast('Publish failed: '+e.message, false); }
+  btnPublishOne.addEventListener("click", function(){
+    var body = readEditor();
+    if(!body.picks.length){ editMsg.textContent="Add at least one pick"; return; }
+    // Save, then publish that ID
+    editMsg.textContent="Saving…";
+    saveDraft(body).then(function(r){
+      var id = body.eventId;
+      editMsg.textContent="Publishing…";
+      return publishEvent(id);
+    }).then(function(){
+      showToast("Published");
+      refreshDrafts();
+      editMsg.textContent="Published";
+    }).catch(function(e){
+      editMsg.textContent = (e.body&&e.body.error)||"Publish failed";
+    });
   });
 
-  el('#btnOpenAll').addEventListener('click',()=>{ state.status='open'; save(); syncToggles(); });
-  el('#btnLockAll').addEventListener('click',()=>{ state.status='locked'; save(); syncToggles(); });
-  el('#btnDelete').addEventListener('click',()=>{ if(!confirm('Delete ALL markets (keep section headers)?')) return;
-    const keep={ bg:!!state.sections.battleground.enabled, bo:!!state.sections.bonus.enabled, pv:!!state.sections.pvp.enabled, status:state.status };
-    state.lastUpdated=0;
-    state.sections.battleground.overall=[]; state.sections.battleground.h2h=[];
-    state.sections.bonus.overall=[];
-    state.sections.pvp.overall=[]; state.sections.pvp.h2h=[];
-    state.sections.battleground.enabled=keep.bg; state.sections.bonus.enabled=keep.bo; state.sections.pvp.enabled=keep.pv; state.status=keep.status;
-    save(); syncToggles(); paintBGRows(); paintMkts('battleground','#bgMkts'); paintMkts('bonus','#boMkts'); paintPVP(); paintMkts('pvp','#pvMkts'); toast('All markets cleared');
+  btnPublishAll.addEventListener("click", function(){
+    btnPublishAll.disabled = true;
+    publishAllDrafts().then(function(){
+      showToast("All drafts published");
+      refreshDrafts();
+    }).finally(function(){ btnPublishAll.disabled=false; });
   });
 
-  /* optional migration to restore old Overall sets */
-  (function restoreOldOverall(){
-    const sec=state.sections.battleground;
-    if (sec.overall && sec.overall.length) return;
-    let best=null,key='';
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i); try{
-        const v=JSON.parse(localStorage.getItem(k));
-        if(v?.sections?.battleground?.overall?.length){ const arr=v.sections.battleground.overall; if(!best||arr.length>best.length){best=arr;key=k;} }
-        else if(Array.isArray(v)&&v.length&&/bg|battle|overall|market/i.test(k)){ if(!best||v.length>best.length){best=v;key=k;} }
-      }catch(_){}
-    }
-    if(best){ sec.overall=best; save(); toast('Restored '+best.length+' Overall Markets from '+key); }
-  })();
+  btnRefresh.addEventListener("click", refreshDrafts);
 
-  /* boot */
-  syncToggles(); paintBGRows(); paintMkts('battleground','#bgMkts'); paintMkts('bonus','#boMkts'); paintPVP(); paintMkts('pvp','#pvMkts');
-  if(state.lastUpdated){ el('#stamp').textContent='Last publish @ '+new Date(state.lastUpdated).toLocaleString(); }
-
-  // actions
-  el('#bgImport').addEventListener('click',importBG);
-  el('#bgBuild').addEventListener('click',buildH2H);
+  // initial load
+  refreshDrafts();
 })();
 </script>
 </body>
