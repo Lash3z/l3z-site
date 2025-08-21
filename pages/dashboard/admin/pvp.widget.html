@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PVP Widget</title>
+<style>
+  :root{
+    --line: rgba(0,255,255,.22);
+    --panel:#0b1417;
+    --ink:#eaf7ff;
+    --muted:#9fd0d6;
+  }
+  /* transparent canvas for OBS/overlay */
+  html,body{margin:0;background:transparent;font-family:Segoe UI,system-ui,Arial,sans-serif;color:var(--ink)}
+  /* keep the widget only as wide as its contents */
+  .wrap{display:flex;justify-content:center;align-items:flex-start;padding:6px}
+  .card{
+    display:inline-flex;align-items:center;gap:14px;
+    padding:10px 14px;border:1px solid var(--line);border-radius:16px;
+    background:var(--panel);box-shadow:0 8px 26px rgba(0,0,0,.35);
+    width: fit-content; /* <-- key: no full-width */
+  }
+  .slot{display:flex;align-items:center;gap:10px}
+  .slot img{
+    width:56px;height:56px;border-radius:12px;object-fit:cover;
+    background:#061015;border:1px solid rgba(255,255,255,.10)
+  }
+  .name{font-weight:900;letter-spacing:.5px;white-space:nowrap}
+  .left  .name{margin-right: 2px;text-align:left}
+  .right .name{margin-left:  2px;text-align:right}
+  .vs{
+    font-weight:900;opacity:.9;
+    padding:4px 10px;border:1px solid rgba(255,255,255,.12);
+    border-radius:10px;background:#0e171c
+  }
+  .meta{margin-top:6px;text-align:center;color:var(--muted);font-size:12px}
+</style>
+</head>
+<script>
+  window.API_BASE = (location.hostname==='127.0.0.1'||location.hostname==='localhost')
+    ? 'http://localhost:3000'
+    : ''; // same-origin in production
+</script>
+
+<body>
+  <div class="wrap">
+    <div>
+      <div id="row" class="card">
+        <div>Waiting for publish…</div>
+      </div>
+      <div id="meta" class="meta"></div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const DEF = "/assets/slot_images/mateslots_logo.png";
+  const apiUrl = (path) => (/^https?:\/\//i.test(path) ? path : (window.API_BASE||'') + path);
+
+  function slotImgFrom(t){
+    if(!t) return DEF;
+    let s = String(t).trim().toLowerCase();
+    if (s === "gates") s = "gates of olympus";
+    if (s === "gates of olympus") s = "gates_of_olympus";
+    s = s.normalize('NFD').replace(/[\u0300-\u036f]/g,''); // strip accents
+    s = s.replace(/&/g,'and').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+    return `/assets/slot_images/${s || "mateslots_logo"}.png`;
+  }
+
+  function pickLatestRound(live){
+    const rounds = Array.isArray(live?.rounds) ? live.rounds : [];
+    // deepest non-empty, fallback to first
+    return rounds.slice().reverse().find(r => Array.isArray(r.matches) && r.matches.length) || rounds[0];
+  }
+
+  function paintFrom(live){
+    const row  = document.getElementById("row");
+    const meta = document.getElementById("meta");
+    const round = pickLatestRound(live||{});
+    const m = round && round.matches && round.matches[0];
+
+    if(!m){
+      row.innerHTML = `<div>No match.</div>`;
+      meta.textContent = "";
+      return;
+    }
+
+    const Lname = (m.left?.username || m.left?.name || "").toUpperCase();
+    const Rname = (m.right?.username || m.right?.name || "").toUpperCase();
+    const Limg  = slotImgFrom(m.left?.game);
+    const Rimg  = slotImgFrom(m.right?.game);
+
+    row.innerHTML = `
+      <div class="slot left">
+        <span class="name">${Lname}</span>
+        <img src="${Limg}" onerror="this.src='${DEF}'" alt="">
+      </div>
+      <div class="vs">VS</div>
+      <div class="slot right">
+        <img src="${Rimg}" onerror="this.src='${DEF}'" alt="">
+        <span class="name">${Rname}</span>
+      </div>
+    `;
+
+    const when = live?.lastUpdated || live?.ts;
+    const rname = round?.name || "PVP";
+    meta.textContent = when ? `${rname} • ${new Date(when).toLocaleTimeString()}` : rname;
+  }
+
+  // current snapshot (prefer localStorage)
+  function readLocal(){
+    try { return JSON.parse(localStorage.getItem("pvp:live") || "null"); } catch(_) { return null; }
+  }
+
+  // optional server poll (for OBS machines without localStorage writes)
+  let lastStamp = 0;
+  async function pollServer(){
+    try{
+      const r = await fetch(apiUrl("/api/pvp/live"), { credentials:"include", cache:"no-store" });
+      if(!r.ok) return;
+      const j = await r.json().catch(()=>null);
+      const stamp = +(j?.lastUpdated || j?.ts || 0);
+      if(stamp && stamp !== lastStamp){
+        lastStamp = stamp;
+        paintFrom(j);
+      }
+    }catch(_){ /* ignore network hiccups */ }
+  }
+
+  function paint(){
+    const local = readLocal();
+    if(local){
+      const stamp = +(local.lastUpdated || local.ts || 0);
+      if(stamp) lastStamp = stamp;
+      paintFrom(local);
+    }
+  }
+
+  // live-refresh from localStorage & periodic server poll
+  window.addEventListener("storage", (e) => { if(e.key === "pvp:live") paint(); });
+  setInterval(paint, 1000);
+  setInterval(pollServer, 4000);
+
+  paint();
+  pollServer();
+})();
+</script>
+</body>
+</html>
