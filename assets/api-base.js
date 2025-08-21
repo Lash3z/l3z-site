@@ -1,3 +1,6 @@
+// POINT FRONTEND → RENDER BACKEND
+window.API_BASE = "https://YOUR-BACKEND.onrender.com";
+
 (function (global) {
   "use strict";
 
