@@ -1,95 +1,189 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Sign in — LASH3Z</title>
-  <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
-  <style>
-    :root{--bg:#0b0f14;--panel:#11161d;--ink:#e9f1ff;--line:rgba(0,255,255,.18);--gold:#ffcc66;--ok:#12d48a;--bad:#ff8fa0;--chip:#0c141a}
-    *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial,sans-serif}
-    a{color:#9bd3ff;text-decoration:none}.wrap{display:grid;place-items:center;min-height:100vh;padding:16px}
-    .card{width:100%;max-width:460px;background:linear-gradient(180deg,#0f131a,#0a0f15);border:1px solid var(--line);border-radius:14px;padding:18px 18px 20px;box-shadow:0 0 18px rgba(0,255,255,.08)}
-    h1{margin:0 0 6px;font-size:18px;letter-spacing:.3px;color:#ffd78a}
-    .tabs{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:10px 0 12px}
-    .tab{flex:1;text-align:center;padding:10px 12px;cursor:pointer;background:#0b1015}.tab.on{background:#152029;font-weight:700}
-    label{display:block;margin:10px 0 6px}
-    input{width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:#0c1218;color:var(--ink)}
-    button{width:100%;margin-top:14px;padding:12px;border:0;border-radius:10px;cursor:pointer;font-weight:800;color:#1a1304;background:linear-gradient(180deg,#ffd27a,#e3a93b)}
-    button[disabled]{opacity:.6;cursor:not-allowed}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .msg{margin-top:10px;font-size:12px;min-height:16px;color:#9fb1c7}.msg.ok{color:#12d48a}.msg.bad{color:#ff8fa0}
-    .hint{margin-top:10px;color:#9fb1c7;font-size:12px}.meta{display:flex;align-items:center;gap:8px;margin-top:8px}
-    .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#091319;color:#cfe;font-size:12px}
-    .kickBox{margin-top:14px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--chip)}
-    .kickRow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.kickTitle{font-size:13px;color:#cfe}
-    .kickBtn{padding:8px 10px;border-radius:10px;border:1px solid rgba(0,0,0,.3);cursor:pointer;font-weight:800;color:#102b2b;background:linear-gradient(180deg,#98f7e1,#49d5b3)}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Login — L3Z</title>
+<meta http-equiv="Cache-Control" content="no-store"/>
+<style>
+  :root{--bg:#060b0d;--ink:#eaf7ff;--muted:#a8c6cc;--line:rgba(0,255,255,.18);--teal:#00ffff;--ok:#11d48a;--bad:#ff6b81}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#000 url("/assets/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  .wrap{min-height:100%;display:grid;place-items:center;padding:24px}
+  .card{width:380px;max-width:92vw;background:linear-gradient(180deg,rgba(5,10,12,.78),rgba(5,10,12,.50));
+        border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.5);padding:20px}
+  h1{margin:0 0 8px;color:var(--teal);text-shadow:0 0 16px #00ffff55}
+  .muted{margin:0 0 16px;color:var(--muted);font-size:13px}
+  label{display:block;margin:12px 0 8px;font-size:14px}
+  input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#081216;color:var(--ink);outline:none}
+  button{width:100%;padding:12px;border:0;border-radius:10px;background:var(--teal);color:#001316;font-weight:800;cursor:pointer;box-shadow:0 0 20px #00ffff55;margin-top:12px}
+  button[disabled]{opacity:.6;cursor:not-allowed}
+  .row{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:8px}
+  .pill{padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cff;font-size:12px}
+  #msg{min-height:18px;margin-top:10px;font-size:13px}
+  #msg.ok{color:var(--ok)} #msg.bad{color:var(--bad)}
+  .links{display:flex;gap:8px;margin-top:10px}
+  .links a{flex:1;text-align:center;text-decoration:none;color:#001316;background:#bff;border-radius:10px;padding:10px 12px;font-weight:800}
+</style>
 </head>
+
+<script>
+  // Single source of truth for API base
+  window.API_BASE = (location.hostname==='127.0.0.1'||location.hostname==='localhost')
+    ? 'http://localhost:3000'
+    : ''; // same-origin in production
+</script>
+
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>Welcome back</h1>
-    <div class="tabs"><div class="tab on" id="tabLogin">Sign in</div><div class="tab" id="tabSignup">Create account</div></div>
+    <div class="row">
+      <h1 style="margin:0">Account Login</h1>
+      <span id="env" class="pill">—</span>
+    </div>
+    <p class="muted">Sign in as a viewer. If your username is <b>lash3z</b>, you’ll also unlock admin when the server allows it — or offline fallback is used.</p>
 
-    <form id="formLogin">
-      <label for="lu">Username</label><input id="lu" autocomplete="username" required>
-      <label for="lp">Password</label><input id="lp" type="password" autocomplete="current-password" required>
-      <button id="btnLogin" type="submit">Sign in</button>
-      <div class="meta"><div class="pill" id="cookieState">cookie: checking…</div><div id="loginMsg" class="msg"></div></div>
-      <div class="kickBox"><div class="kickRow"><div class="kickTitle">Link your Kick after login for profile display</div><button type="button" class="kickBtn" id="kickLinkBtn1">Go to Kick Link</button></div></div>
+    <form id="f" autocomplete="on">
+      <label for="username">Username</label>
+      <input id="username" name="username" required autocomplete="username"/>
+
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" required autocomplete="current-password"/>
+
+      <button id="submitBtn" type="submit">Sign in</button>
+      <div id="msg" aria-live="polite"></div>
+
+      <div id="nextLinks" class="links" style="display:none">
+        <a href="/index.html">← Back to site</a>
+        <a id="toAdmin" href="/pages/dashboard/admin/admin_hub.html">Administration</a>
+      </div>
     </form>
-
-    <form id="formSignup" style="display:none">
-      <label for="su">Username</label><input id="su" autocomplete="username" required placeholder="3-20 chars, letters/numbers . _ -">
-      <label for="se">Email (optional)</label><input id="se" type="email" autocomplete="email" placeholder="you@example.com">
-      <label for="sp">Password</label><input id="sp" type="password" autocomplete="new-password" required>
-      <button id="btnSignup" type="submit">Create account</button>
-      <div class="meta"><div class="pill" id="cookieState2">cookie: —</div><div id="signupMsg" class="msg"></div></div>
-      <div class="kickBox"><div class="kickRow"><div class="kickTitle">After sign up, link your Kick for profile display</div><button type="button" class="kickBtn" id="kickLinkBtn2">Go to Kick Link</button></div></div>
-    </form>
-
-    <div class="hint">This page uses cookies via <code>/assets/api-base.js</code>. If your API is cross-origin, set <code>window.API_BASE</code> first.</div>
   </div>
 </div>
 
-<script src="/assets/api-base.js"></script>
-<script src="/assets/js/bootstrap-auth.js"></script>
 <script>
+"use strict";
 (function(){
-  const $=(s,r=document)=>r.querySelector(s);
-  const tabLogin=$("#tabLogin"), tabSignup=$("#tabSignup");
-  const formLogin=$("#formLogin"), formSignup=$("#formSignup");
-  const loginMsg=$("#loginMsg"), signupMsg=$("#signupMsg");
-  const cookieState=$("#cookieState"), cookieState2=$("#cookieState2");
-  function msg(el,text,good){ if(!el) return; el.textContent=text||""; el.className="msg"+(good===true?" ok":good===false?" bad":""); }
-  function showLogin(){ tabLogin.classList.add("on"); tabSignup.classList.remove("on"); formLogin.style.display="block"; formSignup.style.display="none"; }
-  function showSignup(){ tabSignup.classList.add("on"); tabLogin.classList.remove("on"); formLogin.style.display="none"; formSignup.style.display="block"; }
-  tabLogin.addEventListener("click", showLogin); tabSignup.addEventListener("click", showSignup);
-  async function probe(){ try{ await api.get("/api/me"); cookieState.textContent="cookie: ok"; cookieState2.textContent="cookie: ok"; }catch{ cookieState.textContent="cookie: missing"; cookieState2.textContent="cookie: missing"; } }
+  var API_BASE = window.API_BASE || "";
+  var env = document.getElementById("env");
+  env.textContent = location.origin + (API_BASE ? " → " + API_BASE : " (same-origin)");
 
-  formLogin.addEventListener("submit", async (ev)=>{
-    ev.preventDefault(); const u=$("#lu").value.trim().toLowerCase(); const p=$("#lp").value;
-    if(!u||!p){ msg(loginMsg,"Enter username & password.",false); return; }
-    $("#btnLogin").disabled=true; msg(loginMsg,"Signing in…");
-    try{ await api.post("/api/auth/login",{ username:u, password:p }); msg(loginMsg,"Signed in. Redirecting…",true); localStorage.setItem("lash3z_last_user",u); setTimeout(()=>location.replace("/pages/dashboard/home/profile.html"),150); }
-    catch(e){ msg(loginMsg,(e.payload&&(e.payload.error||e.payload.detail))||e.message,false); }
-    finally{ $("#btnLogin").disabled=false; probe(); }
+  var f   = document.getElementById("f");
+  var msg = document.getElementById("msg");
+  var btn = document.getElementById("submitBtn");
+  var links = document.getElementById("nextLinks");
+  var toAdmin = document.getElementById("toAdmin");
+
+  function setMsg(t, ok){
+    msg.textContent = t || "";
+    msg.className = ok===true ? "ok" : ok===false ? "bad" : "";
+  }
+
+  function setCookie(name,value,days){
+    try{
+      var s = name+"="+encodeURIComponent(value)+"; path=/; SameSite=Lax";
+      if (location.protocol === "https:") s += "; Secure";
+      if(days){
+        var d=new Date();
+        d.setTime(d.getTime()+days*86400000);
+        s += "; expires="+d.toUTCString();
+      }
+      document.cookie = s;
+    }catch(_){}
+  }
+
+  async function apiPost(path, body){
+    var url = API_BASE + path; // empty API_BASE = same-origin
+    var res = await fetch(url, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      credentials:"include",
+      body: JSON.stringify(body||{})
+    });
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    var ct = res.headers.get("content-type") || "";
+    if (ct.indexOf("application/json") !== -1) {
+      return res.json();
+    }
+    return {};
+  }
+
+  async function tryViewer(username){
+    try{
+      await apiPost("/api/viewer/login",{ username: username });
+      return true;
+    }catch(_){ return false; }
+  }
+
+  async function tryAdmin(username,password){
+    try{
+      // Try new gate first, fall back to legacy
+      try{
+        await apiPost("/api/admin/gate/login",{ username: username, password: password });
+        return true;
+      }catch(_){
+        await apiPost("/api/admin/login",{ username: username, password: password });
+        return true;
+      }
+    }catch(_){ return false; }
+  }
+
+  function offlineLogin(username, makeAdmin){
+    setCookie("viewer", username, 7);
+    try{
+      localStorage.setItem("lash3z_last_user", JSON.stringify(username));
+      localStorage.setItem("l3z:session", JSON.stringify({ user: username, ts: Date.now() }));
+      if (makeAdmin) localStorage.setItem("l3z:isAdmin", "true");
+    }catch(_){}
+  }
+
+  f.addEventListener("submit", async function(ev){
+    ev.preventDefault();
+
+    var username = String(document.getElementById("username").value||"").trim();
+    var password = String(document.getElementById("password").value||"");
+
+    if(!username || !password){ setMsg("Enter username and password.", false); return; }
+
+    btn.disabled = true; setMsg("Signing in…");
+
+    // Remember last user locally for header/widgets
+    try{ localStorage.setItem("lash3z_last_user", JSON.stringify(username)); }catch(_){}
+
+    var viewerOK=false, adminOK=false, offline=false;
+
+    // 1) Attempt viewer login via API
+    viewerOK = await tryViewer(username);
+
+    // 2) If viewer OK and username is special, try admin
+    if (viewerOK && username.toLowerCase() === "lash3z"){
+      adminOK = await tryAdmin(username, password);
+    }
+
+    // 3) Offline fallback
+    if (!viewerOK){
+      offline = true;
+      var makeAdmin = (username.toLowerCase()==="lash3z");
+      offlineLogin(username, makeAdmin);
+      viewerOK = true;
+      adminOK  = makeAdmin;
+    }
+
+    if (viewerOK){
+      setMsg(
+        offline
+          ? (adminOK ? "Signed in (offline admin bypass)." : "Signed in (offline viewer).")
+          : (adminOK ? "Signed in as admin." : "Signed in."),
+        true
+      );
+      links.style.display = "flex";
+      toAdmin.style.display = adminOK ? "inline-block" : "none";
+    }else{
+      setMsg("Login failed.", false);
+    }
+
+    btn.disabled = false;
   });
-
-  formSignup.addEventListener("submit", async (ev)=>{
-    ev.preventDefault(); const u=$("#su").value.trim().toLowerCase(); const e=$("#se").value.trim(); const p=$("#sp").value;
-    if(!u||!p){ msg(signupMsg,"Username and password required.",false); return; }
-    if(!/^[a-z0-9_.-]{3,20}$/i.test(u)){ msg(signupMsg,"Username format invalid.",false); return; }
-    $("#btnSignup").disabled=true; msg(signupMsg,"Creating…");
-    try{ await api.post("/api/auth/signup",{ username:u, email:e||null, password:p }); msg(signupMsg,"Account created. Redirecting…",true); localStorage.setItem("lash3z_last_user",u); setTimeout(()=>location.replace("/pages/dashboard/home/profile.html"),150); }
-    catch(e){ msg(signupMsg,(e.payload&&(e.payload.error||e.payload.detail))||e.message,false); }
-    finally{ $("#btnSignup").disabled=false; probe(); }
-  });
-
-  document.getElementById("kickLinkBtn1")?.addEventListener("click", ()=>{ location.href="/pages/dashboard/home/profile.html#kick"; });
-  document.getElementById("kickLinkBtn2")?.addEventListener("click", ()=>{ location.href="/pages/dashboard/home/profile.html#kick"; });
-
-  try{ const last=localStorage.getItem("lash3z_last_user"); if(last&&!$("#lu").value) $("#lu").value=last; if(last&&!$("#su").value) $("#su").value=last; }catch{}
-  probe();
 })();
 </script>
 </body>
