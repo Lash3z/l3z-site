@@ -26,100 +26,12 @@
     .miniLink{color:#cfe;text-decoration:none;font-size:13px}
   </style>
 </head>
-<script>
-  // One place to set your API base
-  window.API_BASE = (location.hostname==='127.0.0.1'||location.hostname==='localhost')
-    ? 'http://localhost:3000'
-    : ''; // same-origin in production
-
-  // Define helper ONCE (global-safe)
-  window.apiUrl = window.apiUrl || function(p){
-    return /^https?:\/\//i.test(p) ? p : (window.API_BASE||'') + p;
-  };
-</script>
-
 <body>
-  <!-- USER HEADER -->
-  <div class="userbar" id="userBar">
-    <div class="ub-left">
-      <span class="ub-hello">Hello,</span>
-      <span id="ubName" class="ub-name">Guest</span>
-    </div>
-    <div class="ub-right">
-      <span class="ub-badge">LBX <b id="ubBal">0</b></span>
-    </div>
-  </div>
-
-  <style>
-    .userbar{
-      max-width:1100px; margin:12px auto 8px; padding:8px 12px;
-      display:flex; align-items:center; justify-content:space-between;
-      border:1px solid rgba(255,255,255,.10); border-radius:12px;
-      background:rgba(0,0,0,.25); backdrop-filter: blur(6px);
-    }
-    .ub-hello{ font-size:12px; color:#9fd0d6; margin-right:6px }
-    .ub-name{ font-weight:900; color:#ffe39a }
-    .ub-badge{
-      display:inline-flex; align-items:center; gap:6px;
-      padding:6px 10px; border-radius:999px; font-weight:800;
-      background:#2a2310; color:#ffe39a; border:1px solid #8c6926;
-    }
-    @media (max-width:520px){
-      .userbar{ margin:8px 8px 4px; }
-    }
-  </style>
-
-  <script>
-  (function(){
-    "use strict";
-    const $  = s => document.querySelector(s);
-    const up = s => String(s||"").trim().toUpperCase();
-    const sget = (k,def=null)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(_){ return def; } };
-
-    function pickUser(){
-      const qp = new URLSearchParams(location.search).get("viewer");
-      if (qp && qp.trim()) return up(qp);
-      const sess = sget("l3z:session");
-      if (sess && sess.user) return up(sess.user);
-      const prof = sget("l3z:user");
-      if (prof && prof.username) return up(prof.username);
-      const legacy = localStorage.getItem("user:username");
-      if (legacy) return up(legacy);
-      const last = sget("lash3z_last_user");
-      if (last) return up(last);
-      return "";
-    }
-
-    async function refresh(){
-      const name = pickUser() || "GUEST";
-      $("#ubName").textContent = name;
-
-      try{
-        const r = await fetch(window.apiUrl("/api/wallet/me?viewer="+encodeURIComponent(name)), { credentials:"include", cache:"no-store" });
-        if(!r.ok) throw 0;
-        const j = await r.json();
-        const bal = (j && j.wallet && typeof j.wallet.balance==="number") ? j.wallet.balance : 0;
-        $("#ubBal").textContent = Math.floor(bal);
-        return;
-      }catch(_){ /* fallback */ }
-
-      const w = sget("lbx:wallet:"+name) || { balance: 0 };
-      $("#ubBal").textContent = Math.floor(Number(w.balance||0));
-    }
-
-    window.addEventListener("storage", (e)=>{
-      if(["l3z:session","l3z:user","user:username","lash3z_last_user"].includes(e.key)) refresh();
-    });
-
-    refresh();
-  })();
-  </script>
-
   <script>
     // Already authed? bounce straight to admin
     (async () => {
       try {
-        const r = await fetch(window.apiUrl('/api/admin/me'), { credentials: 'include', cache: 'no-store' });
+        const r = await fetch('/api/admin/me', { credentials: 'include', cache: 'no-store' });
         if (r.ok) location.replace('/admin/battleground_admin.html');
       } catch {}
     })();
@@ -180,7 +92,7 @@
       if (!user || !pass) { status('Please enter both username and password.', true); disable(false); return; }
 
       try {
-        const res = await fetch(window.apiUrl('/api/admin/login'), {
+        const res = await fetch('/api/admin/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
           credentials: 'include',
