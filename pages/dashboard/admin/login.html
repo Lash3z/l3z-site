@@ -1,60 +1,105 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Admin Login • L3Z (Dashboard)</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Admin Login • LASH3Z</title>
   <link rel="icon" type="image/png" href="/assets/L3Z_logoMain.png">
+  <meta http-equiv="Cache-Control" content="no-store"/>
   <style>
-    :root{ --glass:rgba(0,0,0,.72); --line:rgba(0,255,255,.2); --ink:#eaf7ff; --cyan:#00ffff; --ok:#12d48a; --err:#ff7a8a; }
-    *{box-sizing:border-box} html,body{margin:0;min-height:100vh;background:#0b1113;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-    .card{width:360px;background:var(--glass);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 0 18px rgba(0,255,255,.15)}
-    h1{font-size:18px;margin:0 0 12px;color:var(--cyan)}
-    label{display:block;font-size:12px;opacity:.9;margin:10px 0 6px}
-    input{width:100%;padding:10px;border-radius:10px;border:1px solid #1b1b1b;background:#061214;color:var(--ink)}
-    button{margin-top:14px;width:100%;padding:11px;border-radius:10px;border:1px solid rgba(0,0,0,.3);cursor:pointer;font-weight:800;color:#102b2b;background:linear-gradient(180deg,#f5c462,#d49a2e)}
-    .meta{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
-    .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#091116;color:#cfe;font-weight:800;font-size:12px}
-    .muted{opacity:.85;font-size:12px}.ok{color:#12d48a}.err{color:#ff7a8a}.hint{font-size:11px;color:#a7c7d6;margin-top:8px}
+    body{margin:0;font-family:Segoe UI,system-ui,Arial,sans-serif;background:#0b1113;color:#eaf7ff;display:flex;align-items:center;justify-content:center;min-height:100vh}
+    .card{background:rgba(0,0,0,.75);border:1px solid rgba(0,255,255,.2);border-radius:14px;padding:22px;width:320px;box-shadow:0 0 18px rgba(0,255,255,.15)}
+    h1{font-size:18px;margin:0 0 12px;color:#00ffff}
+    label{display:block;font-size:12px;opacity:.85;margin:10px 0 6px}
+    input{width:100%;padding:10px;border-radius:10px;border:1px solid #1b1b1b;background:#061214;color:#eaf7ff}
+    button{margin-top:14px;width:100%;padding:10px;border-radius:10px;border:1px solid rgba(0,255,255,.25);background:#103d30;border-color:#1fa37b;color:#cfe;cursor:pointer;font-weight:800}
+    button[disabled]{opacity:.6;cursor:not-allowed}
+    .msg{margin-top:10px;font-size:12px;min-height:16px}
+    .msg.bad{color:#ff9aa7}
+    .msg.ok{color:#9effa4}
   </style>
 </head>
+<script>
+  // Define early so every fetch sees it
+  window.API_BASE = (location.hostname==='127.0.0.1'||location.hostname==='localhost')
+    ? 'http://localhost:3000' 
+    : ''; // same-origin in production
+</script>
+
 <body>
-<div class="wrap">
   <div class="card">
     <h1>Admin Login</h1>
-    <form id="form" novalidate>
-      <label for="u">Username</label><input id="u" autocomplete="username" required>
-      <label for="p">Password</label><input id="p" type="password" autocomplete="current-password" required>
-      <button id="loginBtn" type="submit">Sign in</button>
-      <div class="meta"><div class="pill" id="cookieState">cookie: checking…</div><div class="muted" id="status"></div></div>
-      <div class="hint">Set <code>window.API_BASE</code> before scripts if API is on another origin.</div>
-    </form>
+    <label for="u">Username</label>
+    <input id="u" autocomplete="username" />
+    <label for="p">Password</label>
+    <input id="p" type="password" autocomplete="current-password" />
+    <button id="loginBtn">Sign in</button>
+    <div id="m" class="msg"></div>
   </div>
-</div>
 
-<script src="/assets/api-base.js"></script>
-<script src="/assets/js/bootstrap-auth.js"></script>
-<script>
-(function(){
-  const $=(s,r=document)=>r.querySelector(s);
-  const form=$("#form"), U=$("#u"), P=$("#p"), status=$("#status"), cookieState=$("#cookieState"), btn=$("#loginBtn");
-  function say(el,msg,cls){ if(!el)return; el.textContent=msg||""; el.className=(cls?cls:"muted"); }
-  async function checkStatus(redirect=false){ try{ const me=await api.get("/api/me"); const role=me?.user?.role||"user"; say(cookieState,"cookie: ok","pill"); if(redirect&&role==="admin") location.href="/admin/tools.html"; return role; }catch{ say(cookieState,"cookie: missing","pill"); return "guest"; } }
-  form.addEventListener("submit", async (ev)=>{
-    ev.preventDefault(); const username=(U.value||"").trim().toLowerCase(); const password=(P.value||"");
-    if(!username||!password){ say(status,"Enter username and password.","err"); return; }
-    btn.disabled=true; say(status,"Signing in…");
-    try{
-      const j=await api.post("/api/auth/login",{ username,password });
-      localStorage.setItem("lash3z_last_user", username);
-      const me=await api.get("/api/me"); const role=me?.user?.role || j?.user?.role || "user";
-      if(role!=="admin"){ say(status,"Logged in, but not an admin.","err"); btn.disabled=false; return; }
-      say(status,"Welcome, admin.","ok"); location.href="/admin/tools.html";
-    }catch(e){ const msg=(e?.payload&&(e.payload.error||e.payload.detail))||e.message||"login failed"; say(status,String(msg).replace(/_/g," "),"err"); btn.disabled=false; }
-  });
-  try{ const last=localStorage.getItem("lash3z_last_user"); if(last&&!U.value) U.value=last; }catch{}
-  checkStatus(true);
-})();
-</script>
+  <script>
+  (function(){
+    "use strict";
+    const $ = s => document.querySelector(s);
+    const btn = $("#loginBtn");
+    const msg = $("#m");
+    const NEXT = new URLSearchParams(location.search).get("next") || "/pages/dashboard/admin/admin_hub.html";
+    const apiUrl = (path)=> (/^https?:\/\//i.test(path) ? path : (window.API_BASE||'') + path);
+
+    function setMsg(text, ok){
+      msg.textContent = text || "";
+      msg.className = "msg " + (ok ? "ok" : "bad");
+    }
+
+    async function doLogin(){
+      const user = ($("#u").value || "").trim();
+      const pass = $("#p").value || "";
+      if(!user || !pass){ setMsg("Enter both fields", false); return; }
+
+      btn.disabled = true; setMsg("Signing in…", true);
+      try{
+        const res = await fetch(apiUrl("/api/admin/gate/login"), {
+          method: "POST",
+          credentials: "include",
+          headers: {"Content-Type":"application/json"},
+          cache: "no-store",
+          body: JSON.stringify({ username: user, password: pass })
+        });
+
+        // Try JSON first; fall back to text
+        let j = {};
+        try { j = await res.json(); }
+        catch { try { j = { ok:false, message: await res.text() }; } catch {} }
+
+        if(res.ok && j && j.ok){
+          // Optional UX-only cache so other pages can fade in fast (not security)
+          try{
+            localStorage.setItem("l3z:session", JSON.stringify({
+              user: (user||"ADMIN").toString().toUpperCase(),
+              isAdmin: true,
+              expiresAt: Date.now()+7*24*60*60*1000
+            }));
+            localStorage.setItem("admin:token", JSON.stringify({
+              by: user||"ADMIN",
+              ts: Date.now(),
+              expiresAt: Date.now()+12*60*60*1000
+            }));
+          }catch(_){}
+          setMsg("Logged in. Redirecting…", true);
+          location.href = NEXT;
+        }else{
+          setMsg(j?.error || j?.message || "Wrong username or password", false);
+        }
+      }catch{
+        setMsg("Login failed (network)", false);
+      }finally{
+        btn.disabled = false;
+      }
+    }
+
+    btn.addEventListener("click", doLogin);
+    document.addEventListener("keydown", e => { if(e.key === "Enter") doLogin(); });
+  })();
+  </script>
 </body>
 </html>
