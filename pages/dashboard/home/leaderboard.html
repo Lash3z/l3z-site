@@ -42,12 +42,6 @@
   .right{display:flex;gap:8px;align-items:center}
 </style>
 </head>
-<script>
-  window.API_BASE = (location.hostname==='127.0.0.1'||location.hostname==='localhost')
-    ? 'http://localhost:3000' 
-    : ''; // same-origin in production
-</script>
-
 <body>
 <div class="wrap">
   <h1>Overall Leaderboard</h1>
@@ -94,18 +88,17 @@
 </div>
 
 <script>
-"use strict";
 /* ===================== utils ===================== */
 const $ = (s, root=document)=>root.querySelector(s);
 const up = s => (s||'').toString().trim().toUpperCase();
 const fmt0 = n => (n==null||isNaN(+n)) ? '0' : Math.round(+n).toString();
-const esc = s => (s??'').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const esc = s => (s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 
 const apiBadge = $("#apiBadge");
 let API_OK = false;
 async function probeAPI(){
   try{
-    const r = await fetch(window.API_BASE + "/healthz",{cache:"no-store"});
+    const r = await fetch("/healthz",{cache:"no-store"});
     API_OK = r.ok;
   }catch{ API_OK=false; }
   apiBadge.textContent = API_OK ? "API: online" : "API: offline";
@@ -169,7 +162,7 @@ async function fetchWalletBalancesFromAPI(users, concurrency=6){
     while(idx < users.length){
       const u = users[idx++];
       try{
-        const r = await fetch(window.API_BASE + `/api/wallet/${encodeURIComponent(u)}`,{cache:"no-store"});
+        const r = await fetch(`/api/wallet/${encodeURIComponent(u)}`,{cache:"no-store"});
         if(r.ok){
           const data = await r.json();
           const bal = Number(data?.wallet?.balance || 0);
