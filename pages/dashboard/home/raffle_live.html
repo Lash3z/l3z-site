@@ -60,19 +60,13 @@
     const u = USER;
     const nameEl = document.getElementById("welcomeName"); if(nameEl) nameEl.textContent = u;
     badgeUpdate(u);
-    const userInp = document.getElementById('user');
-    if (userInp && !userInp.value) userInp.value = u;
+    const ins = new Set([document.getElementById('user'), ...document.querySelectorAll('[name="user"],[data-fill-user]')].filter(Boolean));
+    ins.forEach(n=>{ if(!n.value) n.value=u; });
     document.documentElement.removeAttribute("data-auth");
   });
 })();
 </script>
 </head>
-<script>
-  window.API_BASE = (location.hostname==='127.0.0.1'||location.hostname==='localhost')
-    ? 'http://localhost:3000' 
-    : ''; // same-origin in production
-</script>
-
 <body>
   <div class="topbar">
     <div class="title">Raffle — Live</div>
@@ -96,13 +90,12 @@
         <div class="center">
           <div style="text-align:center">
             <p class="muted">You can join this raffle once.</p>
-            <form id="joinForm" class="row" style="justify-content:center" autocomplete="off" novalidate>
-              <input id="user" placeholder="USERNAME" readonly style="width:220px" aria-label="Username"/>
-              <button id="joinBtn" class="primary" type="submit">Join Raffle</button>
-            </form>
+            <div class="row" style="justify-content:center">
+              <input id="user" placeholder="USERNAME" readonly style="width:220px"/>
+              <button id="joinBtn" class="primary">Join Raffle</button>
+            </div>
             <div class="row" style="justify-content:center;margin-top:8px">
-              <span id="status" class="pill" aria-live="polite">Checking…</span>
-              <span id="stamp" class="pill" style="display:none"></span>
+              <span id="status" class="pill">Checking…</span>
             </div>
           </div>
         </div>
@@ -114,167 +107,72 @@
   <div id="toast" class="toast">Saved.</div>
 
 <script>
-/* Live Server (5501) – route /api to local Node and include credentials */
-(function(){
-  var API_BASE = (location.port === '5501') ? 'http://127.0.0.1:3000' : '';
-  var _fetch = window.fetch ? window.fetch.bind(window) : null;
-  if (_fetch){
-    window.fetch = function(input, init){
-      init = init || {};
-      if (typeof input === 'string' && input.indexOf('/api/') === 0){
-        input = API_BASE + input;
-        if (!init.credentials) init.credentials = 'include';
-        if (!init.cache) init.cache = 'no-store';
-      }
-      return _fetch(input, init);
-    };
-  }
-})();
-
 (function(){
   "use strict";
-  var $=function(s){ return document.querySelector(s); };
-  var esc=function(s){ return (s==null?'':String(s)).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m])); };
-  var up=function(s){ return String(s||'').trim().toUpperCase(); };
-  var toast=$("#toast"); function toastMsg(t){ toast.textContent=t; toast.classList.add('on'); setTimeout(()=>toast.classList.remove('on'),1400); }
+  const $=s=>document.querySelector(s);
+  const esc=s=>(s??'').toString().replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+  const up=s=>(s||'').toString().trim().toUpperCase();
 
   // Raffle identity: ?id=... else daily default
-  var qp = new URLSearchParams(location.search);
-  var RID = qp.get("id") || ("raffle:"+new Date().toISOString().slice(0,10));
-  var ridEl=$("#rid"); if(ridEl) ridEl.textContent = RID;
+  const qp=new URLSearchParams(location.search);
+  const RID = qp.get("id") || ("raffle:"+new Date().toISOString().slice(0,10));
 
-  var userEl=$("#user"), joinBtn=$("#joinBtn"), statusEl=$("#status"), countEl=$("#count"), listEl=$("#list"), joinForm=$("#joinForm"), stampEl=$("#stamp");
+  const userEl=$("#user"), joinBtn=$("#joinBtn"), statusEl=$("#status"), countEl=$("#count"), listEl=$("#list"), ridEl=$("#rid");
+  const toast=$("#toast");
+  ridEl.textContent = RID;
 
-  // Local fallback storage
-  var K_LOCAL = "raffle:entries:"+RID;
-  function sget(k,def){ try{ var v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(_){ return def; } }
-  function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } }
+  function toastMsg(t){ toast.textContent=t; toast.classList.add('on'); setTimeout(()=>toast.classList.remove('on'),1400); }
 
-  function mergeUniqueUsers(list){
-    var seen = new Set(); var out=[];
-    for (var i=0;i<list.length;i++){
-      var u = up(list[i] && list[i].user);
-      if (!u || seen.has(u)) continue;
-      seen.add(u); out.push({user:u});
-    }
-    // cap to keep local size bounded
-    if (out.length>1000) out = out.slice(out.length-1000);
-    return out;
+  async function getEntries(){
+    const r = await fetch(`/api/raffles/${encodeURIComponent(RID)}/entries`, { credentials:"include" });
+    if(!r.ok) throw new Error("Failed to load entries");
+    const j = await r.json(); return Array.isArray(j.entries)? j.entries : [];
   }
-
-  async function getEntriesAPI(){
-    var r = await fetch("/api/raffles/"+encodeURIComponent(RID)+"/entries", { credentials:"include", cache:"no-store" });
-    if(!r.ok) throw new Error("HTTP "+r.status);
-    var j = await r.json();
-    return Array.isArray(j.entries)? j.entries.map(e=>({user:up(e.user)})) : [];
-  }
-
-  async function postEntryAPI(user){
-    var r = await fetch("/api/raffles/"+encodeURIComponent(RID)+"/entries", {
+  async function submitEntry(user){
+    const r = await fetch(`/api/raffles/${encodeURIComponent(RID)}/entries`, {
       method:"POST",
       headers:{ "Content-Type":"application/json" },
       credentials:"include",
       body: JSON.stringify({ user })
     });
-    if(!r.ok) throw new Error("HTTP "+r.status);
+    if(!r.ok) throw new Error("Failed to submit entry");
     return r.json();
   }
 
-  // Polling with overlap prevention
-  var pollCtrl = null, pollTimer = null;
   async function paint(){
     try{
-      // Fetch server entries
-      if (pollCtrl) pollCtrl.abort();
-      pollCtrl = ('AbortController' in window) ? new AbortController() : null;
-      var opts = { cache:'no-store' }; if(pollCtrl) opts.signal = pollCtrl.signal;
-      var server = await getEntriesAPI(opts).catch(()=>null);
-      var local = sget(K_LOCAL, []);
-
-      var combined = server ? mergeUniqueUsers(server.concat(local)) : mergeUniqueUsers(local);
-      // If we got server data, refresh local mirror
-      if (server) sset(K_LOCAL, combined);
-
-      countEl.textContent = combined.length;
-      listEl.innerHTML = combined.length
-        ? combined.map(e=>`<span class="entry">${esc(e.user)}</span>`).join('')
-        : `<span class="muted">No entries yet.</span>`;
-
-      var u = up(userEl && userEl.value);
-      var entered = !!combined.find(e=> e.user === u);
+      const arr = await getEntries();
+      countEl.textContent = arr.length;
+      listEl.innerHTML = arr.map(e=>`<span class="entry">${esc(e.user)}</span>`).join('') || `<span class="muted">No entries yet.</span>`;
+      const u = up(userEl.value);
+      const entered = !!arr.find(e=>e.user === u);
       statusEl.textContent = entered ? "You're in!" : "Not entered";
-      joinBtn.disabled = entered;
-    }catch(e){
-      // Server unavailable: fall back to local
-      var localOnly = mergeUniqueUsers(sget(K_LOCAL, []));
-      countEl.textContent = localOnly.length;
-      listEl.innerHTML = localOnly.length
-        ? localOnly.map(e=>`<span class="entry">${esc(e.user)}</span>`).join('')
-        : `<span class="muted">No entries yet (offline).</span>`;
-      var u = up(userEl && userEl.value);
-      var entered = !!localOnly.find(e=> e.user === u);
-      statusEl.textContent = entered ? "You're in! (local)" : "Not entered (offline)";
       joinBtn.disabled = entered ? true : false;
-    } finally {
-      // schedule next poll (single timer)
-      if (pollTimer) clearTimeout(pollTimer);
-      pollTimer = setTimeout(paint, 4000);
+    }catch(e){
+      statusEl.textContent = "Error loading entries";
+      console.error(e);
     }
   }
 
-  // Join flow with optimistic local write + rate limit
-  var lastJoinTs = 0;
-  async function handleJoin(e){
-    e.preventDefault();
-    var u = up(userEl && userEl.value);
-    if(!u){ toastMsg('Not logged in'); return; }
-
-    var now = Date.now();
-    if (now - lastJoinTs < 8000){ toastMsg('Please wait…'); return; }
-    lastJoinTs = now;
-
-    joinBtn.disabled = true; statusEl.textContent = "Submitting…";
-    // Optimistic: write to local immediately
-    var local = sget(K_LOCAL, []);
-    local.push({user:u});
-    sset(K_LOCAL, mergeUniqueUsers(local));
-    stampEl.style.display='inline-block'; stampEl.textContent='Last action @ '+new Date().toLocaleTimeString();
+  async function init(){
     await paint();
+    setInterval(paint, 4000); // poll
+  }
 
-    // Try server write
+  joinBtn.addEventListener('click', async ()=>{
+    const u = up(userEl.value);
+    if(!u){ toastMsg('Not logged in'); return; }
+    joinBtn.disabled = true;
     try{
-      var j = await postEntryAPI(u);
-      if (j && (j.ok || j.already)) toastMsg('Entry submitted');
-      else toastMsg('Submitted');
-    }catch(_e){
-      // stays local; polling will reconcile if/when API returns
-      toastMsg('Saved locally (offline mode)');
-    }finally{
+      const j = await submitEntry(u);
+      if(j.ok || j.already){ toastMsg('Entry submitted'); }
       await paint();
+    }catch(e){
+      toastMsg('Failed to submit'); joinBtn.disabled = false;
     }
-  }
-
-  function bootUsername(){
-    // Prefer auth gate’s injected user
-    var u = window.__L3Z_USER__ ? String(window.__L3Z_USER__) : '';
-    if (!u){
-      // fallback: cookie “viewer” set by login page
-      var m = document.cookie.match(/(?:^|;\s*)viewer=([^;]*)/);
-      u = m ? decodeURIComponent(m[1]||'') : '';
-    }
-    if (userEl && !userEl.value) userEl.value = up(u);
-  }
-
-  // Wire
-  joinForm.addEventListener('submit', handleJoin);
-
-  // Init
-  bootUsername();
-  paint();
-  // Repaint when storage changes in other tabs/windows
-  window.addEventListener('storage', function(e){
-    if (e && e.key === K_LOCAL) paint();
   });
+
+  init();
 })();
 </script>
 </body>
