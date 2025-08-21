@@ -1,19 +1,10 @@
 <!DOCTYPE html>
-<html lang="en" data-admin="ready">
+<html lang="en" data-admin="checking">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta http-equiv="Cache-Control" content="no-store"/>
-<title>L3Z — Hub</title>
-
-<!-- API base must be defined before any code that uses fetch -->
-<script>
-  window.API_BASE =
-    (location.hostname==='127.0.0.1' || location.hostname==='localhost')
-      ? 'http://localhost:3000'
-      : ''; // same-origin in production
-</script>
-
+<title>L3Z — Admin Hub</title>
 <style>
   :root{
     --bg:#060b0d; --panel:#0b1417; --ink:#eaf7ff; --muted:#9fd0d6;
@@ -22,9 +13,11 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
   h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
   h2{margin:0 0 10px;font-size:16px;color:var(--ink)}
   .wrap{max-width:1300px;margin:0 auto;padding:0 16px 48px}
+  .gate{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
   .panel{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;min-height:220px}
   .full{grid-column:1 / -1}
@@ -50,19 +43,56 @@
   @media (max-width: 980px){ .grid{grid-template-columns:1fr} }
 </style>
 </head>
-
 <body>
 
+<!-- ===== AdminGate (server cookie is the law) ===== -->
+<script>
+(function(){
+  "use strict";
+  var ADMIN_CHECK = "/api/admin/gate/check";
+  var ADMIN_LOGIN = "/pages/dashboard/admin/admin_login.html";
+  var DASHBOARD   = "/index.html";
+  var H = document.documentElement;
+  H.setAttribute("data-admin","checking");
+
+  function lock(){
+    H.removeAttribute("data-admin");
+    var s=document.createElement("style");
+    s.textContent=".lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}.lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75);box-shadow:0 0 18px rgba(0,255,255,.15)}.lockcard h1{margin:0 0 10px;color:#cfe}.lockcard a{color:#7ad7ff;text-decoration:underline}";
+    document.head.appendChild(s);
+    document.body.innerHTML = '<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'">Admin Login</a> first.</div><div style="margin-top:8px;font-size:12px;opacity:.85">If you already logged in, your session may have expired.</div><div style="margin-top:14px"><a href="'+DASHBOARD+'">Back to Dashboard</a></div></div></div>';
+  }
+
+  fetch(ADMIN_CHECK, { credentials:"include", cache:"no-store" })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){ if (j && (j.admin || j.isAdmin)) { H.removeAttribute("data-admin"); } else { lock(); } })
+    .catch(lock);
+})();
+</script>
+<!-- ===== /AdminGate ===== -->
+
 <div class="wrap">
-  <h1>Hub</h1>
+  <h1>Admin Hub</h1>
+
+  <!-- Local unlock (UX-only; server auth still required for API calls) -->
+  <div class="gate">
+    <div class="row">
+      <span class="pill">Admin Session</span>
+      <button id="btnLogout" class="danger">Force Logout</button>
+      <span id="gateStatus" class="pill">Ready</span>
+      <span class="hint">Server cookie decides access. This just helps you quickly reset the session.</span>
+    </div>
+  </div>
 
   <div class="grid" id="grid">
 
-    <!-- RAFFLES (read-only + local draw) -->
+    <!-- RAFFLES -->
     <div class="panel">
       <h2>Raffles</h2>
       <div class="row">
         <input id="rfId" placeholder="RAFFLE ID" style="width:160px">
+        <input id="rfUser" placeholder="USERNAME" style="width:200px;text-transform:uppercase">
+        <button id="rfAdd" class="ok">Add Entry</button>
         <button id="rfRefresh">Refresh</button>
         <button id="rfDraw">Draw Winner (local)</button>
         <span id="rfMsg" class="pill">Ready</span>
@@ -75,21 +105,18 @@
           <tbody></tbody>
         </table>
       </div>
-      <div class="mini" style="margin-top:6px">Tip: Use “Giveaways” below to add entries to the current open raffle.</div>
     </div>
 
-    <!-- GIVEAWAYS (public) -->
+    <!-- GIVEAWAYS (Slot Wheel) -->
     <div class="panel">
-      <h2>Giveaways</h2>
+      <h2>Giveaways (Slot Wheel)</h2>
       <div class="row">
-        <span id="gvOpen" class="badge">Open: —</span>
+        <input id="gvId" placeholder="GIVEAWAY ID" style="width:160px">
+        <input id="gvUser" placeholder="USERNAME" style="width:200px;text-transform:uppercase">
+        <button id="gvAdd" class="ok">Add Entry</button>
         <button id="gvRefresh">Refresh</button>
         <button id="gvDraw">Draw Winner (local)</button>
         <span id="gvMsg" class="pill">Ready</span>
-      </div>
-      <div class="row" style="margin-top:8px">
-        <input id="gvUser" placeholder="USERNAME" style="width:160px;text-transform:uppercase">
-        <button id="gvAdd" class="ok">Add Entry</button>
       </div>
       <div class="hr"></div>
       <div class="mini">Entries</div>
@@ -112,13 +139,15 @@
         <span id="vipMsg" class="pill">Ready</span>
       </div>
       <div class="hr"></div>
-      <div class="mini">Posts to <code>/api/wallet/adjust</code>. (Admin bypass must be on for now.)</div>
+      <div class="mini">Tip: this posts to <code>/api/admin/wallet/adjust</code> and refreshes the user’s balance/leaderboard.</div>
     </div>
 
-    <!-- UTILITIES -->
+    <!-- PUBLISH / UTILITIES -->
     <div class="panel full">
       <h2>Utilities</h2>
       <div class="row">
+        <button id="btnPublishBets" class="ok">Publish Bets to Players</button>
+        <button id="btnRebuildLB">Rebuild Leaderboard</button>
         <button id="btnPing">Ping API</button>
         <span id="utilMsg" class="pill">Ready</span>
       </div>
@@ -129,36 +158,21 @@
 
 <div id="toast" class="toast">Saved.</div>
 
-<!-- Minimal API helper -->
+<!-- ===== Minimal API helper (works even without /assets/js/api-base.js) ===== -->
 <script>
 (function(){
   "use strict";
-  if (window.api && typeof window.api.get==="function") return;
+  if (window.api && typeof window.api.get==="function") return; // respect global helper if present
 
   function isJson(res){ return (res.headers.get("content-type")||"").indexOf("application/json")>-1; }
   async function readBody(res){ try{ return isJson(res) ? await res.json() : await res.text(); }catch(_){ return null; } }
   function err(res,body){ var e=new Error((body&&body.error)||("HTTP "+res.status)); e.status=res.status; e.body=body; return e; }
-
-  // Resolve to the correct base (dev -> localhost:3000, prod -> same-origin)
-  function apiUrl(path){
-    if (/^https?:\/\//i.test(path)) return path; // absolute URL, leave as-is
-    return (window.API_BASE || '') + path;
-  }
-
   async function core(path,opts){
-    var url = apiUrl(path);
-    var res = await fetch(url, {
-      credentials:"include",
-      cache:"no-store",
-      headers:(opts&&opts.headers)||{},
-      method:(opts&&opts.method)||"GET",
-      body:opts&&opts.body
-    });
-    var body = await readBody(res);
+    var res=await fetch(path,{credentials:"include",cache:"no-store",headers:(opts&&opts.headers)||{},method:(opts&&opts.method)||"GET",body:opts&&opts.body});
+    var body=await readBody(res);
     if(!res.ok || (body&&body.ok===false)) throw err(res,body);
     return body==null?{ok:true}:body;
   }
-
   window.api={
     get:function(p,o){ return core(p,o||{}); },
     post:function(p,b,o){ o=o||{}; o.method="POST"; o.headers=Object.assign({"Content-Type":"application/json"},o.headers||{}); o.body=JSON.stringify(b||{}); return core(p,o); }
@@ -166,7 +180,7 @@
 })();
 </script>
 
-<!-- Page logic (no admin checks) -->
+<!-- ===== Page logic ===== -->
 <script>
 (function(){
   "use strict";
@@ -176,65 +190,71 @@
   function showToast(t){ toast.textContent=t||"Saved."; toast.classList.add("on"); setTimeout(function(){ toast.classList.remove("on"); }, 1400); }
   function up(s){ return String(s||"").trim().toUpperCase(); }
   function pill(el,txt,ok){ el.textContent=txt; el.style.background = ok ? "#103d30" : "#0f1720"; el.style.borderColor = ok ? "#1fa37b" : "var(--line)"; }
+
+  // ---- Session controls
+  var btnLogout=$("#btnLogout"), gateStatus=$("#gateStatus");
+  btnLogout.addEventListener("click", function(){
+    gateStatus.textContent="Logging out…";
+    fetch("/api/admin/gate/logout",{method:"POST",credentials:"include"}).catch(function(){}).finally(function(){
+      localStorage.removeItem("admin:token"); localStorage.removeItem("l3z:session");
+      gateStatus.textContent="Logged out";
+      location.reload();
+    });
+  });
+
+  // ---------- RAFFLES ----------
+  var rfId=$("#rfId"), rfUser=$("#rfUser"), rfAdd=$("#rfAdd"), rfRefresh=$("#rfRefresh"), rfDraw=$("#rfDraw"), rfMsg=$("#rfMsg"), rfTbl=$("#rfTbl tbody");
   function renderEntries(tbody,rows){
-    tbody.innerHTML = (rows||[]).map(function(r,i){
+    tbody.innerHTML = rows.map(function(r,i){
       var ts = r.ts ? new Date(r.ts).toLocaleString() : "—";
       return '<tr><td>'+(i+1)+'</td><td>'+up(r.user||r.username||"")+'</td><td>'+ts+'</td></tr>';
     }).join("") || '<tr><td colspan="3" class="mini">No entries</td></tr>';
   }
-
-  /* ---------- RAFFLES (read-only + local draw) ---------- */
-  var rfId=$("#rfId"), rfRefresh=$("#rfRefresh"), rfDraw=$("#rfDraw"), rfMsg=$("#rfMsg"), rfTbl=$("#rfTbl tbody");
-  function getRaffleEntriesById(id){
+  function getRaffle(id){
     if(!id){ pill(rfMsg,"Missing ID"); return; }
     rfMsg.textContent="Loading…";
-    api.get("/api/raffles/"+encodeURIComponent(id)+"/entries").then(function(j){
+    api.get("/api/admin/raffles/"+encodeURIComponent(id)+"/entries").then(function(j){
       renderEntries(rfTbl, j.entries||[]);
       pill(rfMsg,"OK",true);
-    }).catch(function(){
+    }).catch(function(e){
       renderEntries(rfTbl, []);
-      pill(rfMsg,"Load failed");
+      pill(rfMsg, "Load failed");
     });
   }
-  rfRefresh.addEventListener("click", function(){ getRaffleEntriesById(rfId.value); });
+  rfRefresh.addEventListener("click", function(){ getRaffle(rfId.value); });
+  rfAdd.addEventListener("click", function(){
+    var id = rfId.value, user = up(rfUser.value);
+    if(!id || !user){ pill(rfMsg,"Need ID + USER"); return; }
+    rfMsg.textContent="Adding…";
+    api.post("/api/admin/raffles/"+encodeURIComponent(id)+"/entries", { user:user }).then(function(){
+      rfUser.value=""; showToast("Entry added"); getRaffle(id);
+    }).catch(function(){ pill(rfMsg,"Add failed"); });
+  });
   rfDraw.addEventListener("click", function(){
+    // local draw from current table, for on-stream fun
     var names = $$("#rfTbl tr td:nth-child(2)").map(function(td){ return td.textContent.trim(); });
     if(!names.length){ pill(rfMsg,"No entries"); return; }
     var pick = names[Math.floor(Math.random()*names.length)];
     showToast("Winner: "+pick);
   });
 
-  /* ---------- GIVEAWAYS (public) ---------- */
-  var gvOpen=$("#gvOpen"), gvUser=$("#gvUser"), gvAdd=$("#gvAdd"), gvRefresh=$("#gvRefresh"), gvDraw=$("#gvDraw"), gvMsg=$("#gvMsg"), gvTbl=$("#gvTbl tbody");
-  var currentRid = null;
-
-  function refreshCurrentRaffle(){
+  // ---------- GIVEAWAYS ----------
+  var gvId=$("#gvId"), gvUser=$("#gvUser"), gvAdd=$("#gvAdd"), gvRefresh=$("#gvRefresh"), gvDraw=$("#gvDraw"), gvMsg=$("#gvMsg"), gvTbl=$("#gvTbl tbody");
+  function getGive(id){
+    if(!id){ pill(gvMsg,"Missing ID"); return; }
     gvMsg.textContent="Loading…";
-    api.get("/api/raffles/public").then(function(j){
-      currentRid = j && j.id ? String(j.id) : null;
-      gvOpen.textContent = "Open: " + (currentRid || "—");
-      if (currentRid){
-        return api.get("/api/raffles/"+encodeURIComponent(currentRid)+"/entries");
-      } else {
-        return { entries: [] };
-      }
-    }).then(function(j2){
-      renderEntries(gvTbl, j2.entries||[]);
+    api.get("/api/admin/giveaways/"+encodeURIComponent(id)+"/entries").then(function(j){
+      renderEntries(gvTbl, j.entries||[]);
       pill(gvMsg,"OK",true);
-    }).catch(function(){
-      renderEntries(gvTbl, []);
-      pill(gvMsg,"Load failed");
-    });
+    }).catch(function(){ renderEntries(gvTbl,[]); pill(gvMsg,"Load failed"); });
   }
-
-  gvRefresh.addEventListener("click", refreshCurrentRaffle);
+  gvRefresh.addEventListener("click", function(){ getGive(gvId.value); });
   gvAdd.addEventListener("click", function(){
-    var user=up(gvUser.value);
-    if(!user){ pill(gvMsg,"Need USER"); return; }
+    var id=gvId.value, user=up(gvUser.value);
+    if(!id || !user){ pill(gvMsg,"Need ID + USER"); return; }
     gvMsg.textContent="Adding…";
-    api.post("/api/giveaways/enter", { user:user }).then(function(){
-      gvUser.value=""; showToast("Entry added");
-      refreshCurrentRaffle();
+    api.post("/api/admin/giveaways/"+encodeURIComponent(id)+"/entries", { user:user }).then(function(){
+      gvUser.value=""; showToast("Entry added"); getGive(id);
     }).catch(function(){ pill(gvMsg,"Add failed"); });
   });
   gvDraw.addEventListener("click", function(){
@@ -244,14 +264,14 @@
     showToast("Winner: "+pick);
   });
 
-  /* ---------- VIP WALLET (bypass relies on server) ---------- */
+  // ---------- VIP WALLET ----------
   var vipUser=$("#vipUser"), vipAmt=$("#vipAmt"), vipWhy=$("#vipWhy"), vipApply=$("#vipApply"), vipMsg=$("#vipMsg");
   vipApply.addEventListener("click", function(){
     var user=up(vipUser.value), amt=Number(vipAmt.value||0), why=(vipWhy.value||"ADJUSTMENT").toString();
     if(!user || !amt){ pill(vipMsg,"Need USER + AMOUNT"); return; }
     vipApply.disabled=true; vipMsg.textContent="Submitting…";
-    api.post("/api/wallet/adjust", { username:user, delta:amt, reason:why }).then(function(r){
-      pill(vipMsg,"OK",true);
+    api.post("/api/admin/wallet/adjust", { username:user, delta:amt, reason:why }).then(function(r){
+      pill(vipMsg,"OK ("+(r.balance!=null? r.balance+" LBX":"done")+")", true);
       showToast("Wallet updated");
       vipAmt.value=""; vipWhy.value="";
     }).catch(function(e){
@@ -259,16 +279,24 @@
     }).finally(function(){ vipApply.disabled=false; });
   });
 
-  /* ---------- Utilities ---------- */
+  // ---------- UTILITIES ----------
   var utilMsg=$("#utilMsg");
+  $("#btnPublishBets").addEventListener("click", function(){
+    utilMsg.textContent="Publishing…";
+    api.post("/api/admin/bets/publish", {}).then(function(){ pill(utilMsg,"Published",true); showToast("Published"); })
+      .catch(function(){ pill(utilMsg,"Publish failed"); });
+  });
+  $("#btnRebuildLB").addEventListener("click", function(){
+    utilMsg.textContent="Rebuilding…";
+    api.post("/api/admin/leaderboard/rebuild", {}).then(function(){ pill(utilMsg,"Rebuilt",true); showToast("Leaderboard rebuilt"); })
+      .catch(function(){ pill(utilMsg,"Rebuild failed"); });
+  });
   $("#btnPing").addEventListener("click", function(){
     utilMsg.textContent="Pinging…";
-    api.get("/api/health").then(function(){ pill(utilMsg,"OK",true); showToast("API OK"); })
+    api.get("/api/ping").then(function(j){ pill(utilMsg,"OK",true); showToast("API OK"); })
       .catch(function(){ pill(utilMsg,"Ping failed"); });
   });
 
-  // initial load
-  refreshCurrentRaffle();
 })();
 </script>
 </body>
