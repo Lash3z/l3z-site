@@ -35,119 +35,7 @@
   .search{flex:1;min-width:180px;background:#0f141b;border:1px solid var(--line);border-radius:10px;color:#e8ecf3;padding:9px 12px}
 </style>
 </head>
-<script>
-  window.API_BASE = (location.hostname==='127.0.0.1'||location.hostname==='localhost')
-    ? 'http://localhost:3000' 
-    : ''; // same-origin in production
-</script>
-
 <body>
-  <!-- USER HEADER (drop this right after <body>) -->
-<div class="userbar" id="userBar">
-  <div class="ub-left">
-    <span class="ub-hello">Hello,</span>
-    <span id="ubName" class="ub-name">Guest</span>
-  </div>
-  <div class="ub-right">
-    <span class="ub-badge">LBX <b id="ubBal">0</b></span>
-  </div>
-</div>
-
-<style>
-  .userbar{
-    max-width:1100px; margin:12px auto 8px; padding:8px 12px;
-    display:flex; align-items:center; justify-content:space-between;
-    border:1px solid rgba(255,255,255,.10); border-radius:12px;
-    background:rgba(0,0,0,.25); backdrop-filter: blur(6px);
-  }
-  .ub-hello{ font-size:12px; color:#9fd0d6; margin-right:6px }
-  .ub-name{ font-weight:900; color:#ffe39a }
-  .ub-badge{
-    display:inline-flex; align-items:center; gap:6px;
-    padding:6px 10px; border-radius:999px; font-weight:800;
-    background:#2a2310; color:#ffe39a; border:1px solid #8c6926;
-  }
-  @media (max-width:520px){
-    .userbar{ margin:8px 8px 4px; }
-  }
-</style>
-
-<!-- ===== Unified viewer helper (no optional chaining) ===== -->
-<script>
-(function(){
-  "use strict";
-  if (window.l3zGetViewer) return;
-  function sget(k,d){ try{ var v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(_){ return d; } }
-  function pickName(){
-    var qp=new URLSearchParams(location.search).get('viewer'); if(qp) return qp.trim().toUpperCase();
-    var sess=sget('l3z:session'); if(sess && sess.user) return String(sess.user).toUpperCase();
-    var prof=sget('l3z:user'); if(prof && prof.username) return String(prof.username).toUpperCase();
-    var lg=localStorage.getItem('user:username'); if(lg) return String(lg).toUpperCase();
-    var last=sget('lash3z_last_user'); if(last) return String(last).toUpperCase();
-    return 'PLAYER';
-  }
-  async function fetchBalance(name){
-    // viewer/me
-    try{
-      var r=await fetch('/api/viewer/me',{credentials:'include',cache:'no-store'});
-      if(r.ok){
-        var j=await r.json();
-        var u=(j && (j.username||name)||'PLAYER').toUpperCase();
-        if (j && j.wallet && typeof j.wallet.balance==='number') return {username:u, balance:j.wallet.balance};
-        name=u;
-      }
-    }catch(_){}
-    // wallet/balance
-    try{
-      var w1=await fetch('/api/wallet/balance',{credentials:'include',cache:'no-store'});
-      if(w1.ok){ var j1=await w1.json(); if(typeof j1.balance==='number') return {username:name, balance:j1.balance}; }
-    }catch(_){}
-    // wallet/me (viewer=)
-    try{
-      var w2=await fetch('/api/wallet/me?viewer='+encodeURIComponent(name),{credentials:'include',cache:'no-store'});
-      if(w2.ok){ var j2=await w2.json(); if(j2 && j2.wallet && typeof j2.wallet.balance==='number') return {username:name, balance:j2.wallet.balance}; }
-    }catch(_){}
-    var w = sget('lbx:wallet:'+name) || { balance:0 };
-    return {username:name, balance:Number(w.balance)||0};
-  }
-  var _memo=null;
-  window.l3zGetViewer = async function(){
-    if(_memo) return _memo;
-    var name = pickName();
-    _memo = fetchBalance(name).then(function(x){
-      var u = (x && x.username ? x.username : name).toUpperCase();
-      var b = Math.max(0, Math.floor(Number(x && x.balance)||0));
-      return { username:u, balance:b };
-    });
-    return _memo;
-  };
-})();
-</script>
-
-<!-- Header fill -->
-<script>
-(function(){
-  "use strict";
-  var $  = function(s){ return document.querySelector(s); };
-  function onlyUpgradeNumber(el, value){
-    if(!el) return;
-    var v = Math.max(0, Math.floor(Number(value)||0));
-    var cur = Math.max(0, Math.floor(Number(String(el.textContent).replace(/[^\d.-]/g,''))||0));
-    if (cur !== 0 && v === 0) return;
-    el.textContent = String(v);
-  }
-  async function refresh(){
-    var me = await window.l3zGetViewer();
-    $("#ubName").textContent = me.username || "GUEST";
-    onlyUpgradeNumber($("#ubBal"), me.balance);
-  }
-  window.addEventListener("storage", function(e){
-    if(["l3z:session","l3z:user","user:username","lash3z_last_user"].indexOf(e.key)>=0) refresh();
-  });
-  refresh();
-})();
-</script>
-
 <div class="wrap">
   <div class="topbar">
     <div class="brand">
@@ -167,7 +55,7 @@
   <section id="panel-battleground" class="tab-panel" role="tabpanel" aria-labelledby="tab-battleground" aria-hidden="false">
     <div class="toolbar">
       <input id="q" class="search" placeholder="Filter by event, game, or pick…">
-      <button id="refresh" class="btn" type="button">Refresh</button>
+      <button id="refresh" class="btn">Refresh</button>
       <span class="small muted" id="count"></span>
     </div>
     <div id="list" class="list"></div>
@@ -187,82 +75,53 @@
 if(!window.__L3Z_MYBETS_INIT__){ window.__L3Z_MYBETS_INIT__ = true;
 (function(){
   "use strict";
-  var $ = function(s){ return document.querySelector(s); };
-  var whoEl=$("#who"), listEl=$("#list"), qEl=$("#q"), countEl=$("#count");
-
-  // Safe esc
-  function esc(s){
-    s = s==null ? '' : String(s);
-    return s.replace(/[&<>"']/g,function(m){ return m==="&"?"&amp;":m==="<"?"&lt;":m===">"?"&gt;":m==='"'?"&quot;":"&#39;"; });
-  }
-
-  // Provide a safe apiFetch fallback if /assets/api-base.js didn't define one yet
-  var apiFetch = window.apiFetch || (async function(path, opts){
-    var url = (window.API_BASE || "") + path;
-    var res = await fetch(url, Object.assign({ credentials:"include", cache:"no-store" }, opts||{}));
-    var ct = res.headers.get("content-type") || "";
-    if(!res.ok){
-      var err = new Error("HTTP "+res.status);
-      try{ err.body = ct.indexOf("application/json")!==-1 ? await res.json() : await res.text(); }catch(_){}
-      throw err;
-    }
-    if (ct.indexOf("application/json") !== -1) return res.json();
-    return {};
-  });
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s??'').replace(/[&<>"']/g,m=>m==="&"?"&amp;":m==="<"?"&lt;":m===">"?"&gt;":"&quot;");
+  const whoEl=$("#who"), listEl=$("#list"), qEl=$("#q"), countEl=$("#count");
 
   // Tabs
-  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
-  var panels = { battleground:$("#panel-battleground"), pvp:$("#panel-pvp"), bonus:$("#panel-bonus") };
-  function setActive(name, push){
-    tabs.forEach(function(btn){
-      var on = btn.getAttribute('data-tab')===name;
-      btn.classList.toggle('on', on);
-      btn.setAttribute('aria-selected', String(on));
-      btn.tabIndex = on ? 0 : -1;
-    });
-    for (var k in panels){ if(panels.hasOwnProperty(k)){ panels[k].setAttribute('aria-hidden', String(k!==name)); } }
-    if(push) try{ history.replaceState(null,"","#"+name); }catch(_){}
+  const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+  const panels = { battleground:$("#panel-battleground"), pvp:$("#panel-pvp"), bonus:$("#panel-bonus") };
+  function setActive(name, user=false){
+    tabs.forEach(btn=>{ const on=btn.dataset.tab===name; btn.classList.toggle('on',on); btn.setAttribute('aria-selected',String(on)); btn.tabIndex=on?0:-1; });
+    Object.entries(panels).forEach(([k,el])=> el.setAttribute('aria-hidden', String(k!==name)));
+    if(user) history.replaceState(null,"","#"+name);
     if(name==="battleground") render();
   }
-  document.querySelector('.tabs').addEventListener('keydown', function(e){
-    var i = tabs.findIndex ? tabs.findIndex(function(b){ return b.classList.contains('on'); })
-                           : (function(){ for(var x=0;x<tabs.length;x++){ if(tabs[x].classList.contains('on')) return x; } return 0; })();
-    if(e.key==="ArrowRight"){ e.preventDefault(); setActive(tabs[(i+1)%tabs.length].getAttribute('data-tab'), true); }
-    if(e.key==="ArrowLeft"){  e.preventDefault(); setActive(tabs[(i-1+tabs.length)%tabs.length].getAttribute('data-tab'), true); }
-    if(e.key==="Home"){       e.preventDefault(); setActive(tabs[0].getAttribute('data-tab'), true); }
-    if(e.key==="End"){        e.preventDefault(); setActive(tabs[tabs.length-1].getAttribute('data-tab'), true); }
+  document.querySelector('.tabs').addEventListener('keydown', e=>{
+    const i = tabs.findIndex(b=>b.classList.contains('on'));
+    if(e.key==="ArrowRight"){ e.preventDefault(); setActive(tabs[(i+1)%tabs.length].dataset.tab, true); }
+    if(e.key==="ArrowLeft"){  e.preventDefault(); setActive(tabs[(i-1+tabs.length)%tabs.length].dataset.tab, true); }
+    if(e.key==="Home"){       e.preventDefault(); setActive(tabs[0].dataset.tab, true); }
+    if(e.key==="End"){        e.preventDefault(); setActive(tabs[tabs.length-1].dataset.tab, true); }
   });
-  tabs.forEach(function(btn){ btn.addEventListener("click", function(){ setActive(btn.getAttribute('data-tab'), true); }); });
-  (function(){
-    var hash = (location.hash||"").replace(/^#/,"");
-    setActive(panels.hasOwnProperty(hash)?hash:"battleground", false);
-  })();
+  tabs.forEach(btn=> btn.addEventListener("click", ()=> setActive(btn.dataset.tab, true)));
+  setActive((location.hash||"").replace(/^#/,"") in panels ? (location.hash||"").slice(1) : "battleground", false);
 
-  // who (use unified helper)
-  (async function(){
+  // who
+  (async ()=>{
     try{
-      var me = await window.l3zGetViewer();
-      whoEl.textContent = (me.username||"PLAYER").toUpperCase();
-    }catch(_){ whoEl.textContent = "PLAYER"; }
+      const me = await apiFetch("/api/wallet/me");
+      whoEl.textContent = (me.username || me.user || "PLAYER").toUpperCase();
+    }catch{ whoEl.textContent = "PLAYER"; }
   })();
 
   // Fetch + render
   async function fetchBets(){
-    var j = await apiFetch("/api/bets/me?limit=200");
-    return (j && Array.isArray(j.bets)) ? j.bets : [];
+    const j = await apiFetch("/api/bets/me?limit=200");
+    return Array.isArray(j.bets) ? j.bets : [];
   }
 
   function matchFilter(entry, q){
     if(!q) return true;
     q = q.toLowerCase();
-    if(String(entry.eventId||"").toLowerCase().indexOf(q)>=0) return true;
-    if(String(entry.eventTitle||"").toLowerCase().indexOf(q)>=0) return true;
+    if((entry.eventId||"").toLowerCase().includes(q)) return true;
+    if((entry.eventTitle||"").toLowerCase().includes(q)) return true;
     if(entry.picks){
-      for(var i=0;i<entry.picks.length;i++){
-        var p = entry.picks[i];
-        if(String(p.left||"").toLowerCase().indexOf(q)>=0) return true;
-        if(String(p.right||"").toLowerCase().indexOf(q)>=0) return true;
-        if(String(p.pickName||"").toLowerCase().indexOf(q)>=0) return true;
+      for(const p of entry.picks){
+        if((p.left||"").toLowerCase().includes(q)) return true;
+        if((p.right||"").toLowerCase().includes(q)) return true;
+        if((p.pickName||"").toLowerCase().includes(q)) return true;
       }
     }
     return false;
@@ -272,38 +131,32 @@ if(!window.__L3Z_MYBETS_INIT__){ window.__L3Z_MYBETS_INIT__ = true;
     if (panels.battleground.getAttribute('aria-hidden') === 'true') return;
     listEl.innerHTML = '<div class="empty">Loading…</div>';
     try{
-      var data = (await fetchBets()).sort(function(a,b){ return (b.createdAt||0)-(a.createdAt||0); });
-      var q = String(qEl.value||"").trim().toLowerCase();
-      var rows = data.filter(function(e){ return matchFilter(e,q); });
+      const data = (await fetchBets()).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+      const q = (qEl.value||"").trim().toLowerCase();
+      const rows = data.filter(e=>matchFilter(e,q));
       countEl.textContent = rows.length ? (rows.length+" entr"+(rows.length===1?"y":"ies")) : "";
       if(!rows.length){ listEl.innerHTML='<div class="empty">No predictions saved yet.</div>'; return; }
 
-      listEl.innerHTML = rows.map(function(entry){
-        var ts = entry.createdAt ? Number(entry.createdAt)*1000 : Date.now();
-        var when = new Date(ts).toLocaleString();
-        var picks = (entry.picks||[]).map(function(p){
-          return '<div class="row"><div>'+esc(p.left)+' vs '+esc(p.right)+'</div><div><b>Pick:</b> '+esc(p.pickName||'')+'</div></div>';
-        }).join("");
-        return (
-          '<article class="card">'+
-            '<div class="head">'+
-              '<div class="title">'+esc(entry.eventTitle||'Battleground')+' — <span class="muted">'+esc(entry.eventId||'')+'</span></div>'+
-              '<div class="pill small">'+esc(when)+'</div>'+
-            '</div>'+
-            '<div class="body">'+
-              (picks || '<div class="muted">No matchup picks.</div>')+
-            '</div>'+
-          '</article>'
-        );
+      listEl.innerHTML = rows.map(entry=>{
+        const when = new Date((entry.createdAt||Date.now())*1000).toLocaleString();
+        const picks = (entry.picks||[]).map(p=>`
+          <div class="row">
+            <div>${esc(p.left)} vs ${esc(p.right)}</div>
+            <div><b>Pick:</b> ${esc(p.pickName||'')}</div>
+          </div>`).join("");
+        return `
+          <article class="card">
+            <div class="head">
+              <div class="title">${esc(entry.eventTitle||'Battleground')} — <span class="muted">${esc(entry.eventId||'')}</span></div>
+              <div class="pill small">${esc(when)}</div>
+            </div>
+            <div class="body">
+              ${picks || '<div class="muted">No matchup picks.</div>'}
+            </div>
+          </article>`;
       }).join("");
     }catch(e){
-      var errText = "network error";
-      try{
-        if (e && e.body){
-          errText = (typeof e.body === "string") ? e.body : (e.body.error || JSON.stringify(e.body));
-        } else if (e && e.message){ errText = e.message; }
-      }catch(_){}
-      listEl.innerHTML = '<div class="empty">Could not load bets: '+esc(errText)+'</div>';
+      listEl.innerHTML = `<div class="empty">Could not load bets: ${esc(e.body?.error || e.message || "network error")}</div>`;
     }
   }
 
@@ -313,57 +166,6 @@ if(!window.__L3Z_MYBETS_INIT__){ window.__L3Z_MYBETS_INIT__ = true;
   render();
 })();
 }
-</script>
-
-<!-- viewer glue (no-downgrade writes, no optional chaining) -->
-<script id="viewer-glue">
-(function(){
-  "use strict";
-  var S = function(sel){ return document.querySelector(sel); };
-  var SS = function(sel){ return Array.prototype.slice.call(document.querySelectorAll(sel)); };
-  function set(sel, val){ var n=S(sel); if(n){ n.textContent = val; n.title = val; } }
-  function onlyUpgradeNumber(el, value){
-    if(!el) return;
-    var v = Math.max(0, Math.floor(Number(value)||0));
-    var cur = Math.max(0, Math.floor(Number(String(el.textContent).replace(/[^\d.-]/g,''))||0));
-    if (cur !== 0 && v === 0) return;
-    el.textContent = String(v);
-  }
-
-  async function loadMe(){
-    var me = await window.l3zGetViewer();
-    var user = (me.username||'').toUpperCase();
-    set('#helloName', user);
-    set('#welcomeName', user);
-    set('#usernameDisplay', user);
-    set('#ubName', user);
-    set('#playerName', user);
-    set('#who', user);
-    var guestChip = S('#guestChipLabel'); if (guestChip) guestChip.textContent = user;
-
-    var pretty = (Number(me.balance)||0).toFixed(0);
-    set('#headerLbx', pretty+' LBX');
-    set('#navLbx',    pretty);
-    onlyUpgradeNumber(S('#ubBal'), pretty);
-    set('#playerBalance', pretty);
-    set('#walletBalance', pretty);
-    set('#walletBalanceTop', pretty);
-
-    SS('.lbx-pill,.lbx,.pill-lbx').forEach(function(n){
-      var m = String(n.textContent||'').match(/\b(\d+)\b/);
-      if (m) n.textContent = String(n.textContent||'').replace(m[1], pretty);
-    });
-
-    ['#btnSwitch','.btnSwitchName','#switchName','.switch-name','.switchName']
-      .map(S).filter(Boolean).forEach(function(n){ n.style.display='none'; });
-    SS('button').forEach(function(b){
-      var t=(b.textContent||'').toLowerCase(); if(t.indexOf('switch name')>=0) b.style.display='none';
-    });
-  }
-  loadMe();
-  window.addEventListener('focus', loadMe);
-  document.addEventListener('visibilitychange', function(){ if(!document.hidden) loadMe(); });
-})();
 </script>
 </body>
 </html>
