@@ -1,3 +1,6 @@
+window.API_BASE = "";  // same-origin -> https://lash3z.com/api/*
+
+
 (function (global) {
   // Singleton guard
   if (global.__L3Z_API_HELPER__) return;
