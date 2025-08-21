@@ -36,11 +36,11 @@
     background:linear-gradient(180deg,#0f1416,#0a1113);
     border:1px solid var(--ring);border-radius:14px;
     box-shadow:0 8px 24px rgba(0,0,0,.35);
-    padding:16px
+    padding:16px; overflow:hidden;
   }
   h2{margin:0 0 10px}
   .muted{color:var(--muted);font-size:13px}
-  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
   .big{font-size:28px;font-weight:900;margin:0}
   .stat{display:flex;align-items:center;gap:10px;background:#0a1518;border:1px solid var(--ring);border-radius:12px;padding:10px 12px}
   .stat .val{font-size:22px;font-weight:900}
@@ -57,27 +57,11 @@
   .toast{position:fixed;right:16px;bottom:16px;background:#0b1f21;border:1px solid var(--ring);border-radius:10px;padding:10px 12px;opacity:0;transform:translateY(8px);transition:.18s}
   .toast.on{opacity:1;transform:translateY(0)}
 
-  /* ===== Containment & overflow fixes you requested ===== */
-  /* keep form controls inside their cards on all widths */
-  .card{overflow:hidden;}
-  .card input,
-  .card select,
-  .card .btn{max-width:100%;}
-  /* prevent tiny overflows on nested cards/rows */
-  .row{flex-wrap:wrap;min-width:0;}
-  .card .pill,.card .copy{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  /* tighten the grid on smaller screens */
-  @media (max-width:1100px){
-    .wrap{padding:0 10px;}
-  }
-
-  /* Existing small-screen stack */
-  @media (max-width:980px){
-    .wrap{grid-template-columns:1fr}
-  }
+  @media (max-width:1100px){ .wrap{padding:0 10px;} }
+  @media (max-width:980px){ .wrap{grid-template-columns:1fr} }
 </style>
 
-<!-- AUTH GATE (same as before) -->
+<!-- AUTH GATE -->
 <script>
 (function(){
   "use strict";
@@ -95,7 +79,6 @@
   const USER=up(sess.user);
   localStorage.setItem(UNAME_KEY,USER); localStorage.setItem(LAST_KEY,USER); sset(PROFILE_KEY,{username:USER});
 
-  // Ensure wallet exists (client-side fallback)
   function ensureWallet(u){
     let w=sget(WALLET(u));
     if(!w){
@@ -145,7 +128,7 @@
 
       <div class="card" style="margin-top:12px">
         <h2>Ledger</h2>
-        <div class="muted" style="margin-bottom:8px">Your last 50 transactions (local fallback).</div>
+        <div class="muted" style="margin-bottom:8px">Your last 50 transactions.</div>
         <table id="ledger">
           <thead><tr><th>When</th><th>Reason</th><th class="right">Δ LBX</th><th class="right">Balance</th></tr></thead>
           <tbody></tbody>
@@ -156,7 +139,7 @@
     <!-- RIGHT: Top 10 + BUY LBX -->
     <div class="card">
       <h2>Top 10 Leaderboard</h2>
-      <div class="muted" style="margin-bottom:8px">Local wallets on this device (server leaderboard coming next).</div>
+      <div class="muted" style="margin-bottom:8px">Local wallets on this device (server leaderboard TBD).</div>
       <table id="lbTable">
         <thead><tr><th>#</th><th>User</th><th class="right">LBX</th></tr></thead>
         <tbody></tbody>
@@ -224,7 +207,6 @@
   const pkgRow=$("#pkgRow"), assetSel=$("#assetSel"), usdDue=$("#usdDue");
   const addrEl=$("#addr"), refEl=$("#ref"), txidEl=$("#txid"), submitBtn=$("#submitOrder"), limitNote=$("#limitNote");
 
-  // Replace with YOUR addresses
   const CRYPTO_ADDR = {
     "BTC":"bc1q0l428lsymjqrksxrnlx4m9jahzjjrnvns5a6ah",
     "ETH":"0xc59Ab6F4f71ba573F7435fA3fb730EdEdAF26884",
@@ -237,11 +219,9 @@
   const PKGS=[5,10,15,20,25,30];
   let selectedPkg=0;
 
-  // orders stored locally as fallback; server endpoint is /api/lbx/orders (optional)
   const ORDERS_KEY="lbx:orders";
   function sget(k,def=null){ try{const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch{ return def; } }
   function sset(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
-
   function toastMsg(t){ toast.textContent=t; toast.classList.add('on'); setTimeout(()=>toast.classList.remove('on'),1400); }
 
   function readWallet(u){ return ensureWallet(u); }
@@ -257,13 +237,40 @@
     paintWallet(); paintLedger(); paintLeaderboard();
   }
 
+  /* === NEW: Sync from server so awards given via admin reflect here === */
+  async function syncFromServer(){
+    try{
+      const r = await fetch("/api/wallet/me?viewer="+encodeURIComponent(USER), { credentials:"include" });
+      if(!r.ok) return;
+      const j = await r.json();
+      const serverBal = Number(j?.wallet?.balance ?? NaN);
+      if (!Number.isFinite(serverBal)) return;
+
+      const w = readWallet(USER);
+      const current = Number(w.balance||0);
+      const delta = serverBal - current;
+
+      if (Math.abs(delta) > 1e-9) {
+        // Update local wallet to match server and create a reconciling ledger entry.
+        w.balance = serverBal;
+        writeWallet(USER, w);
+        const L = readLedger(USER);
+        L.push({ ts: now(), delta: +delta, reason: "SERVER_SYNC", balance: serverBal });
+        sset(LEDGER(USER), L.slice(-200));
+      }
+      paintWallet(); paintLedger(); paintLeaderboard();
+    } catch(_e) {
+      // ignore if server not reachable; local fallback stays
+    }
+  }
+
   function msToHMS(ms){
     if(ms<=0) return "ready";
     const h=Math.floor(ms/3600000), m=Math.floor((ms%3600000)/60000), s=Math.floor((ms%60000)/1000);
     return `${h}h ${m}m ${s}s`;
   }
 
-  // Daily reward
+  // Daily reward (local only)
   function updateDailyUI(){
     const w = readWallet(USER);
     const next = (w.lastDaily||0) + DAY;
@@ -395,32 +402,95 @@
       asset, address: addrEl.textContent, ref: refEl.textContent, txid: (txidEl.value||"").trim(),
       status: "pending", ts: now()
     };
-    // Save locally (fallback)
     const all = sget(ORDERS_KEY,[]); all.push(o); sset(ORDERS_KEY, all);
-
-    // Try to POST to backend if available
-    try{
-      await fetch("/api/lbx/orders", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(o) });
-    }catch(_){ /* no backend yet – ignore */ }
-
+    try{ await fetch("/api/lbx/orders", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(o) }); }catch(_){ }
     toastMsg("Submitted for review. We'll approve after confirming on-chain.");
-    // reset
     txidEl.value=""; validateLimit();
   }
   submitBtn.addEventListener("click", submitOrder);
 
-  // Boot all
+  // Boot sequence
   ensureWallet(USER);
   renderPkgs(); refreshAddrRef(); validateLimit();
   paintWallet(); paintLedger(); paintLeaderboard(); paintRewards(); updateDailyUI();
 
-  // Cross-tab updates
+  // NEW: Sync with server after initial paint (and again after 1s for safety)
+  syncFromServer();
+  setTimeout(syncFromServer, 1000);
+
+  // Cross-tab update listeners
   window.addEventListener('storage', (e)=>{
     if(!e.key) return;
     if(e.key.startsWith("lbx:wallet:") || e.key.startsWith("lbx:ledger:")){ paintWallet(); paintLedger(); paintLeaderboard(); }
     if(e.key===ORDERS_KEY){ validateLimit(); }
     if(e.key.startsWith("bux:awards:") || e.key.startsWith("lbx:award:claimed:")){ paintRewards(); }
   });
+})();
+</script>
+
+<!-- viewer glue v2 -->
+<script id="viewer-glue">
+(function(){
+  const S = (sel) => document.querySelector(sel);
+  const SS = (sel) => Array.from(document.querySelectorAll(sel));
+  const set = (sel, val) => { const n=S(sel); if(n){ n.textContent = val; n.title = val; }};
+
+  function readCookie(name){
+    const m = document.cookie.match(new RegExp('(?:^|; )'+name+'=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+
+  async function loadMe(){
+    const viewerCookie = readCookie('viewer');
+    let me = { username: (viewerCookie||'').toUpperCase(), wallet:{balance:0}, anon: !viewerCookie };
+    try{
+      const r = await fetch('/api/viewer/me', { credentials: 'include' });
+      if(r.ok){ me = await r.json(); if(!me || typeof me !== 'object') throw 0; }
+    }catch(_){}
+
+    const user = (me.username||'').toUpperCase();
+    set('#helloName', user);
+    set('#welcomeName', user);
+    set('#usernameDisplay', user);
+    set('#ubName', user);
+    set('#playerName', user);
+    set('#who', user);
+    if (S('#guestChipLabel')) S('#guestChipLabel').textContent = user;
+
+    // balance
+    let bal = (me.wallet && typeof me.wallet.balance==='number') ? me.wallet.balance : 0;
+    if ((!bal || isNaN(bal)) && user){
+      try{
+        const wr = await fetch('/api/wallet/me?viewer='+encodeURIComponent(user), { credentials:'include' });
+        if (wr.ok){ const wj = await wr.json(); bal = Number((wj.wallet&&wj.wallet.balance)||0) || 0; }
+      }catch(_){}
+    }
+    const pretty = (Number(bal)||0).toFixed(0);
+    set('#headerLbx', pretty+' LBX');
+    set('#navLbx',    pretty);
+    set('#ubBal',     pretty);
+    set('#playerBalance', pretty);
+    set('#walletBalance', pretty);
+    set('#walletBalanceTop', pretty);
+
+    // Hide or disable "Switch name" controls
+    const kill = ['#btnSwitch','.btnSwitchName','#switchName','.switch-name','.switchName']
+      .map(S).filter(Boolean);
+    kill.forEach(n => n.style.display='none');
+    SS('button').forEach(b=>{
+      const t = (b.textContent||'').toLowerCase();
+      if (t.includes('switch name')) b.style.display='none';
+    });
+
+    // update LBX pill usually in header (span like "LBX 0")
+    SS('.lbx-pill,.lbx,.pill-lbx').forEach(n=>{
+      const m = String(n.textContent||'').match(/\b(\d+)\b/);
+      if (m) n.textContent = (n.textContent||'').replace(m[1], pretty);
+    });
+  }
+  loadMe();
+  window.addEventListener('focus', loadMe);
+  document.addEventListener('visibilitychange', () => { if(!document.hidden) loadMe(); });
 })();
 </script>
 </body>
