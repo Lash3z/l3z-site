@@ -5,10 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Unified Live — BG / PVP / Bonus Hunt</title>
 <style>
-:root{
-  --bg:#060b0d;--panel:#0b1417;--ink:#eaf7ff;--muted:#9fd0d6;
-  --line:rgba(0,255,255,.18);--teal:#00ffff;--gold:#ffb42d
-}
+:root{--bg:#060b0d;--panel:#0b1417;--ink:#eaf7ff;--muted:#9fd0d6;--line:rgba(0,255,255,.18);--teal:#00ffff}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
 h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
@@ -19,329 +16,253 @@ h1{margin:16px 0 8px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
 .tabs{display:flex;gap:8px;flex-wrap:wrap}
 .tab{padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:#0f1720;color:#cfffff;cursor:pointer}
 .tab.active{border-color:#00ffff88;box-shadow:0 0 14px #00ffff33}
-.list{display:grid;gap:14px}
-
-/* Existing live match row (fallback) */
-.rowLive{
-  display:grid;align-items:center;gap:12px;
-  grid-template-columns: 1fr 92px 56px 18px 56px 92px 1fr;
-  border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px
-}
-.nameL,.nameR{display:flex;flex-direction:column;gap:4px}
-.nameL{align-items:flex-end;text-align:right}
-.nameR{align-items:flex-start;text-align:left}
-.title{font-weight:900;line-height:1.1}
-.prov{font-size:12px;color:#9fd0d6}
-.thumb{width:92px;height:120px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#000}
-.thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.score{min-width:56px;padding:10px;border:1px solid var(--line);border-radius:10px;text-align:center;font-weight:900;background:#0d1820}
-.colon{font-weight:900;color:#9fe;text-align:center}
-
-/* Bonus Hunt stats (unchanged) */
-.statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
-.stat{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px}
-.stat h4{margin:0 0 6px 0}
-
-/* ===== Bracket (PVP) ===== */
-.bracketWrap{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;margin-top:12px}
-.sideCol{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:10px;overflow:auto}
-.sideHead{display:flex;align-items:center;justify-content:space-between;margin:0 0 8px 0;color:#9fd0d6;font-size:13px}
-.roundCol{display:flex;flex-direction:column;gap:12px;min-width:220px;margin-right:12px}
-.roundLbl{font-size:12px;color:#9fd0d6;margin:2px 0 0 2px}
-.roundsScroller{display:flex;flex-direction:row;align-items:flex-start}
-.match{
-  position:relative;background:#0c1519;border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-height:64px
-}
-.slot{display:flex;justify-content:space-between;gap:10px}
-.name{font-weight:900}
-.game{font-size:12px;color:#9fd0d6}
-.vs{margin:4px 0 0 0;font-size:11px;opacity:.8}
-.badge{display:inline-block;padding:2px 8px;border:1px solid var(--line);border-radius:999px;background:#0f1e22;font-size:11px;color:#cfe;margin-left:6px}
-.scoreSm{font-weight:900;padding:2px 6px;border:1px solid var(--line);border-radius:8px;background:#0d1820;min-width:34px;text-align:center}
-
-/* subtle “flow” hint toward center */
-.sideCol.east .match::after{
-  content:"";position:absolute;right:-10px;top:50%;width:10px;height:2px;background:linear-gradient(90deg,transparent,#00ffffaa)
-}
-.sideCol.west .match::after{
-  content:"";position:absolute;left:-10px;top:50%;width:10px;height:2px;background:linear-gradient(90deg,#00ffffaa,transparent)
-}
-
-/* Center column */
-.centerCol{display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:flex-start;min-width:260px}
-.finalCard{border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:12px;width:100%}
-.centerTitle{display:flex;align-items:center;justify-content:space-between;color:#9fd0d6;font-size:13px;margin:0 0 8px 0}
-.champ{display:flex;gap:10px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:12px;background:#0c161a;padding:12px}
-.champ .name{font-size:18px}
-.chip{border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:#081318;color:#cfffff;font-size:12px}
+.list{display:grid;gap:12px}
+.item{border:1px solid var(--line);border-radius:12px;padding:10px;background:#0c1216}
+.sides{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}
+.slot{display:grid;grid-template-columns:48px 1fr;gap:8px;align-items:center}
+.slot img{width:48px;height:48px;border-radius:10px;object-fit:cover;background:#071017;border:1px solid rgba(255,255,255,.06)}
+.vs{opacity:.7}
+.small{font-size:12px;color:#9fd0d6}
 </style>
 </head>
 <body>
+<script>
+  window.API_BASE = (location.hostname==='127.0.0.1'||location.hostname==='localhost')
+    ? 'http://localhost:3000'
+    : ''; // same-origin in production
+</script>
+
 <div class="wrap">
-  <h1>Unified Live</h1>
-  <div class="card row" style="justify-content:space-between">
+  <div class="row">
+    <h1>Unified Live</h1>
     <div class="tabs">
-      <div class="tab" data-mode="battleground">Battleground</div>
-      <div class="tab" data-mode="pvp">PVP</div>
-      <div class="tab" data-mode="bonus">Bonus Hunt</div>
+      <button class="tab" data-mode="bg">Battleground</button>
+      <button class="tab" data-mode="pvp">PVP</button>
+      <button class="tab" data-mode="bonus">Bonus Hunt</button>
     </div>
-    <div class="row">
-      <span id="eventTag" class="pill">—</span>
-      <span id="stamp" class="pill">—</span>
-    </div>
+    <span id="badgeMode" class="pill">—</span>
+    <span id="badgeTime" class="pill">Live @ —</span>
   </div>
 
-  <div id="content"></div>
+  <div class="card">
+    <div id="list" class="list">
+      <div class="item small">No data yet.</div>
+    </div>
+  </div>
 </div>
 
 <script>
+"use strict";
 (function(){
-  "use strict";
-  var mode = localStorage.getItem('sb:mode') || 'battleground';
-  var els={tabs:document.querySelectorAll('.tab'), tag:gid('eventTag'), stamp:gid('stamp'), content:gid('content')};
-  var builder=null, markets=null, last=0;
+  var $ = function(s){ return document.querySelector(s); };
+  var $$ = function(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); };
+  var up = function(s){ return String(s||"").trim().toUpperCase(); };
+  var sget = function(k, d){
+    if (d === void 0) d = null;
+    try {
+      var v = localStorage.getItem(k);
+      return v ? JSON.parse(v) : d;
+    } catch(_){ return d; }
+  };
 
-  function gid(x){return document.getElementById(x)}
-  function sget(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}}
-  function esc(s){s=String(s==null?'':s);return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-
-  function bkey(){return mode==='battleground'?'bg:builder:battleground':mode==='pvp'?'pv:builder:pvp':'bh:builder:bonus'}
-  function mkey(){return 'sb:markets:'+mode}
-
-  function setMode(m){
-    mode=m; localStorage.setItem('sb:mode',m);
-    for(var i=0;i<els.tabs.length;i++){
-      els.tabs[i].classList.toggle('active', els.tabs[i].getAttribute('data-mode')===m);
-    }
-    load();
+  function slotImgFrom(title){
+    var DEF="/assets/slot_images/mateslots_logo.png";
+    var special={"rip city":"rip_city","gates of olympus":"gates_of_olympus","gates":"gates_of_olympus","starlight princess":"starlight_princess"};
+    if(!title) return DEF;
+    var s=String(title).toLowerCase().trim();
+    if(special[s]) s=special[s];
+    s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,'and').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+    return "/assets/slot_images/" + (s||"mateslots_logo") + ".png";
   }
 
-  async function load(){
-    markets=sget(mkey())||{title:mode.toUpperCase(),eventId:mode+':'+new Date().toISOString().slice(0,10)};
-    if(mode==='pvp'){
-      // server → local fallback for bracket/builder
-      try{
-        const r = await fetch('/api/pvp/bracket', { cache:'no-store' });
-        if(r.ok){
-          const j = await r.json();
-          builder = j && j.builder ? j.builder : (sget('pv:builder:pvp') || sget('pvp:builder'));
-        }else{
-          builder = sget('pv:builder:pvp') || sget('pvp:builder');
-        }
-      }catch{
-        builder = sget('pv:builder:pvp') || sget('pvp:builder');
+  var mode='bg';
+  var last=0;
+  var painting = false; // prevent overlapping async paints
+
+  async function readBG(){
+    try{
+      var r = await fetch(window.API_BASE + '/api/battleground/live',{credentials:'include',cache:'no-store'});
+      if(r.ok){
+        var j = await r.json();
+        if(j && j.builder) return j.builder;
       }
-    }else{
-      builder = sget(bkey())||{games:[],matches:[],lastUpdated:0};
+    }catch(_){}
+    return sget('bg:builder:battleground') || sget('battleground:live') || { matches:[], lastUpdated:0 };
+  }
+  function readPVP(){
+    var d = sget('pvp:live') || { rounds:[], flat:[], lastUpdated:0, title:'PVP' };
+    return d;
+  }
+  async function readBonus(){
+    try{
+      var r = await fetch(window.API_BASE + '/api/bonus-hunt/live',{credentials:'include',cache:'no-store'});
+      if(r.ok){
+        var j = await r.json();
+        if(j && j.builder) return j.builder;
+      }
+    }catch(_){}
+    return sget('bh:live') || sget('bonus:builder') || { games:[], lastUpdated:0 };
+  }
+
+  function setImage(img, manual, title){
+    if(!img) return;
+    img.onerror = null;
+    img.src = manual || slotImgFrom(title);
+    img.onerror = function(){ img.src='/assets/slot_images/mateslots_logo.png'; };
+  }
+
+  function safe(obj, path, fallback){
+    try{
+      var parts = path.split('.');
+      var cur = obj;
+      for(var i=0;i<parts.length;i++){
+        cur = (cur && cur[parts[i]]!==undefined) ? cur[parts[i]] : undefined;
+      }
+      return (cur===undefined || cur===null) ? fallback : cur;
+    }catch(_){ return fallback; }
+  }
+
+  function paintBG(list,data){
+    var matches = Array.isArray(data.matches)?data.matches:[];
+    if(!matches.length){ list.innerHTML='<div class="item small">No matchups yet.</div>'; return; }
+    list.innerHTML='';
+    matches.forEach(function(m){
+      var leftTitle  = m.leftTitle || safe(m,'left.name','');
+      var leftProv   = m.leftProv  || safe(m,'left.game','');
+      var leftImg    = m.leftImg   || safe(m,'left.img','');
+
+      var rightTitle = m.rightTitle || safe(m,'right.name','');
+      var rightProv  = m.rightProv  || safe(m,'right.game','');
+      var rightImg   = m.rightImg   || safe(m,'right.img','');
+
+      var div=document.createElement('div'); div.className='item';
+      div.innerHTML =
+        '<div class="sides">'+
+          '<div class="slot"><img alt=""><div><b>'+ up(leftTitle) +'</b><div class="small">'+ (leftProv||'') +'</div></div></div>'+
+          '<div class="vs">VS</div>'+
+          '<div class="slot"><img alt=""><div><b>'+ up(rightTitle) +'</b><div class="small">'+ (rightProv||'') +'</div></div></div>'+
+        '</div>';
+
+      var imgs=div.querySelectorAll('img');
+      if(imgs[0]) setImage(imgs[0], leftImg,  leftTitle || leftProv);
+      if(imgs[1]) setImage(imgs[1], rightImg, rightTitle || rightProv);
+      list.appendChild(div);
+    });
+  }
+
+  function paintPVP(list,data){
+    var rounds = Array.isArray(data.rounds) ? data.rounds.slice() : [];
+    var show = null;
+    for(var i=rounds.length-1;i>=0;i--){
+      if(rounds[i] && rounds[i].matches && rounds[i].matches.length){ show = rounds[i]; break; }
     }
-    last = builder && builder.lastUpdated || 0;
+    if(!show && rounds.length) show = rounds[0];
+
+    var matches = (show && show.matches) ? show.matches : (Array.isArray(data.flat) ? data.flat : []);
+    if(!matches.length){ list.innerHTML = '<div class="item small">No matchups yet.</div>'; return; }
+    list.innerHTML='';
+
+    matches.forEach(function(m){
+      var lName = safe(m,'left.username', m.left) || '';
+      var rName = safe(m,'right.username', m.right) || '';
+      var lProv = safe(m,'left.game', m.leftProv) || '';
+      var rProv = safe(m,'right.game', m.rightProv) || '';
+      var lImg  = m.leftImg || safe(m,'left.img','');
+      var rImg  = m.rightImg || safe(m,'right.img','');
+
+      var winnerTxt = m.winner ? (' · Winner: ' + (m.winner==='L' ? 'LEFT' : 'RIGHT')) : '';
+      var titleTxt  = (data.title || 'PVP') + (show && show.name ? (' — ' + show.name) : '') + winnerTxt;
+
+      var div=document.createElement('div'); div.className='item';
+      div.innerHTML =
+        '<div class="sides">'+
+          '<div class="slot"><img alt=""><div><b>'+ up(lName) +'</b><div class="small">'+ lProv +'</div></div></div>'+
+          '<div class="vs">VS</div>'+
+          '<div class="slot"><img alt=""><div><b>'+ up(rName) +'</b><div class="small">'+ rProv +'</div></div></div>'+
+        '</div>'+
+        '<div class="small">'+ titleTxt +'</div>';
+
+      var imgs=div.querySelectorAll('img');
+      if(imgs[0]) setImage(imgs[0], lImg, lProv || lName);
+      if(imgs[1]) setImage(imgs[1], rImg, rProv || rName);
+      list.appendChild(div);
+    });
+  }
+
+  function paintBonus(list,data){
+    var games = Array.isArray(data.games)?data.games:[];
+    if(!games.length){ list.innerHTML='<div class="item small">No games yet.</div>'; return; }
+    list.innerHTML='';
+    games.forEach(function(g){
+      var title = g.title || g.name || '';
+      var prov  = g.provider || '';
+      var imgSrc= g.img || g.logo || '';
+
+      var div=document.createElement('div'); div.className='item';
+      div.innerHTML =
+        '<div class="sides">'+
+          '<div class="slot"><img alt=""><div><b>'+ up(title) +'</b><div class="small">'+ prov +'</div></div></div>'+
+          '<div></div><div></div>'+
+        '</div>';
+      var img=div.querySelector('img');
+      if(img) setImage(img, imgSrc, title || prov);
+      list.appendChild(div);
+    });
+  }
+
+  async function paint(){
+    if (painting) return; // skip if a previous paint is still running
+    painting = true;
+
+    try{
+      var list=$("#list"), modeBadge=$("#badgeMode"), time=$("#badgeTime");
+      if(mode==='bg'){
+        modeBadge.textContent='BATTLEGROUND — BG';
+        var d1=await readBG();
+        last=d1.lastUpdated||0;
+        time.textContent='Live @ ' + (last? new Date(last).toLocaleTimeString() : '—');
+        paintBG(list,d1);
+      } else if(mode==='pvp'){
+        modeBadge.textContent='PVP — Knockout';
+        var d2=readPVP();
+        last=d2.lastUpdated||d2.ts||0;
+        time.textContent='Live @ ' + (last? new Date(last).toLocaleTimeString() : '—');
+        paintPVP(list,d2);
+      } else {
+        modeBadge.textContent='BONUS HUNT';
+        var d3=await readBonus();
+        last=d3.lastUpdated||d3.updated||0;
+        time.textContent='Live @ ' + (last? new Date(last).toLocaleTimeString() : '—');
+        paintBonus(list,d3);
+      }
+    } finally {
+      painting = false;
+    }
+  }
+
+  function setMode(m){
+    mode=m;
+    $$(".tab").forEach(function(t){ t.classList.toggle("active", t.getAttribute('data-mode')===m); });
     paint();
   }
 
-  function gById(id){
-    if(!builder||!builder.games) return {};
-    for(var i=0;i<builder.games.length;i++){ if(builder.games[i].id===id) return builder.games[i]; }
-    return {};
-  }
-  function resolveTitle(id){ if(!id) return '—'; var g=gById(id); return g.title||'—'; }
-
-  function paint(){
-    els.tag.textContent=(markets.title||mode.toUpperCase())+' — '+(markets.eventId||'EVT');
-    els.stamp.textContent = builder && builder.lastUpdated ? ('Live @ '+new Date(builder.lastUpdated).toLocaleTimeString()) : 'Live';
-    els.content.innerHTML='';
-
-    if(mode==='bonus'){ paintBonus(); return; }
-    if(mode==='pvp' && builder && builder.bracket && (builder.bracket.east||builder.bracket.west)){
-      paintPvpBracket(builder.bracket); return;
-    }
-    // fallback (keeps your old look & feel)
-    paintPvpOrBgRows();
-  }
-
-  /* ---------- Fallback rows (existing behavior) ---------- */
-  function paintPvpOrBgRows(){
-    var list=document.createElement('div'); list.className='card list';
-    if(!builder || !builder.matches || !builder.matches.length){
-      list.innerHTML='<div class="pill">No matchups yet.</div>';
-    }else{
-      for(var i=0;i<builder.matches.length;i++){
-        var mx=builder.matches[i], L=gById(mx.leftId)||{}, R=gById(mx.rightId)||{};
-        var row=document.createElement('div'); row.className='rowLive';
-        var imgL = mx.leftImg||L.imageUrl||L.image||'', imgR=mx.rightImg||R.imageUrl||R.image||'';
-        row.innerHTML =
-          '<div class="nameL"><div class="title">'+esc(mx.leftTitle||mx.leftName||L.title||'LEFT')+'</div><div class="prov">'+esc(L.provider||"")+'</div></div>'+
-          '<div class="thumb">'+(imgL?('<img src="'+esc(imgL)+'" alt="">'):'')+'</div>'+
-          '<div class="score">'+esc(+mx.leftScore||0)+'</div>'+
-          '<div class="colon">:</div>'+
-          '<div class="score">'+esc(+mx.rightScore||0)+'</div>'+
-          '<div class="thumb">'+(imgR?('<img src="'+esc(imgR)+'" alt="">'):'')+'</div>'+
-          '<div class="nameR"><div class="title">'+esc(mx.rightTitle||mx.rightName||R.title||'RIGHT')+'</div><div class="prov">'+esc(R.provider||"")+'</div></div>';
-        list.appendChild(row);
-      }
-    }
-    els.content.appendChild(list);
-  }
-
-  /* ---------- BONUS HUNT (unchanged) ---------- */
-  function paintBonus(){
-    var card=document.createElement('div'); card.className='card';
-    var ag = (builder && builder.aggregates) ? builder.aggregates : computeAgg(builder);
-    var grid=document.createElement('div'); grid.className='statgrid';
-    grid.innerHTML =
-      statBox('Final Balance', ag.finalBalance!=null? ag.finalBalance : '—')+
-      statBox('100x Hits', ag.hundredXCount!=null? ag.hundredXCount : '—')+
-      statBox('Highest X', ag.highestX? (ag.highestX.x.toFixed?ag.highestX.x.toFixed(2):ag.highestX.x)+' ×' : '—')+
-      statBox('Highest X Game', resolveTitle(ag.highestX&&ag.highestX.gameId))+
-      statBox('Lowest X', ag.lowestX? (ag.lowestX.x.toFixed?ag.lowestX.x.toFixed(2):ag.lowestX.x)+' ×' : '—')+
-      statBox('Lowest X Game', resolveTitle(ag.lowestX&&ag.lowestX.gameId));
-    card.appendChild(grid);
-    els.content.appendChild(card);
-  }
-  function statBox(title, val){ return '<div class="stat"><h4>'+esc(title)+'</h4><div class="pill">'+esc(String(val))+'</div></div>'; }
-  function computeAgg(bh){
-    var res=(bh&&bh.results)||[], out={finalBalance:(bh&&bh.finalBalance!=null?bh.finalBalance:null),hundredXCount:0,highestX:null,lowestX:null};
-    var hi={gameId:null,x:-Infinity}, lo={gameId:null,x:+Infinity}, c=0;
-    for(var i=0;i<res.length;i++){ var r=res[i], x=+r.x||0; if(x>=100)c++; if(x>hi.x)hi={gameId:r.gameId,x:x}; if(x<lo.x)lo={gameId:r.gameId,x:x}; }
-    out.hundredXCount=c; out.highestX=hi.gameId?hi:null; out.lowestX=lo.gameId?lo:null; return out;
-  }
-
-  /* ---------- PVP BRACKET (East ⇢ Final ⇠ West) ---------- */
-  function paintPvpBracket(br){
-    // br = { size, east:[rounds], west:[rounds], finals:[rounds], champion?, meta? }
-    var wrap = document.createElement('div');
-    wrap.className = 'card bracketWrap';
-
-    // EAST column
-    wrap.appendChild(sideColumn('EAST', 'east', br.east));
-
-    // CENTER column (finals + champion)
-    var center = document.createElement('div'); center.className='centerCol';
-    // Finals (rounds, if any)
-    if (Array.isArray(br.finals) && br.finals.length){
-      br.finals.forEach(function(round, idx){
-        var fc = document.createElement('div'); fc.className='finalCard';
-        var lbl = (idx===br.finals.length-1 && round && round.length===1) ? 'GRAND FINAL' : ('FINALS R'+(idx+1));
-        fc.innerHTML = '<div class="centerTitle"><div>'+esc(lbl)+'</div><div class="chip">'+esc((br.meta&&br.meta.bestOf)?('Bo'+br.meta.bestOf):'LIVE')+'</div></div>';
-        round.forEach(function(m){ fc.appendChild(matchBlock(m)); });
-        center.appendChild(fc);
-      });
-    }
-    // Champion (if provided)
-    var champName = (br.champion && (br.champion.name||br.champion.username||br.champion.player)) || (br.winner && (br.winner.name||br.winner.username));
-    if (champName){
-      var c = document.createElement('div'); c.className='finalCard';
-      c.innerHTML = '<div class="centerTitle"><div>Champion</div><div class="chip">E vs W</div></div>';
-      var box = document.createElement('div'); box.className='champ';
-      box.innerHTML = '<div class="name">'+esc(champName)+'</div>';
-      c.appendChild(box);
-      center.appendChild(c);
-    }
-    wrap.appendChild(center);
-
-    // WEST column
-    wrap.appendChild(sideColumn('WEST', 'west', br.west));
-
-    els.content.appendChild(wrap);
-  }
-
-  function sideColumn(title, sideClass, rounds){
-    var col = document.createElement('div'); col.className='sideCol '+sideClass;
-    var head = document.createElement('div'); head.className='sideHead';
-    head.innerHTML = '<div>'+esc(title)+'</div><div class="chip">'+(Array.isArray(rounds)? rounds.length : 0)+' Rounds</div>';
-    col.appendChild(head);
-
-    var scroller = document.createElement('div'); scroller.className='roundsScroller';
-    if(Array.isArray(rounds) && rounds.length){
-      var total = rounds.length;
-      rounds.forEach(function(round, idx){
-        var rcol = document.createElement('div'); rcol.className='roundCol';
-        var rlbl = document.createElement('div'); rlbl.className='roundLbl';
-        rlbl.textContent = roundLabel(idx, total);
-        rcol.appendChild(rlbl);
-        (round||[]).forEach(function(m){ rcol.appendChild(matchBlock(m)); });
-        scroller.appendChild(rcol);
-      });
-    }else{
-      var empty = document.createElement('div'); empty.className='roundCol';
-      empty.innerHTML = '<div class="roundLbl">No rounds</div><div class="match"><div class="vs">No entries.</div></div>';
-      scroller.appendChild(empty);
-    }
-    col.appendChild(scroller);
-    return col;
-  }
-
-  function roundLabel(idx, total){
-    // Left to right (deeper → nearer to center): R16/R32 → QF → SF
-    var map = {2:'SF',3:'QF'}; // if total=3: [R16,QF,SF]
-    if (total<=1) return 'SF';
-    if (total===2) return idx===0 ? 'QF' : 'SF';
-    if (total>=3){
-      if (idx===total-1) return 'SF';
-      if (idx===total-2) return 'QF';
-      var size = 1<<((total-idx)); // rough label
-      if (size>=64) return 'R64';
-      if (size>=32) return 'R32';
-      if (size>=16) return 'R16';
-      if (size>=8)  return 'R8';
-      return 'R'+size;
-    }
-    return 'Round '+(idx+1);
-  }
-
-  function matchBlock(m){
-    // Accepts flexible schemas:
-    // {left/right: {name,img,score,game}, winner?} OR legacy {leftName,rightName,leftImg,rightImg,leftScore,rightScore, game}
-    var L = m.left || {}; var R = m.right || {};
-    var lName = (m.leftName||L.name||L.username||L.player||'').toString();
-    var rName = (m.rightName||R.name||R.username||R.player||'').toString();
-    var lImg  = m.leftImg||L.img||L.image||''; var rImg = m.rightImg||R.img||R.image||'';
-    var lScore = num((m.leftScore!=null?m.leftScore:L.score)); var rScore = num((m.rightScore!=null?m.rightScore:R.score));
-    var game = (m.game || (L && L.game) || (R && R.game) || '').toString();
-
-    var div = document.createElement('div'); div.className='match';
-    var html = '';
-    html += rowSlot(lName || '—', lImg, lScore, 'L');
-    html += '<div class="vs">vs'+(game?(' • <span class="game">'+esc(game)+'</span>'):'')+'</div>';
-    html += rowSlot(rName || '—', rImg, rScore, 'R');
-    div.innerHTML = html;
-    return div;
-  }
-
-  function rowSlot(name, img, score, side){
-    var scoreHtml = (score!=null && !Number.isNaN(score)) ? ('<span class="scoreSm">'+esc(score)+'</span>') : '';
-    var imgHtml = img ? ('<img src="'+esc(img)+'" alt="" style="width:28px;height:28px;object-fit:cover;border-radius:6px;border:1px solid var(--line)">') : '';
-    return '<div class="slot"><div class="name">'+esc(name)+'</div><div style="display:flex;gap:8px;align-items:center">'+(imgHtml||'')+scoreHtml+'</div></div>';
-  }
-
-  function num(v){ var n = Number(v); return Number.isFinite(n) ? n : null; }
-
-  /* ---------- wiring ---------- */
-  for(var i=0;i<els.tabs.length;i++){
-    (function(t){ t.addEventListener('click', function(){ setMode(t.getAttribute('data-mode')); }); })(els.tabs[i]);
-  }
-
-  window.addEventListener('storage', function(e){
-    if(e && (e.key===bkey())) { load(); }
+  $$(".tab").forEach(function(t){
+    t.addEventListener("click", function(){ setMode(t.getAttribute('data-mode')); });
   });
 
-  // Auto-refresh: for PVP, poll the published bracket; for others, detect local changes
-  setInterval(async function(){
-    if(mode!=='pvp'){
-      var b=sget(bkey());
-      if(b && b.lastUpdated && b.lastUpdated!==last){ load(); }
-      return;
-    }
-    try{
-      const r=await fetch('/api/pvp/bracket',{cache:'no-store'});
-      if(r.ok){
-        const j=await r.json();
-        const lu=(j&&j.builder&&j.builder.lastUpdated)||0;
-        if(lu && lu!==last){ load(); }
-      }
-    }catch{}
-  }, 2000);
+  window.addEventListener("storage", function(e){
+    if(!e || !e.key) return;
+    var rilevant =
+      (mode==='pvp'   && e.key==='pvp:live') ||
+      (mode==='bg'    && (e.key==='bg:builder:battleground' || e.key==='battleground:live')) ||
+      (mode==='bonus' && (e.key==='bh:live' || e.key==='bonus:builder'));
+    if(rilevant){ paint(); }
+  });
 
-  setMode(mode);
+  // gentle polling; protected by the 'painting' flag to avoid overlap
+  setInterval(paint, 1500);
+
+  setMode('bg');
 })();
 </script>
 </body>
