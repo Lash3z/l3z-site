@@ -1,112 +1,165 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-admin="checking">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Battleground — Admin</title>
-
-<!-- API base must be available before any fetch -->
-<script>
-  window.API_BASE =
-    (location.hostname==='127.0.0.1' || location.hostname==='localhost')
-      ? 'http://localhost:3000'
-      : ''; // same-origin in production
-</script>
-
+<title>Battleground — Admin (Games • Matchups • Live)</title>
 <meta http-equiv="Cache-Control" content="no-store"/>
+
 <style>
-  :root{
-    --bg:#060b0d;--ink:#eaf7ff;--muted:#9fd0d6;--line:rgba(0,255,255,.18);
-    --panel:#0b1417;--btn:#0f1720;--accent:#ffb42d;--danger:#61222a;--ok:#12d48a;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;background:#000 url("/assets/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-  .wrap{max-width:1280px;margin:18px auto;padding:0 16px}
-  h1{margin:0 0 10px;color:#00ffff;text-shadow:0 0 16px #00ffff55}
-  .sub{color:var(--muted);font-size:12px;margin-bottom:10px}
-  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cfffff;font-size:12px}
-  .btn{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--btn);color:#eaf7ff;font-weight:800;cursor:pointer}
-  .btn.ok{background:#23392e;border-color:#2ba87d}
-  .btn.warn{background:#2b2211;border-color:#a37a2b}
-  .btn.danger{background:var(--danger);color:#fff}
-  .btn.small{padding:8px 10px}
-  input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;color:#eaf7ff;padding:10px}
-  .card{border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,#0a1418,#0a1216);padding:12px}
-  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  .gridMain{display:grid;grid-template-columns:420px 1fr;gap:16px;align-items:start}
-  /* Games (left) */
-  .games{display:flex;flex-direction:column;gap:10px;max-height:70vh;overflow:auto;padding-right:4px}
-  .gItem{display:grid;grid-template-columns:64px 1fr auto auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;background:#0b1418;padding:10px}
-  .thumb{width:64px;height:64px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#061015}
-  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
-  .gTitle{font-weight:900}
-  .gProv{font-size:12px;color:#9fd0d6}
-  .gPath{font-size:11px;color:#7fbcc7}
-  .gSelected{outline:2px solid #00ffff99;box-shadow:0 0 0 3px rgba(0,255,255,.18) inset}
-  /* Matches (right) */
-  .matches{display:flex;flex-direction:column;gap:12px;max-height:70vh;overflow:auto}
-  .mRow{border:1px solid var(--line);border-radius:14px;background:#0b1418;padding:12px;
-        display:grid;grid-template-columns:1fr auto 1fr auto auto;gap:14px;align-items:center}
-  .slot{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center}
-  .slot .gTitle{display:flex;gap:6px;align-items:center}
-  .trophy{display:inline-flex;width:24px;height:24px;border-radius:6px;background:#24311a;border:1px solid rgba(0,255,0,.25);
-          align-items:center;justify-content:center;font-size:14px}
-  .vs{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#0d171c;color:#bfe}
-  .actBox{display:flex;gap:8px}
-  .mMeta{font-size:12px;color:#9fd0d6}
-  .hr{height:1px;background:var(--line);margin:10px 0}
-  .tip{font-size:12px;color:#9fd0d6}
+:root{
+  --bg:#060b0d;--panel:#0b1417;--ink:#eaf7ff;--muted:#9fd0d6;--line:rgba(0,255,255,.18);
+  --teal:#00ffff;--gold:#ffb42d;--ok:#12d48a;--bad:#e25a6f;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+html[data-admin="checking"] body{opacity:0;transition:opacity .12s ease}
+
+.wrap{max-width:1400px;margin:0 auto;padding:16px 16px 64px}
+h1{margin:0 0 12px;color:var(--teal);text-shadow:0 0 14px #00ffff55}
+.card{background:linear-gradient(180deg,#0a1418,#0a1216);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
+.hr{height:1px;background:var(--line);margin:10px 0}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cfffff;font-weight:800}
+.btn{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#0f1720;color:#eaf7ff;font-weight:800;cursor:pointer}
+.btn.ok{background:#103d30;border-color:#1fa37b}
+.btn.danger{background:#2b1116;border-color:#7e2a3c}
+.btn.warn{background:#231b0f;border-color:#8c6926}
+input,select{border-radius:10px;border:1px solid var(--line);background:#0c1519;color:#eaf7ff;padding:10px}
+.small{font-size:12px;color:#9fd0d6}
+.badge{padding:4px 8px;border-radius:999px;border:1px solid var(--line);background:#081318;color:#bfe}
+
+/* Games list */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:1100px){.grid{grid-template-columns:1fr}}
+.games{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.gamesHead{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.gamesBody{max-height:520px;overflow:auto;padding:10px;background:#0b1418}
+.game{display:grid;grid-template-columns:64px 1fr auto;gap:10px;align-items:center;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:8px;background:#0c1519}
+.game + .game{margin-top:8px}
+.thumb{width:64px;height:86px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#000}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.title{font-weight:900}
+.prov{font-size:12px;color:#9fd0d6}
+
+/* Matches */
+.matches{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.matchesHead{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+.matchesBody{max-height:520px;overflow:auto;padding:10px;background:#0b1418}
+.mx{display:grid;grid-template-columns:1fr 40px 1fr auto;gap:10px;align-items:center;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:10px;background:#0c1519}
+.mx .side{display:grid;grid-template-columns:52px 1fr;gap:10px;align-items:center}
+.sThumb{width:52px;height:70px;border:1px solid var(--line);border-radius:8px;background:#000;overflow:hidden}
+.sThumb img{width:100%;height:100%;object-fit:cover;display:block}
+.vs{font-weight:900;text-align:center;opacity:.9}
+.mCtrls{display:flex;gap:8px;align-items:center}
+
+/* Live ticker */
+.live{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.liveBody{padding:10px;background:#0b1418;display:grid;gap:10px}
+.liveRow{display:grid;grid-template-columns:1fr 60px 1fr 80px 90px auto;gap:8px;align-items:center}
+.score{display:flex;gap:6px;align-items:center}
+.score input{width:64px;text-align:center}
 </style>
 </head>
-
 <body>
+
+<!-- ===== AdminGate (server cookie) ===== -->
+<script>
+(function(){
+  "use strict";
+  const ADMIN_CHECK="/api/admin/gate/check", ADMIN_LOGIN="/pages/dashboard/admin/admin_login.html", DASH="/index.html";
+  const H=document.documentElement; H.setAttribute("data-admin","checking");
+  function lock(){
+    H.removeAttribute("data-admin");
+    const s=document.createElement("style");
+    s.textContent=".lockwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0f12;color:#eaf7ff;font-family:Segoe UI,system-ui,Arial,sans-serif}.lockcard{max-width:640px;margin:24px;padding:24px;border:1px solid rgba(0,255,255,.2);border-radius:14px;background:rgba(0,0,0,.75)}.lockcard h1{margin:0 0 10px;color:#cfe}.lockcard a{color:#7ad7ff;text-decoration:underline}";
+    document.head.appendChild(s);
+    document.body.innerHTML='<div class="lockwrap"><div class="lockcard"><h1>Administration Locked</h1><div>You must unlock admin on the <a href="'+ADMIN_LOGIN+'">Admin Login</a> first.</div><div style="margin-top:8px;opacity:.8">If you already logged in, your session may have expired.</div><div style="margin-top:14px"><a href="'+DASH+'">Back to Dashboard</a></div></div></div>';
+  }
+  fetch(ADMIN_CHECK,{credentials:"include",cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{ if(j&&j.admin){ H.removeAttribute("data-admin"); }else{ lock(); } }).catch(lock);
+})();
+</script>
+<!-- ===== /AdminGate ===== -->
+
 <div class="wrap">
   <h1>Battleground — Admin</h1>
-  <div class="sub">Tip: use <b>asset paths</b> for covers (e.g. <code>/assets/slot_images/duck_hunters.png</code>). These persist across refreshes. The upload box only previews and is not persisted.</div>
 
-  <div class="card row" style="justify-content:space-between">
+  <div class="card">
     <div class="row">
-      <span class="pill">Asset Path</span>
-      <input id="assetPath" value="/assets/slot_images/duck_hunters.png" style="min-width:320px">
-      <button id="chooseFiles" class="btn">Choose Files</button>
-      <input id="gameFile" type="file" accept="image/*" multiple style="display:none">
-      <span class="pill">Provider</span>
-      <input id="gameProvider" placeholder="E.G. HACKSAW" style="width:180px">
-      <label class="pill"><input id="autoPair" type="checkbox" checked style="vertical-align:middle;margin-right:6px">Auto-pair after import</label>
+      <span class="pill">Tip: Use <b>Asset Path</b> for covers (e.g. <code>/assets/slot_images/duck_hunters.png</code>). These persist across refreshes. The Upload box only previews and is not persisted.</span>
     </div>
+    <div class="hr"></div>
     <div class="row">
-      <button id="btnPublish" class="btn ok">Publish</button>
-      <button id="btnResetAll" class="btn warn">Reset All (Matchups)</button>
-      <button id="btnClearWinners" class="btn">Clear Winners</button>
-      <span id="stamp" class="pill">Not published</span>
+      <label>GAME TITLE <input id="gTitle" placeholder="E.G. DUCK HUNTERS" style="min-width:260px"></label>
+      <label>PROVIDER (optional) <input id="gProv" placeholder="E.G. HACKSAW" style="min-width:180px"></label>
+      <label>ASSET PATH <input id="gPath" placeholder="/assets/slot_images/duck_hunters.png" style="min-width:360px"></label>
+      <input id="gUpload" type="file" accept=".png,.jpg,.jpeg,.webp" multiple style="display:none">
+      <button id="useUpload" class="btn">Choose Files</button>
+      <button id="autoName" class="btn">Use filename → fields</button>
+      <button id="addGame" class="btn ok">+ Add Game</button>
     </div>
   </div>
 
-  <div class="gridMain">
-    <!-- LEFT: Games -->
-    <div class="card">
-      <div class="row" style="justify-content:space-between">
+  <div class="grid">
+    <!-- Games -->
+    <div class="card games">
+      <div class="gamesHead">
+        <div style="font-weight:900">Games</div>
         <div class="row">
-          <span class="pill">Games</span>
-        </div>
-        <div class="row">
-          <button id="selAll" class="btn small">Select All</button>
-          <button id="selClear" class="btn small">Clear Selection</button>
-          <button id="pairSelected" class="btn small">+ Add Match (pair selected)</button>
+          <button id="bulkAddFromFiles" class="btn">+ Add N Games (from selected files)</button>
+          <select id="bulkN">
+            <option>10</option><option selected>20</option><option>40</option>
+          </select>
+          <span class="small">Select N files first via “Choose Files”. Uses filename for title.</span>
         </div>
       </div>
-      <div id="games" class="games"></div>
+      <div id="gamesList" class="gamesBody"></div>
     </div>
 
-    <!-- RIGHT: Matches -->
-    <div class="card">
+    <!-- Matchups -->
+    <div class="card matches">
+      <div class="matchesHead">
+        <div class="row">
+          <div style="font-weight:900">Matchups & Live Scores</div>
+          <div class="pill" id="mxCount">0 matchups</div>
+        </div>
+        <div class="row">
+          <button id="autoGen" class="btn">Auto-generate</button>
+          <select id="autoN"><option>5</option><option selected>10</option><option>20</option></select>
+          <button id="genN" class="btn ok">⚡ Generate N Matchups</button>
+          <button id="addPair" class="btn">+ Add Match (pair selected)</button>
+        </div>
+      </div>
+      <div id="matchesList" class="matchesBody"></div>
+    </div>
+  </div>
+
+  <!-- Live controls + Push -->
+  <div class="card live">
+    <div class="gamesHead">
+      <div style="font-weight:900">Live Controls & Push</div>
+      <div class="row">
+        <span id="stamp" class="pill">Not pushed</span>
+        <span id="msg" class="pill">Ready</span>
+      </div>
+    </div>
+    <div class="liveBody">
+      <div class="liveRow small" style="opacity:.9">
+        <div>Winner</div><div></div><div></div><div>Left</div><div>Right</div><div>Actions</div>
+      </div>
+      <div id="liveRows"></div>
+
+      <div class="hr"></div>
       <div class="row" style="justify-content:space-between">
         <div class="row">
-          <span class="pill">Matchups & Live Scores</span>
+          <button id="openAll" class="btn">Open All</button>
+          <button id="lockAll" class="btn">Lock All</button>
+          <button id="clearAll" class="btn danger">Delete All</button>
         </div>
-        <div class="tip">Set a winner → you’ll see a trophy on that side.</div>
+        <div class="row">
+          <button id="pushBuilder" class="btn ok">Push → Prediction + Widget + Bets Admin</button>
+        </div>
       </div>
-      <div id="matches" class="matches"></div>
     </div>
   </div>
 </div>
@@ -114,234 +167,249 @@
 <script>
 (function(){
   "use strict";
-  const $ = s => document.querySelector(s);
-  const el = (t,cls)=>{ const n=document.createElement(t); if(cls) n.className=cls; return n; };
-  const sget=(k,d=null)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(_){ return d; } };
-  const sset=(k,v)=>{ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } };
-  const up=s=>(s||"").toString().trim().toUpperCase();
 
-  // Prefix helper for API calls
-  const apiUrl = (path) => (/^https?:\/\//i.test(path) ? path : (window.API_BASE||'') + path);
+  // ---------- helpers ----------
+  const $=(s,r=document)=>r.querySelector(s);
+  const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const kid=(p='ID')=>p+Math.random().toString(36).slice(2,10).toUpperCase();
+  const toast=(t,ok)=>{ const n=$("#msg"); n.textContent=t; n.style.color = ok===false ? '#ff9aa7' : '#baffea'; setTimeout(()=>{ n.textContent='Ready'; n.style.color=''; },1600); };
 
-  const K_BUILDER = "bg:builder:battleground";  // primary builder key
-  const K_LIVE    = "battleground:live";        // live mirror for unified live
+  // Always save absolute paths from site root
+  const ASSET_DIR = '/assets/slot_images/';
+  const absPath = p => {
+    if (!p) return '';
+    // remove any leading "./" then ensure single leading slash
+    p = String(p).replace(/^\.?\//,'');
+    return '/' + p;
+  };
 
-  // State
-  let builder = sget(K_BUILDER) || { games:[], matches:[], lastUpdated:0 };
-  let selectedIds = new Set();
+  // ---------- storage keys ----------
+  const K_BUILDER='bg:builder:battleground';   // canonical
+  const K_G='bg:games';                         // legacy mirror for older widgets
+  const K_M='bg:matches';                       // legacy mirror for older widgets
 
-  // ---------- helpers
-  function trophySVG(){
-    return `<svg viewBox="0 0 24 24" width="16" height="16" fill="#c9f57e" aria-hidden="true">
-      <path d="M7 4h10v3a5 5 0 0 1-4 4.9V14h2a1 1 0 1 1 0 2H9a1 1 0 0 1 0-2h2v-2.1A5 5 0 0 1 7 7V4zm-2 1a2 2 0 0 0 0 4h1V5H5zm12 0v4h1a2 2 0 1 0 0-4h-1z"/>
-    </svg>`;
+  // ---------- state ----------
+  let state = read() || { games:[], matches:[], lastUpdated:0, eventId: 'battleground:'+new Date().toISOString().slice(0,10), title:'BATTLEGROUND', bestOf:3 };
+
+  function read(){ try{ const j=localStorage.getItem(K_BUILDER); return j?JSON.parse(j):null; }catch{return null;} }
+  function write(){
+    try{
+      state.lastUpdated=Date.now();
+      localStorage.setItem(K_BUILDER, JSON.stringify(state));
+      // mirrors for old pages/widgets
+      localStorage.setItem(K_G, JSON.stringify(state.games||[]));
+      localStorage.setItem(K_M, JSON.stringify(state.matches||[]));
+    }catch{}
   }
-  function imgTag(src){ return src ? `<img src="${src}" alt="">` : ""; }
 
-  // ---------- painting
+  // --- migrate any previously saved relative paths to absolute ---
+  (function migratePaths(){
+    let changed=false;
+    (state.games||[]).forEach(g=>{
+      const fixed = absPath(g.imageUrl||'');
+      if (fixed && fixed!==g.imageUrl){ g.imageUrl=fixed; changed=true; }
+    });
+    (state.matches||[]).forEach(m=>{
+      const L = m.leftImg ? absPath(m.leftImg) : m.leftImg;
+      const R = m.rightImg ? absPath(m.rightImg) : m.rightImg;
+      if (L && L!==m.leftImg){ m.leftImg=L; changed=true; }
+      if (R && R!==m.rightImg){ m.rightImg=R; changed=true; }
+    });
+    if(changed) write();
+  })();
+
+  // ---------- painting ----------
   function paintGames(){
-    const host = $("#games"); host.innerHTML = "";
-    if(!builder.games.length){
-      host.innerHTML = `<div class="pill">No games yet. Click <b>Choose Files</b> and select multiple.</div>`;
-      return;
-    }
-    builder.games.forEach(g=>{
-      const row = el("div","gItem"+(selectedIds.has(g.id)?" gSelected":""));
-      row.innerHTML = `
-        <div class="thumb">${imgTag(g.img)}</div>
-        <div>
-          <div class="gTitle">${up(g.title||"")}</div>
-          <div class="gProv">${g.provider||""}</div>
-          <div class="gPath">${g.img||""}</div>
-        </div>
-        <div><button class="btn small selBtn">${selectedIds.has(g.id)?"Unselect":"Select"}</button></div>
-        <div><button class="btn small danger delBtn">Delete</button></div>
-      `;
-      row.querySelector(".selBtn").onclick = ()=>{
-        if(selectedIds.has(g.id)) selectedIds.delete(g.id); else selectedIds.add(g.id);
-        paintGames();
-      };
-      row.querySelector(".delBtn").onclick = ()=>{
-        if(!confirm(`Delete game "${g.title}"?`)) return;
-        // remove from games
-        builder.games = builder.games.filter(x=>x.id!==g.id);
-        // remove from matches where used
-        builder.matches = builder.matches.filter(m=> m.leftId!==g.id && m.rightId!==g.id );
-        selectedIds.delete(g.id);
-        save();
-        paintGames(); paintMatches();
-      };
+    const host=$("#gamesList"); host.innerHTML='';
+    if(!(state.games||[]).length){ host.innerHTML='<div class="small">No games yet. Use the form above to add.</div>'; return; }
+    (state.games||[]).forEach((g,i)=>{
+      const row=document.createElement('div'); row.className='game';
+      row.innerHTML=`
+        <div class="thumb">${g.imageUrl?`<img src="${esc(g.imageUrl)}" alt="">`:''}</div>
+        <div><div class="title">${esc(g.title||'—')}</div><div class="prov">${esc(g.provider||'')}</div><div class="small">${esc(g.imageUrl||'')}</div></div>
+        <div class="row"><button class="btn warn" data-act="sel" data-i="${i}">Select</button><button class="btn danger" data-act="del" data-i="${i}">Delete</button></div>`;
       host.appendChild(row);
     });
   }
 
   function paintMatches(){
-    const host = $("#matches"); host.innerHTML = "";
-    if(!builder.matches.length){
-      host.innerHTML = `<div class="pill">No matchups yet. Select two games and click <b>+ Add Match (pair selected)</b> or enable <b>Auto-pair after import</b>.</div>`;
-      return;
-    }
-    builder.matches.forEach((m,idx)=>{
-      const L = builder.games.find(g=>g.id===m.leftId) || {title:"—",img:"",provider:""};
-      const R = builder.games.find(g=>g.id===m.rightId)|| {title:"—",img:"",provider:""};
-      const row = el("div","mRow");
-      row.innerHTML = `
-        <div class="slot">
-          <div class="thumb">${imgTag(L.img)}</div>
-          <div>
-            <div class="gTitle">${up(L.title)} ${m.winner==='L'?'<span class="trophy" title="Winner">'+trophySVG()+'</span>':''}</div>
-            <div class="gProv">${L.provider||""}</div>
-          </div>
-        </div>
+    const host=$("#matchesList"); host.innerHTML='';
+    const L=state.matches||[]; $("#mxCount").textContent=L.length+' matchups';
+    if(!L.length){ host.innerHTML='<div class="small">No matchups yet. Select two games and click “+ Add Match (pair selected)” or use Auto-generate.</div>'; return; }
+    const gMap=new Map((state.games||[]).map(g=>[g.id,g]));
+    L.forEach((m,mi)=>{
+      const GL=gMap.get(m.leftId)||{}, GR=gMap.get(m.rightId)||{};
+      const row=document.createElement('div'); row.className='mx';
+      row.innerHTML=`
+        <div class="side"><div class="sThumb">${(m.leftImg||GL.imageUrl)?`<img src="${esc(m.leftImg||GL.imageUrl)}" alt="">`:''}</div><div><div class="title">${esc(m.leftTitle||GL.title||'LEFT')}</div><div class="prov">${esc(GL.provider||'')}</div></div></div>
         <div class="vs">VS</div>
-        <div class="slot">
-          <div class="thumb">${imgTag(R.img)}</div>
-          <div>
-            <div class="gTitle">${up(R.title)} ${m.winner==='R'?'<span class="trophy" title="Winner">'+trophySVG()+'</span>':''}</div>
-            <div class="gProv">${R.provider||""}</div>
-          </div>
-        </div>
-        <div class="actBox">
-          <button class="btn small setL">Set Winner ←</button>
-          <button class="btn small setR">→ Set Winner</button>
-        </div>
-        <div class="actBox">
-          <button class="btn small danger del">Delete</button>
-        </div>
-      `;
-      row.querySelector(".setL").onclick = ()=>{ m.winner='L'; save(); paintMatches(); };
-      row.querySelector(".setR").onclick = ()=>{ m.winner='R'; save(); paintMatches(); };
-      row.querySelector(".del").onclick  = ()=>{
-        if(!confirm("Delete this matchup?")) return;
-        builder.matches.splice(idx,1); save(); paintMatches();
-      };
+        <div class="side"><div class="sThumb">${(m.rightImg||GR.imageUrl)?`<img src="${esc(m.rightImg||GR.imageUrl)}" alt="">`:''}</div><div><div class="title">${esc(m.rightTitle||GR.title||'RIGHT')}</div><div class="prov">${esc(GR.provider||'')}</div></div></div>
+        <div class="mCtrls">
+          <button class="btn" data-act="winL" data-i="${mi}">Set Winner ←</button>
+          <button class="btn" data-act="winR" data-i="${mi}">→ Set Winner</button>
+          <button class="btn danger" data-act="delMx" data-i="${mi}">Delete</button>
+        </div>`;
+      host.appendChild(row);
+    });
+    paintLiveRows();
+  }
+
+  function paintLiveRows(){
+    const host=$("#liveRows"); host.innerHTML='';
+    const gMap=new Map((state.games||[]).map(g=>[g.id,g]));
+    (state.matches||[]).forEach((m,mi)=>{
+      const GL=gMap.get(m.leftId)||{}, GR=gMap.get(m.rightId)||{};
+      const row=document.createElement('div'); row.className='liveRow';
+      row.innerHTML=`
+        <div class="small">${esc(m.leftTitle||GL.title||'LEFT')} vs ${esc(m.rightTitle||GR.title||'RIGHT')}</div>
+        <div class="pill">${esc(m.winnerId? (m.winnerId===m.leftId?'LEFT':'RIGHT') : '—')}</div>
+        <div></div>
+        <div class="score">L<input type="number" step="1" min="0" value="${+m.leftScore||0}" data-s="l${mi}"></div>
+        <div class="score">R<input type="number" step="1" min="0" value="${+m.rightScore||0}" data-s="r${mi}"></div>
+        <div class="row">
+          <button class="btn" data-act="applyScore" data-i="${mi}">Apply</button>
+          <button class="btn" data-act="clearScore" data-i="${mi}">Clear</button>
+        </div>`;
       host.appendChild(row);
     });
   }
 
-  // ---------- core actions
-  function save(){
-    sset(K_BUILDER, builder);
-  }
+  function paintAll(){ paintGames(); paintMatches(); }
 
-  async function publish(){
-    try{
-      builder.lastUpdated = Date.now();
-      save();
-
-      // live mirror for local preview
-      const live = {
-        lastUpdated: builder.lastUpdated,
-        matches: builder.matches.map(m=>{
-          const L = builder.games.find(g=>g.id===m.leftId)||{};
-          const R = builder.games.find(g=>g.id===m.rightId)||{};
-          return {
-            left:{ name: up(L.title||''), game: L.provider||'', img:L.img||'' },
-            right:{ name: up(R.title||''), game: R.provider||'', img:R.img||'' },
-            winner: m.winner||null
-          };
-        })
-      };
-      sset(K_LIVE, live);
-
-      // ---- push to backend so it's actually live ----
-      // Server only requires an object with a "matches" array (schema-agnostic).
-      const payload = { builder: live }; // contains matches[]
-      const res = await fetch(apiUrl('/api/battleground/builder'), {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json' },
-        credentials:'include',
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok){
-        const txt = await res.text().catch(()=>res.statusText);
-        throw new Error('Publish failed: ' + (txt || res.status));
-      }
-
-      $("#stamp").textContent = "Published @ " + new Date(builder.lastUpdated).toLocaleTimeString();
-      toast("Published to API");
-    } catch (e){
-      alert(e.message || "Publish failed");
-    }
-  }
-
-  function pairSelected(){
-    const ids=[...selectedIds];
-    if(ids.length<2){ alert("Select at least two games to pair."); return; }
-    for(let i=0;i<ids.length;i+=2){
-      const L=ids[i], R=ids[i+1];
-      if(L && R){
-        builder.matches.push({ id:"m_"+Math.random().toString(36).slice(2,8), leftId:L, rightId:R, winner:null });
-      }
-    }
-    save(); paintMatches();
-  }
-
-  // small toast for UX
-  function toast(msg){
-    const t = document.createElement('div');
-    t.textContent = msg || 'Saved.';
-    t.style.position='fixed'; t.style.right='16px'; t.style.bottom='16px';
-    t.style.background='#0b1f21'; t.style.border='1px solid var(--line)';
-    t.style.borderRadius='10px'; t.style.padding='10px 12px'; t.style.zIndex='9999';
-    t.style.opacity='0'; t.style.transform='translateY(8px)'; t.style.transition='.2s';
-    document.body.appendChild(t);
-    requestAnimationFrame(()=>{ t.style.opacity='1'; t.style.transform='translateY(0)'; });
-    setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateY(8px)'; setTimeout(()=>t.remove(),200); }, 1400);
-  }
-
-  // ---------- file import (multi) — auto-add + optional auto-pair
-  $("#chooseFiles").addEventListener("click", ()=> $("#gameFile").click());
-
-  $("#gameFile").addEventListener("change",(e)=>{
-    const files = [...e.target.files];
-    if(!files.length) return;
-    const provDefault = ($("#gameProvider").value||"").trim();
-
-    const justAdded = [];
-    files.forEach(f=>{
-      const base = f.name.replace(/\.[a-z0-9]+$/i,''); // strip extension
-      const title = base.replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim();
-      const id = "g_"+Math.random().toString(36).slice(2,8);
-      builder.games.push({
-        id,
-        title,
-        provider: provDefault,
-        img: `/assets/slot_images/${base}.png`
-      });
-      justAdded.push(id);
-      selectedIds.add(id);
+  // ---------- selection buffer for pairing ----------
+  let selected = []; // game ids
+  function toggleSelect(i){
+    const id=(state.games[i]||{}).id; if(!id) return;
+    const k=selected.indexOf(id); if(k>=0) selected.splice(k,1); else selected.push(id);
+    selected=selected.slice(-2);
+    $$('.game .btn[data-act="sel"]').forEach(btn=>{
+      const gid=(state.games[+btn.dataset.i]||{}).id; btn.textContent = selected.includes(gid)?'Selected ✓':'Select';
     });
+  }
 
-    if($("#autoPair").checked){
-      for(let i=0;i<justAdded.length;i+=2){
-        const L=justAdded[i], R=justAdded[i+1];
-        if(L && R){
-          builder.matches.push({ id:"m_"+Math.random().toString(36).slice(2,8), leftId:L, rightId:R, winner:null });
-        }
-      }
-    }
+  // ---------- events / handlers ----------
+  $("#useUpload").addEventListener('click',()=>$("#gUpload").click());
+  $("#gUpload").addEventListener('change',()=>{ /* preview only; not persisted */ });
 
-    save();
-    paintGames(); paintMatches();
-    e.target.value="";
+  $("#autoName").addEventListener('click',()=>{
+    const f=$("#gUpload").files?.[0]; if(!f) return;
+    const base=f.name.replace(/\.[^.]+$/,''); // no ext
+    if(!$("#gTitle").value) $("#gTitle").value = base.replace(/[_-]+/g,' ').toUpperCase();
+    if(!$("#gPath").value) $("#gPath").value = ASSET_DIR + base + '.png';
   });
 
-  // ---------- controls
-  $("#selAll").onclick   = ()=>{ builder.games.forEach(g=>selectedIds.add(g.id)); paintGames(); };
-  $("#selClear").onclick = ()=>{ selectedIds.clear(); paintGames(); };
-  $("#pairSelected").onclick = pairSelected;
+  $("#addGame").addEventListener('click',()=>{
+    const title=$("#gTitle").value.trim(); if(!title) return toast('Enter a GAME TITLE',false);
+    const provider=$("#gProv").value.trim();
+    let path=$("#gPath").value.trim();
 
-  $("#btnPublish").onclick = publish;
-  $("#btnClearWinners").onclick = ()=>{ builder.matches.forEach(m=>m.winner=null); save(); paintMatches(); };
-  $("#btnResetAll").onclick = ()=>{
-    if(!confirm("Clear ALL matchups? Games list stays as-is.")) return;
-    builder.matches = []; save(); paintMatches();
-  };
+    // If user chose a file but no path, suggest a path using filename.
+    if(!path){
+      const f=$("#gUpload").files?.[0];
+      if(f){ const base=f.name.replace(/\.[^.]+$/,''); path=ASSET_DIR + base + '.png'; }
+    }
+    path = absPath(path);
 
-  // ---------- boot
-  if(builder.lastUpdated){ $("#stamp").textContent = "Published @ "+new Date(builder.lastUpdated).toLocaleTimeString(); }
-  paintGames(); paintMatches();
+    const game={ id:kid('G'), title:title.toUpperCase(), provider, imageUrl:path };
+    state.games.push(game); write(); paintGames();
+    $("#gTitle").value=''; $("#gProv").value=''; $("#gPath").value=''; $("#gUpload").value='';
+  });
+
+  $("#bulkAddFromFiles").addEventListener('click',()=>{
+    const files = Array.from($("#gUpload").files||[]);
+    if(!files.length) return toast('Choose files first',false);
+    const N = +($("#bulkN").value||20) || 20;
+    files.slice(0,N).forEach(f=>{
+      const base=f.name.replace(/\.[^.]+$/,'');
+      const title=base.replace(/[_-]+/g,' ').toUpperCase();
+      const path=ASSET_DIR + base + '.png';
+      state.games.push({ id:kid('G'), title, provider:'', imageUrl:absPath(path) });
+    });
+    write(); paintGames(); toast('Added '+Math.min(N,files.length)+' games');
+  });
+
+  $("#autoGen").addEventListener('click',()=>{
+    const n=Math.min(10, Math.floor((state.games||[]).length/2));
+    genN(n);
+  });
+  $("#genN").addEventListener('click',()=> genN(+($("#autoN").value||10)||10));
+
+  function genN(n){
+    const G=[...(state.games||[])]; if(G.length<2) return toast('Need at least 2 games',false);
+    // simple shuffle
+    for(let i=G.length-1;i>0;i--){ const j=(Math.random()* (i+1))|0; [G[i],G[j]]=[G[j],G[i]]; }
+    state.matches=[]; for(let i=0;i<n && (2*i+1)<G.length;i++){
+      const A=G[2*i], B=G[2*i+1];
+      state.matches.push({
+        id:kid('M'),
+        leftId:A.id, rightId:B.id,
+        leftTitle:A.title, rightTitle:B.title,
+        leftImg:A.imageUrl||'', rightImg:B.imageUrl||'',
+        leftScore:0, rightScore:0, winnerId:null, status:'OPEN'
+      });
+    }
+    write(); paintMatches(); toast('Generated '+state.matches.length+' matchups');
+  }
+
+  $("#addPair").addEventListener('click',()=>{
+    if(selected.length!==2) return toast('Select exactly TWO games',false);
+    const [A,B]=selected.map(id=> (state.games||[]).find(g=>g.id===id)).filter(Boolean);
+    if(!A||!B) return;
+    state.matches.push({ id:kid('M'), leftId:A.id, rightId:B.id, leftTitle:A.title, rightTitle:B.title, leftImg:A.imageUrl||'', rightImg:B.imageUrl||'', leftScore:0, rightScore:0, winnerId:null, status:'OPEN' });
+    selected=[]; write(); paintMatches();
+  });
+
+  $("#openAll").addEventListener('click',()=>{ (state.matches||[]).forEach(m=>m.status='OPEN'); write(); paintMatches(); });
+  $("#lockAll").addEventListener('click',()=>{ (state.matches||[]).forEach(m=>m.status='LOCKED'); write(); paintMatches(); });
+
+  $("#clearAll").addEventListener('click',()=>{
+    if(!confirm('Delete ALL games and matchups?')) return;
+    state={games:[],matches:[],lastUpdated:0,eventId:'battleground:'+new Date().toISOString().slice(0,10),title:'BATTLEGROUND',bestOf:3};
+    write(); paintAll(); toast('Cleared');
+  });
+
+  $("#pushBuilder").addEventListener('click',()=>{
+    state.lastUpdated=Date.now(); write();
+    $("#stamp").textContent='Last push @ '+new Date(state.lastUpdated).toLocaleTimeString();
+    toast('Pushed to local storage (Prediction/Widget/Bets Admin will pick this up).', true);
+  });
+
+  // delegated clicks for lists
+  $("#gamesList").addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    const i=+b.dataset.i;
+    if(b.dataset.act==='sel'){ toggleSelect(i); }
+    else if(b.dataset.act==='del'){
+      const gid = (state.games[i]||{}).id;
+      state.games.splice(i,1);
+      // remove any matches that referenced this game id
+      state.matches = (state.matches||[]).filter(mx => mx.leftId!==gid && mx.rightId!==gid);
+      write(); paintAll();
+    }
+  });
+
+  $("#matchesList").addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    const i=+b.dataset.i; const m=state.matches[i]; if(!m) return;
+    if(b.dataset.act==='delMx'){ state.matches.splice(i,1); write(); paintAll(); }
+    else if(b.dataset.act==='winL'){ m.winnerId=m.leftId; write(); paintLiveRows(); paintMatches(); }
+    else if(b.dataset.act==='winR'){ m.winnerId=m.rightId; write(); paintLiveRows(); paintMatches(); }
+  });
+
+  $("#liveRows").addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    const i=+b.dataset.i; const m=state.matches[i]; if(!m) return;
+    if(b.dataset.act==='applyScore'){
+      const l=$('[data-s="l'+i+'"]'); const r=$('[data-s="r'+i+'"]');
+      m.leftScore=+(l?.value||0); m.rightScore=+(r?.value||0); write(); paintMatches();
+    }else if(b.dataset.act==='clearScore'){
+      m.leftScore=0; m.rightScore=0; m.winnerId=null; write(); paintLiveRows(); paintMatches();
+    }
+  });
+
+  // boot
+  paintAll();
 })();
 </script>
 </body>
