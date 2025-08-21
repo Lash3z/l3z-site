@@ -3,171 +3,265 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>PVP Entry — L3Z</title>
+<title>PVP — Entry Form</title>
+<meta http-equiv="Cache-Control" content="no-store"/>
 <style>
-  :root{
-    --ink:#eaf7ff; --muted:#9cc; --cyan:#00ffff; --gold:#ffb42d;
-    --panel:#0f1416; --line:rgba(0,255,255,.16); --ok:#163a2c; --bg:#0b0f10;
-  }
-  html,body{margin:0;background:#000 url("/assets/media/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
-  .wrap{max-width:760px;margin:32px auto;padding:0 16px}
-  h1{margin:0 0 8px;color:var(--cyan);text-shadow:0 0 12px #00ffff55}
+  :root{--bg:#060b0d;--ink:#eaf7ff;--muted:#a8c6cc;--line:rgba(0,255,255,.18);--teal:#00ffff;--ok:#11d48a;--bad:#ff6b81}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#000 url("/assets/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  .wrap{max-width:560px;margin:28px auto;padding:0 16px}
+  h1{margin:0 0 6px;color:var(--teal);text-shadow:0 0 16px #00ffff55}
   .sub{color:var(--muted);font-size:13px;margin-bottom:14px}
-  .card{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:14px;margin:12px 0}
-  label{font-size:12px;color:var(--muted)}
-  input, .fake{background:#0b1316;border:1px solid var(--line);color:var(--ink);padding:12px;border-radius:10px;width:100%;box-sizing:border-box}
-  .fake{opacity:.8}
-  .row{display:flex;gap:12px;flex-wrap:wrap}
-  .btn{padding:12px 14px;border:none;border-radius:12px;font-weight:800;cursor:pointer}
-  .btn.primary{background:var(--gold);color:#222}
-  .btn.alt{background:#102126;border:1px solid var(--line);color:#cfe}
-  .caps{text-transform:uppercase}
-  .radio{display:flex;gap:12px;align-items:center}
-  .mini{font-size:12px;color:var(--muted)}
-  .ok{background:var(--ok);border:1px solid rgba(0,255,170,.25);padding:10px;border-radius:10px}
-  .current{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);background:#0c1518;border-radius:12px;padding:12px;margin-top:8px}
-  .tag{padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:#0f1e22;font-size:12px;margin-left:8px}
+  .card{border:1px solid var(--line);border-radius:14px;background:#0d1417;padding:16px}
+  label{display:block;margin:10px 0 6px;font-size:14px;color:#cfe}
+  input,select,button{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:#0b1215;color:var(--ink);outline:none}
+  button{background:#00ffff;color:#001316;font-weight:800;cursor:pointer;box-shadow:0 0 18px #00ffff44;margin-top:10px}
+  button[disabled]{opacity:.6;cursor:not-allowed}
+  .row{display:flex;gap:10px;align-items:center}
+  .pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cff;font-size:12px}
+  .status{min-height:18px;margin-top:10px;font-size:13px}
+  .ok{color:var(--ok)} .bad{color:var(--bad)}
+  .imgprev{width:48px;height:48px;border-radius:10px;object-fit:cover;border:1px solid rgba(255,255,255,.12);background:#061015}
 </style>
 </head>
+<script>
+  window.API_BASE = (location.hostname==='127.0.0.1'||location.hostname==='localhost')
+    ? 'http://127.0.0.1:3000'
+    : ''; // same-origin in production
+</script>
+
 <body>
 <div class="wrap">
-  <h1>PVP Entry</h1>
-  <div class="sub">Enter the PVP tournament. Your username is auto-filled from your login.</div>
+  <div class="row" style="justify-content:space-between;margin-bottom:10px">
+    <h1>PVP — Entry Form</h1>
+    <span id="env" class="pill">—</span>
+  </div>
+  <p class="sub">
+    Enter to play a head-to-head match. Your entry goes to the admin inbox.
+    Images auto-map from <code>/assets/slot_images/&lt;game&gt;.png</code> with fallback to <code>mateslots_logo.png</code>.
+  </p>
 
   <div class="card">
-    <div class="row">
-      <div style="flex:1 1 260px">
-        <label>Username</label><br/>
-        <input id="username" class="fake caps" type="text" readonly>
+    <form id="entryForm" novalidate>
+      <label for="username">Username</label>
+      <input id="username" name="username" placeholder="Type your username"
+             autocomplete="username" required minlength="3" maxlength="24"
+             pattern="[A-Za-z0-9_]{3,24}" />
+
+      <label for="game" style="margin-top:12px">Game</label>
+      <div class="row">
+        <img id="gPrev" class="imgprev" alt="Game preview">
+        <input id="game" name="game" placeholder="e.g. rip city, gates of olympus"
+               autocomplete="off" required minlength="2" maxlength="48"/>
       </div>
-      <div style="flex:1 1 260px">
-        <label>Preferred Side</label><br/>
-        <div class="radio" style="padding:10px 4px">
-          <label><input type="radio" name="side" value="EAST" checked> EAST</label>
-          <label><input type="radio" name="side" value="WEST"> WEST</label>
-        </div>
+
+      <label for="side" style="margin-top:12px">Side (optional)</label>
+      <select id="side" name="side">
+        <option value="">No preference</option>
+        <option value="EAST">EAST</option>
+        <option value="WEST">WEST</option>
+      </select>
+
+      <button id="submitBtn" type="submit">Submit Entry</button>
+      <div id="msg" class="status" role="status" aria-live="polite"></div>
+      <div class="row" style="margin-top:10px">
+        <span class="pill" id="gate">Checking gate…</span>
+        <span class="pill" id="stamp">—</span>
       </div>
-    </div>
-
-    <div class="row">
-      <div style="flex:1 1 100%">
-        <label>Game Request (slot)</label><br/>
-        <input id="game" class="caps" placeholder="GATES OF OLYMPUS">
-      </div>
-    </div>
-
-    <div class="row" style="margin-top:10px">
-      <button id="submitBtn" class="btn primary" type="button">Submit / Update Entry</button>
-      <button id="clearBtn" class="btn alt" type="button">Clear My Entry</button>
-    </div>
-
-    <div id="msg" class="mini" style="margin-top:10px"></div>
-  </div>
-
-  <div id="youBlock" class="card" style="display:none">
-    <div class="mini" style="margin-bottom:6px">Your current request</div>
-    <div class="current">
-      <div>
-        <strong id="youName">—</strong>
-        <span class="tag" id="youSide">—</span>
-        <div class="mini" style="margin-top:4px">Game: <span id="youGame">—</span></div>
-      </div>
-      <div class="mini" id="youTime">—</div>
-    </div>
-  </div>
-
-  <div class="card ok mini">
-    Your entry is stored locally and submitted to the tournament queue for the admin to approve.
+    </form>
   </div>
 </div>
 
 <script>
-const ENTRY_Q_KEY = 'pvp:entry_requests';
-const API = "";
-
-const $ = (s,root=document)=>root.querySelector(s);
-function read(k,f='[]'){ try{return JSON.parse(localStorage.getItem(k)||f);}catch{return JSON.parse(f);} }
-function write(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
-function up(s){ return (s||'').toString().trim().toUpperCase(); }
-function nowStr(ts){ const d=new Date(ts); return d.toLocaleString(); }
-
-function getUser(){
-  return up(localStorage.getItem('user:username') || localStorage.getItem('auth:username') || 'GUEST');
-}
-
-function getMine(){
-  const me = getUser();
-  const arr = read(ENTRY_Q_KEY,'[]');
-  return arr.find(r=>r.name===me) || null;
-}
-function renderMine(){
-  const mine = getMine();
-  const block = $('#youBlock');
-  if(!mine){ block.style.display='none'; return; }
-  block.style.display='block';
-  $('#youName').textContent = mine.name;
-  $('#youSide').textContent = mine.side;
-  $('#youGame').textContent = mine.game;
-  $('#youTime').textContent = nowStr(mine.ts);
-}
-function paintForm(){
-  $('#username').value = getUser();
-  const mine = getMine();
-  if(mine){
-    $('#game').value = mine.game;
-    (document.querySelector(`input[name="side"][value="${mine.side}"]`)||document.querySelector('input[name="side"][value="EAST"]')).checked = true;
-  }else{
-    $('#game').value = '';
-    document.querySelector('input[name="side"][value="EAST"]').checked = true;
+/* ===== Route /api to Node server when opened via Live Server (5501) ===== */
+(function(){
+  var API_BASE = (location.port === '5501') ? 'http://127.0.0.1:3000' : '';
+  var _fetch = window.fetch ? window.fetch.bind(window) : null;
+  if (_fetch) {
+    window.fetch = function(input, init){
+      init = init || {};
+      if (typeof input === 'string' && input.indexOf('/api/') === 0) {
+        input = API_BASE + input;
+        if (!init.credentials) init.credentials = 'include';
+      }
+      return _fetch(input, init);
+    };
   }
-  renderMine();
+})();
+
+/* ===== helpers ===== */
+var $ = function(s){ return document.querySelector(s); };
+var sget = function(k,d){ try{ var v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(_){ return d; } };
+var sset = function(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){ } };
+var up   = function(s){ return String(s||'').trim().toUpperCase(); };
+var clamp = function(n,min,max){ n=+n||0; return Math.max(min, Math.min(max, n)); };
+
+/* Slot image guessing: /assets/slot_images/<slug>.png → fallback mateslots_logo.png */
+function slotImgFrom(title){
+  var DEF = "/assets/slot_images/mateslots_logo.png";
+  if(!title) return DEF;
+  var special = {
+    "rip city":"rip_city",
+    "gates of olympus":"gates_of_olympus",
+    "gates":"gates_of_olympus",
+    "starlight princess":"starlight_princess",
+    "sweet bonanza":"sweet_bonanza"
+  };
+  var s = String(title).trim().toLowerCase();
+  if (special[s]) s = special[s];
+  try{ s = s.normalize('NFD'); }catch(_){}
+  s = s.replace(/[\u0300-\u036f]/g,'').replace(/&/g,'and').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  return "/assets/slot_images/" + (s || "mateslots_logo") + ".png";
 }
-function setMsg(t){ $('#msg').textContent=t; }
 
-async function submitEntry(){
-  const name = getUser();
-  const game = up($('#game').value);
-  const side = (document.querySelector('input[name="side"]:checked')?.value) || 'EAST';
-  if(!game){ setMsg('Please enter a game (slot) name.'); return; }
+/* ===== constants / state ===== */
+var INBOX_KEY = "pv:entries:inbox"; // Admin reads this when offline
+var msg  = $("#msg"), btn=$("#submitBtn"), gPrev=$("#gPrev");
+var form = $("#entryForm");
+var lastSubmitKey = "pv:lastSubmit";
 
-  // local mirror (for UX)
-  const arr = read(ENTRY_Q_KEY,'[]');
-  const idx = arr.findIndex(r=>r.name===name);
-  const rec = { name, game, side, ts: Date.now() };
-  if(idx>-1){ arr[idx] = rec; } else { arr.push(rec); }
-  write(ENTRY_Q_KEY, arr);
+/* UI helpers */
+function setMsg(t, ok){ msg.textContent=t||""; msg.className="status "+(ok===true?"ok":ok===false?"bad":""); }
+function setGate(open){ $("#gate").textContent = open ? "Entry Form Enabled" : "Entries Closed"; }
 
-  // server queue
+/* preview */
+function previewHook(){
+  var g = $("#game");
+  function upd(){
+    var img = slotImgFrom(g.value);
+    gPrev.onerror = null;
+    gPrev.src = img;
+    gPrev.onerror = function(){ gPrev.src="/assets/slot_images/mateslots_logo.png"; };
+  }
+  g.addEventListener('input', upd);
+  upd();
+}
+
+/* queue into localStorage (Admin can read when offline) */
+function pushLocalInbox(entry){
+  var inbox = sget(INBOX_KEY, []);
+  // De-dupe by username; keep the newest for that user
+  var U = up(entry.username);
+  var kept = [];
+  for (var i=0;i<inbox.length;i++){
+    if (up(inbox[i].username) !== U) kept.push(inbox[i]);
+  }
+  kept.push(entry);
+  // Cap to last 200 to avoid storage bloat
+  if (kept.length > 200) kept = kept.slice(kept.length - 200);
+  sset(INBOX_KEY, kept);
+  try{ localStorage.setItem('pv:lastInboxUpdate', String(Date.now())); }catch(_){}
+}
+
+/* gate status (avoid overlapping polls) */
+var gateCtrl = null;
+async function pollGate(){
   try{
-    const r = await fetch(API + "/api/pvp/entries", {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ username:name, game, side })
+    if (gateCtrl) gateCtrl.abort();
+    gateCtrl = ('AbortController' in window) ? new AbortController() : null;
+    var opts = { cache:'no-store' };
+    if (gateCtrl) opts.signal = gateCtrl.signal;
+    var r = await fetch('/api/pvp/entries/open', opts);
+    if (!r.ok) throw 0;
+    var j = {};
+    try{ j = await r.json(); }catch(_){}
+    var open = !!(j && j.open);
+    setGate(open);
+    btn.disabled = !open;
+  }catch(_){
+    // if offline or API missing, leave it open for local/offline entries
+    setGate(true);
+    btn.disabled = false;
+  }
+}
+
+/* basic client validation */
+function validUsername(u){
+  return /^[A-Za-z0-9_]{3,24}$/.test(u);
+}
+function validSide(s){
+  return s==="" || s==="EAST" || s==="WEST";
+}
+
+/* rate limit: 15s between submits */
+function tooSoon(){
+  var last = +(localStorage.getItem(lastSubmitKey)||0);
+  var now  = Date.now();
+  return (now - last) < 15000; // 15s
+}
+
+/* submit */
+async function submit(){
+  // Native constraints first
+  if (!form.checkValidity()){
+    setMsg("Please complete the form correctly.", false);
+    form.reportValidity && form.reportValidity();
+    return;
+  }
+
+  var username = up($("#username").value);
+  var game     = String($("#game").value||'').trim();
+  var side     = up($("#side").value||'');
+
+  if (!validUsername(username)){ setMsg("Username must be 3–24 chars (A–Z, 0–9, _).", false); return; }
+  if (game.length < 2 || game.length > 48){ setMsg("Game must be 2–48 characters.", false); return; }
+  if (!validSide(side)){ setMsg("Invalid side.", false); return; }
+  if (tooSoon()){ setMsg("Easy there! Try again in a few seconds.", false); return; }
+
+  btn.disabled = true; setMsg("Submitting…");
+
+  var entry = { id: "pv_"+Math.random().toString(36).slice(2,10).toUpperCase(), username:username, game:game, side:side, ts: Date.now() };
+
+  // Always write to local inbox so Admin can see it even offline
+  pushLocalInbox(entry);
+
+  // Try to send to server (best effort)
+  try{
+    var r = await fetch('/api/pvp/entries', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ username:username, game:game, side:side })
     });
-    if(!r.ok) throw 0;
-    setMsg('Entry saved and submitted ✅');
-  }catch{ setMsg('Saved locally. Network issue submitting to server.'); }
-
-  paintForm();
+    if (!r.ok) {
+      var txt = "";
+      try{ txt = await r.text(); }catch(_){}
+      throw new Error(txt || ("HTTP "+r.status));
+    }
+    setMsg("Entry submitted ✔", true);
+  }catch(e){
+    setMsg("Saved locally (offline). Admin will see it.", true);
+  }finally{
+    $("#stamp").textContent = "Last submit @ " + new Date().toLocaleTimeString();
+    btn.disabled = false;
+    try{ localStorage.setItem(lastSubmitKey, String(Date.now())); }catch(_){}
+  }
 }
 
-function clearMine(){
-  const name = getUser();
-  const arr = read(ENTRY_Q_KEY,'[]').filter(r=>r.name!==name);
-  write(ENTRY_Q_KEY, arr);
-  setMsg('Your entry has been cleared (local).');
-  paintForm();
-}
+/* init */
+(function start(){
+  try{ $("#env").textContent = location.origin + (window.API_BASE?(" → "+window.API_BASE):""); }catch(_){}
+  previewHook();
+  pollGate(); setInterval(pollGate, 10000);
 
-$('#game').addEventListener('input', (e)=>{
-  const pos = e.target.selectionStart;
-  e.target.value = up(e.target.value);
-  e.target.setSelectionRange(pos,pos);
-});
-$('#submitBtn').addEventListener('click', submitEntry);
-$('#clearBtn').addEventListener('click', clearMine);
-paintForm();
-window.addEventListener('storage', (e)=>{ if(e.key===ENTRY_Q_KEY || e.key==='user:username'){ paintForm(); }});
+  form.addEventListener('submit', function(e){ e.preventDefault(); submit(); });
+
+  // remember last used values
+  var last = sget("pv:lastForm", null);
+  if (last){
+    $("#username").value=last.username||'';
+    $("#game").value=last.game||'';
+    $("#side").value=last.side||'';
+  }
+  ["username","game","side"].forEach(function(id){
+    $("#"+id).addEventListener('input', function(){
+      sset("pv:lastForm", {
+        username: $("#username").value,
+        game: $("#game").value,
+        side: $("#side").value
+      });
+    });
+  });
+})();
 </script>
 </body>
 </html>
