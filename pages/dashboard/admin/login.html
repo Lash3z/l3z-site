@@ -19,13 +19,6 @@
     .msg.ok{color:#9effa4}
   </style>
 </head>
-<script>
-  // Define early so every fetch sees it
-  window.API_BASE = (location.hostname==='127.0.0.1'||location.hostname==='localhost')
-    ? 'http://localhost:3000' 
-    : ''; // same-origin in production
-</script>
-
 <body>
   <div class="card">
     <h1>Admin Login</h1>
@@ -44,7 +37,6 @@
     const btn = $("#loginBtn");
     const msg = $("#m");
     const NEXT = new URLSearchParams(location.search).get("next") || "/pages/dashboard/admin/admin_hub.html";
-    const apiUrl = (path)=> (/^https?:\/\//i.test(path) ? path : (window.API_BASE||'') + path);
 
     function setMsg(text, ok){
       msg.textContent = text || "";
@@ -58,19 +50,13 @@
 
       btn.disabled = true; setMsg("Signing in…", true);
       try{
-        const res = await fetch(apiUrl("/api/admin/gate/login"), {
+        const res = await fetch("/api/admin/gate/login", {
           method: "POST",
           credentials: "include",
           headers: {"Content-Type":"application/json"},
-          cache: "no-store",
           body: JSON.stringify({ username: user, password: pass })
         });
-
-        // Try JSON first; fall back to text
-        let j = {};
-        try { j = await res.json(); }
-        catch { try { j = { ok:false, message: await res.text() }; } catch {} }
-
+        const j = await res.json().catch(()=> ({}));
         if(res.ok && j && j.ok){
           // Optional UX-only cache so other pages can fade in fast (not security)
           try{
@@ -88,7 +74,7 @@
           setMsg("Logged in. Redirecting…", true);
           location.href = NEXT;
         }else{
-          setMsg(j?.error || j?.message || "Wrong username or password", false);
+          setMsg("Wrong username or password", false);
         }
       }catch{
         setMsg("Login failed (network)", false);
