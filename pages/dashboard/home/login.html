@@ -1,85 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Sign in — LASH3Z</title>
-  <style>
-    :root{
-      --bg:#0b0f14;--panel:#11161d;--ink:#e9f1ff;--line:rgba(0,255,255,.18);
-      --gold:#ffcc66;--ok:#12d48a;--bad:#ff8fa0
-    }
-    /* the fix: make widths include padding+border so 100% doesn't overflow */
-    *,*:before,*:after{box-sizing:border-box}
-
-    html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial,sans-serif}
-    .wrap{display:grid;place-items:center;min-height:100vh;padding:16px}
-    .card{
-      width:100%;max-width:440px;background:#0e141a;border:1px solid var(--line);
-      border-radius:14px;padding:18px 18px 20px;box-shadow:0 0 18px rgba(0,255,255,.08);
-      /* contain micro overflows from children (sub-pixel, focus rings, etc.) */
-      overflow:hidden
-    }
-    h2{margin:0 0 8px}
-    .tabs{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
-    .tab{flex:1;text-align:center;padding:10px 12px;cursor:pointer;background:#0b1015}
-    .tab.on{background:#152029;font-weight:700}
-
-    label{display:block;margin:10px 0 6px}
-    input{
-      display:block;width:100%;
-      padding:10px;border-radius:10px;border:1px solid var(--line);
-      background:#0c1218;color:var(--ink);
-      /* keep text centered nicely across browsers */
-      line-height:1.2
-    }
-    button{
-      width:100%;margin-top:14px;padding:12px;border:0;border-radius:12px;
-      background:linear-gradient(180deg,#ffd27a,#e3a93b);color:#1a1304;font-weight:800;cursor:pointer
-    }
-    button[disabled]{opacity:.6;cursor:not-allowed}
-    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;min-width:0}
-    .msg{margin-top:10px;font-size:12px;min-height:16px}
-    .msg.ok{color:var(--ok)} .msg.bad{color:var(--bad)}
-    .hint{margin-top:10px;color:#9fb1c7;font-size:12px}
-    .pill{margin-left:auto;padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:#091319;color:#cfe;font-size:12px}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Login — L3Z</title>
+<meta http-equiv="Cache-Control" content="no-store"/>
+<style>
+  :root{--bg:#060b0d;--ink:#eaf7ff;--muted:#a8c6cc;--line:rgba(0,255,255,.18);--teal:#00ffff;--ok:#11d48a;--bad:#ff6b81}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#000 url("/assets/BG_page.png") center/cover fixed no-repeat;color:var(--ink);font-family:Segoe UI,system-ui,Arial,sans-serif}
+  .wrap{min-height:100%;display:grid;place-items:center;padding:24px}
+  .card{width:380px;max-width:92vw;background:linear-gradient(180deg,rgba(5,10,12,.78),rgba(5,10,12,.50));
+        border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.5);padding:20px}
+  h1{margin:0 0 8px;color:var(--teal);text-shadow:0 0 16px #00ffff55}
+  .muted{margin:0 0 16px;color:var(--muted);font-size:13px}
+  label{display:block;margin:12px 0 8px;font-size:14px}
+  input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#081216;color:var(--ink);outline:none}
+  button{width:100%;padding:12px;border:0;border-radius:10px;background:var(--teal);color:#001316;font-weight:800;cursor:pointer;box-shadow:0 0 20px #00ffff55;margin-top:12px}
+  button[disabled]{opacity:.6;cursor:not-allowed}
+  .row{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:8px}
+  .pill{padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:#081318;color:#cff;font-size:12px}
+  #msg{min-height:18px;margin-top:10px;font-size:13px}
+  #msg.ok{color:var(--ok)} #msg.bad{color:var(--bad)}
+  .links{display:flex;gap:8px;margin-top:10px}
+  .links a{flex:1;text-align:center;text-decoration:none;color:#001316;background:#bff;border-radius:10px;padding:10px 12px;font-weight:800}
+</style>
 </head>
 <body>
 <div class="wrap">
   <div class="card">
-    <div class="row" style="margin-bottom:10px">
-      <h2 style="margin-right:8px">Account</h2>
+    <div class="row">
+      <h1 style="margin:0">Account Login</h1>
       <span id="env" class="pill">—</span>
     </div>
+    <p class="muted">Sign in as a viewer. If your username is <b>lash3z</b>, you’ll also unlock admin when the server allows it — or offline fallback is used.</p>
 
-    <div class="tabs" role="tablist">
-      <div class="tab on"  id="tab-signin" role="tab" aria-selected="true">Sign in</div>
-      <div class="tab"      id="tab-create" role="tab" aria-selected="false">Create account</div>
-    </div>
+    <form id="f" autocomplete="on">
+      <label>Username
+        <input name="username" required autocomplete="username"/>
+      </label>
+      <label>Password
+        <input name="password" type="password" required autocomplete="current-password"/>
+      </label>
+      <button id="submitBtn" type="submit">Sign in</button>
+      <div id="msg"></div>
 
-    <!-- Sign in -->
-    <form id="form-signin" style="margin-top:12px">
-      <label>Username or Email</label>
-      <input id="si-user" autocomplete="username" required/>
-      <label>Password</label>
-      <input id="si-pass" type="password" autocomplete="current-password" required/>
-      <button id="btn-signin" type="submit">Sign in</button>
-      <div id="si-msg" class="msg"></div>
-      <div class="hint">Admins and players both sign in here. New players: use the “Create account” tab.</div>
-    </form>
-
-    <!-- Create -->
-    <form id="form-create" style="display:none;margin-top:12px">
-      <label>Username</label>
-      <input id="cr-user" autocomplete="username" minlength="3" required/>
-      <label>Email (optional)</label>
-      <input id="cr-email" type="email" autocomplete="email" placeholder="you@example.com"/>
-      <label>Password</label>
-      <input id="cr-pass" type="password" autocomplete="new-password" minlength="6" required/>
-      <button id="btn-create" type="submit">Create account</button>
-      <div id="cr-msg" class="msg"></div>
-      <div class="hint">If an account already exists, just sign in instead.</div>
+      <div id="nextLinks" class="links" style="display:none">
+        <a href="/index.html">← Back to site</a>
+        <a id="toAdmin" href="/pages/dashboard/admin/admin_hub.html">Administration</a>
+      </div>
     </form>
   </div>
 </div>
@@ -88,180 +57,119 @@
 (function(){
   "use strict";
 
-  const API_BASE = (typeof window.API_BASE === "string" ? window.API_BASE : "") || "";
-  const WEEK = 7*24*60*60*1000;
+  // ---- API base detection (works on 5501 live server or when served by Node) ----
+  const API_BASE = (window.__API_BASE)
+    || (location.port === "5501" ? "http://127.0.0.1:3000" : "");
 
-  const ADMIN_LOGIN_PATHS  = ["/api/admin/gate/login"];
-  const PLAYER_LOGIN_PATHS = ["/api/auth/login", "/api/login", "/api/users/login", "/api/player/login"];
-  const PLAYER_ME_PATHS    = ["/api/me", "/api/users/me", "/api/player/me", "/api/wallet/me"];
-  const PLAYER_SIGNUP_PATHS= ["/api/auth/register", "/api/register", "/api/users", "/api/player/register"];
+  const env = document.getElementById("env");
+  env.textContent = (location.origin + (API_BASE? " → " + API_BASE : " (no API)"));
 
-  function loginPayloads(username, password){
-    return [
-      {username, password},
-      {user: username, pass: password},
-      {email: username, password},
-    ];
-  }
-  function signupPayloads(username, email, password){
-    const body = {username, password};
-    if(email) body.email = email;
-    return [ body, {user: username, pass: password, email: email || undefined} ];
-  }
+  const f   = document.getElementById("f");
+  const msg = document.getElementById("msg");
+  const btn = document.getElementById("submitBtn");
+  const links = document.getElementById("nextLinks");
+  const toAdmin = document.getElementById("toAdmin");
 
-  const $ = s => document.querySelector(s);
-  function msg(el, text, ok){
-    el.textContent = text || "";
-    el.className = "msg " + (ok===true ? "ok" : ok===false ? "bad" : "");
+  function setMsg(t, ok){
+    msg.textContent = t || "";
+    msg.className = ok===true ? "ok" : ok===false ? "bad" : "";
   }
-  function saveUXSession(user, isAdmin){
+  function setCookie(name,value,days){
     try{
-      localStorage.setItem("l3z:session", JSON.stringify({user, isAdmin: !!isAdmin, expiresAt: Date.now()+WEEK}));
-      if(isAdmin){
-        localStorage.setItem("admin:token", JSON.stringify({by:user, ts:Date.now(), expiresAt: Date.now()+12*60*60*1000}));
-      }
+      let s = name+"="+encodeURIComponent(value)+"; path=/";
+      if(days){ const d=new Date(); d.setTime(d.getTime()+days*864e5); s += "; expires="+d.toUTCString(); }
+      document.cookie = s;
     }catch(_){}
   }
-  function api(path){ return API_BASE + path; }
-
-  async function tryLogin(paths, payloads){
-    for(const p of paths){
-      for(const body of payloads){
-        try{
-          const res = await fetch(api(p), {
-            method: "POST",
-            credentials: "include",
-            headers: {"Content-Type":"application/json"},
-            body: JSON.stringify(body)
-          });
-          const j = await res.json().catch(()=> ({}));
-          if(res.ok && (j.ok === true || j.success === true)){
-            return {ok:true, data: j, path: p};
-          }
-        }catch(_){}
-      }
-    }
-    return {ok:false};
+  async function apiPost(path,body){
+    const res = await fetch(API_BASE + path, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      credentials:"include",
+      body: JSON.stringify(body||{})
+    });
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const ct = res.headers.get("content-type")||"";
+    return ct.includes("application/json") ? res.json() : {};
   }
 
-  async function tryGet(paths){
-    for(const p of paths){
+  async function tryViewer(username){
+    try{
+      await apiPost("/api/viewer/login",{ username });
+      return true;
+    }catch(e){
+      // 404 / network → let the offline fallback take over
+      return false;
+    }
+  }
+  async function tryAdmin(username,password){
+    try{
+      // Try both routes (your server uses one of these)
       try{
-        const res = await fetch(api(p), {credentials:"include", cache:"no-store"});
-        if(!res.ok) continue;
-        const j = await res.json().catch(()=> ({}));
-        return {ok:true, data:j, path:p};
-      }catch(_){}
-    }
-    return {ok:false};
-  }
-
-  const tabSI = $("#tab-signin"), tabCR = $("#tab-create");
-  const formSI = $("#form-signin"), formCR = $("#form-create");
-  function switchTab(which){
-    if(which==="si"){
-      tabSI.classList.add("on"); tabCR.classList.remove("on");
-      formSI.style.display=""; formCR.style.display="none";
-    }else{
-      tabCR.classList.add("on"); tabSI.classList.remove("on");
-      formCR.style.display=""; formSI.style.display="none";
-    }
-  }
-  tabSI.addEventListener("click", ()=>switchTab("si"));
-  tabCR.addEventListener("click", ()=>switchTab("cr"));
-
-  try{
-    const host = location.host || "localhost";
-    $("#env").textContent = (API_BASE ? new URL(API_BASE, location.origin).origin : location.origin) + " • " + host;
-  }catch{ $("#env").textContent = location.origin; }
-
-  formSI.addEventListener("submit", async (e)=>{
-    e.preventDefault();
-    const u = ($("#si-user").value||"").trim();
-    const p = $("#si-pass").value||"";
-    const out = $("#si-msg");
-    if(u.length<3 || p.length<3){ msg(out, "Please enter a valid username/email and password.", false); return; }
-
-    $("#btn-signin").disabled = true; msg(out, "Signing in…");
-
-    let r = await tryLogin(ADMIN_LOGIN_PATHS, loginPayloads(u,p));
-    if(r.ok){
-      const who = (r.data.user || r.data.username || u).toString().toUpperCase();
-      saveUXSession(who, true);
-      msg(out, "Welcome, admin. Redirecting…", true);
-      return doRedirect();
-    }
-
-    r = await tryLogin(PLAYER_LOGIN_PATHS, loginPayloads(u,p));
-    if(r.ok){
-      const me = await tryGet(PLAYER_ME_PATHS);
-      const who = (me.ok && (me.data.username || me.data.user || me.data.name)) ? (me.data.username || me.data.user || me.data.name) : u;
-      saveUXSession(who.toString().toUpperCase(), false);
-      msg(out, "Welcome back! Redirecting…", true);
-      return doRedirect();
-    }
-
-    msg(out, "Login failed. Check your details, or create a new account.", false);
-    $("#btn-signin").disabled = false;
-  });
-
-  formCR.addEventListener("submit", async (e)=>{
-    e.preventDefault();
-    const u = ($("#cr-user").value||"").trim();
-    const em= ($("#cr-email").value||"").trim();
-    const p = $("#cr-pass").value||"";
-    const out = $("#cr-msg");
-    if(u.length<3 || p.length<6){ msg(out, "Username ≥ 3 chars, password ≥ 6.", false); return; }
-
-    $("#btn-create").disabled = true; msg(out, "Creating account…");
-
-    const attempts = signupPayloads(u, em, p);
-    let ok=false;
-    for(const path of PLAYER_SIGNUP_PATHS){
-      for(const body of attempts){
-        try{
-          const res = await fetch(api(path), {
-            method:"POST",
-            credentials:"include",
-            headers:{"Content-Type":"application/json"},
-            body: JSON.stringify(body)
-          });
-          const j = await res.json().catch(()=> ({}));
-          if(res.ok && (j.ok===true || j.success===true || j.created===true)){
-            ok=true; break;
-          }
-        }catch(_){}
+        await apiPost("/api/admin/gate/login",{ username, password });
+        return true;
+      }catch(_){
+        await apiPost("/api/admin/login",{ username, password });
+        return true;
       }
-      if(ok) break;
+    }catch(e){
+      return false;
     }
-
-    if(!ok){
-      msg(out, "Sign-up failed here. If you already have an account, try signing in.", false);
-      $("#btn-create").disabled = false;
-      return;
-    }
-
-    msg(out, "Account created. Finishing sign-in…");
-    let r = await tryLogin(PLAYER_LOGIN_PATHS, loginPayloads(u, p));
-    if(!r.ok){
-      msg(out, "Account created. Please sign in with your new password.", true);
-      switchTab("si");
-      $("#si-user").value = u;
-      $("#si-pass").focus();
-      $("#btn-create").disabled = false;
-      return;
-    }
-
-    saveUXSession(u.toUpperCase(), false);
-    msg(out, "Welcome! Redirecting…", true);
-    doRedirect();
-  });
-
-  function doRedirect(){
-    const params = new URLSearchParams(location.search);
-    const next = params.get("next") || params.get("redirect") || "/index.html";
-    setTimeout(()=> location.replace(next), 200);
   }
+
+  function offlineLogin(username, makeAdmin){
+    // viewer cookie for header + other pages
+    setCookie("viewer", username, 7);
+    try{
+      localStorage.setItem("lash3z_last_user", JSON.stringify(username));
+      localStorage.setItem("l3z:session", JSON.stringify({ user: username, ts: Date.now() }));
+      if (makeAdmin) localStorage.setItem("l3z:isAdmin", "true");
+    }catch(_){}
+  }
+
+  f.addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    const fd = new FormData(f);
+    const username = String(fd.get("username")||"").trim();
+    const password = String(fd.get("password")||"");
+
+    if(!username || !password){ setMsg("Enter username and password.", false); return; }
+
+    btn.disabled = true; setMsg("Signing in…");
+
+    // Always remember last user locally (header uses it)
+    try{ localStorage.setItem("lash3z_last_user", JSON.stringify(username)); }catch(_){}
+
+    let viewerOK=false, adminOK=false, offline=false;
+
+    // 1) Try real API (viewer)
+    viewerOK = await tryViewer(username);
+
+    // 2) If viewer OK and username is lash3z, also try admin gate
+    if (viewerOK && username.toLowerCase()==="lash3z"){
+      adminOK = await tryAdmin(username, password);
+    }
+
+    // 3) If API not available (or 404), fall back to local
+    if (!viewerOK){
+      offline = true;
+      const makeAdmin = (username.toLowerCase()==="lash3z"); // offline: lash3z → admin
+      offlineLogin(username, makeAdmin);
+      viewerOK = true;
+      adminOK  = makeAdmin;
+    }
+
+    if (viewerOK){
+      setMsg(offline ? (adminOK ? "Signed in (offline admin bypass)." : "Signed in (offline viewer).")
+                     : (adminOK ? "Signed in as admin." : "Signed in."), true);
+      links.style.display = "flex";
+      toAdmin.style.display = adminOK ? "inline-block" : "none";
+    }else{
+      setMsg("Login failed.", false);
+    }
+
+    btn.disabled = false;
+  });
 })();
 </script>
 </body>
